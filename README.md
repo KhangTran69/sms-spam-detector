@@ -1,4 +1,4 @@
-# Philippine SMS Spam and Scam Detector
+# Philippines SMS Spam and Scam Detector
 
 A Python 3.10+ pipeline that classifies SMS messages as `spam` or `ham`, tuned for Philippine traffic: Taglish text, PH mobile/landline numbers, `₱`/`PHP`/`pesos` amounts, urgency words, and locally common scam templates. It combines word/bigram TF-IDF with interpretable indicator features, trains a MultinomialNB baseline and a class-balanced LogisticRegression primary model, and serves both a JSON API and a bundled web UI through FastAPI.
 
