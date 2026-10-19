@@ -22,10 +22,10 @@ That dataset is a re-upload of the public [UCI SMS Spam Collection](https://arch
 
 ## Philippine supplement and holdout
 
-- `data/raw/ph_supplement.csv` — **synthetic, template-based** labeled examples merged into training: scam patterns (prize/foundation claims, bank and GCash/Maya impersonation, parcel-fee and SIM-registration phishing, job/loan/investment lures, OTP-forwarding social engineering, Taglish variants) and legitimate traffic (OTP codes, bank debit/credit/bills-payment confirmations, delivery notices, promo renewals, everyday Taglish). These templates are for pipeline verification, not a representative sample of real Philippine traffic.
+- `data/raw/ph_supplement.csv` and `data/raw/ph_supplement_2.csv` — **synthetic, template-based** labeled examples merged into training. They cover prize/foundation claims, bank and e-wallet impersonation, parcel-fee and SIM-registration phishing, job/loan/investment lures, OTP-forwarding social engineering, Taglish variants, and legitimate OTPs, account notices, deliveries, and everyday messages. These templates are for pipeline verification, not a representative sample of real Philippine traffic.
 - `data/raw/ph_holdout.csv` — a small disjoint labeled set used by `src/evaluate.py` to report local precision, including how many legit OTP/code messages get falsely flagged.
 
-To add the real Philippine patterns you collect: append `label,message` rows to the supplement (both classes — include legitimate OTPs and bank alerts as `ham`), keep the holdout separate, and retrain. A data-quality test asserts the two files stay disjoint and that the three diagnostic examples below never appear in either file.
+To add the real Philippine patterns you collect: append `label,message` rows to a supplement (both classes — include legitimate OTPs and bank alerts as `ham`), keep the holdout separate, and retrain. A data-quality test asserts the supplements and holdout stay disjoint and that the three diagnostic examples below never appear in them.
 
 ## Train
 
@@ -36,7 +36,7 @@ python -m src.train --data data/raw/spam.csv --supplement data/raw/ph_supplement
 python -m src.train --supplement none   # base dataset only
 ```
 
-Training merges the base CSV with the supplement (exact duplicates dropped), reports a MultinomialNB baseline and the LogisticRegression primary (class_weight='balanced'), and saves the fitted primary pipeline with joblib to `models/spam_detector_v1.pkl`.
+Training merges the base CSV with both available Philippine supplements by default (exact duplicate messages dropped), reports a MultinomialNB baseline and the LogisticRegression primary (`class_weight='balanced'`), and saves the fitted primary pipeline with joblib to `models/spam_detector_v1.pkl`. Pass one or more paths with `--supplement`; use `--supplement none` to disable supplements.
 
 Measured on the current data (5,284 unique messages; stratified 80/20 split, seed 42):
 
@@ -133,7 +133,7 @@ Template categories in the supplement: fake prizes (GMA Kapuso Foundation, PCSO)
 ## Project layout
 
 ```
-data/raw/            spam.csv (git-ignored), ph_supplement.csv, ph_holdout.csv (synthetic, tracked)
+data/raw/            spam.csv (git-ignored), synthetic Philippine supplements and holdout (tracked)
 data/processed/      evaluation artifacts (confusion matrix)
 notebooks/01_eda.ipynb
 src/preprocess.py    cleaning, Taglish normalization, indicator extraction, match spans

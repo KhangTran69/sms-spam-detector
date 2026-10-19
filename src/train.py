@@ -16,7 +16,12 @@ from src.features import make_model, messages_to_frame
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DATA = ROOT / "data" / "raw" / "spam.csv"
-DEFAULT_SUPPLEMENT = ROOT / "data" / "raw" / "ph_supplement.csv"
+# All supplement CSVs are merged into training (order does not matter; exact
+# duplicate messages are dropped after the merge).
+DEFAULT_SUPPLEMENT = (
+    ROOT / "data" / "raw" / "ph_supplement.csv",
+    ROOT / "data" / "raw" / "ph_supplement_2.csv",
+)
 DEFAULT_MODEL = ROOT / "models" / "spam_detector_v1.pkl"
 TEST_SIZE = 0.2
 RANDOM_STATE = 42
@@ -46,25 +51,40 @@ def load_dataset(path: str | Path) -> tuple[list[str], list[str]]:
     return messages[keep].astype(str).tolist(), labels[keep].tolist()
 
 
-def load_training_data(
-    data_path: str | Path = DEFAULT_DATA,
-    supplement_path: str | Path | None = DEFAULT_SUPPLEMENT,
-) -> tuple[list[str], list[str]]:
-    """Load the base dataset plus the optional Philippine supplement, deduplicated.
+def _normalize_supplements(supplement_path) -> list[Path]:
+    """Accept None, one path, or an iterable of paths."""
+    if supplement_path is None:
+        return []
+    if isinstance(supplement_path, (str, Path)):
+        supplement_path = [supplement_path]
+    return [Path(path) for path in supplement_path]
 
-    Exact duplicate message texts are dropped (first occurrence wins), so a
-    pattern present in both files is not double-counted.
+
+def load_training_data(
+    data_path: str | Path,
+    supplement_path=DEFAULT_SUPPLEMENT,
+) -> tuple[list[str], list[str]]:
+    """Load the base dataset plus any supplement CSVs, deduplicated.
+
+    `supplement_path` may be None, a single CSV path, or an iterable of CSV
+    paths. Exact duplicate message texts are dropped (first occurrence wins),
+    so a pattern present in several files is not double-counted.
     """
     if data_path is None:
         raise ValueError("data_path is required")
     messages, labels = load_dataset(data_path)
     base_counts = {"ham": labels.count("ham"), "spam": labels.count("spam")}
-    supplement_counts = None
-    if supplement_path is not None and Path(supplement_path).exists():
-        sup_messages, sup_labels = load_dataset(supplement_path)
+    supplement_counts = {"ham": 0, "spam": 0}
+    supplement_files = 0
+    for path in _normalize_supplements(supplement_path):
+        if not path.exists():
+            continue
+        sup_messages, sup_labels = load_dataset(path)
         messages = messages + sup_messages
         labels = labels + sup_labels
-        supplement_counts = {"ham": sup_labels.count("ham"), "spam": sup_labels.count("spam")}
+        supplement_files += 1
+        supplement_counts["ham"] += sup_labels.count("ham")
+        supplement_counts["spam"] += sup_labels.count("spam")
     seen: set[str] = set()
     dedup_messages: list[str] = []
     dedup_labels: list[str] = []
@@ -77,8 +97,11 @@ def load_training_data(
         dedup_messages.append(message)
         dedup_labels.append(label)
     print(f"Dataset: base={sum(base_counts.values())} {base_counts}", end="")
-    if supplement_counts is not None:
-        print(f" + supplement={sum(supplement_counts.values())} {supplement_counts}", end="")
+    if supplement_files:
+        print(
+            f" + supplements={supplement_files} file(s), {sum(supplement_counts.values())} rows {supplement_counts}",
+            end="",
+        )
     print(f" | dropped {dropped} duplicates | total={len(dedup_messages)}")
     return dedup_messages, dedup_labels
 
@@ -122,8 +145,13 @@ def train(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--data", default=str(DEFAULT_DATA))
-    parser.add_argument("--supplement", default=str(DEFAULT_SUPPLEMENT), help="Philippine supplement CSV; pass 'none' to disable")
+    parser.add_argument(
+        "--supplement",
+        nargs="*",
+        default=[str(path) for path in DEFAULT_SUPPLEMENT],
+        help="Philippine supplement CSV(s); pass 'none' to disable all",
+    )
     parser.add_argument("--output", default=str(DEFAULT_MODEL))
     args = parser.parse_args()
-    supplement = None if args.supplement.lower() == "none" else args.supplement
-    train(args.data, args.output, supplement)
+    supplements = [a for a in args.supplement if a.lower() != "none"]
+    train(args.data, args.output, supplements or None)

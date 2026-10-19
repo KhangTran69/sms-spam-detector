@@ -16,4 +16,5 @@ models/*.joblib
 
 # Synthetic, shareable Philippine pattern files stay in git; real message data stays out.
 !data/raw/ph_supplement.csv
+!data/raw/ph_supplement_2.csv
 !data/raw/ph_holdout.csv

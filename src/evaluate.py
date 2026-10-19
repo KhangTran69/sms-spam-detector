@@ -115,14 +115,20 @@ def evaluate(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--data", default=str(DEFAULT_DATA))
-    parser.add_argument("--supplement", default=str(DEFAULT_SUPPLEMENT), help="Philippine supplement CSV; pass 'none' to disable")
+    parser.add_argument(
+        "--supplement",
+        nargs="*",
+        default=[str(path) for path in DEFAULT_SUPPLEMENT],
+        help="Philippine supplement CSV(s); pass 'none' to disable all",
+    )
     parser.add_argument("--model", default=str(DEFAULT_MODEL))
     parser.add_argument("--holdout", default=str(DEFAULT_HOLDOUT), help="Philippine holdout CSV; pass 'none' to disable")
     parser.add_argument("--plot", default=str(DEFAULT_PLOT))
     args = parser.parse_args()
+    supplements = [a for a in args.supplement if a.lower() != "none"]
     evaluate(
         args.data,
-        None if args.supplement.lower() == "none" else args.supplement,
+        supplements or None,
         args.model,
         None if args.holdout.lower() == "none" else args.holdout,
         args.plot,
