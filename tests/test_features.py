@@ -52,6 +52,11 @@ def test_transformer_output_is_non_negative_for_nb():
     assert np.all(transformed >= 0), "MultinomialNB requires non-negative features"
 
 
+def test_transformer_uses_float32_to_reduce_sparse_feature_memory():
+    transformed = make_feature_transformer().fit_transform(messages_to_frame(MESSAGES))
+    assert transformed.dtype == np.float32
+
+
 def test_make_model_end_to_end_and_signature():
     labels = ["spam", "spam", "ham", "ham"]
     model = make_model(MultinomialNB())

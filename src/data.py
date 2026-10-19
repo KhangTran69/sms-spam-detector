@@ -132,6 +132,10 @@ def _resolve_metadata_columns(lookup: dict[str, str]) -> dict[str, str]:
     aliases = {
         "source": ("source", "data_source"),
         "data_kind": ("data_kind",),
+        "dataset_id": ("dataset_id",),
+        "dataset_version": ("dataset_version", "version"),
+        "license": ("license", "licence", "usage_terms"),
+        "collection_period": ("collection_period", "collection_dates"),
         "category": ("category", "message_type", "type", "scam_type"),
         "language": ("language", "lang"),
         "labeling_confidence": ("labeling_confidence", "label_confidence", "confidence"),
@@ -195,6 +199,10 @@ class FileRecord:
     duplicates_removed: int
     class_counts: dict[str, int] = field(default_factory=dict)
     metadata_columns: list[str] = field(default_factory=list)
+    provenance: dict[str, str] = field(default_factory=dict)
+    category_counts: dict[str, int] = field(default_factory=dict)
+    language_counts: dict[str, int] = field(default_factory=dict)
+    data_kind_counts: dict[str, int] = field(default_factory=dict)
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -206,6 +214,10 @@ class FileRecord:
             "duplicates_removed": self.duplicates_removed,
             "class_counts": dict(self.class_counts),
             "metadata_columns": list(self.metadata_columns),
+            "provenance": dict(self.provenance),
+            "category_counts": dict(self.category_counts),
+            "language_counts": dict(self.language_counts),
+            "data_kind_counts": dict(self.data_kind_counts),
         }
 
 
@@ -244,9 +256,16 @@ class Dataset:
             "class_counts": self.class_counts,
             "class_imbalance_ratio": imbalance,
             "group_count": int(self.frame["group"].nunique()),
+            "data_kind_counts": self._counts("data_kind"),
+            "language_counts": self._counts("language"),
+            "category_counts": self._counts("category"),
             "files": [record.as_dict() for record in self.records],
             "warnings": list(self.warnings),
         }
+
+    def _counts(self, column: str) -> dict[str, int]:
+        counts = self.frame[column].fillna("unknown").astype(str).replace("", "unknown").value_counts()
+        return {str(key): int(value) for key, value in counts.items()}
 
 
 def _load_one(
@@ -309,8 +328,8 @@ def _load_one(
         if "data_kind" in metadata_columns
         else "unknown"
     )
-    if not working["data_kind"].isin(["synthetic", "real", "unknown"]).all():
-        raise DatasetError(f"{path}: data_kind must be synthetic, real, or unknown.")
+    if not working["data_kind"].isin(["synthetic", "public", "consented", "real", "unknown"]).all():
+        raise DatasetError(f"{path}: data_kind must be synthetic, public, consented, real, or unknown.")
     working["source_file"] = path.name
     if "group" in metadata_columns:
         working["_provided_group"] = df[metadata_columns["group"]].astype(str).str.strip().replace("", "unknown")
@@ -326,15 +345,8 @@ def _load_one(
     conflicts = working.groupby("message")["label"].nunique()
     conflicting_messages = conflicts[conflicts > 1]
     if len(conflicting_messages):
-        examples = [
-            {
-                "message": _redacted(message),
-                "labels": sorted(working.loc[working["message"] == message, "label"].unique()),
-            }
-            for message in conflicting_messages.index[:5]
-        ]
         raise DatasetError(
-            f"{path}: {len(conflicting_messages)} message(s) have conflicting labels, e.g. {examples}. "
+            f"{path}: {len(conflicting_messages)} message(s) have conflicting labels. "
             "Resolve the labels before training; duplicate text cannot be both ham and spam."
         )
 
@@ -378,6 +390,14 @@ def _load_one(
         )
 
     frame = working[list(CANONICAL_COLUMNS)].reset_index(drop=True)
+    provenance: dict[str, str] = {}
+    for field_name in ("dataset_id", "dataset_version", "license", "collection_period"):
+        column = metadata_columns.get(field_name)
+        values = set(df[column].astype(str).str.strip()) - {"", "unknown"} if column else set()
+        if len(values) > 1:
+            raise DatasetError(f"{path}: {field_name} must be consistent across rows in one source file.")
+        provenance[field_name] = next(iter(values), "unknown")
+
     record = FileRecord(
         path=str(path),
         role=role,
@@ -387,13 +407,12 @@ def _load_one(
         duplicates_removed=duplicates,
         class_counts=class_counts,
         metadata_columns=sorted(metadata_columns.values()),
+        provenance=provenance,
+        category_counts={str(key): int(value) for key, value in frame["category"].value_counts().items()},
+        language_counts={str(key): int(value) for key, value in frame["language"].value_counts().items()},
+        data_kind_counts={str(key): int(value) for key, value in frame["data_kind"].value_counts().items()},
     )
     return Dataset(frame=frame, records=[record], warnings=warnings)
-
-
-def _redacted(message: str, limit: int = 60) -> str:
-    text = str(message)
-    return (text[:limit] + "…") if len(text) > limit else text
 
 
 def load_dataset(
@@ -502,15 +521,8 @@ def load_training_dataset(
     conflicts = combined.groupby("message")["label"].nunique()
     conflicting = conflicts[conflicts > 1]
     if len(conflicting):
-        examples = [
-            {
-                "message": _redacted(message),
-                "labels": sorted(combined.loc[combined["message"] == message, "label"].unique()),
-            }
-            for message in conflicting.index[:5]
-        ]
         raise DatasetError(
-            f"{len(conflicting)} message(s) appear in multiple sources with conflicting labels, e.g. {examples}. "
+            f"{len(conflicting)} message(s) appear in multiple sources with conflicting labels. "
             "Fix the labels before training; identical text cannot be both ham and spam."
         )
     before = len(combined)
@@ -553,8 +565,7 @@ def group_leakage_report(training: Dataset, holdout: Dataset) -> dict[str, Any]:
     if exact_overlap:
         raise DatasetError(
             f"Holdout contains {len(exact_overlap)} message(s) that are also in training data; "
-            "this leaks the answer. Remove them from the holdout or training files. "
-            f"Example: {_redacted(exact_overlap[0])}"
+            "this leaks the answer. Remove overlapping rows from the holdout or training files."
         )
     train_groups = set(training.groups)
     holdout_groups = set(holdout.groups)
@@ -836,7 +847,17 @@ def split_dataset(dataset: Dataset, split: Split) -> tuple[Dataset, Dataset, Dat
 
 def dataset_manifest(dataset: Dataset, *, extra: dict[str, Any] | None = None) -> dict[str, Any]:
     """JSON-safe provenance manifest (no message text)."""
-    manifest = dataset.summary()
+    manifest = {
+        "schema_version": 1,
+        "dataset": dataset.summary(),
+        "sources": [record.as_dict() for record in dataset.records],
+        "policy": {
+            "exact_duplicates_removed_before_splitting": True,
+            "campaign_groups_kept_within_one_split": True,
+            "threshold_tuned_on_validation_only": True,
+            "message_text_included": False,
+        },
+    }
     if extra:
         manifest.update(extra)
     return manifest

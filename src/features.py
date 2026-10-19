@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import Any
 
+import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -44,6 +45,7 @@ def make_feature_transformer() -> ColumnTransformer:
                     max_features=100_000,
                     sublinear_tf=True,
                     lowercase=True,
+                    dtype=np.float32,
                 ),
                 "cleaned_text",
             ),
@@ -64,7 +66,9 @@ def messages_to_frame(messages: Iterable[str]) -> pd.DataFrame:
     from src.preprocess import prepare_messages
 
     prepared = prepare_messages(messages)
-    return pd.DataFrame(prepared, columns=["cleaned_text", *FEATURE_COLUMNS])
+    frame = pd.DataFrame(prepared, columns=["cleaned_text", *FEATURE_COLUMNS])
+    frame[FEATURE_COLUMNS] = frame[FEATURE_COLUMNS].astype(np.float32)
+    return frame
 
 
 def make_model(classifier: Any) -> Pipeline:

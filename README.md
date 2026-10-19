@@ -16,6 +16,8 @@ Python 3.11+ is required. The base SMS corpus is not committed. Download the Kag
 
 The tracked Philippine supplements and holdout are synthetic templates for repeatable pipeline checks. See [data/raw/README.md](data/raw/README.md) and [docs/DATA_COLLECTION.md](docs/DATA_COLLECTION.md) before adding any real messages. Raw real messages, model artifacts, and feedback reports are excluded from Git.
 
+The documented public English source is the UCI SMS Spam Collection (5,574 historical messages, CC BY 4.0). The current ignored `spam.csv` has no recorded source/license metadata, so it remains `unknown` until its provenance is verified. Do not add mirrors as extra supplements: exact copies are removed and near-duplicates can distort evaluation. To normalize a separately downloaded UCI TSV while preserving attribution, run `python -m src.import_public_dataset --input /path/to/SMSSpamCollection --format uci-tsv`. The importer writes only to ignored `data/raw/` and never downloads the corpus. See [data/raw/README.md](data/raw/README.md) for limitations and attribution.
+
 ## Train and evaluate
 
 ```bash
@@ -24,6 +26,8 @@ python -m src.evaluate --json-out data/processed/evaluation.json
 ```
 
 Training validates schemas and labels, removes exact duplicates before splitting, keeps campaign/template groups together, tunes the decision threshold on validation data, and reports the final test metrics separately. The artifact contains the model, threshold, training/data provenance, and version metadata. The public English corpus and three synthetic Philippine supplements are used by default when present.
+
+Training records per-file source metadata and label/language/category/provenance coverage in the artifact and a message-free `models/*.manifest.json` sidecar. The manifest includes input/retained row counts, duplicates, file hashes, class counts, split method/seed/fingerprint, and whether metadata was unverified. Small per-class splits are flagged so scores with limited support are not mistaken for stable estimates.
 
 For real data with reliable `received_at` timestamps and campaign groups, chronological validation/test splits are available:
 
@@ -129,6 +133,6 @@ tests/           data, model, API, preprocessing, and web-contract checks
 
 ### Provenance and preprocessing compatibility
 
-CSV files may include `data_kind` with `synthetic`, `real`, or `unknown` (the default). This is a source declaration, not independent verification. Training records fitted-row counts by kind; `synthetic_training_data` is true when synthetic rows were used, false only when all fitted rows are declared real, and null when their status is unknown. Tracked Philippine fixtures are explicitly synthetic.
+CSV files may include `data_kind` with `synthetic`, `public`, `consented`, or `unknown` (the default); legacy `real` is accepted as consented data. This is a source declaration, not independent verification. Training records fitted-row counts by kind; `synthetic_training_data` is true when synthetic rows were used, false only when all fitted rows are declared public or consented, and null when their status is unknown. Tracked Philippine fixtures are explicitly synthetic.
 
 Feature version 2.1.0 recognizes `hxxp(s)` links and bracketed-dot domains and avoids matching partial domain suffixes. Retrain older artifacts before serving them; the loader rejects mismatched feature versions. These changes require evaluation and do not imply improved real-world accuracy.

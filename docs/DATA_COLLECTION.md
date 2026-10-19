@@ -4,11 +4,20 @@ This document defines how SMS data may enter the project. It applies to the
 synthetic files currently in `data/raw/` and, more importantly, to any real
 Philippine messages added later.
 
-> **Status:** the repository currently contains the public UCI SMS Spam
-> Collection (English) plus **synthetic** Philippine template files. No representative
+> **Status:** the ignored `spam.csv` base file has unverified source/license
+> metadata; it appears to use the common English SMS Spam Collection layout.
+> The repository also includes **synthetic** Philippine template files. No representative
 > real Philippine traffic has been collected or evaluated. The
 > synthetic files exist to test the pipeline, not to estimate real-world
 > performance. See [MODEL_CARD.md](MODEL_CARD.md).
+
+The UCI record lists the English SMS Spam Collection (5,574 historical
+messages) under CC BY 4.0. That is the supported public source for a new
+attributed import; the existing local base remains `unknown` until its source
+is verified. Importing another mirror adds no unique messages after
+deduplication. See [data/raw/README.md](../data/raw/README.md) for the import
+command and attribution details. Other public data is added only after its
+license, collection method, and SMS domain are verified.
 
 ## 1. Principles
 
@@ -132,6 +141,10 @@ grouping/analysis):
 | `group` / `template_family` | string | Campaign/template grouping (see §6); rows in the same group must not straddle splits. |
 | `received_at` | ISO-8601 timestamp | Optional for group splits; required for `--split-by time`, which reserves newest campaign groups for validation/test. Use only date precision needed. |
 | `notes` | string | Short, non-PII diagnostic note. |
+| `data_kind` | string | `public`, `consented`, `synthetic`, or `unknown` provenance class. |
+| `dataset_id` / `dataset_version` | string | Source dataset identifier and version. |
+| `license` | string | License or usage terms for the source dataset. |
+| `collection_period` | string | Known collection period; write `unknown` when unavailable. |
 
 The loader maps the first recognized alias for each optional field:
 `source`/`data_source`, `category`/`message_type`/`type`/`scam_type`,
@@ -139,6 +152,13 @@ The loader maps the first recognized alias for each optional field:
 `group`/`template_family`/`campaign`/`family`, and
 `received_at`/`message_date`/`received_date`/`timestamp`/`date`. `labeler`, `labeled_at`, and
 `notes` are kept in the file for provenance but are not used by training.
+
+The source-level fields `dataset_id`, `dataset_version`, `license`, and
+`collection_period` must be constant within each file. Training writes a
+message-free manifest next to the model metadata with source hashes, input and
+retained row counts, duplicate counts, labels, language/category coverage,
+provenance declarations, and the split fingerprint. Missing source details
+remain unknown rather than inferred from filenames.
 
 Requirements:
 

@@ -35,6 +35,7 @@ from src.data import (
     DEFAULT_VAL_SIZE,
     Dataset,
     DatasetError,
+    dataset_manifest,
     group_leakage_report,
     grouped_splits,
     load_holdout,
@@ -60,6 +61,7 @@ from src.predict import ARTIFACT_SCHEMA_VERSION, DEFAULT_MODEL, ModelBundle, spa
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_TARGET_PRECISION = 0.95
 DEFAULT_MIN_RECALL = 0.80
+MIN_EVALUATION_CLASS_COUNT = 30
 KEY_THRESHOLDS = (0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
 
 # Backward-compatible aliases for the notebook and older scripts.
@@ -155,6 +157,17 @@ def train(
     )
     split = grouped_splits(dataset, val_size=val_size, test_size=test_size, seed=random_state, split_by=split_by)
     train_set, val_set, test_set = split_dataset(dataset, split)
+    for split_name, split_dataset_value in (("train", train_set), ("validation", val_set), ("test", test_set)):
+        small_classes = {
+            label: count
+            for label, count in split_dataset_value.class_counts.items()
+            if count < MIN_EVALUATION_CLASS_COUNT
+        }
+        if small_classes:
+            dataset.warnings.append(
+                f"{split_name} split has fewer than {MIN_EVALUATION_CLASS_COUNT} examples in one or more classes "
+                f"({small_classes}); class metrics may be unstable."
+            )
     if verbose:
         print("=== Dataset ===")
         print(
@@ -265,6 +278,14 @@ def train(
         },
         "data_sources": [record.as_dict() for record in dataset.records],
         "dataset": dataset.summary(),
+        "dataset_manifest": dataset_manifest(
+            dataset,
+            extra={
+                "split_method": split.method,
+                "split_seed": split.seed,
+                "split_fingerprint": split.group_fingerprint(dataset.groups),
+            },
+        ),
         "split": split.as_dict(dataset.groups),
         "split_summary": _split_summary(split, dataset),
         "holdout_leakage": leakage,
@@ -296,6 +317,11 @@ def train(
         payload = {key: value for key, value in artifact.items() if key != "model"}
         sidecar.parent.mkdir(parents=True, exist_ok=True)
         sidecar.write_text(json.dumps(jsonable(payload), ensure_ascii=False, indent=2), encoding="utf-8")
+        manifest_path = model_path.with_suffix(".manifest.json")
+        manifest_path.parent.mkdir(parents=True, exist_ok=True)
+        manifest_path.write_text(
+            json.dumps(jsonable(artifact["dataset_manifest"]), ensure_ascii=False, indent=2), encoding="utf-8"
+        )
     if verbose:
         _print_report(
             artifact=artifact,
