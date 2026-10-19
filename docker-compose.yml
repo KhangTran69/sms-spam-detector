@@ -20,9 +20,13 @@ services:
       - "127.0.0.1:8000:8000"  # bind to loopback; put a TLS reverse proxy in front for exposure
     volumes:
       - ./models:/app/models:ro
+      # Writable queue for explicitly submitted labels only; never SMS text.
+      - smsd_feedback:/app/data/feedback
     environment:
       # Path to the joblib ModelBundle inside the container.
       SMSD_MODEL_PATH: /app/models/spam_detector_v1.pkl
+      SMSD_FEEDBACK_ENABLED: ${SMSD_FEEDBACK_ENABLED:-false}
+      SMSD_FEEDBACK_PATH: /app/data/feedback/reports.jsonl
       # Comma-separated browser origins allowed by CORS. The bundled UI is
       # same-origin; add your reverse-proxy origin (https://...) if you host it
       # elsewhere.
@@ -53,3 +57,6 @@ services:
         reservations:
           cpus: "0.25"
           memory: 256M
+
+volumes:
+  smsd_feedback:

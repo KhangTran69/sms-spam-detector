@@ -36,6 +36,7 @@ Optional metadata columns (used by evaluation breakdowns when present):
 | `category` | `otp`, `bank_alert`, `delivery`, `prize_scam` | Message type / campaign category. |
 | `language` | `en`, `tl`, `taglish` | Do not infer personally identifying dialect details. |
 | `labeling_confidence` | `high`, `medium`, `low` | Human labeler confidence. |
+| `received_at` | ISO-8601 timestamp | Required for `--split-by time`; collect only the date precision needed. |
 | `group` / `template_family` / `campaign` | `gma-prize-2026a` | Explicit leakage-prevention group. If absent, a masked template key is derived automatically. |
 
 Unknown/blank metadata becomes `unknown`; it is never invented.

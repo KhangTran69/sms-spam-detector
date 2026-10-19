@@ -10,6 +10,8 @@ data/raw/*
 !data/raw/README.md
 data/processed/*
 !data/processed/.gitkeep
+data/feedback/*
+!data/feedback/.gitkeep
 models/*.pkl
 models/*.joblib
 models/*.json

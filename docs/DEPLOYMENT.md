@@ -106,7 +106,7 @@ docker compose down            # add -v only if you know what you are deleting
 ```
 
 `docker-compose.yml` binds the port to loopback, mounts `./models:/app/models:ro`,
-sets both environment variables, uses `restart: unless-stopped`, runs the same
+sets model/CORS/feedback environment variables, uses `restart: unless-stopped`, runs the same
 `/health` healthcheck, drops all Linux capabilities with
 `no-new-privileges`, and caps resources (1 CPU / 512 MiB limit; 0.25 CPU /
 256 MiB reservation). Adjust limits for your workload.
@@ -116,12 +116,14 @@ incompatible — check the mount path and `SMSD_MODEL_PATH`.
 
 ## 5. Environment variables
 
-Only two variables are read by the application. Neither is a secret.
+These variables are read by the application. None is a secret.
 
 | Variable | Default | Meaning |
 |---|---|---|
 | `SMSD_MODEL_PATH` | `models/spam_detector_v1.pkl` (repo-relative, resolved from the project root; `/app/models/spam_detector_v1.pkl` in the container) | Path to the joblib model bundle to load. Must be readable by the runtime user; mount `models/` read-only. |
 | `SMSD_CORS_ORIGINS` | `http://127.0.0.1:8000,http://localhost:8000` | Comma-separated allowlist of browser origins. Wildcard `*` entries are ignored, and an empty/wildcard-only value falls back to the default local origins; credentials are disabled. Set your reverse-proxy origin (e.g. `https://sms.example.org`) if the UI is served from a different origin. |
+| `SMSD_FEEDBACK_ENABLED` | `false` | Enables the optional anonymous label-correction endpoint and UI. Keep disabled unless the operator has reviewed retention and abuse controls. |
+| `SMSD_FEEDBACK_PATH` | `data/feedback/reports.jsonl` | Local JSONL queue containing selected labels, broad category, timestamp, and model version only; never SMS text. Compose stores it in the named `smsd_feedback` volume. |
 
 - There is **no** `PORT`, log-level, or threshold environment variable. Pass
   host/port/log level to uvicorn on the command line
@@ -231,7 +233,9 @@ does not require rebuilding the image:
 **Browser history privacy.** The UI may store the last few checks in
 `localStorage` only when the user opts in; nothing is stored server-side and the
 history can be cleared from the UI. On shared devices, use a private window or
-clear history. See [PRIVACY.md](PRIVACY.md) for the full policy.
+clear history. Optional feedback is disabled by default; when enabled, it writes
+only selected labels and model metadata to the local queue. See
+[PRIVACY.md](PRIVACY.md) for the full policy.
 
 **First-response checklist when the service misbehaves:**
 

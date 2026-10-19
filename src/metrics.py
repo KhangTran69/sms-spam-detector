@@ -5,11 +5,13 @@ look like a scam), so the threshold is tuned on a validation split rather than
 on the test split or the holdout set. All functions are pure/deterministic and
 are shared by training and evaluation so the two cannot drift apart.
 """
+
 from __future__ import annotations
 
 import math
+from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass
-from typing import Any, Iterable, Sequence
+from typing import Any
 
 import numpy as np
 from sklearn.metrics import brier_score_loss, log_loss
@@ -145,11 +147,7 @@ def select_threshold(
     candidates = [row for row in sweep if 0.0 < row["threshold"] < 1.0]
     if not candidates:  # pragma: no cover - only possible for empty input
         candidates = [binary_metrics(labels, probabilities, default_threshold)]
-    qualifying = [
-        row
-        for row in candidates
-        if row["precision"] >= target_precision and row["recall"] >= min_recall
-    ]
+    qualifying = [row for row in candidates if row["precision"] >= target_precision and row["recall"] >= min_recall]
     if qualifying:
         # Among thresholds that satisfy the precision/recall contract, pick the
         # one with the best precision-weighted F0.5. This avoids selecting a

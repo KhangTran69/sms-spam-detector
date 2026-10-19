@@ -8,12 +8,14 @@ a scam here.
 Everything that training, the CLI, and the API send to the model goes through
 :func:`prepare_message`, so cleaning/normalization is identical everywhere.
 """
+
 from __future__ import annotations
 
 import html
 import re
 import unicodedata
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 # Hard limit shared by the API/CLI. Keeping it here avoids divergent limits.
 MAX_MESSAGE_LENGTH = 10_000
@@ -57,9 +59,11 @@ _URL_TLD_RE = "(?:" + "|".join(_URL_TLDS) + ")"
 
 URL_RE = re.compile(
     r"(?i)(?<![\w@])(?:"
-    r"https?://[^\s<>\"'`]+"
+    r"h(?:tt|xx)ps?://[^\s<>\"'`]+"
     r"|www\.[^\s<>\"'`]+"
-    r"|(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+" + _URL_TLD_RE + r"(?:/[^\s<>\"'`]*)?"
+    r"|(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.|\[\.\]|\(\.\)))+"
+    + _URL_TLD_RE
+    + r"(?![\w-]|\.[a-z])(?:/[^\s<>\"'`]*)?"
     r")"
 )
 
@@ -115,9 +119,7 @@ URGENCY_TERMS: tuple[str, ...] = (
     "within 24 hours",
     "bago mag",
 )
-_URGENCY_RE = re.compile(
-    r"(?i)\b(?:" + "|".join(re.escape(term) for term in URGENCY_TERMS) + r")\b"
-)
+_URGENCY_RE = re.compile(r"(?i)\b(?:" + "|".join(re.escape(term) for term in URGENCY_TERMS) + r")\b")
 
 # Recognizable banks, e-wallets, services and agencies commonly impersonated in
 # Philippine scam texts. Ambiguous words (grab, smart, sun, dito) are excluded on
@@ -271,7 +273,9 @@ def extract_matches(message: str) -> list[dict]:
                 "_priority": len(_MATCH_PATTERNS),
             }
         )
-    candidates.sort(key=lambda candidate: (candidate["start"], -(candidate["end"] - candidate["start"]), candidate["_priority"]))
+    candidates.sort(
+        key=lambda candidate: (candidate["start"], -(candidate["end"] - candidate["start"]), candidate["_priority"])
+    )
     matches: list[dict] = []
     last_end = 0
     for candidate in candidates:

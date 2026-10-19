@@ -55,7 +55,8 @@ COPY --chown=10001:10001 api/ ./api/
 COPY --chown=10001:10001 web/ ./web/
 
 # Mount point for the read-only model artifact (kept out of the image).
-RUN mkdir -p /app/models && chown -R 10001:10001 /app/models
+RUN mkdir -p /app/models /app/data/feedback \
+    && chown -R 10001:10001 /app/models /app/data
 
 USER 10001:10001
 EXPOSE 8000

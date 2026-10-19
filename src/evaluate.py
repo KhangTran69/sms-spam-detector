@@ -5,10 +5,12 @@ pipeline/benchmark sanity check, **not** evidence of real-world performance.
 Every report is labelled accordingly, and per-source / per-category breakdowns
 are reported when that metadata exists.
 """
+
 from __future__ import annotations
 
 import argparse
 import json
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
@@ -16,7 +18,6 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import numpy as np
 from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix
 
 from src.data import (
@@ -79,13 +80,16 @@ def _split_from_artifact(bundle: ModelBundle, dataset: Dataset, overrides: dict[
     config = bundle.metadata.get("training_config", {})
     val_size = overrides.get("val_size") or config.get("val_size", DEFAULT_VAL_SIZE)
     test_size = overrides.get("test_size") or config.get("test_size", DEFAULT_TEST_SIZE)
-    seed = overrides.get("seed") if overrides.get("seed") is not None else config.get("random_state", DEFAULT_SEED)
+    seed_value = overrides.get("seed") if overrides.get("seed") is not None else config.get("random_state")
+    seed = int(seed_value) if seed_value is not None else DEFAULT_SEED
     split_by = overrides.get("split_by") or config.get("split_by", "group")
     return grouped_splits(dataset, val_size=val_size, test_size=test_size, seed=seed, split_by=split_by)
 
 
 def _data_hash_warnings(bundle: ModelBundle, dataset: Dataset) -> list[str]:
-    recorded = {str(record.get("path")): str(record.get("sha256")) for record in bundle.metadata.get("data_sources", [])}
+    recorded = {
+        str(record.get("path")): str(record.get("sha256")) for record in bundle.metadata.get("data_sources", [])
+    }
     warnings: list[str] = []
     for record in dataset.records:
         expected = recorded.get(str(record.path))
@@ -101,7 +105,7 @@ def _data_hash_warnings(bundle: ModelBundle, dataset: Dataset) -> list[str]:
 
 def evaluate(
     data_path: str | Path = DEFAULT_DATA,
-    supplement_path: str | Path | list[str | Path] | None = DEFAULT_SUPPLEMENTS,
+    supplement_path: str | Path | Iterable[str | Path] | None = DEFAULT_SUPPLEMENTS,
     model_path: str | Path = DEFAULT_MODEL,
     holdout_path: str | Path | None = DEFAULT_HOLDOUT,
     plot_path: str | Path | None = DEFAULT_PLOT,
@@ -246,7 +250,9 @@ def evaluate(
         for message, probability in zip(PHILIPPINE_EXAMPLES, diagnostic_probabilities)
     ]
     if plot_path:
-        _plot(results, test_set, test_probabilities, val_set, val_probabilities, holdout, holdout_probabilities, plot_path)
+        _plot(
+            results, test_set, test_probabilities, val_set, val_probabilities, holdout, holdout_probabilities, plot_path
+        )
     if json_output:
         output = Path(json_output)
         output.parent.mkdir(parents=True, exist_ok=True)
@@ -258,7 +264,9 @@ def evaluate(
     return results
 
 
-def _errors(dataset: Dataset, probabilities: list[float], threshold: float, *, show_messages: bool) -> list[dict[str, Any]]:
+def _errors(
+    dataset: Dataset, probabilities: list[float], threshold: float, *, show_messages: bool
+) -> list[dict[str, Any]]:
     predictions = ["spam" if probability >= threshold else "ham" for probability in probabilities]
     errors: list[dict[str, Any]] = []
     for index, (label, prediction) in enumerate(zip(dataset.labels, predictions)):
@@ -391,9 +399,7 @@ def _print_report(results: dict[str, Any], threshold: float, holdout: Dataset | 
         for name in LEGIT_CATEGORIES:
             entry = holdout_results["by_category"].get(name)
             if entry:
-                print(
-                    f"  {name:>16}: {entry['false_positives']} FP of {entry['ham_rows']} legit rows"
-                )
+                print(f"  {name:>16}: {entry['false_positives']} FP of {entry['ham_rows']} legit rows")
         leakage = holdout_results["leakage"]
         print(
             f"Template-family overlap with training: {leakage['template_family_overlap']}/"
@@ -444,7 +450,9 @@ def _main(argv: list[str] | None = None) -> int:
     parser.add_argument("--holdout", default=str(DEFAULT_HOLDOUT), help="Holdout CSV; pass 'none' to skip.")
     parser.add_argument("--plot", default=str(DEFAULT_PLOT), help="Plot output path; pass 'none' to skip.")
     parser.add_argument("--json-out", default=None, help="Write JSON metrics (no raw messages) to this path.")
-    parser.add_argument("--show-messages", action="store_true", help="Print full holdout messages in errors (synthetic data only).")
+    parser.add_argument(
+        "--show-messages", action="store_true", help="Print full holdout messages in errors (synthetic data only)."
+    )
     parser.add_argument("--lenient-data", action="store_true")
     args = parser.parse_args(argv)
 

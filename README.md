@@ -1,151 +1,134 @@
-# Philippines SMS Spam and Scam Detector
+# Philippine SMS Spam and Scam Detector
 
-A Python 3.10+ pipeline that classifies SMS messages as `spam` or `ham`, tuned for Philippine traffic: Taglish text, PH mobile/landline numbers, `₱`/`PHP`/`pesos` amounts, urgency words, and locally common scam templates. It combines word/bigram TF-IDF with interpretable indicator features, trains a MultinomialNB baseline and a class-balanced LogisticRegression primary model, and serves both a JSON API and a bundled web UI through FastAPI.
+An assistive SMS classifier and web demo for Philippine English, Filipino, and Taglish. It combines TF-IDF text features with URL, phone, money, urgency, and brand signals. The project includes data validation, leakage-aware training/evaluation, a FastAPI service, a browser UI, CI, and container deployment files.
+
+> **Evidence limit:** Philippine examples currently tracked here are synthetic. The public UCI SMS Spam Collection is English-heavy. This repository does not contain a representative, consented Philippine SMS dataset, so its scores are engineering checks—not evidence of real-world accuracy. Do not block, delete, report, or penalize anyone based only on a prediction.
 
 ## Setup
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+pip install -r requirements.txt -r requirements-dev.txt
 ```
 
-Requires Python 3.10+ (developed and verified on 3.13). The training run expects `data/raw/spam.csv`.
+Python 3.11+ is required. The base SMS corpus is not committed. Download the Kaggle [Spam Text Message Classification](https://www.kaggle.com/datasets/anthonytherrien/spam-text-message-classification) CSV, or use the documented UCI SMS Spam Collection source, and save it as `data/raw/spam.csv`. Accepted formats are Kaggle `v1`/`v2` and `label`/`message` CSVs.
 
-## Dataset
+The tracked Philippine supplements and holdout are synthetic templates for repeatable pipeline checks. See [data/raw/README.md](data/raw/README.md) and [docs/DATA_COLLECTION.md](docs/DATA_COLLECTION.md) before adding any real messages. Raw real messages, model artifacts, and feedback reports are excluded from Git.
 
-Primary source: [Spam Text Message Classification on Kaggle](https://www.kaggle.com/datasets/anthonytherien/spam-text-message-classification). Kaggle downloads require a signed-in account — either download the CSV in a browser, or use the Kaggle CLI with your credentials and move the extracted CSV to `data/raw/spam.csv`.
-
-That dataset is a re-upload of the public [UCI SMS Spam Collection](https://archive.ics.uci.edu/ml/datasets/sms+spam+collection) (5,574 English messages, 4,827 ham / 747 spam). Since Kaggle's API denied anonymous download, `data/raw/spam.csv` in this workspace was generated from the UCI original (same corpus), written with `label,message` columns. The loader also accepts Kaggle's `v1`/`v2` layout, so either file works.
-
-`data/raw/` is git-ignored except the two synthetic Philippine files below. Do not commit real personal message data.
-
-## Philippine supplement and holdout
-
-- `data/raw/ph_supplement.csv` and `data/raw/ph_supplement_2.csv` — **synthetic, template-based** labeled examples merged into training. They cover prize/foundation claims, bank and e-wallet impersonation, parcel-fee and SIM-registration phishing, job/loan/investment lures, OTP-forwarding social engineering, Taglish variants, and legitimate OTPs, account notices, deliveries, and everyday messages. These templates are for pipeline verification, not a representative sample of real Philippine traffic.
-- `data/raw/ph_holdout.csv` — a small disjoint labeled set used by `src/evaluate.py` to report local precision, including how many legit OTP/code messages get falsely flagged.
-
-To add the real Philippine patterns you collect: append `label,message` rows to a supplement (both classes — include legitimate OTPs and bank alerts as `ham`), keep the holdout separate, and retrain. A data-quality test asserts the supplements and holdout stay disjoint and that the three diagnostic examples below never appear in them.
-
-## Train
+## Train and evaluate
 
 ```bash
 python -m src.train
-# Options:
-python -m src.train --data data/raw/spam.csv --supplement data/raw/ph_supplement.csv --output models/spam_detector_v1.pkl
-python -m src.train --supplement none   # base dataset only
+python -m src.evaluate --json-out data/processed/evaluation.json
 ```
 
-Training merges the base CSV with both available Philippine supplements by default (exact duplicate messages dropped), reports a MultinomialNB baseline and the LogisticRegression primary (`class_weight='balanced'`), and saves the fitted primary pipeline with joblib to `models/spam_detector_v1.pkl`. Pass one or more paths with `--supplement`; use `--supplement none` to disable supplements.
+Training validates schemas and labels, removes exact duplicates before splitting, keeps campaign/template groups together, tunes the decision threshold on validation data, and reports the final test metrics separately. The artifact contains the model, threshold, training/data provenance, and version metadata. The public English corpus and three synthetic Philippine supplements are used by default when present.
 
-Measured on the current data (5,284 unique messages; stratified 80/20 split, seed 42):
-
-| Model | Spam precision | Spam recall | Accuracy |
-|---|---|---|---|
-| MultinomialNB (baseline) | 0.96 | 0.77 | 0.97 |
-| LogisticRegression (primary) | 0.96 | 0.95 | 0.99 |
-
-## Evaluate
+For real data with reliable `received_at` timestamps and campaign groups, chronological validation/test splits are available:
 
 ```bash
-python -m src.evaluate
-# Options: --data --supplement --model --holdout --plot (pass 'none' to disable supplement/holdout/plot)
+python -m src.train --split-by time
 ```
 
-Evaluation replicates the training split so metrics come from the held-out test set only, then prints a classification report, spam precision, a confusion matrix (saved to `data/processed/confusion_matrix.png`), a **threshold sweep** for precision-focused operation, the Philippine holdout results, and the three diagnostic examples from the project brief.
+Time splits require valid dates for every row and fail if both classes cannot be represented. Use `--split-by group` for the default group-aware split. The random split option is diagnostic only and can leak related examples.
 
-Current threshold sweep (test split):
+Evaluation reports class metrics, false positives by legitimate category, threshold tradeoffs, calibration diagnostics, and holdout/template overlap. It prints sample counts and labels synthetic results. The model currently reports uncalibrated scores; a score is not a probability guarantee. Do not use synthetic holdout results as a real-world accuracy claim.
 
-| Threshold | Spam precision | Spam recall | FP (ham→spam) | FN (spam→ham) |
-|---|---|---|---|---|
-| 0.50 | 0.96 | 0.95 | 5 | 7 |
-| 0.70 | 1.00 | 0.85 | 0 | 21 |
+Run `python -m src.train --help` and `python -m src.evaluate --help` for all data, threshold, split, and output options.
 
-At the default 0.5 threshold the model already produced **zero false positives on legit OTP/code messages** in the Philippine holdout (18/18 correct). If your deployment prioritizes precision over recall — the project brief's goal of not flagging legitimate OTPs — operate at a higher cut-off such as 0.70: the sweep reports 1.00 precision with 0 false positives at the cost of missed spam. The sweep output names the smallest tested threshold reaching precision ≥ 0.99.
+## Run the API and web UI
 
-## Predict (CLI)
+Train a model, then start the service:
 
 ```bash
-python -m src.predict "BDO: Your account is locked. Verify here: http://bit.ly/fakebdo"
-# {"prediction": "spam", "probability": ..., "flags": ["has_url"]}
+uvicorn api.main:app --host 127.0.0.1 --port 8000
 ```
 
-`probability` is the model's probability for the returned class. `flags` can include `has_url`, `has_phone`, `has_money`, `has_urgency`.
+Open `http://127.0.0.1:8000/`. Interactive API docs are at `/docs`.
 
-## API
+- `GET /health` and `GET /ready` provide liveness/readiness.
+- `GET /model-info` returns model version, thresholds, provenance, and data caveats.
+- `POST /predict` returns the label, score, calibration status, flags, threshold, and model version.
+- `POST /analyze` adds risk bands and signal highlights for the UI.
+- `POST /analyze/batch` accepts up to 50 messages.
+- `POST /feedback` accepts only a user-selected expected label, displayed label, broad category, and model version. It rejects message/text fields and is disabled by default.
 
-Train the model first, then run:
+Example:
 
 ```bash
-uvicorn api.main:app --reload
-# then open http://127.0.0.1:8000 for the web UI
+curl -X POST http://127.0.0.1:8000/predict \\
+  -H 'Content-Type: application/json' \\
+  -d '{"message":"BDO: Your account is locked. Verify here: http://bit.ly/fakebdo"}'
 ```
+
+### Optional anonymous correction reports
+
+The web form appears only when the operator opts in:
 
 ```bash
-curl -X POST http://127.0.0.1:8000/predict \
-  -H 'Content-Type: application/json' \
-  -d '{"message":"Nag-claim ka ng ₱500,000 sa GMA Kapuso Foundation. Call now 09123456789"}'
-# {"prediction":"spam","probability":0.996,"flags":["has_phone","has_money","has_urgency"]}
-
-curl -X POST http://127.0.0.1:8000/analyze \
-  -H 'Content-Type: application/json' \
-  -d '{"message":"BDO: account locked agad! Verify http://bit.ly/fake or call 09171234567"}'
+SMSD_FEEDBACK_ENABLED=true uvicorn api.main:app --host 127.0.0.1 --port 8000
 ```
 
-- `GET /health` — liveness check.
-- `POST /predict` — minimal verdict: `prediction`, `probability` (of the returned class), `flags`. Pydantic validation: message required, 1–10,000 characters and not blank; violations return 422. If the model artifact is missing the service returns 503 with instructions. The model loads lazily on first request and is reused.
-- `POST /analyze` — full analysis for the UI: everything `/predict` returns plus `message` (echo), `spam_probability` (raw P(spam)), `matches` (non-overlapping highlight spans `{"type","text","start","end"}` for url/phone/money/urgency/brand), and `brands` (lowercased unique brand mentions).
-- `POST /analyze/batch` — `{"messages": [...]}` with 1–50 messages; returns `{"count", "results"}` with one `/analyze`-shaped result per message, index-aligned.
-- Interactive docs at `http://127.0.0.1:8000/docs`.
+A submitted report stores the chosen correction, broad category, timestamp, and model version in `data/feedback/reports.jsonl`. It never sends or stores the SMS text, sender details, or IP address. Reports are unverified review signals; they are never automatically added to training. The queue is local, ignored by Git, and capped at 10 MiB. For Docker Compose, set `SMSD_FEEDBACK_ENABLED=true`; reports persist in the named `smsd_feedback` Docker volume. Do not expose this anonymous endpoint publicly without authentication or deployment-level abuse controls and a retention policy.
 
-## Web UI
-
-The API also serves a bundled single-page app (no build step) from `web/` at `http://127.0.0.1:8000/`:
-
-- **Paste-and-check** with a verdict card (Likely scam / Suspicious / Looks safe — bands at 0.70 / 0.40 over `spam_probability`, chosen to match the precision-first threshold guidance above) and a tri-zone risk meter.
-- **Highlighted signals**: scam markers rendered inline from `matches` (links, phone numbers, peso amounts, urgency words, brand mentions) with a legend and an impersonation warning when a bank/e-wallet name appears in a risky message.
-- **Safety tips** that adapt to the verdict and detected signals.
-- **Batch check**: up to 50 messages, one per line, with a summary strip and a clickable results table (clicking a row opens the full analysis).
-- **History**: the last 50 checks kept in browser `localStorage` (nothing is stored server-side); entries can be re-opened and the list cleared.
-
-`src/predict.py` exposes this as `analyze_message()`; `predict_message()` keeps its minimal contract on top of it.
-
-## Tests
+Summarize an enabled local queue without exporting report IDs or timestamps:
 
 ```bash
-python -m pytest tests/ -v
+python -m src.feedback --path data/feedback/reports.jsonl --output data/processed/feedback-summary.json
 ```
 
-44 tests cover preprocessing (PH mobile/landline/masked numbers, money variants, urgency, Taglish normalization), the feature schema and ColumnTransformer output, a full train→save→load→predict round-trip on synthetic data, API validation and error behavior for all three endpoints (including batch limits and blank-message rejection), and data-quality checks on the supplement/holdout files (both classes present, mutually disjoint, brief examples excluded).
+## Docker
 
-## Philippine scam patterns recognized
+Train the model locally first, then:
 
-The preprocessing layer detects the *signals*; the learned model weighs them:
+```bash
+docker compose build
+docker compose up -d
+curl http://127.0.0.1:8000/ready
+```
 
-- **Money**: `₱500,000`, `PHP 1,250.00`, `500 pesos`, `P15,000`
-- **Phones**: `09171234567`, `+63 917 123 4567`, `0917-123-4567`, masked `0922xxxxxxx`, `(02) 8-631-8000`
-- **URLs**: `http://…`, `https://…`, `www.…` (normalized to a `URLTOKEN` so the domain itself doesn't matter)
-- **Urgency**: `now`, `agad`, `limited`, `expires`
-- **Taglish normalization**: Unicode NFKC + elongation squeezing (`napakaaa` → `napakaa`); Filipino vocabulary is preserved, not translated
+The container runs as non-root, binds to loopback by default, and mounts the model read-only. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for production network, TLS, health, and rollback guidance.
 
-Template categories in the supplement: fake prizes (GMA Kapuso Foundation, PCSO), bank/e-wallet impersonation (BDO, BPI, Metrobank, UnionBank, GCash, Maya) with account-lock or KYC verification lures, parcel/customs-fee phishing (LBC, J&T, PhilPost), SIM-registration deactivation threats, free load/data promos, work-from-home and loan offers, investment doubling scams, OTP-forwarding social engineering, relative-in-trouble (`tulong`) scams, and government-subsidy bait (DSWD, 4Ps, SSS). Legitimate counterparts (real OTP formats, receipts, bills, delivery notices) are labeled `ham` so links, amounts, and numbers alone do not make a message spam.
+## Data collection and human review
+
+No real-data collection or participant study has been completed. Use the blank [consented message template](data/templates/consented_ph_sms_template.csv) only in an approved secure workspace. Obtain informed consent, redact names/numbers/OTPs/accounts before storage, have two reviewers label examples, and keep campaign, source, language, category, confidence, and date metadata. Keep a real holdout separate by campaign and time. Read [docs/HUMAN_REVIEW.md](docs/HUMAN_REVIEW.md) before organizing participant review.
+
+## Development checks
+
+```bash
+pytest -q
+ruff check .
+ruff format --check .
+mypy src api
+```
+
+GitHub Actions runs the project quality checks. `make help` lists common local commands.
+
+## Documentation
+
+- [Data collection, labeling, and leakage prevention](docs/DATA_COLLECTION.md)
+- [Human review protocol](docs/HUMAN_REVIEW.md)
+- [Privacy and data handling](docs/PRIVACY.md)
+- [Model card and limitations](docs/MODEL_CARD.md)
+- [Retraining, versioning, and rollback](docs/RETRAINING.md)
+- [Deployment guide](docs/DEPLOYMENT.md)
 
 ## Project layout
 
-```
-data/raw/            spam.csv (git-ignored), synthetic Philippine supplements and holdout (tracked)
-data/processed/      evaluation artifacts (confusion matrix)
-notebooks/01_eda.ipynb
-src/preprocess.py    cleaning, Taglish normalization, indicator extraction, match spans
-src/features.py      TF-IDF (1-2 grams) + scaled indicators via ColumnTransformer
-src/train.py         dataset loading/merge, NB baseline + balanced LR, joblib persistence
-src/evaluate.py      held-out metrics, threshold sweep, PH holdout, brief examples
-src/predict.py       CLI inference + analyze_message (full UI payload)
-api/main.py          FastAPI /health + /predict + /analyze + /analyze/batch, serves web/
-web/                 single-page UI (index.html, styles.css, app.js — no build step)
-tests/               pytest suite (44 tests)
+```text
+data/raw/        ignored source data plus tracked synthetic fixtures
+data/templates/  blank consented-data intake schema
+src/             validation, preprocessing, features, training, metrics, inference
+api/             FastAPI endpoints
+web/             bundled single-page UI
+models/          ignored trained model artifacts
+docs/            data, review, model, privacy, retraining, deployment guidance
+tests/           data, model, API, preprocessing, and web-contract checks
 ```
 
-## Limitations
+### Provenance and preprocessing compatibility
 
-The base corpus is English-heavy; the Philippine coverage comes from synthetic templates and has only been checked against an 18-message synthetic holdout — perfect scores there are a sanity check, not proof of real-world performance. Urgency words in legitimate messages still pull confidence toward the boundary (an OTP that ends with "Expires in 5 minutes." scores 0.565 `ham` vs 0.805 without it), which is exactly why the threshold sweep exists. Basic Taglish handling does not translate or deeply tokenize Filipino. Validate on consented, representative local data before any production use, and never block or report messages on model output alone.
+CSV files may include `data_kind` with `synthetic`, `real`, or `unknown` (the default). This is a source declaration, not independent verification. Training records fitted-row counts by kind; `synthetic_training_data` is true when synthetic rows were used, false only when all fitted rows are declared real, and null when their status is unknown. Tracked Philippine fixtures are explicitly synthetic.
+
+Feature version 2.1.0 recognizes `hxxp(s)` links and bracketed-dot domains and avoids matching partial domain suffixes. Retrain older artifacts before serving them; the loader rejects mismatched feature versions. These changes require evaluation and do not imply improved real-world accuracy.

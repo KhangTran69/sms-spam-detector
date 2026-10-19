@@ -12,6 +12,7 @@ dataset details, measured metrics, and API examples; this directory covers the
 | [MODEL_CARD.md](MODEL_CARD.md) | What the model is and is not for, training data provenance, evaluation caveats, threshold/confidence guidance, known failure modes, fairness, and ethics. |
 | [RETRAINING.md](RETRAINING.md) | Retraining cadence and triggers, validation gates, artifact versioning, reproducible splits, monitoring, incident response, and audit trail. |
 | [PRIVACY.md](PRIVACY.md) | Data minimization, no server-side message persistence, opt-in browser history, logging rules, retention, and data-subject requests. |
+| [HUMAN_REVIEW.md](HUMAN_REVIEW.md) | Consent-first review sessions, safe participant tasks, qualitative analysis, and release gates. |
 
 ## Read this first: scope of current evidence
 

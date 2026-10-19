@@ -1,7 +1,9 @@
 """Feature construction for SMS classification."""
+
 from __future__ import annotations
 
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 import pandas as pd
 from sklearn.compose import ColumnTransformer
@@ -12,7 +14,7 @@ from sklearn.preprocessing import MinMaxScaler
 # Bump when clean_text/extract_features semantics change; stored in the model
 # artifact so an old artifact can be rejected or flagged rather than silently
 # mis-fed.
-FEATURE_VERSION = "2.0.0"
+FEATURE_VERSION = "2.1.0"
 
 FEATURE_COLUMNS = [
     "has_url",

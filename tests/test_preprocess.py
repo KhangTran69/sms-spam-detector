@@ -1,4 +1,5 @@
 """Preprocessing edge cases: Philippine phones, URLs, money, Taglish, Unicode."""
+
 from __future__ import annotations
 
 import pytest
@@ -6,6 +7,7 @@ import pytest
 from src.preprocess import (
     MAX_MESSAGE_LENGTH,
     PHONE_RE,
+    URL_RE,
     clean_text,
     extract_features,
     extract_matches,
@@ -152,7 +154,7 @@ def test_extract_matches_offsets_slice_original():
     matches = extract_matches(message)
     assert {"url", "urgency", "phone"} <= {match["type"] for match in matches}
     for match in matches:
-        assert message[match["start"]:match["end"]] == match["text"]
+        assert message[match["start"] : match["end"]] == match["text"]
 
 
 def test_extract_matches_trims_url_trailing_punctuation():
@@ -171,7 +173,7 @@ def test_extract_matches_money_and_unicode_offsets():
     message = "Win ₱500,000 now!"
     matches = extract_matches(message)
     money = next(match for match in matches if match["type"] == "money")
-    assert message[money["start"]:money["end"]] == "₱500,000"
+    assert message[money["start"] : money["end"]] == "₱500,000"
     urgency = next(match for match in matches if match["type"] == "urgency")
     assert urgency["text"] == "now"
 
@@ -205,3 +207,19 @@ def test_max_message_length_constant_is_sane():
 def test_phone_regex_does_not_match_month_or_year():
     assert not PHONE_RE.search("Valid until Nov 18.")
     assert not PHONE_RE.search("Reference 20261019")
+
+
+@pytest.mark.parametrize("url", ["hxxps://example.com/login", "bit[.]ly/prize", "bit(.)ly/track"])
+def test_obfuscated_urls_are_signals_with_original_offsets(url):
+    message = f"😀 Check {url}."
+    matches = [match for match in extract_matches(message) if match["type"] == "url"]
+    assert len(matches) == 1
+    assert matches[0]["text"] == url
+    assert message[matches[0]["start"] : matches[0]["end"]] == url
+    assert extract_features(message)["has_url"] == 1
+    assert "urltoken" in clean_text(message)
+
+
+def test_bare_domain_does_not_match_partial_suffix():
+    assert not URL_RE.search("example.company")
+    assert not URL_RE.search("example.com-extra")

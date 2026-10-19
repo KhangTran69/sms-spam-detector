@@ -7,16 +7,18 @@ const API = {
   modelInfo: "/model-info",
   analyze: "/analyze",
   analyzeBatch: "/analyze/batch",
+  feedback: "/feedback",
 };
 
 const HISTORY_KEY = "smsd_history_v1";
 const HISTORY_PREF_KEY = "smsd_history_enabled_v1";
 const HISTORY_LIMIT = 50;
 const BATCH_LIMIT = 50;
+const MAX_BATCH_CHARACTERS = 200000;
 const MAX_MESSAGE_LENGTH = 10000;
 
 const SYNTHETIC_DATA_NOTE =
-  "This model is trained and evaluated on synthetic Philippine data; it is not proof of real-world accuracy. Treat every verdict as a hint, not a fact.";
+  "Checks using synthetic Philippine data are not proof of real-world accuracy. Treat every verdict as a hint, not a fact.";
 const HISTORY_OFF_NOTE =
   "History is off. Turn it on to keep the last 50 checks in this browser.";
 
@@ -104,6 +106,8 @@ function normalizeModelInfo(info) {
       looks_safe: numberOr(bands.looks_safe, FALLBACK_BANDS.looks_safe),
     },
     data_note: dataNote,
+    feedback_enabled: safe.feedback_enabled === true,
+    probability_calibrated: safe.probability_calibrated === true,
   };
 }
 
@@ -293,11 +297,11 @@ function renderVerdict(analysis) {
   $("verdict-card").className = `card verdict ${view.css}`;
   $("verdict-icon").textContent = view.icon;
   $("verdict-title").textContent = view.title;
-  const confidence = typeof analysis.confidence === "string" ? analysis.confidence : "unknown";
   const decisionThreshold = numberOr(analysis.decision_threshold, modelInfo.decision_threshold);
+  const scoreLabel = analysis.probability_calibrated === true ? "estimated scam probability" : "uncalibrated model score";
   $("verdict-sub").textContent =
-    `${pct(analysis.spam_probability)} scam probability · model verdict: ${analysis.prediction} · ` +
-    `${confidence} confidence · decision threshold ${pct(decisionThreshold)}`;
+    `${pct(analysis.spam_probability)} ${scoreLabel} · model verdict: ${analysis.prediction} · ` +
+    `decision threshold ${pct(decisionThreshold)}`;
 }
 
 function renderMeter(analysis) {
@@ -308,7 +312,8 @@ function renderMeter(analysis) {
   meter.style.setProperty("--suspect", `${Math.round(modelInfo.bands.suspicious * 100)}%`);
   meter.style.setProperty("--scam", `${Math.round(modelInfo.bands.likely_scam * 100)}%`);
   meter.setAttribute("aria-valuenow", String(value));
-  meter.setAttribute("aria-valuetext", `${value}% estimated scam probability — ${bandView(band).title}`);
+  const scoreLabel = analysis.probability_calibrated === true ? "estimated scam probability" : "uncalibrated model score";
+  meter.setAttribute("aria-valuetext", `${value}% ${scoreLabel} — ${bandView(band).title}`);
   $("meter-marker").style.left = `${value}%`;
   const output = $("meter-value");
   output.textContent = `${value}%`;
@@ -318,22 +323,23 @@ function renderMeter(analysis) {
 function renderHighlighted(analysis) {
   const container = $("highlighted");
   const message = typeof analysis.message === "string" ? analysis.message : "";
+  const characters = Array.from(message); // API offsets count Unicode code points.
   container.replaceChildren();
   const matches = Array.isArray(analysis.matches) ? analysis.matches : [];
   let position = 0;
   for (const match of matches) {
     const start = numberOr(match.start, -1);
     const end = numberOr(match.end, -1);
-    if (start < position || end <= start || end > message.length) continue;
-    if (start > position) container.append(document.createTextNode(message.slice(position, start)));
+    if (start < position || end <= start || end > characters.length) continue;
+    if (start > position) container.append(document.createTextNode(characters.slice(position, start).join("")));
     const mark = document.createElement("mark");
     mark.className = `sig sig-${match.type}`;
-    mark.textContent = message.slice(start, end);
+    mark.textContent = characters.slice(start, end).join("");
     mark.title = `${(SIGNALS[match.type] && SIGNALS[match.type].label) || match.type} signal`;
     container.append(mark);
     position = end;
   }
-  if (position < message.length) container.append(document.createTextNode(message.slice(position)));
+  if (position < characters.length) container.append(document.createTextNode(characters.slice(position).join("")));
   if (!container.childNodes.length) container.append(document.createTextNode(message));
 }
 
@@ -410,7 +416,50 @@ function renderAnalysis(analysis, { save = true } = {}) {
   renderHighlighted(analysis);
   renderSignals(analysis);
   renderTips(analysis);
+  window.currentAnalysis = analysis;
+  const feedbackForm = $("feedback-form");
+  feedbackForm.classList.toggle("hidden", !modelInfo.feedback_enabled);
+  $("feedback-status").textContent = "";
+  setBusy($("btn-feedback"), false, "Send anonymous correction");
+  if (modelInfo.feedback_enabled) {
+    $("feedback-label").value = analysis.prediction === "spam" ? "ham" : "spam";
+  }
   if (save) addHistory(analysis);
+}
+
+async function submitFeedback(event) {
+  event.preventDefault();
+  const status = $("feedback-status");
+  const button = $("btn-feedback");
+  const analysis = window.currentAnalysis;
+  const expectedLabel = $("feedback-label").value;
+  if (!analysis || !modelInfo.feedback_enabled) return;
+  if (expectedLabel === analysis.prediction) {
+    status.textContent = "Choose the label you think the model got wrong.";
+    return;
+  }
+  setBusy(button, true, "Sending…");
+  let sent = false;
+  try {
+    // Send only the user's selected label, category, and model version.
+    // Never include the analyzed SMS or a saved history entry.
+    const result = await postJson(API.feedback, {
+      model_version: analysis.model_version,
+      predicted_label: analysis.prediction,
+      expected_label: expectedLabel,
+      category: $("feedback-category").value,
+    });
+    if (window.currentAnalysis !== analysis) return;
+    status.textContent = `${result.message} Receipt: ${result.report_id}`;
+    sent = true;
+  } catch (failure) {
+    if (window.currentAnalysis === analysis) status.textContent = describeError(failure);
+  } finally {
+    if (window.currentAnalysis === analysis) {
+      setBusy(button, false, "Send anonymous correction");
+      if (sent) button.disabled = true;
+    }
+  }
 }
 
 /* ---------- History (browser-only, opt-in) ---------- */
@@ -510,8 +559,7 @@ function verdictPill(band) {
   return pill;
 }
 
-function miniMeter(probability) {
-  const band = bandFromProbability(probability);
+function miniMeter(probability, band = bandFromProbability(probability)) {
   const wrap = document.createElement("div");
   wrap.className = "mini-meter";
   const fill = document.createElement("div");
@@ -545,7 +593,7 @@ function renderHistory() {
     item.tabIndex = 0;
     item.setAttribute("role", "button");
     item.setAttribute("aria-label",
-      `Reopen saved check from ${timestamp} — ${bandView(band).title}, ${pct(entry.spam_probability)} scam probability`);
+      `Reopen saved check from ${timestamp} — ${bandView(band).title}, ${pct(entry.spam_probability)} model score`);
     const main = document.createElement("div");
     main.className = "history-item-main";
     const message = document.createElement("div");
@@ -602,11 +650,33 @@ function initHistory() {
 }
 
 /* ---------- Single check flow ---------- */
+let singleRevision = 0;
+let batchRevision = 0;
+
+function invalidateSingle() {
+  singleRevision += 1;
+  window.currentAnalysis = null;
+  $("result").classList.add("hidden");
+  hideBanner($("error-banner"));
+  setBusy($("btn-check"), false, "Check message");
+}
+
+function invalidateBatch() {
+  batchRevision += 1;
+  $("batch-summary").classList.add("hidden");
+  $("batch-results").classList.add("hidden");
+  $("batch-tbody").replaceChildren();
+  hideBanner($("batch-error"));
+  setBusy($("btn-batch"), false, "Check all");
+}
+
 function updateCharCount() {
-  $("char-count").textContent = `${$("message-input").value.length} / ${MAX_MESSAGE_LENGTH}`;
+  $("char-count").textContent = `${Array.from($("message-input").value).length} / ${MAX_MESSAGE_LENGTH}`;
 }
 
 async function runCheck({ save = true } = {}) {
+  invalidateSingle();
+  const revision = singleRevision;
   const input = $("message-input");
   const message = input.value.trim();
   const banner = $("error-banner");
@@ -616,19 +686,20 @@ async function runCheck({ save = true } = {}) {
     input.focus();
     return;
   }
-  if (message.length > MAX_MESSAGE_LENGTH) {
-    showBanner(banner, `That message is ${message.length} characters — the limit is ${MAX_MESSAGE_LENGTH}.`);
+  if (Array.from(message).length > MAX_MESSAGE_LENGTH) {
+    showBanner(banner, `That message is ${Array.from(message).length} characters — the limit is ${MAX_MESSAGE_LENGTH}.`);
     return;
   }
   const button = $("btn-check");
   setBusy(button, true, "Checking…");
   try {
     const analysis = await postJson(API.analyze, { message });
+    if (revision !== singleRevision) return;
     renderAnalysis(analysis, { save });
   } catch (failure) {
-    showBanner(banner, describeError(failure));
+    if (revision === singleRevision) showBanner(banner, describeError(failure));
   } finally {
-    setBusy(button, false, "Check message");
+    if (revision === singleRevision) setBusy(button, false, "Check message");
   }
 }
 
@@ -640,12 +711,14 @@ function parseBatchInput() {
 function updateBatchCount() {
   const messages = parseBatchInput();
   const count = messages.length;
-  const characters = messages.reduce((total, message) => total + message.length, 0);
+  const characters = messages.reduce((total, message) => total + Array.from(message).length, 0);
   $("batch-count").textContent =
     `${count} message${count === 1 ? "" : "s"} · ${characters.toLocaleString()} characters`;
 }
 
 async function runBatch() {
+  invalidateBatch();
+  const revision = batchRevision;
   const messages = parseBatchInput();
   const banner = $("batch-error");
   hideBanner(banner);
@@ -657,7 +730,11 @@ async function runBatch() {
     showBanner(banner, `Batch is limited to ${BATCH_LIMIT} messages — remove some lines and try again.`);
     return;
   }
-  const oversized = messages.findIndex((message) => message.length > MAX_MESSAGE_LENGTH);
+  if (messages.reduce((total, message) => total + Array.from(message).length, 0) > MAX_BATCH_CHARACTERS) {
+    showBanner(banner, "Batch is limited to 200,000 total characters. Remove some text and try again.");
+    return;
+  }
+  const oversized = messages.findIndex((message) => Array.from(message).length > MAX_MESSAGE_LENGTH);
   if (oversized !== -1) {
     showBanner(banner, `Message ${oversized + 1} is longer than ${MAX_MESSAGE_LENGTH} characters.`);
     return;
@@ -666,6 +743,7 @@ async function runBatch() {
   setBusy(button, true, "Checking…");
   try {
     const data = await postJson(API.analyzeBatch, { messages });
+    if (revision !== batchRevision) return;
     const results = Array.isArray(data.results) ? data.results : [];
     renderBatch(results);
     if (historyEnabled) {
@@ -675,13 +753,14 @@ async function runBatch() {
       announceHistory(`Saved in this browser: ${loadHistory().length} of ${HISTORY_LIMIT} checks.`);
     }
   } catch (failure) {
-    showBanner(banner, describeError(failure));
+    if (revision === batchRevision) showBanner(banner, describeError(failure));
   } finally {
-    setBusy(button, false, "Check all");
+    if (revision === batchRevision) setBusy(button, false, "Check all");
   }
 }
 
 function openBatchResult(analysis) {
+  invalidateSingle();
   $("message-input").value = analysis.message;
   updateCharCount();
   switchTab("check");
@@ -703,7 +782,7 @@ function renderBatch(results) {
     const row = document.createElement("tr");
     row.tabIndex = 0;
     row.setAttribute("aria-label",
-      `Message ${index + 1}: ${bandView(band).title}, ${pct(analysis.spam_probability)} scam probability. Press Enter to open the full analysis.`);
+      `Message ${index + 1}: ${bandView(band).title}, ${pct(analysis.spam_probability)} model score. Press Enter to open the full analysis.`);
     const numberCell = document.createElement("td");
     numberCell.textContent = String(index + 1);
     const messageCell = document.createElement("td");
@@ -714,7 +793,7 @@ function renderBatch(results) {
     verdictCell.append(verdictPill(band));
     const riskCell = document.createElement("td");
     riskCell.className = "risk-cell";
-    riskCell.append(miniMeter(analysis.spam_probability));
+    riskCell.append(miniMeter(analysis.spam_probability, band));
     const riskPct = document.createElement("span");
     riskPct.textContent = pct(analysis.spam_probability);
     riskCell.append(riskPct);
@@ -742,7 +821,7 @@ function renderBatch(results) {
 /* ---------- Wiring ---------- */
 function initSingleCheck() {
   const input = $("message-input");
-  input.addEventListener("input", updateCharCount);
+  input.addEventListener("input", () => { invalidateSingle(); updateCharCount(); });
   input.addEventListener("keydown", (event) => {
     if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
       event.preventDefault();
@@ -750,7 +829,9 @@ function initSingleCheck() {
     }
   });
   $("btn-check").addEventListener("click", () => runCheck());
+  $("feedback-form").addEventListener("submit", submitFeedback);
   $("btn-clear").addEventListener("click", () => {
+    invalidateSingle();
     input.value = "";
     updateCharCount();
     $("result").classList.add("hidden");
@@ -769,7 +850,7 @@ function initSingleCheck() {
 
 function initBatchCheck() {
   const input = $("batch-input");
-  input.addEventListener("input", updateBatchCount);
+  input.addEventListener("input", () => { invalidateBatch(); updateBatchCount(); });
   input.addEventListener("keydown", (event) => {
     if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
       event.preventDefault();

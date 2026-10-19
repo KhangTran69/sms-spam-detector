@@ -24,7 +24,7 @@ Build and validate a maintainable SMS classifier that identifies spam and scams 
 
 ## Phase 3: Train baseline and primary models
 
-- Install dependencies from `requirements.txt` in a Python 3.10+ virtual environment.
+- Install dependencies from `requirements.txt` in a Python 3.11+ virtual environment.
 - Run `python -m src.train` to compare MultinomialNB with class-balanced LogisticRegression.
 - Review per-class precision, recall, F1, and especially false positives on legitimate messages.
 - Save the primary pipeline to `models/spam_detector_v1.pkl`.
@@ -46,7 +46,7 @@ Build and validate a maintainable SMS classifier that identifies spam and scams 
 
 - Start the service with `uvicorn api.main:app --reload` after training.
 - Check `/health`, then send a request to `/predict` with a sample message.
-- Confirm response schema, predicted class probability, and indicator flags.
+- Confirm response schema, uncalibrated model score, and indicator flags.
 - Confirm empty and oversized requests receive validation errors, and missing model artifacts produce a clear service error.
 
 **Deliverable:** locally running API with verified request and response behavior.
@@ -61,11 +61,13 @@ Build and validate a maintainable SMS classifier that identifies spam and scams 
 
 **Deliverable:** tested, reproducible release process with monitoring and data-handling practices.
 
-## Immediate next steps
+## Remaining validation work
 
-1. Download the Kaggle CSV into `data/raw/spam.csv`.
+1. Confirm the public corpus is present at `data/raw/spam.csv` and record its provenance.
 2. Run the EDA notebook and record dataset limitations.
 3. Add labeled Philippine scam and legitimate-message examples when available.
 4. Train and compare models, then inspect false positives.
 5. Evaluate against a Philippine holdout set before relying on predictions.
 6. Start the API and verify its behavior locally.
+
+The repository already implements grouped splitting, validation-only threshold tuning, API validation, automated checks, opt-in browser history, and text-free correction reports. These engineering features do not establish real-world Philippine accuracy. Use `data_kind` (`synthetic`, `real`, or `unknown`) to declare row provenance. Missing provenance remains unknown. Scores are uncalibrated; detected signals are not causal model explanations.

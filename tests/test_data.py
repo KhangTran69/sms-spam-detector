@@ -1,4 +1,5 @@
 """Dataset loading, validation, multi-supplement merging, and leakage tests."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -54,6 +55,7 @@ def tiny_training_csv(path: Path) -> Path:
 
 # ----------------------------- schema / label validation -----------------------------
 
+
 def test_missing_file_has_actionable_error(tmp_path):
     with pytest.raises(DatasetError, match="not found"):
         load_dataset(tmp_path / "missing.csv")
@@ -108,7 +110,7 @@ def test_exact_duplicates_are_removed_before_split(tmp_path):
         tmp_path / "dupes.csv",
         [("ham", "same text"), ("ham", "same text"), ("spam", "spam text"), ("ham", "other ham")],
     )
-    dataset = load_dataset(path)
+    dataset = load_dataset(path, min_class_count=0)
     assert len(dataset) == 3
     assert any("duplicate" in warning for warning in dataset.warnings)
     assert dataset.records[0].duplicates_removed == 1
@@ -148,7 +150,7 @@ def test_metadata_columns_are_preserved(tmp_path):
         ],
         columns=("label", "message", "category", "language", "source", "labeling_confidence", "group"),
     )
-    dataset = load_dataset(path)
+    dataset = load_dataset(path, min_class_count=0)
     frame = dataset.frame
     assert list(frame.columns) == [
         "message",
@@ -158,6 +160,8 @@ def test_metadata_columns_are_preserved(tmp_path):
         "language",
         "labeling_confidence",
         "group",
+        "received_at",
+        "data_kind",
         "source_file",
     ]
     assert frame.loc[0, "category"] == "otp"
@@ -165,6 +169,41 @@ def test_metadata_columns_are_preserved(tmp_path):
     assert frame.loc[0, "source"] == "consented_q1"
     assert frame.loc[0, "group"] == "otp-family"
     assert frame.loc[0, "labeling_confidence"] == "high"
+
+
+def test_time_split_keeps_campaigns_disjoint_and_respects_date_order(tmp_path):
+    rows = []
+    for period in range(6):
+        stamp = f"2026-01-{period + 1:02d}T12:00:00Z"
+        rows.extend(
+            [
+                ("ham", f"ordinary message {period}", f"ham-campaign-{period}", stamp),
+                ("spam", f"scam message {period}", f"spam-campaign-{period}", stamp),
+            ]
+        )
+    path = write_csv(
+        tmp_path / "dated.csv",
+        rows,
+        columns=("label", "message", "group", "received_at"),
+    )
+    dataset = load_dataset(path)
+    split = grouped_splits(dataset, val_size=0.25, test_size=0.25, split_by="time")
+    train_set, val_set, test_set = split_dataset(dataset, split)
+    assert split.method == "chronological_group_holdout"
+    assert set(train_set.labels) == set(val_set.labels) == set(test_set.labels) == {"ham", "spam"}
+    assert set(train_set.groups).isdisjoint(val_set.groups)
+    assert set(train_set.groups).isdisjoint(test_set.groups)
+    assert set(val_set.groups).isdisjoint(test_set.groups)
+    train_max = pd.to_datetime(train_set.frame["received_at"]).max()
+    val_max = pd.to_datetime(val_set.frame["received_at"]).max()
+    test_max = pd.to_datetime(test_set.frame["received_at"]).max()
+    assert train_max < val_max < test_max
+
+
+def test_time_split_requires_dates(tmp_path):
+    dataset = load_dataset(tiny_training_csv(tmp_path / "undated.csv"))
+    with pytest.raises(DatasetError, match="valid received_at"):
+        grouped_splits(dataset, split_by="time")
 
 
 def test_imbalance_warning(tmp_path):
@@ -175,6 +214,7 @@ def test_imbalance_warning(tmp_path):
 
 
 # ----------------------------- supplements -----------------------------
+
 
 def test_supplement_resolution_none_and_explicit_missing(tmp_path):
     assert resolve_supplement_paths(None, strict=True)[0] == []
@@ -202,7 +242,7 @@ def test_multiple_supplements_merge_and_deduplicate(tmp_path):
         [("spam", "Another synthetic scam template"), ("ham", "A third ham template")],
     )
     dataset = load_training_dataset(base, [sup1, sup2])
-    assert len(dataset) == 8
+    assert len(dataset) == 9
     assert len(dataset.records) == 3
     assert any("duplicate" in warning for warning in dataset.warnings)
     paths, _ = resolve_supplement_paths([sup1, sup1, sup2], strict=True)
@@ -279,7 +319,15 @@ def test_brief_examples_are_not_in_base_dataset():
 
 def test_holdout_exact_overlap_is_a_hard_error(tmp_path):
     base = tiny_training_csv(tmp_path / "base.csv")
-    holdout_path = write_csv(tmp_path / "holdout.csv", [("ham", "Salamat sa tulong mo kahapon"), ("spam", "new scam")])
+    holdout_path = write_csv(
+        tmp_path / "holdout.csv",
+        [
+            ("ham", "Salamat sa tulong mo kahapon"),
+            ("ham", "We can meet at noon"),
+            ("spam", "new scam one"),
+            ("spam", "new scam two"),
+        ],
+    )
     training = load_training_dataset(base, None)
     holdout = load_dataset(holdout_path, role="holdout")
     with pytest.raises(DatasetError, match="leaks the answer"):
@@ -297,6 +345,7 @@ def test_repo_holdout_has_no_exact_leakage():
 
 
 # ----------------------------- grouping / splitting -----------------------------
+
 
 def test_group_key_masks_entities_and_separates_categories():
     first = make_group_key("Nag-claim ka ng ₱100,000 sa GMA Kapuso Foundation. Call 09171234567")

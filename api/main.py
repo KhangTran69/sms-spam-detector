@@ -19,18 +19,21 @@ Design notes
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import threading
+import uuid
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import AfterValidator, BaseModel, Field, StringConstraints, model_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstraints, model_validator
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from src.predict import (
@@ -48,6 +51,11 @@ WEB_DIR = ROOT / "web"
 MAX_BATCH = 50
 MAX_BATCH_CHARACTERS = 200_000
 MAX_REQUEST_BYTES = 1_000_000  # 1 MB cap on the raw JSON body
+FEEDBACK_ENABLED = os.environ.get("SMSD_FEEDBACK_ENABLED", "").strip().lower() in {"1", "true", "yes"}
+_feedback_path = os.environ.get("SMSD_FEEDBACK_PATH", "").strip()
+FEEDBACK_PATH = Path(_feedback_path) if _feedback_path else ROOT / "data" / "feedback" / "reports.jsonl"
+MAX_FEEDBACK_BYTES = 10 * 1024 * 1024
+_feedback_lock = threading.Lock()
 DEFAULT_CORS_ORIGINS = ("http://127.0.0.1:8000", "http://localhost:8000")
 
 SECURITY_HEADERS = {
@@ -100,7 +108,8 @@ app = FastAPI(
         "Classify Philippine SMS messages as spam/scam or ham. "
         "Messages are processed in memory and never stored or logged. "
         "Scores come from a model trained on a public English corpus plus synthetic "
-        "Philippine templates and are not proof of real-world accuracy."
+        "Philippine templates and are not proof of real-world accuracy. Optional anonymous "
+        "feedback stores selected labels and model metadata only, never SMS text."
     ),
 )
 
@@ -281,6 +290,7 @@ class BatchRequest(BaseModel):
 class PredictResponse(BaseModel):
     prediction: str
     probability: float
+    probability_calibrated: bool
     flags: list[str]
     decision_threshold: float
     model_version: str
@@ -297,6 +307,7 @@ class AnalyzeResponse(BaseModel):
     message: str
     prediction: str
     spam_probability: float
+    probability_calibrated: bool
     probability: float
     decision_threshold: float
     margin: float
@@ -313,6 +324,29 @@ class BatchResponse(BaseModel):
     results: list[AnalyzeResponse]
     model_version: str
     decision_threshold: float
+
+
+class FeedbackRequest(BaseModel):
+    """Minimal anonymous report; deliberately rejects message/text fields."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    model_version: str = Field(..., min_length=1, max_length=120)
+    predicted_label: Literal["ham", "spam"]
+    expected_label: Literal["ham", "spam"]
+    category: Literal["otp", "bank_alert", "delivery", "personal", "prize_scam", "phishing", "other"] = "other"
+
+    @model_validator(mode="after")
+    def _must_report_a_difference(self) -> FeedbackRequest:
+        if self.predicted_label == self.expected_label:
+            raise ValueError("Feedback is only accepted when the expected label differs from the prediction.")
+        return self
+
+
+class FeedbackResponse(BaseModel):
+    status: Literal["received"]
+    report_id: str
+    message: str
 
 
 _ERROR_RESPONSES: dict[int | str, dict[str, Any]] = {
@@ -421,7 +455,30 @@ def ready() -> ReadinessResponse:
     summary="Model metadata (thresholds, bands, provenance, warnings)",
 )
 def get_model_info() -> dict[str, Any]:
-    return _json_safe(model_info(model=get_model()))
+    info = _json_safe(model_info(model=get_model()))
+    info["feedback_enabled"] = FEEDBACK_ENABLED
+    return info
+
+
+def _append_feedback_report(report: dict[str, Any]) -> str:
+    """Persist only user-selected labels and model metadata, never message text."""
+    report_id = uuid.uuid4().hex
+    record = {
+        "report_id": report_id,
+        "created_at": datetime.now(UTC).isoformat(),
+        **report,
+    }
+    encoded = (json.dumps(record, ensure_ascii=False, separators=(",", ":")) + "\n").encode("utf-8")
+    with _feedback_lock:
+        FEEDBACK_PATH.parent.mkdir(parents=True, exist_ok=True)
+        current_size = FEEDBACK_PATH.stat().st_size if FEEDBACK_PATH.exists() else 0
+        if current_size + len(encoded) > MAX_FEEDBACK_BYTES:
+            raise OSError("Feedback queue is full; the operator must archive it before accepting more reports.")
+        with FEEDBACK_PATH.open("ab") as handle:
+            handle.write(encoded)
+            handle.flush()
+            os.fsync(handle.fileno())
+    return report_id
 
 
 @app.post("/predict", response_model=PredictResponse, responses=_ERROR_RESPONSES, summary="Minimal verdict")
@@ -430,6 +487,7 @@ def predict(request: PredictRequest) -> PredictResponse:
     return PredictResponse(
         prediction=analysis["prediction"],
         probability=analysis["probability"],
+        probability_calibrated=analysis["probability_calibrated"],
         flags=analysis["flags"],
         decision_threshold=analysis["decision_threshold"],
         model_version=analysis["model_version"],
@@ -450,6 +508,35 @@ def analyze_batch_endpoint(request: BatchRequest) -> BatchResponse:
         results=[AnalyzeResponse.model_validate(item) for item in results],
         model_version=first.get("model_version", "unknown"),
         decision_threshold=float(first.get("decision_threshold", 0.5)),
+    )
+
+
+@app.post(
+    "/feedback",
+    response_model=FeedbackResponse,
+    responses=_ERROR_RESPONSES,
+    summary="Submit anonymous label feedback (message text is not accepted)",
+)
+def submit_feedback(request: FeedbackRequest) -> FeedbackResponse:
+    if not FEEDBACK_ENABLED:
+        raise StarletteHTTPException(status_code=404, detail="Anonymous feedback is disabled by the operator.")
+    model = get_model()
+    report = {
+        "model_version": request.model_version,
+        "server_model_version": _model_version(model),
+        "predicted_label": request.predicted_label,
+        "expected_label": request.expected_label,
+        "category": request.category,
+    }
+    try:
+        report_id = _append_feedback_report(report)
+    except OSError as exc:
+        logger.error("Could not save anonymous feedback (%s)", type(exc).__name__)
+        raise StarletteHTTPException(status_code=503, detail="Feedback is temporarily unavailable.") from exc
+    return FeedbackResponse(
+        status="received",
+        report_id=report_id,
+        message="Thanks. The report contains labels and model metadata only; no SMS text was sent.",
     )
 
 

@@ -83,6 +83,7 @@ def test_app_js_uses_model_info_thresholds_and_risk_band(js):
         "bands",
         "data_note",
         "model_version",
+        "probability_calibrated",
     ):
         assert token in js, f"app.js must consume {token!r} from the API"
     # Thresholds come from the API; a fallback exists but must be clearly a fallback.
@@ -166,7 +167,7 @@ def test_index_html_has_skip_link_table_semantics_and_button_types(html, css):
     buttons = re.findall(r"<button\b[^>]*>", html)
     assert buttons
     for button in buttons:
-        assert 'type="button"' in button, button
+        assert 'type="button"' in button or ('type="submit"' in button and 'id="btn-feedback"' in button), button
 
     assert "prefers-reduced-motion" in css
 
@@ -197,6 +198,23 @@ def test_synthetic_data_and_privacy_disclaimers_are_present(js, html):
     assert "data_note" in js, "the disclaimer should come from /model-info data_note"
     assert "browser" in html_normalized and "server" in html_normalized
     assert "last 50 checks" in html_normalized
+
+
+def test_feedback_is_operator_opt_in_and_never_sends_message_text(api_source, js, html):
+    assert '"/feedback"' in js
+    assert "SMSD_FEEDBACK_ENABLED" in api_source
+    assert 'ConfigDict(extra="forbid")' in api_source
+    assert "SMS text" in html and "never the SMS text" in html
+    feedback_handler = js.split("async function submitFeedback(event)", 1)[1].split("/* ---------- History", 1)[0]
+    assert "analysis.message" not in feedback_handler
+    assert "message:" not in feedback_handler
+
+
+def test_uncalibrated_scores_are_not_presented_as_probability(js, html):
+    assert "uncalibrated model score" in js
+    assert "Uncalibrated model score" in html
+    assert "probability_calibrated" in js
+    assert "} scam probability" not in js
 
 
 def test_app_js_handles_network_and_api_error_states(js):

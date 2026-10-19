@@ -1,4 +1,5 @@
 """Model training, artifact/persistence, threshold, and inference contract tests."""
+
 from __future__ import annotations
 
 import json
@@ -129,7 +130,7 @@ def test_model_info_is_json_safe_and_contains_provenance(trained_artifact):
     assert info["model_version"]
     assert info["decision_threshold"] > 0
     assert info["training_data"]
-    assert info["synthetic_training_data"] is True
+    assert info["synthetic_training_data"] is None
     assert "synthetic" in info["data_note"].lower()
 
 
@@ -150,6 +151,7 @@ def test_analyze_message_contract_and_threshold_consistency(trained_artifact):
         "message",
         "prediction",
         "spam_probability",
+        "probability_calibrated",
         "probability",
         "decision_threshold",
         "margin",
@@ -161,9 +163,8 @@ def test_analyze_message_contract_and_threshold_consistency(trained_artifact):
         "model_version",
     }
     assert result["decision_threshold"] == pytest.approx(bundle.threshold)
-    assert result["prediction"] == (
-        "spam" if result["spam_probability"] >= bundle.threshold else "ham"
-    )
+    assert result["probability_calibrated"] is False
+    assert result["prediction"] == ("spam" if result["spam_probability"] >= bundle.threshold else "ham")
     assert result["margin"] == pytest.approx(abs(result["spam_probability"] - bundle.threshold))
     assert result["confidence"] in {"low", "medium", "high"}
     assert result["risk_band"] in {"likely_scam", "suspicious", "looks_safe"}
@@ -180,9 +181,7 @@ def test_batch_analysis_matches_single_analysis(trained_artifact):
     singles = [analyze_message(message, model_path=model_path) for message in messages]
     assert [item["message"] for item in batch] == messages
     assert [item["prediction"] for item in batch] == [item["prediction"] for item in singles]
-    assert [item["spam_probability"] for item in batch] == pytest.approx(
-        [item["spam_probability"] for item in singles]
-    )
+    assert [item["spam_probability"] for item in batch] == pytest.approx([item["spam_probability"] for item in singles])
 
 
 def test_threshold_changes_decision_consistently():
@@ -195,12 +194,8 @@ def test_threshold_changes_decision_consistently():
     high_result = analyze_message(message, model=high)
     assert low_result["decision_threshold"] == pytest.approx(0.1)
     assert high_result["decision_threshold"] == pytest.approx(0.99)
-    assert low_result["prediction"] == (
-        "spam" if low_result["spam_probability"] >= 0.1 else "ham"
-    )
-    assert high_result["prediction"] == (
-        "spam" if high_result["spam_probability"] >= 0.99 else "ham"
-    )
+    assert low_result["prediction"] == ("spam" if low_result["spam_probability"] >= 0.1 else "ham")
+    assert high_result["prediction"] == ("spam" if high_result["spam_probability"] >= 0.99 else "ham")
 
 
 def test_legacy_bare_pipeline_artifact_is_supported_with_warning(tmp_path):
@@ -303,3 +298,29 @@ def test_training_is_reproducible(trained_artifact, tmp_path):
     assert second["threshold"] == pytest.approx(artifact["threshold"])
     assert second["split"] == artifact["split"]
     assert second["metrics"]["test_at_threshold"] == artifact["metrics"]["test_at_threshold"]
+
+
+@pytest.mark.parametrize("kind, expected", [("synthetic", True), ("real", False), ("unknown", None)])
+def test_training_provenance_comes_from_declared_rows(tmp_path, kind, expected):
+    import pandas as pd
+
+    data_path = make_tiny_dataset(tmp_path / "declared.csv")
+    frame = pd.read_csv(data_path)
+    frame["data_kind"] = kind
+    frame.to_csv(data_path, index=False)
+    artifact = train(
+        data_path=data_path,
+        model_path=tmp_path / "model.pkl",
+        supplement_path=None,
+        holdout_path=None,
+        val_size=0.2,
+        test_size=0.2,
+        random_state=7,
+        target_precision=0.5,
+        min_recall=0,
+        verbose=False,
+        write_metadata=False,
+    )
+    assert artifact["synthetic_training_data"] is expected
+    assert set(artifact["training_data_kind_counts"]) == {kind}
+    assert artifact["metrics"]["test_by_category"]

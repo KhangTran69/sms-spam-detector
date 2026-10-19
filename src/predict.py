@@ -6,15 +6,17 @@ hashes, training configuration, and version metadata. Legacy bare-pipeline
 artifacts are accepted with an explicit warning and a default 0.5 threshold so
 an old deployment cannot crash silently.
 """
+
 from __future__ import annotations
 
 import argparse
 import json
 import os
 import sys
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import joblib
 import sklearn
@@ -34,9 +36,8 @@ HIGH_CONFIDENCE_MARGIN = 0.25
 FLAG_NAMES = ("has_url", "has_phone", "has_money", "has_urgency")
 
 DEFAULT_DATA_NOTE = (
-    "Trained on a public English SMS corpus plus synthetic Philippine template examples. "
-    "Current Philippine evaluation is on a synthetic benchmark, not a representative real-world "
-    "sample. Treat scores as an aid and verify messages through official channels."
+    "Training provenance is unavailable for this artifact. Results on synthetic Philippine data "
+    "are not proof of real-world accuracy. Treat scores as an aid and verify messages through official channels."
 )
 
 
@@ -67,9 +68,7 @@ class ModelBundle:
 
     def __post_init__(self) -> None:
         if not hasattr(self.pipeline, "predict_proba"):
-            raise ModelArtifactError(
-                "Model artifact does not expose predict_proba; retrain with python -m src.train."
-            )
+            raise ModelArtifactError("Model artifact does not expose predict_proba; retrain with python -m src.train.")
         classes = list(getattr(self.pipeline, "classes_", []))
         if not {"ham", "spam"}.issubset(set(classes)):
             raise ModelArtifactError(
@@ -133,7 +132,9 @@ class ModelBundle:
             "bands": self.bands,
             "trained_at": self.metadata.get("created_at") or self.metadata.get("trained_at"),
             "training_data": self.metadata.get("data_sources", []),
-            "synthetic_training_data": bool(self.metadata.get("synthetic_training_data", True)),
+            "synthetic_training_data": self.metadata.get("synthetic_training_data"),
+            "training_data_kind_counts": self.metadata.get("training_data_kind_counts", {}),
+            "probability_calibrated": bool(self.metadata.get("probability_calibrated", False)),
             "data_note": self.data_note,
             "metrics": self.metadata.get("metrics", {}),
             "legacy_artifact": bool(self.legacy),
@@ -209,6 +210,8 @@ def load_model(path: str | Path | None = None) -> ModelBundle:
                 "retrain the model with the current preprocessing."
             )
         threshold = artifact.get("threshold", artifact.get("decision_threshold", LEGACY_THRESHOLD))
+        if threshold is None:
+            threshold = LEGACY_THRESHOLD
         suspicious = artifact.get("suspicious_threshold")
         warnings = metadata.setdefault("warnings", [])
         if isinstance(warnings, list):
@@ -239,7 +242,7 @@ def load_model(path: str | Path | None = None) -> ModelBundle:
                 "artifact_schema_version": 1,
                 "model_version": artifact_path.stem,
                 "data_sources": [],
-                "synthetic_training_data": True,
+                "synthetic_training_data": None,
                 "warnings": [
                     "Legacy artifact without threshold/metadata; using a 0.5 threshold. "
                     "Retrain with python -m src.train to record data provenance and a tuned threshold."
@@ -262,7 +265,7 @@ def _coerce_bundle(model: Any, model_path: str | Path | None = None) -> ModelBun
         return load_model(model_path)
     if hasattr(model, "predict_proba"):
         # Test helpers and legacy callers may pass a bare fitted pipeline.
-        _validate_pipeline(model, model_path or Path("<in-memory>"))
+        _validate_pipeline(model, Path(model_path) if model_path is not None else Path("<in-memory>"))
         return ModelBundle(
             pipeline=model,
             threshold=LEGACY_THRESHOLD,
@@ -287,9 +290,7 @@ def _validate_messages(messages: Iterable[str], *, allow_empty: bool = False) ->
         if not message.strip():
             raise ValueError(f"Message {position} is blank; messages must contain visible text")
         if len(message) > MAX_MESSAGE_LENGTH:
-            raise ValueError(
-                f"Message {position} is {len(message)} characters; the maximum is {MAX_MESSAGE_LENGTH}"
-            )
+            raise ValueError(f"Message {position} is {len(message)} characters; the maximum is {MAX_MESSAGE_LENGTH}")
     return result
 
 
@@ -347,6 +348,7 @@ def _score_message(message: str, spam_probability: float, bundle: ModelBundle) -
         "message": message,
         "prediction": prediction,
         "spam_probability": float(spam_probability),
+        "probability_calibrated": bool(bundle.metadata.get("probability_calibrated", False)),
         "probability": float(spam_probability if prediction == "spam" else 1.0 - spam_probability),
         "decision_threshold": float(bundle.threshold),
         "margin": float(abs(spam_probability - bundle.threshold)),
@@ -376,7 +378,9 @@ def analyze_message(message: str, model: Any = None, model_path: str | Path | No
     return analyze_messages([message], model=model, model_path=model_path)[0]
 
 
-def analyze_batch(messages: Iterable[str], model: Any = None, model_path: str | Path | None = None) -> list[dict[str, Any]]:
+def analyze_batch(
+    messages: Iterable[str], model: Any = None, model_path: str | Path | None = None
+) -> list[dict[str, Any]]:
     return analyze_messages(messages, model=model, model_path=model_path)
 
 
@@ -393,12 +397,18 @@ def model_info(model: Any = None, model_path: str | Path | None = None) -> dict[
 def _main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Classify one SMS message")
     parser.add_argument("message", help="SMS text to analyze")
-    parser.add_argument("--model", default=None, help="Path to the joblib artifact (default: SMSD_MODEL_PATH or models/spam_detector_v1.pkl)")
+    parser.add_argument(
+        "--model",
+        default=None,
+        help="Path to the joblib artifact (default: SMSD_MODEL_PATH or models/spam_detector_v1.pkl)",
+    )
     parser.add_argument("--minimal", action="store_true", help="Print only prediction/probability/flags")
     args = parser.parse_args(argv)
     try:
-        result = predict_message(args.message, model_path=args.model) if args.minimal else analyze_message(
-            args.message, model_path=args.model
+        result = (
+            predict_message(args.message, model_path=args.model)
+            if args.minimal
+            else analyze_message(args.message, model_path=args.model)
         )
     except (FileNotFoundError, ModelArtifactError, ValueError) as exc:
         print(f"error: {exc}", file=sys.stderr)

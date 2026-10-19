@@ -134,6 +134,18 @@ Instrument the **service**, not the messages. Logs must not contain message text
 | Artifact version in use | Audit/rollback | unexpected version after deploy |
 | Model load failures | Ops | any 503 `model_unavailable` |
 
+The anonymous `/feedback` queue is disabled by default and stores only an
+explicitly selected expected label, broad category, and model version. Treat
+these as unverified triage counts, not labels or training data. Reviewers must
+obtain consent and receive a separately redacted sample before adding any
+message to a dataset; feedback never triggers automatic retraining.
+
+Use `python -m src.feedback --path data/feedback/reports.jsonl` to print
+aggregate correction/category/model-version counts. The summarizer rejects
+unknown or free-text fields and omits report IDs and timestamps. For Docker
+Compose, copy the report file from the `smsd_feedback` volume into an approved
+secure review area before summarizing; never add it to the training corpus.
+
 Drift evaluation:
 
 - Compare weekly feature/label-proxy distributions against the training window;

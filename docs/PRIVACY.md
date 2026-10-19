@@ -9,8 +9,10 @@ accounts, so privacy is a first-class design constraint.
 - The message is sent to the API, transformed **in memory** into features, and
   classified. The response returns the verdict and derived signals.
 - **No server-side message persistence.** The application does not write message
-  text to a database, file, cache, or queue. There is no accounts system, no
-  message history table, and no analytics pipeline that stores submissions.
+  text to a database, file, cache, feedback queue, or analytics system. A
+  separate, operator-enabled feedback action stores only the user's selected
+  expected label, broad category, and model version; it has no message-text
+  field.
 - The model artifact is static; it does not learn from or retain requests.
 - Restarting the process is sufficient to erase all in-memory state.
 
@@ -51,7 +53,25 @@ The bundled web UI (`web/`) can keep recent checks in the browser's
 If the deployed UI does not show the opt-in toggle (older revision), assume
 history is being stored in the browser and clear it; see the UI's history panel.
 
-## 4. Data minimization and PII
+## 4. Anonymous correction reports (off by default)
+
+- Feedback is disabled unless the operator sets `SMSD_FEEDBACK_ENABLED=true`.
+- When enabled, a user must explicitly submit a correction. The browser sends
+  only the selected expected label, the displayed prediction, a broad message
+  category, and model version. The API request schema rejects extra fields,
+  including `message` or `text`.
+- The server writes those fields, a timestamp, and a random receipt ID to
+  `data/feedback/reports.jsonl` (or `SMSD_FEEDBACK_PATH`). The local queue is
+  ignored by Git; Compose uses the named `smsd_feedback` volume. It is capped at
+  10 MiB and does not store IP addresses or SMS text.
+- Reports are unverified review signals, never training labels. A reviewer must
+  verify any separately donated/redacted example through the consent workflow
+  in [DATA_COLLECTION.md](DATA_COLLECTION.md); reports never trigger training.
+- Enabling the endpoint on a public service requires authentication or
+  deployment-level abuse controls and a retention policy. The sample service
+  is intended for local use by default.
+
+## 5. Data minimization and PII
 
 - Do not send live OTPs, full card numbers, or account credentials through any
   online tool, including this one. The API has no use for them and they increase
@@ -64,7 +84,7 @@ history is being stored in the browser and clear it; see the UI's history panel.
 - Do not enable request-body logging, tracing of payloads, or crash-dump capture
   of request contents.
 
-## 5. Data-subject requests and retention
+## 6. Data-subject requests and retention
 
 Because the server does not store messages, it holds no per-user message data to
 export or delete. The residual copies are:
@@ -74,6 +94,7 @@ export or delete. The residual copies are:
 | Server memory | in-flight request only | nothing to delete once the response is sent |
 | Server/proxy logs | must be message-free by policy | verify; if a body leaked, rotate/delete the log and record an incident |
 | User's browser `localStorage` | opt-in history, user-controlled | "Clear history" button; it never leaves the browser |
+| Feedback queue | labels/category/model version only | archive or delete `data/feedback/reports.jsonl` under the operator's retention policy |
 | Retraining datasets (if any) | masked real data held locally | delete matching donor rows using the consent-log pseudonym, record deletion, retrain artifacts if required |
 
 Retention:
@@ -84,7 +105,7 @@ Retention:
   least annually, delete stale/withdrawn data, and document the decision in the
   audit trail.
 
-## 6. Security posture relevant to privacy
+## 7. Security posture relevant to privacy
 
 - Container runs as a **non-root** user (uid 10001) with a read-only model mount;
   no secrets are baked into the image or committed to the repository.
@@ -103,7 +124,7 @@ Retention:
   [DEPLOYMENT.md](DEPLOYMENT.md)); the app itself speaks plain HTTP on the
   container network.
 
-## 7. Operator checklist
+## 8. Operator checklist
 
 - [ ] Request bodies are not logged anywhere (app, proxy, APM)
 - [ ] No message data is persisted by the service
@@ -111,6 +132,7 @@ Retention:
 - [ ] Model and data artifacts are git-ignored; repository contains no personal
       messages or secrets
 - [ ] No third-party analytics/scripts in `web/`
+- [ ] If anonymous feedback is enabled, queue retention and abuse controls are configured; summaries contain aggregate counts only
 - [ ] Exposure is behind TLS + access controls if not localhost-only
 - [ ] Incident path for accidental PII in logs/artifacts is documented
       ([RETRAINING.md](RETRAINING.md) incident response)

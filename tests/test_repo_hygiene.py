@@ -40,6 +40,7 @@ REQUIRED_FILES = [
     "docs/MODEL_CARD.md",
     "docs/RETRAINING.md",
     "docs/PRIVACY.md",
+    "docs/HUMAN_REVIEW.md",
     "tests/test_repo_hygiene.py",
 ]
 
@@ -312,8 +313,15 @@ def test_gitignore_keeps_docs_tests_tracked_and_artifacts_ignored() -> None:
 
     for path in ("docs/README.md", "docs/DEPLOYMENT.md", "tests/test_repo_hygiene.py", "tests/test_api.py"):
         assert not _is_git_ignored(path), f".gitignore unexpectedly ignores {path}"
-    for path in ("models/spam_detector_v1.pkl", "models/spam_detector_v1.joblib", "data/raw/spam.csv", ".env"):
+    for path in (
+        "models/spam_detector_v1.pkl",
+        "models/spam_detector_v1.joblib",
+        "data/raw/spam.csv",
+        "data/feedback/reports.jsonl",
+        ".env",
+    ):
         assert _is_git_ignored(path), f".gitignore should ignore {path}"
+    assert not _is_git_ignored("data/templates/consented_ph_sms_template.csv")
 
 
 def test_required_docs_are_present_and_linked_from_index() -> None:

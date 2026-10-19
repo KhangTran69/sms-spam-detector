@@ -72,9 +72,34 @@ main:focus { outline: none; }
 .batch-table tbody tr:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
+select:focus-visible,
 a:focus-visible {
   outline: 3px solid var(--focus);
   outline-offset: 2px;
+}
+
+.feedback-fields {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.7fr) minmax(180px, 1.3fr);
+  gap: 10px 14px;
+  align-items: center;
+  margin: 14px 0;
+}
+
+.feedback-fields label { font-weight: 600; }
+.feedback-fields select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 10px;
+  color: var(--ink);
+  background: #fff;
+  font: inherit;
+}
+.feedback-status { min-height: 1.5em; }
+
+@media (max-width: 520px) {
+  .feedback-fields { grid-template-columns: 1fr; gap: 6px; }
 }
 
 /* ---------- Header ---------- */
@@ -446,4 +471,11 @@ mark.sig { border-radius: 4px; padding: 1px 3px; color: inherit; box-decoration-
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Keep result notes and actions readable on narrow screens. */
+@media (max-width: 640px) {
+  .verdict, .history-item-main { min-width: 0; }
+  #verdict-sub, #model-note, #model-version { overflow-wrap: anywhere; }
+  button { min-height: 44px; }
 }

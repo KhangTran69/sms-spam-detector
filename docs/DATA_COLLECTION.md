@@ -130,12 +130,14 @@ grouping/analysis):
 | `labeler` | string | Pseudonym of the labeler. |
 | `labeled_at` | string | ISO-8601 date. |
 | `group` / `template_family` | string | Campaign/template grouping (see §6); rows in the same group must not straddle splits. |
+| `received_at` | ISO-8601 timestamp | Optional for group splits; required for `--split-by time`, which reserves newest campaign groups for validation/test. Use only date precision needed. |
 | `notes` | string | Short, non-PII diagnostic note. |
 
 The loader maps the first recognized alias for each optional field:
 `source`/`data_source`, `category`/`message_type`/`type`/`scam_type`,
 `language`/`lang`, `labeling_confidence`/`label_confidence`/`confidence`,
-`group`/`template_family`/`campaign`/`family`. `labeler`, `labeled_at`, and
+`group`/`template_family`/`campaign`/`family`, and
+`received_at`/`message_date`/`received_date`/`timestamp`/`date`. `labeler`, `labeled_at`, and
 `notes` are kept in the file for provenance but are not used by training.
 
 Requirements:
@@ -170,6 +172,13 @@ campaigns. Treat each family/campaign as a **group**:
   wording variants exist. Do not claim independence between variants.
 - Real messages from the same donor or same sender campaign should share a
   group so donor/sender style does not leak across splits.
+- For temporal evaluation, record a trustworthy `received_at` date and run
+  `python -m src.train --split-by time`. The newest campaign groups become the
+  test set, the next-newest become validation, and older groups train the model.
+  Every row needs a valid timestamp, groups remain indivisible, and the split
+  fails instead of silently becoming random if both labels cannot be represented.
+  Do not fabricate dates for synthetic templates or mix synthetic dates into a
+  real temporal benchmark.
 
 If grouping metadata is missing for real data, add it before training. When
 `group` is absent the loader derives a template-family signature from the message

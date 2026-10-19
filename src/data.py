@@ -12,18 +12,21 @@ Design goals
 
 Optional metadata columns accepted in any CSV:
 ``source``, ``category`` (or ``message_type``/``type``), ``language``,
-``labeling_confidence``, ``group`` (or ``template_family``/``campaign``).
+``labeling_confidence``, ``group`` (or ``template_family``/``campaign``), and
+``received_at`` (or ``message_date``/``timestamp``) for temporal holdouts.
 Missing metadata is filled with ``"unknown"``; it is never invented.
 """
+
 from __future__ import annotations
 
 import hashlib
 import json
 import math
 import re
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable, Sequence
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -55,7 +58,7 @@ LABEL_ALIASES = {
     "1": "spam",
 }
 
-METADATA_COLUMNS = ("source", "category", "language", "labeling_confidence", "group")
+METADATA_COLUMNS = ("source", "category", "language", "labeling_confidence", "group", "received_at", "data_kind")
 CANONICAL_COLUMNS = ("message", "label", *METADATA_COLUMNS, "source_file")
 DEFAULT_VAL_SIZE = 0.15
 DEFAULT_TEST_SIZE = 0.15
@@ -128,10 +131,12 @@ def _resolve_message_and_label_columns(lookup: dict[str, str], path: Path) -> tu
 def _resolve_metadata_columns(lookup: dict[str, str]) -> dict[str, str]:
     aliases = {
         "source": ("source", "data_source"),
+        "data_kind": ("data_kind",),
         "category": ("category", "message_type", "type", "scam_type"),
         "language": ("language", "lang"),
         "labeling_confidence": ("labeling_confidence", "label_confidence", "confidence"),
         "group": ("group", "template_family", "campaign", "family"),
+        "received_at": ("received_at", "message_date", "received_date", "timestamp", "date"),
     }
     resolved: dict[str, str] = {}
     for canonical, candidates in aliases.items():
@@ -274,7 +279,11 @@ def _load_one(
         labels = labels[~blank_mask]
 
     working = pd.DataFrame({"message": messages, "label": labels})
-    working["source"] = df[metadata_columns["source"]].astype(str).str.strip().replace("", "unknown") if "source" in metadata_columns else path.stem
+    working["source"] = (
+        df[metadata_columns["source"]].astype(str).str.strip().replace("", "unknown")
+        if "source" in metadata_columns
+        else path.stem
+    )
     working["category"] = (
         df[metadata_columns["category"]].astype(str).str.strip().replace("", "unknown")
         if "category" in metadata_columns
@@ -290,11 +299,21 @@ def _load_one(
         if "labeling_confidence" in metadata_columns
         else "unknown"
     )
+    if "received_at" in metadata_columns:
+        parsed_dates = pd.to_datetime(df[metadata_columns["received_at"]], errors="coerce", utc=True)
+        working["received_at"] = parsed_dates.dt.strftime("%Y-%m-%dT%H:%M:%SZ").fillna("")
+    else:
+        working["received_at"] = ""
+    working["data_kind"] = (
+        df[metadata_columns["data_kind"]].astype(str).str.strip().str.lower().replace("", "unknown")
+        if "data_kind" in metadata_columns
+        else "unknown"
+    )
+    if not working["data_kind"].isin(["synthetic", "real", "unknown"]).all():
+        raise DatasetError(f"{path}: data_kind must be synthetic, real, or unknown.")
     working["source_file"] = path.name
     if "group" in metadata_columns:
-        working["_provided_group"] = (
-            df[metadata_columns["group"]].astype(str).str.strip().replace("", "unknown")
-        )
+        working["_provided_group"] = df[metadata_columns["group"]].astype(str).str.strip().replace("", "unknown")
     else:
         working["_provided_group"] = "unknown"
 
@@ -308,7 +327,10 @@ def _load_one(
     conflicting_messages = conflicts[conflicts > 1]
     if len(conflicting_messages):
         examples = [
-            {"message": _redacted(message), "labels": sorted(working.loc[working["message"] == message, "label"].unique())}
+            {
+                "message": _redacted(message),
+                "labels": sorted(working.loc[working["message"] == message, "label"].unique()),
+            }
             for message in conflicting_messages.index[:5]
         ]
         raise DatasetError(
@@ -321,7 +343,8 @@ def _load_one(
         working = working.drop_duplicates(subset="message", keep="first").reset_index(drop=True)
 
     working["group"] = [
-        provided if str(provided).strip().lower() not in {"", "unknown"}
+        provided
+        if str(provided).strip().lower() not in {"", "unknown"}
         else make_group_key(row.message, category=row.category, source=row.source)
         for provided, row in zip(working["_provided_group"], working.itertuples(index=False))
     ]
@@ -417,7 +440,9 @@ def resolve_supplement_paths(
     if values and all(isinstance(value, str) and value.strip().lower() == "none" for value in values):
         return [], []
     if any(isinstance(value, str) and value.strip().lower() == "none" for value in values):
-        raise DatasetError("'none' cannot be combined with supplement CSV paths; use either --supplement none or a list of files.")
+        raise DatasetError(
+            "'none' cannot be combined with supplement CSV paths; use either --supplement none or a list of files."
+        )
 
     paths: list[Path] = []
     warnings: list[str] = []
@@ -457,9 +482,7 @@ def load_training_dataset(
     if data_path is None:
         raise DatasetError("data_path is required; pass the base label,message CSV.")
     base = load_dataset(data_path, role="base", require_both_classes=True, strict=strict_data)
-    supplement_paths, path_warnings = resolve_supplement_paths(
-        supplement_path, strict=strict_supplement_paths
-    )
+    supplement_paths, path_warnings = resolve_supplement_paths(supplement_path, strict=strict_supplement_paths)
     frames = [base.frame]
     records = list(base.records)
     warnings = [*base.warnings, *path_warnings]
@@ -480,7 +503,10 @@ def load_training_dataset(
     conflicting = conflicts[conflicts > 1]
     if len(conflicting):
         examples = [
-            {"message": _redacted(message), "labels": sorted(combined.loc[combined["message"] == message, "label"].unique())}
+            {
+                "message": _redacted(message),
+                "labels": sorted(combined.loc[combined["message"] == message, "label"].unique()),
+            }
             for message in conflicting.index[:5]
         ]
         raise DatasetError(
@@ -491,9 +517,7 @@ def load_training_dataset(
     combined = combined.drop_duplicates(subset="message", keep="first").reset_index(drop=True)
     cross_source_duplicates = before - len(combined)
     if cross_source_duplicates:
-        warnings.append(
-            f"Removed {cross_source_duplicates} duplicate message(s) across sources before splitting."
-        )
+        warnings.append(f"Removed {cross_source_duplicates} duplicate message(s) across sources before splitting.")
 
     class_counts = {label: int((combined["label"] == label).sum()) for label in VALID_LABELS}
     for label, count in class_counts.items():
@@ -559,7 +583,7 @@ class Split:
 
     @property
     def grouped(self) -> bool:
-        return self.method == "stratified_group_kfold"
+        return self.method in {"stratified_group_kfold", "chronological_group_holdout"}
 
     @property
     def splits(self) -> dict[str, list[int]]:
@@ -635,6 +659,75 @@ def _stratified_random_split(labels: Sequence[str], val_size: float, test_size: 
     )
 
 
+def _temporal_group_split(
+    dataset: Dataset,
+    *,
+    val_size: float,
+    test_size: float,
+    seed: int,
+    min_class_per_split: int,
+) -> Split:
+    """Hold out the newest campaign groups for validation and final testing.
+
+    A campaign/template group is indivisible. Its latest message timestamp
+    determines its chronological position so repeated campaigns cannot cross
+    split boundaries. This is useful for future real data; synthetic rows with
+    missing dates must use the ordinary group split.
+    """
+    dates = pd.to_datetime(dataset.frame["received_at"], errors="coerce", utc=True)
+    if dates.isna().any():
+        missing = int(dates.isna().sum())
+        raise DatasetError(
+            f"Time-based splitting needs a valid received_at/date/timestamp for every row; {missing} row(s) are missing."
+        )
+    frame = dataset.frame.copy()
+    frame["_parsed_date"] = dates
+    grouped = (
+        frame.groupby("group", sort=False)
+        .agg(latest=("_parsed_date", "max"), count=("label", "size"))
+        .sort_values(["latest"], kind="stable")
+    )
+    target_test = max(1, round(len(frame) * test_size))
+    target_val = max(1, round(len(frame) * val_size))
+    test_groups: set[str] = set()
+    val_groups: set[str] = set()
+    count = 0
+    for group, row in grouped.iloc[::-1].iterrows():
+        if count >= target_test:
+            break
+        test_groups.add(str(group))
+        count += int(row["count"])
+    count = 0
+    remaining = grouped.loc[~grouped.index.astype(str).isin(test_groups)]
+    for group, row in remaining.iloc[::-1].iterrows():
+        if count >= target_val:
+            break
+        val_groups.add(str(group))
+        count += int(row["count"])
+    train_groups = set(grouped.index.astype(str)) - test_groups - val_groups
+    groups = dataset.groups
+    splits = {
+        "train": [i for i, group in enumerate(groups) if group in train_groups],
+        "val": [i for i, group in enumerate(groups) if group in val_groups],
+        "test": [i for i, group in enumerate(groups) if group in test_groups],
+    }
+    if not all(_class_present(indices, dataset.labels, minimum=min_class_per_split) for indices in splits.values()):
+        raise DatasetError(
+            "Chronological campaign split could not put both labels in train, validation, and test. "
+            "Collect more dated campaign groups or use --split-by group; do not silently fall back to a random split."
+        )
+    return Split(
+        train_idx=splits["train"],
+        val_idx=splits["val"],
+        test_idx=splits["test"],
+        method="chronological_group_holdout",
+        seed=seed,
+        requested_val_size=val_size,
+        requested_test_size=test_size,
+        warnings=["Groups are assigned by their newest timestamp; temporal holdout requires real, trustworthy dates."],
+    )
+
+
 def grouped_splits(
     dataset: Dataset,
     *,
@@ -663,8 +756,16 @@ def grouped_splits(
         split = _stratified_random_split(labels, val_size, test_size, seed)
         split.warnings.append("Requested random split; use split_by='group' to prevent template leakage.")
         return split
+    if split_by == "time":
+        return _temporal_group_split(
+            dataset,
+            val_size=val_size,
+            test_size=test_size,
+            seed=seed,
+            min_class_per_split=min_class_per_split,
+        )
     if split_by != "group":
-        raise DatasetError("split_by must be 'group' or 'random'.")
+        raise DatasetError("split_by must be 'group', 'time', or 'random'.")
 
     unique_groups = set(groups)
     if len(unique_groups) < 3:

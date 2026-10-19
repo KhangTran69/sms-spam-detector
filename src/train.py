@@ -10,19 +10,20 @@ Pipeline:
 5. Save one joblib artifact containing the pipeline, threshold, label mapping,
    data-source hashes, training configuration, version, and measured metrics.
 """
+
 from __future__ import annotations
 
 import argparse
 import json
 import platform
-from datetime import datetime, timezone
+from collections.abc import Iterable
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 import joblib
 import sklearn
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import MultinomialNB
 
 from src.data import (
@@ -36,11 +37,13 @@ from src.data import (
     DatasetError,
     group_leakage_report,
     grouped_splits,
-    load_dataset as load_dataset_frame,
     load_holdout,
     load_training_dataset,
     resolve_supplement_paths,
     split_dataset,
+)
+from src.data import (
+    load_dataset as load_dataset_frame,
 )
 from src.features import FEATURE_VERSION, make_model
 from src.metrics import (
@@ -57,11 +60,6 @@ from src.predict import ARTIFACT_SCHEMA_VERSION, DEFAULT_MODEL, ModelBundle, spa
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_TARGET_PRECISION = 0.95
 DEFAULT_MIN_RECALL = 0.80
-DATA_NOTE = (
-    "Trained on the public English UCI/Kaggle SMS corpus plus synthetic Philippine template examples. "
-    "All Philippine metrics are measured on a synthetic benchmark, not on a representative real-world "
-    "Philippine sample; they are pipeline sanity checks, not evidence of production accuracy."
-)
 KEY_THRESHOLDS = (0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
 
 # Backward-compatible aliases for the notebook and older scripts.
@@ -78,7 +76,7 @@ def load_dataset(path: str | Path) -> tuple[list[str], list[str]]:
 
 def load_training_data(
     data_path: str | Path = DEFAULT_DATA,
-    supplement_path: str | Path | list[str | Path] | None = DEFAULT_SUPPLEMENTS,
+    supplement_path: str | Path | Iterable[str | Path] | None = DEFAULT_SUPPLEMENTS,
 ) -> tuple[list[str], list[str]]:
     """Deprecated tuple-returning wrapper; prefer :func:`src.data.load_training_dataset`."""
     dataset = load_training_dataset(data_path, supplement_path)
@@ -86,7 +84,7 @@ def load_training_data(
 
 
 def _now_utc() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    return datetime.now(UTC).replace(microsecond=0).isoformat()
 
 
 def _class_counts(dataset: Dataset) -> dict[str, int]:
@@ -132,7 +130,7 @@ def _split_summary(split, dataset: Dataset) -> dict[str, Any]:
 def train(
     data_path: str | Path = DEFAULT_DATA,
     model_path: str | Path = DEFAULT_MODEL,
-    supplement_path: str | Path | list[str | Path] | None = DEFAULT_SUPPLEMENTS,
+    supplement_path: str | Path | Iterable[str | Path] | None = DEFAULT_SUPPLEMENTS,
     *,
     holdout_path: str | Path | None = DEFAULT_HOLDOUT,
     val_size: float = DEFAULT_VAL_SIZE,
@@ -155,9 +153,7 @@ def train(
         strict_data=strict_data,
         strict_supplement_paths=strict_supplement_paths,
     )
-    split = grouped_splits(
-        dataset, val_size=val_size, test_size=test_size, seed=random_state, split_by=split_by
-    )
+    split = grouped_splits(dataset, val_size=val_size, test_size=test_size, seed=random_state, split_by=split_by)
     train_set, val_set, test_set = split_dataset(dataset, split)
     if verbose:
         print("=== Dataset ===")
@@ -229,6 +225,9 @@ def train(
         "test_at_threshold": primary_metrics,
         "test_at_default_0.5": primary_at_default,
         "baseline_multinomial_nb_at_0.5": baseline_metrics,
+        "test_by_category": per_group_metrics(
+            test_set.frame, test_probabilities, threshold, group_columns=("source_file", "category", "language")
+        ),
         "validation_sweep": _key_sweep(val_set.labels, val_probabilities, threshold),
         "calibration": {"validation": val_calibration, "test": test_calibration},
         "classification_report": _classification_report(test_set.labels, test_probabilities, threshold),
@@ -270,8 +269,21 @@ def train(
         "split_summary": _split_summary(split, dataset),
         "holdout_leakage": leakage,
         "metrics": jsonable(metrics),
-        "synthetic_training_data": True,
-        "data_note": DATA_NOTE,
+        "synthetic_training_data": (
+            True
+            if "synthetic" in set(train_set.frame["data_kind"])
+            else None
+            if "unknown" in set(train_set.frame["data_kind"])
+            else False
+        ),
+        "training_data_kind_counts": train_set.frame["data_kind"].value_counts().to_dict(),
+        # Calibration is measured and reported, but no calibration transform is fitted.
+        "probability_calibrated": False,
+        "data_note": (
+            "Training data may include synthetic examples and messages with unverified provenance. "
+            "Synthetic examples are engineering checks, not proof of real-world accuracy. "
+            "Real-data labels alone do not establish representative Philippine performance."
+        ),
         "warnings": [str(warning) for warning in warnings],
         "model": primary,
     }
@@ -340,10 +352,7 @@ def _print_report(
     print(f"method={split.method} seed={split.seed}")
     for name in ("train", "val", "test"):
         entry = split_summary[name]
-        print(
-            f"{name:>5}: rows={entry['rows']:>5} groups={entry['groups']:>4} "
-            f"classes={entry['class_counts']}"
-        )
+        print(f"{name:>5}: rows={entry['rows']:>5} groups={entry['groups']:>4} classes={entry['class_counts']}")
     for warning in split.warnings:
         print(f"warning: {warning}")
 
@@ -430,8 +439,12 @@ def _main(argv: list[str] | None = None) -> int:
     parser.add_argument("--metadata-output", default=None, help="Metadata JSON sidecar path (default: next to model).")
     parser.add_argument("--no-metadata", action="store_true", help="Do not write the JSON metadata sidecar.")
     parser.add_argument("--model-version", default=None, help="Human-readable artifact version label.")
-    parser.add_argument("--val-size", type=float, default=DEFAULT_VAL_SIZE, help="Validation fraction for threshold tuning.")
-    parser.add_argument("--test-size", type=float, default=DEFAULT_TEST_SIZE, help="Held-out test fraction for reporting.")
+    parser.add_argument(
+        "--val-size", type=float, default=DEFAULT_VAL_SIZE, help="Validation fraction for threshold tuning."
+    )
+    parser.add_argument(
+        "--test-size", type=float, default=DEFAULT_TEST_SIZE, help="Held-out test fraction for reporting."
+    )
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED, help="Random seed for reproducible splits/models.")
     parser.add_argument(
         "--target-precision",
@@ -447,11 +460,13 @@ def _main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--split-by",
-        choices=("group", "random"),
+        choices=("group", "time", "random"),
         default="group",
-        help="Split by template family (default, leakage-safe) or stratified random (diagnostic only).",
+        help="Split by template family (default), chronological campaign groups (requires dates), or random (diagnostic only).",
     )
-    parser.add_argument("--lenient-data", action="store_true", help="Drop blank rows with a warning instead of failing.")
+    parser.add_argument(
+        "--lenient-data", action="store_true", help="Drop blank rows with a warning instead of failing."
+    )
     args = parser.parse_args(argv)
 
     supplements, strict_supplement_paths = _parse_supplements(args)

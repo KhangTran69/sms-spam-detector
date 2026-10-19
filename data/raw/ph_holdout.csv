@@ -1,47 +1,47 @@
-label,message,category,language,source,labeling_confidence
-spam,"Nag-claim ka ng ₱350,000 sa GMA Kapuso Foundation. Tumawag agad sa 09185551234 bago mag-5PM!",prize_scam,taglish,synthetic_holdout_v2,high
-spam,BDO: Account suspended due to failed login attempts. Reactivate here: http://bit.ly/bdo-react,bank_phishing,en,synthetic_holdout_v2,high
-spam,"Congrats! Nanalo ka ng ₱2M sa PCSO Grand Lotto. Send your name, address at bank details sa 09205551111",prize_scam,taglish,synthetic_holdout_v2,high
-spam,"GCash: May ₱8,500 refund na naka-hold para sa iyo. Claim within 24 hours: http://bit.ly/gc-refund85",bank_phishing,taglish,synthetic_holdout_v2,high
-spam,J&T: Parcel held - pay ₱75 customs fee now: bit.ly/jt-fee75,delivery_scam,en,synthetic_holdout_v2,high
-spam,Smart: Free 50GB data for loyal subscribers! Register agad: http://smart-free50gb.xyz,load_scam,en,synthetic_holdout_v2,high
-spam,Maya: Your account will be closed in 24 hours. Verify identity now: bit.ly/maya-id,bank_phishing,en,synthetic_holdout_v2,high
-spam,"Ikaw ba ito? May ₱120,000 waitong claim sa pangalan mo. Call 09335559999 NOW!",impersonation_scam,taglish,synthetic_holdout_v2,high
-ham,Your BDO OTP is 294831. Do not share with anyone. Expires in 5 minutes.,otp,en,synthetic_holdout_v2,high
-ham,"GCash: You received ₱1,500 from ANA LIM. Balance: ₱6,200.00.",bank_alert,en,synthetic_holdout_v2,high
-ham,J&T Express: Parcel JT5522878 out for delivery. Track at jtexpress.ph/track,delivery,en,synthetic_holdout_v2,high
-ham,"Meralco: Your bill of ₱1,890.50 is due Nov 5. Pay via app or partner banks.",bill,en,synthetic_holdout_v2,high
-ham,"Uwi ka na agad, ulan na dito sa amin. Ingat!",personal_taglish,taglish,synthetic_holdout_v2,high
-ham,Shopee: Order SP-991234 delivered. Rate your purchase in the app.,delivery,en,synthetic_holdout_v2,high
-ham,"BPI: OTP 558201. Never share this code with anyone, even BPI staff.",otp,en,synthetic_holdout_v2,high
-ham,Salamat sa regalo mo! Sobrang happy ng bunso. See you Sunday sa reunion.,personal_taglish,taglish,synthetic_holdout_v2,high
-ham,"Metrobank: Your PHP 7,500.00 bills payment to MAYNILAD is complete. Ref 4451209.",bill,en,synthetic_holdout_v2,high
-ham,Globe: Your subscription to GOEXTRA90 renewed. Valid until Nov 18. Data: 8GB remaining.,promo,en,synthetic_holdout_v2,high
-spam,PHLPost: Your parcel is on hold. Pay ₱120 clearance fee at phlpost-clearance.top before Nov 2.,parcel_scam,en,synthetic_holdout_v2,high
-spam,NTC: Your SIM will be deactivated in 48 hours. Register your number now: http://ntc-simreg.info/verify,sim_registration_scam,en,synthetic_holdout_v2,high
-spam,"Work from home! Earn PHP 3,000 daily, no experience needed. Message 09178881234 agad.",job_scam,taglish,synthetic_holdout_v2,high
-spam,"Crypto investment: turn PHP 10,000 into PHP 100,000 in 7 days. PM 09293334444 now.",investment_scam,taglish,synthetic_holdout_v2,high
-spam,"Approved na ang loan mo! PHP 80,000, walang collateral. I-claim agad sa 09194445555.",loan_scam,taglish,synthetic_holdout_v2,high
-spam,"Hello, this is BDO support. May suspicious login. Please send the OTP we texted you to 09175556666.",otp_social_engineering,taglish,synthetic_holdout_v2,high
-spam,"Panalo ka ng ₱1,200,000 sa PCSO! Claim within 24 hours, tawagan 09186667777 ngayon.",prize_scam,taglish,synthetic_holdout_v2,high
-spam,UnionBank: KYC update required. Verify at unionbank-kyc.online/login or account will be blocked today.,bank_phishing,en,synthetic_holdout_v2,high
-spam,"DSWD: Approved ang ₱10,000 educational assistance mo. Register at dswd-ayuda.xyz/claim agad.",government_subsidy_scam,taglish,synthetic_holdout_v2,high
-spam,Globe: You have 5GB free load! Claim at globe-rewards.site before it expires ngayon.,load_scam,en,synthetic_holdout_v2,high
-spam,"Hi po, I'm looking for someone to talk to. Can you send load to 09177778888? God bless.",romance_scam,taglish,synthetic_holdout_v2,high
-spam,"Ma, nasa hospital ako. Kailangan ko ng ₱15,000 agad. Send sa GCash 09185559999. Huwag kang magsumbong.",relative_scam,taglish,synthetic_holdout_v2,high
-ham,BPI: Your one-time PIN is 773410. Valid for 5 minutes. Never share it.,otp,en,synthetic_holdout_v2,high
-ham,"UnionBank: ₱2,300.00 was debited from your account ending 4821 on Oct 18. Not you? Call the number on your card.",bank_alert,en,synthetic_holdout_v2,high
-ham,"BDO: Your payroll credit of ₱18,500.00 has been posted. Available balance: ₱21,204.55.",bank_alert,en,synthetic_holdout_v2,high
-ham,LBC: Your parcel LBC123456789 is out for delivery today. Prepare valid ID.,delivery,en,synthetic_holdout_v2,high
-ham,Ninja Van: Parcel PH-88421 will be delivered between 2-5PM. Track in the app.,delivery,en,synthetic_holdout_v2,high
-ham,"Manila Water: Your bill of ₱620.75 is due on Nov 10. Pay via GCash, Maya, or the app.",bill,en,synthetic_holdout_v2,high
-ham,"Kumain ka na ba? Ingat sa byahe mamaya, umuulan dito.",personal_taglish,taglish,synthetic_holdout_v2,high
-ham,Salamat ulit sa pagtulong kahapon. Bayaran kita sa Friday pag sweldo.,personal_taglish,taglish,synthetic_holdout_v2,high
-ham,Globe: Your GO+ promo expires on Nov 5. Renew via *143# if you want to continue.,promo,en,synthetic_holdout_v2,high
-ham,"City Health Office: Your vaccination appointment is confirmed for Oct 24, 9:00 AM. Bring your ID.",appointment,en,synthetic_holdout_v2,high
-ham,"UPD Registrar: Your request for TOR is ready for pickup at Window 3, 8AM-5PM.",school,en,synthetic_holdout_v2,high
-ham,"GCash: Your authentication code is 904162. Do not share this code with anyone, even GCash staff.",otp,en,synthetic_holdout_v2,high
-ham,J&T Express: Track your parcel at jtexpress.ph/track using waybill JT7788123.,legit_link,en,synthetic_holdout_v2,high
-ham,"Maya: You sent ₱350.00 to JUAN DELA CRUZ. Ref 889201. If this wasn't you, contact support.",bank_alert,en,synthetic_holdout_v2,high
-ham,"Bukas na lang tayo magkita, may pasok pa ako. Good night!",personal_taglish,taglish,synthetic_holdout_v2,high
-ham,Shopee: Flash sale starts 12NN. Free shipping on selected items. Unsubscribe: reply STOP.,promo,en,synthetic_holdout_v2,high
+data_kind,label,message,category,language,source,labeling_confidence
+synthetic,spam,"Nag-claim ka ng ₱350,000 sa GMA Kapuso Foundation. Tumawag agad sa 09185551234 bago mag-5PM!",prize_scam,taglish,synthetic_holdout_v2,high
+synthetic,spam,BDO: Account suspended due to failed login attempts. Reactivate here: http://bit.ly/bdo-react,bank_phishing,en,synthetic_holdout_v2,high
+synthetic,spam,"Congrats! Nanalo ka ng ₱2M sa PCSO Grand Lotto. Send your name, address at bank details sa 09205551111",prize_scam,taglish,synthetic_holdout_v2,high
+synthetic,spam,"GCash: May ₱8,500 refund na naka-hold para sa iyo. Claim within 24 hours: http://bit.ly/gc-refund85",bank_phishing,taglish,synthetic_holdout_v2,high
+synthetic,spam,J&T: Parcel held - pay ₱75 customs fee now: bit.ly/jt-fee75,delivery_scam,en,synthetic_holdout_v2,high
+synthetic,spam,Smart: Free 50GB data for loyal subscribers! Register agad: http://smart-free50gb.xyz,load_scam,en,synthetic_holdout_v2,high
+synthetic,spam,Maya: Your account will be closed in 24 hours. Verify identity now: bit.ly/maya-id,bank_phishing,en,synthetic_holdout_v2,high
+synthetic,spam,"Ikaw ba ito? May ₱120,000 waitong claim sa pangalan mo. Call 09335559999 NOW!",impersonation_scam,taglish,synthetic_holdout_v2,high
+synthetic,ham,Your BDO OTP is 294831. Do not share with anyone. Expires in 5 minutes.,otp,en,synthetic_holdout_v2,high
+synthetic,ham,"GCash: You received ₱1,500 from ANA LIM. Balance: ₱6,200.00.",bank_alert,en,synthetic_holdout_v2,high
+synthetic,ham,J&T Express: Parcel JT5522878 out for delivery. Track at jtexpress.ph/track,delivery,en,synthetic_holdout_v2,high
+synthetic,ham,"Meralco: Your bill of ₱1,890.50 is due Nov 5. Pay via app or partner banks.",bill,en,synthetic_holdout_v2,high
+synthetic,ham,"Uwi ka na agad, ulan na dito sa amin. Ingat!",personal_taglish,taglish,synthetic_holdout_v2,high
+synthetic,ham,Shopee: Order SP-991234 delivered. Rate your purchase in the app.,delivery,en,synthetic_holdout_v2,high
+synthetic,ham,"BPI: OTP 558201. Never share this code with anyone, even BPI staff.",otp,en,synthetic_holdout_v2,high
+synthetic,ham,Salamat sa regalo mo! Sobrang happy ng bunso. See you Sunday sa reunion.,personal_taglish,taglish,synthetic_holdout_v2,high
+synthetic,ham,"Metrobank: Your PHP 7,500.00 bills payment to MAYNILAD is complete. Ref 4451209.",bill,en,synthetic_holdout_v2,high
+synthetic,ham,Globe: Your subscription to GOEXTRA90 renewed. Valid until Nov 18. Data: 8GB remaining.,promo,en,synthetic_holdout_v2,high
+synthetic,spam,PHLPost: Your parcel is on hold. Pay ₱120 clearance fee at phlpost-clearance.top before Nov 2.,parcel_scam,en,synthetic_holdout_v2,high
+synthetic,spam,NTC: Your SIM will be deactivated in 48 hours. Register your number now: http://ntc-simreg.info/verify,sim_registration_scam,en,synthetic_holdout_v2,high
+synthetic,spam,"Work from home! Earn PHP 3,000 daily, no experience needed. Message 09178881234 agad.",job_scam,taglish,synthetic_holdout_v2,high
+synthetic,spam,"Crypto investment: turn PHP 10,000 into PHP 100,000 in 7 days. PM 09293334444 now.",investment_scam,taglish,synthetic_holdout_v2,high
+synthetic,spam,"Approved na ang loan mo! PHP 80,000, walang collateral. I-claim agad sa 09194445555.",loan_scam,taglish,synthetic_holdout_v2,high
+synthetic,spam,"Hello, this is BDO support. May suspicious login. Please send the OTP we texted you to 09175556666.",otp_social_engineering,taglish,synthetic_holdout_v2,high
+synthetic,spam,"Panalo ka ng ₱1,200,000 sa PCSO! Claim within 24 hours, tawagan 09186667777 ngayon.",prize_scam,taglish,synthetic_holdout_v2,high
+synthetic,spam,UnionBank: KYC update required. Verify at unionbank-kyc.online/login or account will be blocked today.,bank_phishing,en,synthetic_holdout_v2,high
+synthetic,spam,"DSWD: Approved ang ₱10,000 educational assistance mo. Register at dswd-ayuda.xyz/claim agad.",government_subsidy_scam,taglish,synthetic_holdout_v2,high
+synthetic,spam,Globe: You have 5GB free load! Claim at globe-rewards.site before it expires ngayon.,load_scam,en,synthetic_holdout_v2,high
+synthetic,spam,"Hi po, I'm looking for someone to talk to. Can you send load to 09177778888? God bless.",romance_scam,taglish,synthetic_holdout_v2,high
+synthetic,spam,"Ma, nasa hospital ako. Kailangan ko ng ₱15,000 agad. Send sa GCash 09185559999. Huwag kang magsumbong.",relative_scam,taglish,synthetic_holdout_v2,high
+synthetic,ham,BPI: Your one-time PIN is 773410. Valid for 5 minutes. Never share it.,otp,en,synthetic_holdout_v2,high
+synthetic,ham,"UnionBank: ₱2,300.00 was debited from your account ending 4821 on Oct 18. Not you? Call the number on your card.",bank_alert,en,synthetic_holdout_v2,high
+synthetic,ham,"BDO: Your payroll credit of ₱18,500.00 has been posted. Available balance: ₱21,204.55.",bank_alert,en,synthetic_holdout_v2,high
+synthetic,ham,LBC: Your parcel LBC123456789 is out for delivery today. Prepare valid ID.,delivery,en,synthetic_holdout_v2,high
+synthetic,ham,Ninja Van: Parcel PH-88421 will be delivered between 2-5PM. Track in the app.,delivery,en,synthetic_holdout_v2,high
+synthetic,ham,"Manila Water: Your bill of ₱620.75 is due on Nov 10. Pay via GCash, Maya, or the app.",bill,en,synthetic_holdout_v2,high
+synthetic,ham,"Kumain ka na ba? Ingat sa byahe mamaya, umuulan dito.",personal_taglish,taglish,synthetic_holdout_v2,high
+synthetic,ham,Salamat ulit sa pagtulong kahapon. Bayaran kita sa Friday pag sweldo.,personal_taglish,taglish,synthetic_holdout_v2,high
+synthetic,ham,Globe: Your GO+ promo expires on Nov 5. Renew via *143# if you want to continue.,promo,en,synthetic_holdout_v2,high
+synthetic,ham,"City Health Office: Your vaccination appointment is confirmed for Oct 24, 9:00 AM. Bring your ID.",appointment,en,synthetic_holdout_v2,high
+synthetic,ham,"UPD Registrar: Your request for TOR is ready for pickup at Window 3, 8AM-5PM.",school,en,synthetic_holdout_v2,high
+synthetic,ham,"GCash: Your authentication code is 904162. Do not share this code with anyone, even GCash staff.",otp,en,synthetic_holdout_v2,high
+synthetic,ham,J&T Express: Track your parcel at jtexpress.ph/track using waybill JT7788123.,legit_link,en,synthetic_holdout_v2,high
+synthetic,ham,"Maya: You sent ₱350.00 to JUAN DELA CRUZ. Ref 889201. If this wasn't you, contact support.",bank_alert,en,synthetic_holdout_v2,high
+synthetic,ham,"Bukas na lang tayo magkita, may pasok pa ako. Good night!",personal_taglish,taglish,synthetic_holdout_v2,high
+synthetic,ham,Shopee: Flash sale starts 12NN. Free shipping on selected items. Unsubscribe: reply STOP.,promo,en,synthetic_holdout_v2,high

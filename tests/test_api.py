@@ -200,6 +200,72 @@ def test_missing_model_returns_503_for_prediction_endpoints(missing_model_client
         assert response.json()["error"]["code"] == "model_unavailable"
 
 
+def test_feedback_is_disabled_by_default(client, monkeypatch):
+    monkeypatch.setattr(api_main, "FEEDBACK_ENABLED", False)
+    response = client.post(
+        "/feedback",
+        json={
+            "model_version": MODEL_VERSION,
+            "predicted_label": "spam",
+            "expected_label": "ham",
+            "category": "otp",
+        },
+    )
+    assert response.status_code == 404
+    assert "disabled" in response.json()["error"]["message"]
+
+
+def test_feedback_persists_only_explicit_non_message_metadata(client, tmp_path, monkeypatch):
+    report_path = tmp_path / "feedback" / "reports.jsonl"
+    monkeypatch.setattr(api_main, "FEEDBACK_ENABLED", True)
+    monkeypatch.setattr(api_main, "FEEDBACK_PATH", report_path)
+    response = client.post(
+        "/feedback",
+        json={
+            "model_version": MODEL_VERSION,
+            "predicted_label": "spam",
+            "expected_label": "ham",
+            "category": "otp",
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "received"
+    stored = json.loads(report_path.read_text(encoding="utf-8"))
+    assert stored["model_version"] == MODEL_VERSION
+    assert stored["server_model_version"] == MODEL_VERSION
+    assert stored["predicted_label"] == "spam"
+    assert stored["expected_label"] == "ham"
+    assert stored["category"] == "otp"
+    assert not ({"message", "text", "sms", "body"} & set(stored))
+
+
+def test_feedback_rejects_message_content_and_correct_predictions(client, tmp_path, monkeypatch):
+    monkeypatch.setattr(api_main, "FEEDBACK_ENABLED", True)
+    monkeypatch.setattr(api_main, "FEEDBACK_PATH", tmp_path / "feedback.jsonl")
+    with_text = client.post(
+        "/feedback",
+        json={
+            "model_version": MODEL_VERSION,
+            "predicted_label": "spam",
+            "expected_label": "ham",
+            "category": "otp",
+            "message": "private SMS must not be submitted",
+        },
+    )
+    same_label = client.post(
+        "/feedback",
+        json={
+            "model_version": MODEL_VERSION,
+            "predicted_label": "spam",
+            "expected_label": "spam",
+        },
+    )
+    assert with_text.status_code == 422
+    assert "private SMS" not in with_text.text
+    assert same_label.status_code == 422
+    assert not (tmp_path / "feedback.jsonl").exists()
+
+
 # ---------------------------------------------------------------------------
 # Model lifecycle
 # ---------------------------------------------------------------------------
@@ -234,9 +300,17 @@ def test_predict_uses_bundle_threshold(spam_probability, threshold, prediction, 
         response = client.post("/predict", json={"message": "Claim ₱1,000,000 now! Call 09171234567"})
     assert response.status_code == 200, response.text
     body = response.json()
-    assert set(body) == {"prediction", "probability", "flags", "decision_threshold", "model_version"}
+    assert set(body) == {
+        "prediction",
+        "probability",
+        "probability_calibrated",
+        "flags",
+        "decision_threshold",
+        "model_version",
+    }
     assert body["prediction"] == prediction
     assert body["probability"] == pytest.approx(class_probability)
+    assert body["probability_calibrated"] is False
     assert body["decision_threshold"] == pytest.approx(threshold)
     assert body["model_version"] == MODEL_VERSION
     assert isinstance(body["flags"], list)
@@ -254,6 +328,7 @@ ANALYZE_KEYS = {
     "message",
     "prediction",
     "spam_probability",
+    "probability_calibrated",
     "probability",
     "decision_threshold",
     "margin",
@@ -273,6 +348,7 @@ def test_analyze_returns_full_contract_payload(client):
     assert body["message"] == message
     assert body["prediction"] == "spam"
     assert body["spam_probability"] == pytest.approx(0.93)
+    assert body["probability_calibrated"] is False
     assert body["probability"] == pytest.approx(0.93)
     assert body["decision_threshold"] == pytest.approx(DECISION_THRESHOLD)
     assert body["margin"] == pytest.approx(abs(0.93 - DECISION_THRESHOLD))
@@ -435,7 +511,9 @@ MODEL_INFO_KEYS = {
     "trained_at",
     "training_data",
     "synthetic_training_data",
+    "probability_calibrated",
     "data_note",
+    "feedback_enabled",
     "metrics",
     "legacy_artifact",
     "warnings",
@@ -450,6 +528,8 @@ def test_model_info_exposes_thresholds_and_provenance(client):
     assert body["model_version"] == MODEL_VERSION
     assert body["decision_threshold"] == pytest.approx(DECISION_THRESHOLD)
     assert body["suspicious_threshold"] == pytest.approx(SUSPICIOUS_THRESHOLD)
+    assert body["probability_calibrated"] is False
+    assert body["feedback_enabled"] is False
     assert body["bands"] == {
         "likely_scam": pytest.approx(DECISION_THRESHOLD),
         "suspicious": pytest.approx(SUSPICIOUS_THRESHOLD),
