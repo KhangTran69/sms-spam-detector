@@ -1,0 +1,19 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+.ipynb_checkpoints/
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+models/*.pkl
+models/*.joblib
+!models/.gitkeep
+.pytest_cache/
+.DS_Store
+
+# Synthetic, shareable Philippine pattern files stay in git; real message data stays out.
+!data/raw/ph_supplement.csv
+!data/raw/ph_holdout.csv

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PH SMS Scam Detector</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>" />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand"><span class="brand-icon">🛡️</span> PH SMS Scam Detector</div>
+      <nav class="tabs" role="tablist" aria-label="Views">
+        <button class="tab active" id="tab-check" data-tab="check" role="tab" aria-selected="true">Check a message</button>
+        <button class="tab" id="tab-batch" data-tab="batch" role="tab" aria-selected="false">Batch check</button>
+        <button class="tab" id="tab-history" data-tab="history" role="tab" aria-selected="false">
+          History <span id="history-count" class="badge hidden">0</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <!-- ============ Single check ============ -->
+    <section id="panel-check" class="panel active" role="tabpanel">
+      <div class="card input-card">
+        <label for="message-input">Paste the SMS you want to check</label>
+        <textarea id="message-input" maxlength="10000" rows="5"
+          placeholder="e.g. BDO: Your account will be locked in 24 hours. Verify now at http://bdo-verify.ph/login or call 09171234567"></textarea>
+        <div class="input-row">
+          <span id="char-count" class="char-count">0 / 10000</span>
+          <div class="buttons">
+            <button id="btn-clear" class="btn ghost">Clear</button>
+            <button id="btn-check" class="btn primary">Check message</button>
+          </div>
+        </div>
+        <div id="error-banner" class="error hidden" role="alert"></div>
+      </div>
+
+      <div class="examples">
+        <span class="examples-label">Try an example:</span>
+        <button class="example-chip scam" data-example="scam">🚨 Scam sample</button>
+        <button class="example-chip safe" data-example="safe">✅ Safe sample</button>
+      </div>
+
+      <div id="result" class="result hidden">
+        <div id="verdict-card" class="card verdict">
+          <div id="verdict-icon" class="verdict-icon">🚨</div>
+          <div class="verdict-text">
+            <div id="verdict-title" class="verdict-title">Likely scam</div>
+            <div id="verdict-sub" class="verdict-sub"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="meter-head">
+            <h2>Scam risk</h2>
+            <div id="meter-value" class="meter-value">0%</div>
+          </div>
+          <div class="meter" aria-hidden="true">
+            <div id="meter-marker" class="meter-marker" style="left:0%"></div>
+          </div>
+          <div class="meter-labels"><span>Safe</span><span>Suspicious</span><span>Scam</span></div>
+        </div>
+
+        <div class="card">
+          <h2>Message signals</h2>
+          <div id="highlighted" class="highlighted"></div>
+          <div id="signals" class="signals"></div>
+        </div>
+
+        <div class="card">
+          <h2>Safety tips</h2>
+          <ul id="tips" class="tips"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ Batch check ============ -->
+    <section id="panel-batch" class="panel" role="tabpanel">
+      <div class="card input-card">
+        <label for="batch-input">Paste messages — one per line (up to 50)</label>
+        <textarea id="batch-input" rows="8" placeholder="One message per line…&#10;Claim ₱500,000 now! Call 09171234567&#10;Your OTP is 123456. Do not share."></textarea>
+        <div class="input-row">
+          <span id="batch-count" class="char-count">0 messages</span>
+          <div class="buttons">
+            <button id="btn-batch" class="btn primary">Check all</button>
+          </div>
+        </div>
+        <div id="batch-error" class="error hidden" role="alert"></div>
+      </div>
+
+      <div id="batch-summary" class="summary hidden">
+        <div class="stat stat-scam"><span id="stat-scam" class="stat-num">0</span><span class="stat-label">Likely scam</span></div>
+        <div class="stat stat-suspicious"><span id="stat-suspicious" class="stat-num">0</span><span class="stat-label">Suspicious</span></div>
+        <div class="stat stat-safe"><span id="stat-safe" class="stat-num">0</span><span class="stat-label">Looks safe</span></div>
+      </div>
+
+      <div id="batch-results" class="card table-card hidden">
+        <table class="batch-table">
+          <thead>
+            <tr><th class="col-num">#</th><th>Message</th><th>Verdict</th><th>Risk</th><th>Signals</th></tr>
+          </thead>
+          <tbody id="batch-tbody"></tbody>
+        </table>
+        <p class="hint">Click a row to open the full analysis.</p>
+      </div>
+    </section>
+
+    <!-- ============ History ============ -->
+    <section id="panel-history" class="panel" role="tabpanel">
+      <div class="card">
+        <div class="history-head">
+          <h2>Recent checks</h2>
+          <button id="btn-clear-history" class="btn ghost danger">Clear history</button>
+        </div>
+        <p class="hint">Stored in this browser only (localStorage) — newest first, up to 50 entries.</p>
+        <ul id="history-list" class="history-list"></ul>
+        <div id="history-empty" class="empty">No checks yet. Check a message and it will appear here.</div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>Heuristic aid, not a guarantee. Verify money or account messages through the official app or hotline — and never share OTPs or PINs.</p>
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
