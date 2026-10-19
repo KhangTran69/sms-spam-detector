@@ -1,7 +1,25 @@
-"""Train/persist/load round-trip on a small synthetic dataset (no repo data needed)."""
-import pytest
+"""Model training, artifact/persistence, threshold, and inference contract tests."""
+from __future__ import annotations
 
-from src.predict import load_model, predict_message
+import json
+from pathlib import Path
+
+import joblib
+import pytest
+from sklearn.naive_bayes import MultinomialNB
+
+from src.features import make_model, messages_to_frame
+from src.predict import (
+    ARTIFACT_SCHEMA_VERSION,
+    ModelArtifactError,
+    ModelBundle,
+    analyze_batch,
+    analyze_message,
+    analyze_messages,
+    load_model,
+    model_info,
+    predict_message,
+)
 from src.train import train
 
 SPAM = [
@@ -13,7 +31,16 @@ SPAM = [
     "Claim your free ₱1M prize now! Winner winner!",
     "Free gift for you! Claim your prize now, limited slots only.",
     "Congrats winner! Claim free cash prize now. Call 09171234567",
+    "You are selected! Send your account details to 09176667777 to receive ₱20,000.",
+    "Final notice: claim your unclaimed prize of PHP 75,000 today!",
+    "Lucky texter! Win a free iPhone. Register at bit.ly/prize-now agad.",
+    "You won ₱500,000 from PCSO. Text your name to 09178889999 now.",
+    "Free load giveaway! First 100 texters get PHP 1,000. Text JOIN now.",
+    "Your parcel is held. Pay ₱150 customs fee at bit.ly/parcel-fee today.",
+    "Account suspended. Verify at bdo-secure.xyz/login immediately.",
+    "Investment opportunity: 20% monthly return guaranteed. Message 09179990000 now.",
 ]
+
 HAM = [
     "Thanks, see you at lunch tomorrow",
     "Ok po, salamat. See you at the meeting",
@@ -23,40 +50,256 @@ HAM = [
     "Ok lang ako, salamat po sa tanong",
     "Lunch at the usual place tomorrow?",
     "Meeting moved to Friday, salamat",
+    "Your BDO OTP is 294831. Do not share with anyone.",
+    "GCash: You received ₱1,500 from ANA LIM. Balance: ₱6,200.00.",
+    "Meralco: Your bill of ₱1,890.50 is due Nov 5. Pay via app.",
+    "J&T Express: Parcel JT5522878 out for delivery. Track at jtexpress.ph/track",
+    "LBC: Your parcel is at the branch. Claim within 5 days.",
+    "Uwi ka na agad, ulan na dito sa amin. Ingat!",
+    "Salamat sa regalo mo! See you Sunday sa reunion.",
+    "BPI: OTP 558201. Never share this code with anyone.",
 ]
 
 
+def make_tiny_dataset(path: Path) -> Path:
+    import csv
+
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(["label", "message", "category", "language", "group"])
+        for index, message in enumerate(SPAM):
+            writer.writerow(["spam", message, "prize_scam", "taglish", f"spam-family-{index}"])
+        for index, message in enumerate(HAM):
+            writer.writerow(["ham", message, "personal", "taglish", f"ham-family-{index}"])
+    return path
+
+
 @pytest.fixture(scope="module")
-def trained_model_path(tmp_path_factory):
-    data_path = tmp_path_factory.mktemp("data") / "tiny.csv"
-    lines = ["label,message"]
-    lines += [f'spam,"{m}"' for m in SPAM]
-    lines += [f'ham,"{m}"' for m in HAM]
-    data_path.write_text("\n".join(lines), encoding="utf-8")
+def trained_artifact(tmp_path_factory):
+    data_path = make_tiny_dataset(tmp_path_factory.mktemp("data") / "tiny.csv")
     model_path = tmp_path_factory.mktemp("models") / "tiny_model.pkl"
-    train(data_path=data_path, model_path=model_path, supplement_path=None)
-    return model_path
+    artifact = train(
+        data_path=data_path,
+        model_path=model_path,
+        supplement_path=None,
+        holdout_path=None,
+        val_size=0.2,
+        test_size=0.2,
+        random_state=7,
+        target_precision=0.5,
+        min_recall=0.0,
+        write_metadata=False,
+        verbose=False,
+    )
+    return artifact, model_path
 
 
-def test_train_saves_model(trained_model_path):
-    assert trained_model_path.exists()
+def test_artifact_contains_required_metadata(trained_artifact):
+    artifact, _ = trained_artifact
+    assert artifact["artifact_schema_version"] == ARTIFACT_SCHEMA_VERSION
+    assert 0.0 < artifact["threshold"] < 1.0
+    assert artifact["label_map"] == {"ham": "ham", "spam": "spam"}
+    assert artifact["classes"] == ["ham", "spam"]
+    assert artifact["training_config"]["random_state"] == 7
+    assert artifact["data_sources"][0]["sha256"]
+    assert "model_version" in artifact
+    assert "metrics" in artifact
+    assert "split" in artifact
+    assert artifact["split"]["group_leakage"] == 0
+    assert artifact["threshold_selection"]["target_precision"] == 0.5
+    assert "data_note" in artifact and "synthetic" in artifact["data_note"].lower()
 
 
-def test_load_model_missing_raises(tmp_path):
-    with pytest.raises(FileNotFoundError):
-        load_model(tmp_path / "missing.pkl")
+def test_load_model_returns_bundle_with_matching_threshold(trained_artifact):
+    artifact, model_path = trained_artifact
+    bundle = load_model(model_path)
+    assert isinstance(bundle, ModelBundle)
+    assert bundle.threshold == pytest.approx(artifact["threshold"])
+    assert bundle.classes == ["ham", "spam"]
+    assert bundle.version == artifact["model_version"]
+    assert bundle.bands["likely_scam"] == pytest.approx(bundle.threshold)
+    assert bundle.bands["suspicious"] < bundle.bands["likely_scam"]
+    assert bundle.legacy is False
 
 
-def test_predict_message_contract(trained_model_path):
-    result = predict_message("Claim your free prize now!", model_path=trained_model_path)
+def test_model_info_is_json_safe_and_contains_provenance(trained_artifact):
+    _, model_path = trained_artifact
+    info = model_info(model_path=model_path)
+    json.dumps(info)
+    assert info["model_version"]
+    assert info["decision_threshold"] > 0
+    assert info["training_data"]
+    assert info["synthetic_training_data"] is True
+    assert "synthetic" in info["data_note"].lower()
+
+
+def test_predict_message_contract(trained_artifact):
+    _, model_path = trained_artifact
+    result = predict_message("Claim your free prize now!", model_path=model_path)
     assert set(result) == {"prediction", "probability", "flags"}
     assert result["prediction"] in {"spam", "ham"}
     assert 0.0 <= result["probability"] <= 1.0
     assert set(result["flags"]) <= {"has_url", "has_phone", "has_money", "has_urgency"}
 
 
-def test_obvious_spam_and_ham(trained_model_path):
-    spam = predict_message("Congrats! Claim your free prize of ₱100,000 now", model_path=trained_model_path)
-    ham = predict_message("Salamat! See you at the meeting tomorrow", model_path=trained_model_path)
-    assert spam["prediction"] == "spam"
-    assert ham["prediction"] == "ham"
+def test_analyze_message_contract_and_threshold_consistency(trained_artifact):
+    _, model_path = trained_artifact
+    bundle = load_model(model_path)
+    result = analyze_message("Congratulations! Claim your free ₱100,000 now", model_path=model_path)
+    assert set(result) == {
+        "message",
+        "prediction",
+        "spam_probability",
+        "probability",
+        "decision_threshold",
+        "margin",
+        "confidence",
+        "risk_band",
+        "flags",
+        "matches",
+        "brands",
+        "model_version",
+    }
+    assert result["decision_threshold"] == pytest.approx(bundle.threshold)
+    assert result["prediction"] == (
+        "spam" if result["spam_probability"] >= bundle.threshold else "ham"
+    )
+    assert result["margin"] == pytest.approx(abs(result["spam_probability"] - bundle.threshold))
+    assert result["confidence"] in {"low", "medium", "high"}
+    assert result["risk_band"] in {"likely_scam", "suspicious", "looks_safe"}
+    expected_probability = (
+        result["spam_probability"] if result["prediction"] == "spam" else 1 - result["spam_probability"]
+    )
+    assert result["probability"] == pytest.approx(expected_probability)
+
+
+def test_batch_analysis_matches_single_analysis(trained_artifact):
+    _, model_path = trained_artifact
+    messages = ["Claim your free prize now!", "Thanks, see you at lunch tomorrow", "GCash: You received ₱1,500"]
+    batch = analyze_batch(messages, model_path=model_path)
+    singles = [analyze_message(message, model_path=model_path) for message in messages]
+    assert [item["message"] for item in batch] == messages
+    assert [item["prediction"] for item in batch] == [item["prediction"] for item in singles]
+    assert [item["spam_probability"] for item in batch] == pytest.approx(
+        [item["spam_probability"] for item in singles]
+    )
+
+
+def test_threshold_changes_decision_consistently():
+    model = make_model(MultinomialNB())
+    model.fit(messages_to_frame(SPAM + HAM), ["spam"] * len(SPAM) + ["ham"] * len(HAM))
+    low = ModelBundle(pipeline=model, threshold=0.1)
+    high = ModelBundle(pipeline=model, threshold=0.99)
+    message = "Claim your free prize now!"
+    low_result = analyze_message(message, model=low)
+    high_result = analyze_message(message, model=high)
+    assert low_result["decision_threshold"] == pytest.approx(0.1)
+    assert high_result["decision_threshold"] == pytest.approx(0.99)
+    assert low_result["prediction"] == (
+        "spam" if low_result["spam_probability"] >= 0.1 else "ham"
+    )
+    assert high_result["prediction"] == (
+        "spam" if high_result["spam_probability"] >= 0.99 else "ham"
+    )
+
+
+def test_legacy_bare_pipeline_artifact_is_supported_with_warning(tmp_path):
+    model = make_model(MultinomialNB())
+    model.fit(messages_to_frame(SPAM + HAM), ["spam"] * len(SPAM) + ["ham"] * len(HAM))
+    path = tmp_path / "legacy.pkl"
+    joblib.dump(model, path)
+    bundle = load_model(path)
+    assert bundle.legacy is True
+    assert bundle.threshold == pytest.approx(0.5)
+    assert any("Legacy artifact" in warning for warning in bundle.model_info()["warnings"])
+
+
+def test_missing_model_raises_file_not_found(tmp_path):
+    with pytest.raises(FileNotFoundError, match="python -m src.train"):
+        load_model(tmp_path / "missing.pkl")
+
+
+def test_corrupt_artifact_fails_safely(tmp_path):
+    path = tmp_path / "corrupt.pkl"
+    path.write_text("this is not a joblib artifact", encoding="utf-8")
+    with pytest.raises(ModelArtifactError, match="Could not read|corrupt"):
+        load_model(path)
+
+
+def test_newer_schema_fails_with_actionable_error(trained_artifact, tmp_path):
+    artifact, _ = trained_artifact
+    payload = dict(artifact)
+    payload["artifact_schema_version"] = ARTIFACT_SCHEMA_VERSION + 1
+    path = tmp_path / "newer.pkl"
+    joblib.dump(payload, path)
+    with pytest.raises(ModelArtifactError, match="newer than this code"):
+        load_model(path)
+
+
+def test_feature_version_mismatch_fails(trained_artifact, tmp_path):
+    artifact, _ = trained_artifact
+    payload = dict(artifact)
+    payload["feature_version"] = "0.0.1"
+    path = tmp_path / "old_features.pkl"
+    joblib.dump(payload, path)
+    with pytest.raises(ModelArtifactError, match="feature_version"):
+        load_model(path)
+
+
+def test_invalid_threshold_fails(trained_artifact, tmp_path):
+    artifact, _ = trained_artifact
+    payload = dict(artifact)
+    payload["threshold"] = 1.5
+    path = tmp_path / "bad_threshold.pkl"
+    joblib.dump(payload, path)
+    with pytest.raises(ModelArtifactError, match="threshold"):
+        load_model(path)
+
+
+def test_unsupported_object_fails_safely(tmp_path):
+    path = tmp_path / "unsupported.pkl"
+    joblib.dump({"hello": "world"}, path)
+    with pytest.raises(ModelArtifactError, match="artifact_schema_version"):
+        load_model(path)
+
+
+def test_input_validation(trained_artifact):
+    _, model_path = trained_artifact
+    for bad in ("", "   "):
+        with pytest.raises(ValueError, match="blank"):
+            analyze_message(bad, model_path=model_path)
+    with pytest.raises(ValueError, match="maximum"):
+        analyze_message("a" * 10_001, model_path=model_path)
+    with pytest.raises(ValueError, match="iterable of strings"):
+        analyze_messages(12345, model_path=model_path)
+    with pytest.raises(ValueError, match="must be a string"):
+        analyze_message(["not", "a", "string"], model_path=model_path)
+
+
+def test_smsd_model_path_env_override(monkeypatch, trained_artifact):
+    _, model_path = trained_artifact
+    monkeypatch.setenv("SMSD_MODEL_PATH", str(model_path))
+    bundle = load_model()
+    assert bundle.threshold > 0
+
+
+def test_training_is_reproducible(trained_artifact, tmp_path):
+    artifact, _ = trained_artifact
+    data_path = Path(artifact["training_config"]["data_path"])
+    second_path = tmp_path / "second.pkl"
+    second = train(
+        data_path=data_path,
+        model_path=second_path,
+        supplement_path=None,
+        holdout_path=None,
+        val_size=0.2,
+        test_size=0.2,
+        random_state=7,
+        target_precision=0.5,
+        min_recall=0.0,
+        write_metadata=False,
+        verbose=False,
+    )
+    assert second["threshold"] == pytest.approx(artifact["threshold"])
+    assert second["split"] == artifact["split"]
+    assert second["metrics"]["test_at_threshold"] == artifact["metrics"]["test_at_threshold"]

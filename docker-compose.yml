@@ -1,0 +1,55 @@
+# Local container deployment for the Philippine SMS spam/scam detector API.
+#
+#   docker compose build
+#   docker compose up -d
+#   curl http://127.0.0.1:8000/health
+#   curl http://127.0.0.1:8000/ready
+#
+# The trained bundle must exist on the host at ./models/spam_detector_v1.pkl
+# (train it first: `python -m src.train`). It is mounted read-only; the image
+# itself contains no artifact and no data.
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: philippine-sms-spam-detector:local
+    container_name: smsd-api
+    ports:
+      - "127.0.0.1:8000:8000"  # bind to loopback; put a TLS reverse proxy in front for exposure
+    volumes:
+      - ./models:/app/models:ro
+    environment:
+      # Path to the joblib ModelBundle inside the container.
+      SMSD_MODEL_PATH: /app/models/spam_detector_v1.pkl
+      # Comma-separated browser origins allowed by CORS. The bundled UI is
+      # same-origin; add your reverse-proxy origin (https://...) if you host it
+      # elsewhere.
+      SMSD_CORS_ORIGINS: "http://127.0.0.1:8000,http://localhost:8000"
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import sys, urllib.request; r = urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3); sys.exit(0 if r.status == 200 else 1)"
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    # Defense in depth: no privilege escalation, no Linux capabilities needed.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    # Resource limits (Docker Compose v2). The inference service is small: the
+    # sklearn pipeline fits comfortably in a few hundred MB for SMS-length input.
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 256M

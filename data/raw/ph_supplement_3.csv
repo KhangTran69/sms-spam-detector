@@ -1,0 +1,53 @@
+label,message,category,language,source,labeling_confidence
+ham,Metrobank: Your OTP is 118204. Valid for 10 minutes. Never share this code with anyone.,otp,en,synthetic_template_v3,high
+ham,Maya: 438102 is your Maya verification code. Do not share it.,otp,en,synthetic_template_v3,high
+ham,"Landbank: Your transaction OTP is 662817. If you did not request it, call the bank.",otp,en,synthetic_template_v3,high
+ham,"BPI: A debit of PHP 1,250.00 was made on your account ending 3310. If unexpected, call BPI.",bank_alert,en,synthetic_template_v3,high
+ham,"BDO: Salary credit PHP 22,000.00 received. New balance PHP 25,310.20.",bank_alert,en,synthetic_template_v3,high
+ham,Security Bank: Your card ending 7788 was used for PHP 899.00 at SM MANILA. Reply HELP for assistance.,bank_alert,en,synthetic_template_v3,high
+ham,"GCash: You paid PHP 250.00 to GLOBE. Ref 120398421. Balance PHP 1,403.55.",bank_alert,en,synthetic_template_v3,high
+ham,"Maya: Cash in of PHP 2,000.00 received from BDO. New balance PHP 2,450.00.",bank_alert,en,synthetic_template_v3,high
+ham,LBC: Package LBC778812345 is now at your local branch. Claim within 5 days; bring valid ID.,delivery,en,synthetic_template_v3,high
+ham,Ninja Van: Your delivery is scheduled today between 1-4PM. Rider will call before arrival.,delivery,en,synthetic_template_v3,high
+ham,Flash Express: Your parcel has arrived at the sorting hub. Delivery in 1-2 days.,delivery,en,synthetic_template_v3,high
+ham,2GO: Track your shipment 2GO-556677 at 2go.com.ph/track or in the 2GO app.,legit_link,en,synthetic_template_v3,high
+ham,Lazada: Your order 120394857 has shipped. Track it in the Lazada app or at lazada.com.ph/track.,legit_link,en,synthetic_template_v3,high
+ham,Shopee: Your voucher expires tonight. Use it at checkout in the Shopee app.,promo,en,synthetic_template_v3,high
+ham,Globe: Your 8GB data allocation has been refreshed. Check *143# for details.,promo,en,synthetic_template_v3,high
+ham,"PLDT: Your October bill is PHP 1,699.00, due on Nov 8. Pay via the PLDT app or GCash.",bill,en,synthetic_template_v3,high
+ham,"Maynilad: Statement for September is PHP 780.25, due Oct 30. Pay through Maya, GCash, or partner outlets.",bill,en,synthetic_template_v3,high
+ham,SSS: Your monthly contribution for September has been posted. View your record in the SSS app.,government,en,synthetic_template_v3,high
+ham,PhilHealth: Your membership payment was received. Reference 2026-10-19-8842.,government,en,synthetic_template_v3,high
+ham,"Pag-IBIG: Your loan payment of PHP 3,500.00 was posted. Thank you.",government,en,synthetic_template_v3,high
+ham,"LTO: Your license renewal appointment is confirmed for Nov 3, 10:00 AM at LTO Pasay. Bring your old license.",appointment,en,synthetic_template_v3,high
+ham,"Ingat ka pauwi, malakas ang ulan dito. Text mo ako pagdating mo.",personal_taglish,taglish,synthetic_template_v3,high
+ham,Nakabili na ako ng pagkain para sa handaan. Pupunta ka ba bukas?,personal_taglish,taglish,synthetic_template_v3,high
+ham,"Salamat sa pagpapahiram ng pera. Ibabalik ko sa susunod na linggo, promise.",personal_taglish,taglish,synthetic_template_v3,high
+ham,City Government: Check your business permit status at permits.city.gov.ph using your reference number.,legit_link,en,synthetic_template_v3,high
+ham,PhilHealth: View your contribution record at philhealth.gov.ph by logging in to your account.,legit_link,en,synthetic_template_v3,high
+ham,Ateneo Registrar: Your diploma is ready for release starting Monday at the Registrar's Office.,school,en,synthetic_template_v3,high
+ham,Red Cross: Your blood donation schedule is confirmed for Saturday 9AM. Salamat!,appointment,en,synthetic_template_v3,high
+spam,Landbank: Your account has been temporarily restricted. Restore access at landbank-secure.online/verify within 12 hours.,bank_phishing,en,synthetic_template_v3,high
+spam,"BPI: A new device logged in. If this wasn't you, verify at bpi-alert.site/login now or account will be locked.",bank_phishing,en,synthetic_template_v3,high
+spam,Maya: Your wallet is under review. Submit your ID at maya-verify.info/upload to avoid suspension.,bank_phishing,en,synthetic_template_v3,high
+spam,"Congratulations! Your number won ₱500,000 in the SM Supermalls anniversary promo. Claim via 09170001234 within 24 hours.",prize_scam,taglish,synthetic_template_v3,high
+spam,"You are our lucky texter! Get a free iPhone 17. Just pay ₱2,500 shipping via GCash 09173334444 agad.",prize_scam,taglish,synthetic_template_v3,high
+spam,Flash Express: Parcel returned due to incomplete address. Pay ₱180 redelivery fee at flash-redeliver.xyz now.,delivery_scam,en,synthetic_template_v3,high
+spam,2GO: Your package needs customs clearance. Send PHP 350 via 09175556666 to release it today.,delivery_scam,en,synthetic_template_v3,high
+spam,Globe: Your SIM is not yet registered. Register at globe-simreg.top within 24 hours or lose your number.,sim_registration_scam,en,synthetic_template_v3,high
+spam,"SSS pension loan approved! PHP 60,000 cash, no collateral. Message 09176667777 ngayon para ma-claim.",loan_scam,taglish,synthetic_template_v3,high
+spam,"Part-time job! Earn PHP 2,500 per day liking videos. Send your GCash number to 09177778888 agad.",job_scam,taglish,synthetic_template_v3,high
+spam,"Investment alert: 20% guaranteed monthly return. Minimum PHP 5,000. Join at crypto-earn.online now.",investment_scam,en,synthetic_template_v3,high
+spam,This is Metrobank security. We detected a login. Reply with the 6-digit OTP sent to your phone to cancel it.,otp_social_engineering,en,synthetic_template_v3,high
+spam,"Tita, nahospital si mama. Kailangan ng PHP 20,000 agad. Send sa GCash 09178889999 at huwag sabihin kay papa.",relative_scam,taglish,synthetic_template_v3,high
+spam,"DSWD: You are qualified for ₱8,000 cash aid. Claim at dswd-help.site/claim with your full name and ID.",government_subsidy_scam,taglish,synthetic_template_v3,high
+spam,TM: You won 100GB free data! Text CLAIM to 09179990000 and send load worth ₱100 to activate.,load_scam,taglish,synthetic_template_v3,high
+spam,"Hi, I'm a US soldier stationed abroad. I need help with my package. Send PHP 12,000 to 09170001111 and we will meet.",romance_scam,en,synthetic_template_v3,high
+ham,LBC: Track your parcel at lbc.com.ph/track. Waybill 445566778.,legit_link,en,synthetic_template_v3,high
+ham,Flash Express: Track your parcel at flash-express.com/track using waybill FE99881.,legit_link,en,synthetic_template_v3,high
+ham,Ninja Van: Track your parcel at ninjavan.co/track using waybill NV123456.,legit_link,en,synthetic_template_v3,high
+ham,Shopee: Flash sale this weekend! Free shipping on selected items. Reply STOP to unsubscribe.,promo,en,synthetic_template_v3,high
+ham,Globe: Limited-time promo: extra 2GB data for PHP 50. Register via *143#.,promo,en,synthetic_template_v3,high
+ham,BDO: Your statement is ready. View it in BDO Online Banking.,bank_alert,en,synthetic_template_v3,high
+ham,GCash: Your transaction receipt is available in the app. Ref 123456.,bank_alert,en,synthetic_template_v3,high
+ham,Maya: Your account statement for October is now available in the app.,bank_alert,en,synthetic_template_v3,high

@@ -1,16 +1,43 @@
 /* PH SMS Scam Detector — UI logic (no build step, vanilla JS). */
 "use strict";
 
-const API = { analyze: "/analyze", analyzeBatch: "/analyze/batch" };
-const HISTORY_KEY = "smsd_history_v1";
-const HISTORY_LIMIT = 50;
+/* Endpoints served by api/main.py. Keep this list in sync with the API routes;
+   tests/test_web_contract.py asserts every path here exists on the API. */
+const API = {
+  modelInfo: "/model-info",
+  analyze: "/analyze",
+  analyzeBatch: "/analyze/batch",
+};
 
-/* Verdict bands over the model's spam probability. The 0.70 cutoff mirrors the
-   project's precision-first guidance (legit OTPs must not read as "scam"). */
-const BANDS = {
-  spam: { min: 0.70, title: "Likely scam", icon: "🚨" },
-  suspicious: { min: 0.40, title: "Suspicious", icon: "⚠️" },
-  safe: { min: 0.00, title: "Looks safe", icon: "✅" },
+const HISTORY_KEY = "smsd_history_v1";
+const HISTORY_PREF_KEY = "smsd_history_enabled_v1";
+const HISTORY_LIMIT = 50;
+const BATCH_LIMIT = 50;
+const MAX_MESSAGE_LENGTH = 10000;
+
+const SYNTHETIC_DATA_NOTE =
+  "This model is trained and evaluated on synthetic Philippine data; it is not proof of real-world accuracy. Treat every verdict as a hint, not a fact.";
+const HISTORY_OFF_NOTE =
+  "History is off. Turn it on to keep the last 50 checks in this browser.";
+
+/* Fallback thresholds mirror the API default; the authoritative values are
+   fetched from GET /model-info on load (decision_threshold, suspicious_threshold
+   and the risk `bands`). These constants only cover a metadata fetch failure. */
+const FALLBACK_BANDS = { likely_scam: 0.7, suspicious: 0.4, looks_safe: 0.0 };
+const FALLBACK_MODEL_INFO = {
+  model_version: "unknown",
+  decision_threshold: 0.5,
+  suspicious_threshold: 0.4,
+  bands: { ...FALLBACK_BANDS },
+  data_note: SYNTHETIC_DATA_NOTE,
+};
+
+/* API risk_band -> presentation. Titles/icons live here so every view is
+   consistent; cutoffs always come from modelInfo.bands. */
+const BAND_VIEW = {
+  likely_scam: { css: "spam", title: "Likely scam", icon: "🚨" },
+  suspicious: { css: "suspicious", title: "Suspicious", icon: "⚠️" },
+  looks_safe: { css: "safe", title: "Looks safe", icon: "✅" },
 };
 
 const SIGNALS = {
@@ -41,90 +68,281 @@ const EXAMPLES = {
 
 const $ = (id) => document.getElementById(id);
 
-function bandOf(spamProbability) {
-  if (spamProbability >= BANDS.spam.min) return "spam";
-  if (spamProbability >= BANDS.suspicious.min) return "suspicious";
-  return "safe";
+let modelInfo = normalizeModelInfo(FALLBACK_MODEL_INFO);
+let historyEnabled = false;
+
+/* ---------- Small helpers ---------- */
+function numberOr(value, fallback) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
 }
 
-async function api(path, body) {
-  let response;
-  try {
-    response = await fetch(path, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-  } catch {
-    throw new Error("Could not reach the API — is the server running?");
+function pct(value) {
+  return `${Math.round(numberOr(value, 0) * 100)}%`;
+}
+
+function prefersReducedMotion() {
+  return Boolean(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+}
+
+function normalizeModelInfo(info) {
+  const safe = info && typeof info === "object" ? info : {};
+  const bands = safe.bands && typeof safe.bands === "object" ? safe.bands : {};
+  const dataNote = typeof safe.data_note === "string" && safe.data_note.trim()
+    ? safe.data_note.trim()
+    : SYNTHETIC_DATA_NOTE;
+  return {
+    raw: safe,
+    model_version: typeof safe.model_version === "string" && safe.model_version
+      ? safe.model_version
+      : FALLBACK_MODEL_INFO.model_version,
+    decision_threshold: numberOr(safe.decision_threshold, FALLBACK_MODEL_INFO.decision_threshold),
+    suspicious_threshold: numberOr(safe.suspicious_threshold, FALLBACK_MODEL_INFO.suspicious_threshold),
+    bands: {
+      likely_scam: numberOr(bands.likely_scam, numberOr(safe.decision_threshold, FALLBACK_BANDS.likely_scam)),
+      suspicious: numberOr(bands.suspicious, numberOr(safe.suspicious_threshold, FALLBACK_BANDS.suspicious)),
+      looks_safe: numberOr(bands.looks_safe, FALLBACK_BANDS.looks_safe),
+    },
+    data_note: dataNote,
+  };
+}
+
+/* ---------- API access ---------- */
+function errorMessageFromResponse(data, response) {
+  const error = data && typeof data.error === "object" && data.error ? data.error : null;
+  if (error && typeof error.message === "string" && error.message.trim()) return error.message.trim();
+  const detail = data ? data.detail : null;
+  if (typeof detail === "string" && detail.trim()) return detail.trim();
+  if (Array.isArray(detail)) {
+    const messages = detail
+      .map((item) => (item && typeof item.msg === "string" ? item.msg : null))
+      .filter(Boolean);
+    if (messages.length) return messages.join("; ");
   }
-  const data = await response.json().catch(() => ({}));
+  if (response.status === 503) {
+    return "The model is not available on this server. If you run this project locally, train it with: python -m src.train";
+  }
+  return `Request failed (HTTP ${response.status}). Please try again.`;
+}
+
+async function parseResponse(response) {
+  let data = null;
+  try {
+    data = await response.json();
+  } catch {
+    data = null;
+  }
   if (!response.ok) {
-    const detail = data.detail;
-    const message = typeof detail === "string"
-      ? detail
-      : Array.isArray(detail)
-        ? detail.map((d) => d.msg || JSON.stringify(d)).join("; ")
-        : `Request failed (HTTP ${response.status})`;
-    throw new Error(message);
+    const error = data && typeof data.error === "object" && data.error ? data.error : null;
+    const failure = new Error(errorMessageFromResponse(data, response));
+    failure.status = response.status;
+    failure.code = error && typeof error.code === "string" ? error.code : null;
+    throw failure;
   }
   return data;
 }
 
-/* ---------- Tabs ---------- */
-function switchTab(name) {
-  for (const tab of document.querySelectorAll(".tab")) {
-    const active = tab.dataset.tab === name;
-    tab.classList.toggle("active", active);
-    tab.setAttribute("aria-selected", String(active));
+async function requestJson(path, options) {
+  let response;
+  try {
+    response = await fetch(path, options);
+  } catch {
+    const failure = new Error("Could not reach the detector API. Check that the server is running and try again.");
+    failure.offline = true;
+    throw failure;
+  }
+  return parseResponse(response);
+}
+
+function postJson(path, body) {
+  return requestJson(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+function describeError(failure) {
+  if (!failure) return "Something went wrong. Please try again.";
+  let message = failure.message || "Something went wrong. Please try again.";
+  const modelUnavailable = failure.status === 503 || failure.code === "model_unavailable";
+  if (modelUnavailable && !message.includes("src.train")) {
+    message += " If you run this project locally, train the model with: python -m src.train";
+  }
+  return message;
+}
+
+/* ---------- Status banners ---------- */
+function showBanner(banner, message) {
+  banner.textContent = message;
+  banner.classList.remove("hidden");
+}
+
+function hideBanner(banner) {
+  banner.textContent = "";
+  banner.classList.add("hidden");
+}
+
+function setBusy(button, busy, busyLabel) {
+  if (busy) {
+    if (!button.dataset.idleLabel) button.dataset.idleLabel = button.textContent;
+    button.textContent = busyLabel;
+    button.disabled = true;
+    button.setAttribute("aria-busy", "true");
+    return;
+  }
+  button.textContent = button.dataset.idleLabel || button.textContent;
+  button.disabled = false;
+  button.removeAttribute("aria-busy");
+}
+
+/* ---------- Tabs (ARIA tablist with arrow/Home/End navigation) ---------- */
+function tabElements() {
+  return Array.from(document.querySelectorAll('[role="tab"]'));
+}
+
+function selectTab(tab) {
+  const name = tab.dataset.tab;
+  for (const candidate of tabElements()) {
+    const selected = candidate === tab;
+    candidate.classList.toggle("active", selected);
+    candidate.setAttribute("aria-selected", String(selected));
+    candidate.tabIndex = selected ? 0 : -1;
   }
   for (const panel of document.querySelectorAll(".panel")) {
-    panel.classList.toggle("active", panel.id === `panel-${name}`);
+    const active = panel.id === `panel-${name}`;
+    panel.classList.toggle("active", active);
+    panel.hidden = !active;
   }
 }
 
-/* ---------- Single check rendering ---------- */
+function switchTab(name) {
+  const tab = tabElements().find((candidate) => candidate.dataset.tab === name);
+  if (tab) selectTab(tab);
+}
+
+function initTabs() {
+  const tabs = tabElements();
+  tabs.forEach((tab, index) => {
+    tab.addEventListener("click", () => selectTab(tab));
+    tab.addEventListener("keydown", (event) => {
+      let nextIndex = null;
+      if (event.key === "ArrowRight") nextIndex = (index + 1) % tabs.length;
+      else if (event.key === "ArrowLeft") nextIndex = (index - 1 + tabs.length) % tabs.length;
+      else if (event.key === "Home") nextIndex = 0;
+      else if (event.key === "End") nextIndex = tabs.length - 1;
+      if (nextIndex === null) return;
+      event.preventDefault();
+      const next = tabs[nextIndex];
+      next.focus();
+      selectTab(next);
+    });
+  });
+  if (tabs.length) selectTab(tabs[0]);
+}
+
+/* ---------- Model information ---------- */
+function renderModelInfo() {
+  $("model-version").textContent = `Model version: ${modelInfo.model_version}`;
+  $("model-note").textContent = modelInfo.data_note;
+  $("model-thresholds").textContent =
+    `Decision threshold ${pct(modelInfo.decision_threshold)} · risk bands: likely scam ≥ ` +
+    `${pct(modelInfo.bands.likely_scam)}, suspicious ≥ ${pct(modelInfo.bands.suspicious)}.`;
+}
+
+async function loadModelInfo() {
+  const warning = $("model-warning");
+  try {
+    const info = await requestJson(API.modelInfo);
+    modelInfo = normalizeModelInfo(info);
+    warning.textContent = "";
+    warning.classList.add("hidden");
+  } catch (failure) {
+    modelInfo = normalizeModelInfo(FALLBACK_MODEL_INFO);
+    warning.textContent =
+      `${describeError(failure)} Using built-in fallback thresholds until model information is available.`;
+    warning.classList.remove("hidden");
+  }
+  renderModelInfo();
+}
+
+/* ---------- Banding ---------- */
+function bandFromProbability(probability) {
+  const value = numberOr(probability, 0);
+  if (value >= modelInfo.bands.likely_scam) return "likely_scam";
+  if (value >= modelInfo.bands.suspicious) return "suspicious";
+  return "looks_safe";
+}
+
+/* Prefer the API's own verdict band and fall back to the thresholds. */
+function bandOf(analysis) {
+  if (analysis && typeof analysis.risk_band === "string" && BAND_VIEW[analysis.risk_band]) {
+    return analysis.risk_band;
+  }
+  return bandFromProbability(analysis ? analysis.spam_probability : 0);
+}
+
+function bandView(band) {
+  return BAND_VIEW[band] || BAND_VIEW.looks_safe;
+}
+
+/* ---------- Single-check rendering ---------- */
 function renderVerdict(analysis) {
-  const band = bandOf(analysis.spam_probability);
-  const card = $("verdict-card");
-  card.className = `card verdict ${band}`;
-  $("verdict-icon").textContent = BANDS[band].icon;
-  $("verdict-title").textContent = BANDS[band].title;
-  const pct = Math.round(analysis.spam_probability * 100);
+  const band = bandOf(analysis);
+  const view = bandView(band);
+  $("verdict-card").className = `card verdict ${view.css}`;
+  $("verdict-icon").textContent = view.icon;
+  $("verdict-title").textContent = view.title;
+  const confidence = typeof analysis.confidence === "string" ? analysis.confidence : "unknown";
+  const decisionThreshold = numberOr(analysis.decision_threshold, modelInfo.decision_threshold);
   $("verdict-sub").textContent =
-    `${pct}% scam probability · model verdict: ${analysis.prediction} · confidence ${(analysis.probability * 100).toFixed(1)}%`;
+    `${pct(analysis.spam_probability)} scam probability · model verdict: ${analysis.prediction} · ` +
+    `${confidence} confidence · decision threshold ${pct(decisionThreshold)}`;
 }
 
-function renderMeter(spamProbability) {
-  const pct = Math.round(spamProbability * 100);
-  $("meter-marker").style.left = `${pct}%`;
-  const value = $("meter-value");
-  value.textContent = `${pct}%`;
-  value.style.color = { spam: "var(--red)", suspicious: "var(--amber)", safe: "var(--green)" }[bandOf(spamProbability)];
+function renderMeter(analysis) {
+  const probability = numberOr(analysis.spam_probability, 0);
+  const value = Math.round(probability * 100);
+  const band = bandOf(analysis);
+  const meter = $("risk-meter");
+  meter.style.setProperty("--suspect", `${Math.round(modelInfo.bands.suspicious * 100)}%`);
+  meter.style.setProperty("--scam", `${Math.round(modelInfo.bands.likely_scam * 100)}%`);
+  meter.setAttribute("aria-valuenow", String(value));
+  meter.setAttribute("aria-valuetext", `${value}% estimated scam probability — ${bandView(band).title}`);
+  $("meter-marker").style.left = `${value}%`;
+  const output = $("meter-value");
+  output.textContent = `${value}%`;
+  output.style.color = { spam: "var(--red)", suspicious: "var(--amber)", safe: "var(--green)" }[bandView(band).css];
 }
 
-function renderHighlighted(message, matches) {
+function renderHighlighted(analysis) {
   const container = $("highlighted");
+  const message = typeof analysis.message === "string" ? analysis.message : "";
   container.replaceChildren();
-  let pos = 0;
+  const matches = Array.isArray(analysis.matches) ? analysis.matches : [];
+  let position = 0;
   for (const match of matches) {
-    if (match.start > pos) container.append(document.createTextNode(message.slice(pos, match.start)));
+    const start = numberOr(match.start, -1);
+    const end = numberOr(match.end, -1);
+    if (start < position || end <= start || end > message.length) continue;
+    if (start > position) container.append(document.createTextNode(message.slice(position, start)));
     const mark = document.createElement("mark");
     mark.className = `sig sig-${match.type}`;
-    mark.textContent = match.text;
-    mark.title = `${SIGNALS[match.type]?.label || match.type} signal`;
+    mark.textContent = message.slice(start, end);
+    mark.title = `${(SIGNALS[match.type] && SIGNALS[match.type].label) || match.type} signal`;
     container.append(mark);
-    pos = match.end;
+    position = end;
   }
-  if (pos < message.length) container.append(document.createTextNode(message.slice(pos)));
-  if (!matches.length) container.append(document.createTextNode(message));
+  if (position < message.length) container.append(document.createTextNode(message.slice(position)));
+  if (!container.childNodes.length) container.append(document.createTextNode(message));
 }
 
 function renderSignals(analysis) {
   const container = $("signals");
   container.replaceChildren();
+  const matches = Array.isArray(analysis.matches) ? analysis.matches : [];
   const counts = {};
-  for (const match of analysis.matches) counts[match.type] = (counts[match.type] || 0) + 1;
+  for (const match of matches) counts[match.type] = (counts[match.type] || 0) + 1;
   const dotColor = { url: "#2563eb", phone: "#7c3aed", money: "#d97706", urgency: "#dc2626", brand: "#db2777" };
   for (const [type, count] of Object.entries(counts)) {
     const chip = document.createElement("span");
@@ -132,13 +350,15 @@ function renderSignals(analysis) {
     const dot = document.createElement("span");
     dot.className = "dot";
     dot.style.background = dotColor[type] || "#94a3b8";
-    chip.append(dot, document.createTextNode(`${SIGNALS[type]?.label || type}${count > 1 ? ` ×${count}` : ""}`));
+    const label = (SIGNALS[type] && SIGNALS[type].label) || type;
+    chip.append(dot, document.createTextNode(`${label}${count > 1 ? ` ×${count}` : ""}`));
     container.append(chip);
   }
-  if (analysis.brands.length) {
-    const names = analysis.brands.map((b) => BRANDS[b] || b.toUpperCase()).join(", ");
+  const brands = Array.isArray(analysis.brands) ? analysis.brands : [];
+  if (brands.length) {
+    const names = brands.map((brand) => BRANDS[brand] || String(brand).toUpperCase()).join(", ");
     const brandChip = document.createElement("span");
-    const risky = analysis.spam_probability >= BANDS.suspicious.min;
+    const risky = bandOf(analysis) !== "looks_safe";
     brandChip.className = `chip ${risky ? "chip-brands-warn" : "chip-brand"}`;
     brandChip.textContent = risky ? `⚠ Possibly impersonating ${names}` : `Mentions: ${names}`;
     container.append(brandChip);
@@ -153,9 +373,10 @@ function renderSignals(analysis) {
 
 function buildTips(analysis) {
   const tips = [];
-  const flags = new Set(analysis.flags);
-  const risky = analysis.spam_probability >= BANDS.suspicious.min;
-  const brandNames = analysis.brands.map((b) => BRANDS[b] || b.toUpperCase());
+  const flags = new Set(Array.isArray(analysis.flags) ? analysis.flags : []);
+  const risky = bandOf(analysis) !== "looks_safe";
+  const brands = Array.isArray(analysis.brands) ? analysis.brands : [];
+  const brandNames = brands.map((brand) => BRANDS[brand] || String(brand).toUpperCase());
   if (risky) {
     tips.push("Do not reply, tap links, or call the number in this message.");
     if (brandNames.length) {
@@ -174,142 +395,240 @@ function buildTips(analysis) {
 function renderTips(analysis) {
   const list = $("tips");
   list.replaceChildren();
-  list.className = `tips${analysis.spam_probability >= BANDS.suspicious.min ? " warn" : ""}`;
+  list.className = `tips${bandOf(analysis) !== "looks_safe" ? " warn" : ""}`;
   for (const tip of buildTips(analysis)) {
-    const li = document.createElement("li");
-    li.textContent = tip;
-    list.append(li);
+    const item = document.createElement("li");
+    item.textContent = tip;
+    list.append(item);
   }
 }
 
 function renderAnalysis(analysis, { save = true } = {}) {
   $("result").classList.remove("hidden");
   renderVerdict(analysis);
-  renderMeter(analysis.spam_probability);
-  renderHighlighted(analysis.message, analysis.matches);
+  renderMeter(analysis);
+  renderHighlighted(analysis);
   renderSignals(analysis);
   renderTips(analysis);
   if (save) addHistory(analysis);
 }
 
-/* ---------- History (localStorage) ---------- */
+/* ---------- History (browser-only, opt-in) ---------- */
+function readHistoryPreference() {
+  try {
+    return localStorage.getItem(HISTORY_PREF_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function persistHistoryPreference(enabled) {
+  try {
+    localStorage.setItem(HISTORY_PREF_KEY, enabled ? "1" : "0");
+  } catch {
+    /* Storage may be unavailable (private mode / disabled); history stays off. */
+  }
+}
+
+function clearStoredHistory() {
+  try {
+    localStorage.removeItem(HISTORY_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 function loadHistory() {
+  if (!historyEnabled) return [];
   try {
     const parsed = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((entry) => entry && typeof entry.message === "string");
   } catch {
     return [];
   }
 }
 
 function saveHistory(entries) {
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(entries.slice(0, HISTORY_LIMIT)));
-  updateHistoryBadge();
+  if (!historyEnabled) {
+    clearStoredHistory();
+    return [];
+  }
+  const trimmed = entries.slice(0, HISTORY_LIMIT);
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(trimmed));
+  } catch {
+    /* Ignore quota/storage errors; the UI must keep working. */
+  }
+  return trimmed;
 }
 
-function addHistory(analysis, source = "single") {
+function addHistory(analysis, source = "single", { render = true } = {}) {
+  if (!historyEnabled) return;
   const entries = loadHistory();
   const newest = entries[0];
-  const duplicate = newest && newest.message === analysis.message &&
-    newest.prediction === analysis.prediction && Math.abs(newest.spam_probability - analysis.spam_probability) < 0.005;
+  const duplicate = newest &&
+    newest.message === analysis.message &&
+    newest.source === source &&
+    Math.abs(numberOr(newest.spam_probability, -1) - numberOr(analysis.spam_probability, -2)) < 0.005;
   if (!duplicate) {
     entries.unshift({
       t: Date.now(),
       message: analysis.message,
       prediction: analysis.prediction,
-      spam_probability: analysis.spam_probability,
-      probability: analysis.probability,
-      flags: analysis.flags,
-      matches: analysis.matches,
-      brands: analysis.brands,
+      spam_probability: numberOr(analysis.spam_probability, 0),
+      risk_band: bandOf(analysis),
+      decision_threshold: numberOr(analysis.decision_threshold, modelInfo.decision_threshold),
+      flags: Array.isArray(analysis.flags) ? analysis.flags : [],
       source,
     });
+    saveHistory(entries);
   }
-  saveHistory(entries);
-  renderHistory();
+  if (render) {
+    renderHistory();
+    updateHistoryBadge();
+    announceHistory(`Saved in this browser: ${loadHistory().length} of ${HISTORY_LIMIT} checks.`);
+  }
+}
+
+function announceHistory(message) {
+  $("history-status").textContent = message;
 }
 
 function updateHistoryBadge() {
-  const count = loadHistory().length;
+  const count = historyEnabled ? loadHistory().length : 0;
   const badge = $("history-count");
   badge.textContent = String(count);
   badge.classList.toggle("hidden", count === 0);
 }
 
 function verdictPill(band) {
+  const view = bandView(band);
   const pill = document.createElement("span");
-  pill.className = `verdict-pill ${band}`;
-  pill.textContent = BANDS[band].title;
+  pill.className = `verdict-pill ${view.css}`;
+  pill.textContent = view.title;
   return pill;
 }
 
-function miniMeter(spamProbability) {
+function miniMeter(probability) {
+  const band = bandFromProbability(probability);
   const wrap = document.createElement("div");
   wrap.className = "mini-meter";
   const fill = document.createElement("div");
-  fill.style.width = `${Math.round(spamProbability * 100)}%`;
-  fill.style.background = { spam: "var(--red)", suspicious: "var(--amber)", safe: "var(--green)" }[bandOf(spamProbability)];
+  fill.style.width = `${Math.round(numberOr(probability, 0) * 100)}%`;
+  fill.style.background = { spam: "var(--red)", suspicious: "var(--amber)", safe: "var(--green)" }[bandView(band).css];
   wrap.append(fill);
   return wrap;
 }
 
+function openSavedEntry(entry) {
+  $("message-input").value = entry.message;
+  updateCharCount();
+  switchTab("check");
+  runCheck({ save: false });
+}
+
 function renderHistory() {
-  const entries = loadHistory();
+  const entries = historyEnabled ? loadHistory() : [];
   const list = $("history-list");
   list.replaceChildren();
-  $("history-empty").classList.toggle("hidden", entries.length > 0);
+  const empty = $("history-empty");
+  empty.classList.toggle("hidden", entries.length > 0);
+  empty.textContent = historyEnabled
+    ? "No saved checks yet. Check a message and it will appear here."
+    : HISTORY_OFF_NOTE;
+  $("btn-clear-history").disabled = entries.length === 0;
   for (const entry of entries) {
-    const li = document.createElement("li");
-    const band = bandOf(entry.spam_probability);
+    const band = BAND_VIEW[entry.risk_band] ? entry.risk_band : bandFromProbability(entry.spam_probability);
+    const timestamp = new Date(numberOr(entry.t, Date.now())).toLocaleString();
+    const item = document.createElement("li");
+    item.tabIndex = 0;
+    item.setAttribute("role", "button");
+    item.setAttribute("aria-label",
+      `Reopen saved check from ${timestamp} — ${bandView(band).title}, ${pct(entry.spam_probability)} scam probability`);
     const main = document.createElement("div");
     main.className = "history-item-main";
-    const msg = document.createElement("div");
-    msg.className = "history-msg";
-    msg.textContent = entry.message;
+    const message = document.createElement("div");
+    message.className = "history-msg";
+    message.textContent = entry.message;
     const meta = document.createElement("div");
     meta.className = "history-meta";
-    meta.textContent = `${new Date(entry.t).toLocaleString()}${entry.source === "batch" ? " · batch" : ""}`;
-    main.append(msg, meta);
+    meta.textContent = `${timestamp}${entry.source === "batch" ? " · batch" : ""}`;
+    main.append(message, meta);
     const risk = document.createElement("span");
-    risk.className = `history-risk ${band}`;
-    risk.textContent = `${Math.round(entry.spam_probability * 100)}%`;
-    li.append(main, verdictPill(band), risk);
-    li.addEventListener("click", () => {
-      $("message-input").value = entry.message;
-      updateCharCount();
-      switchTab("check");
-      renderAnalysis(entry, { save: false });
+    risk.className = `history-risk ${bandView(band).css}`;
+    risk.textContent = pct(entry.spam_probability);
+    item.append(main, verdictPill(band), risk);
+    item.addEventListener("click", () => openSavedEntry(entry));
+    item.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openSavedEntry(entry);
+      }
     });
-    list.append(li);
+    list.append(item);
   }
+}
+
+function setHistoryEnabled(enabled) {
+  historyEnabled = Boolean(enabled);
+  persistHistoryPreference(historyEnabled);
+  if (!historyEnabled) {
+    clearStoredHistory();
+    announceHistory("History is off. Any saved checks were deleted from this browser.");
+  } else {
+    announceHistory("History is on. Checks are saved only in this browser, up to 50 entries.");
+  }
+  renderHistory();
+  updateHistoryBadge();
+}
+
+function initHistory() {
+  historyEnabled = readHistoryPreference();
+  $("history-optin").checked = historyEnabled;
+  if (!historyEnabled) clearStoredHistory(); /* Default is OFF: purge any legacy data. */
+  $("history-optin").addEventListener("change", (event) => setHistoryEnabled(event.target.checked));
+  $("btn-clear-history").addEventListener("click", () => {
+    if (!loadHistory().length) return;
+    if (window.confirm("Delete all checks saved in this browser?")) {
+      clearStoredHistory();
+      renderHistory();
+      updateHistoryBadge();
+      announceHistory("Saved history cleared from this browser.");
+    }
+  });
+  renderHistory();
+  updateHistoryBadge();
 }
 
 /* ---------- Single check flow ---------- */
 function updateCharCount() {
-  $("char-count").textContent = `${$("message-input").value.length} / 10000`;
+  $("char-count").textContent = `${$("message-input").value.length} / ${MAX_MESSAGE_LENGTH}`;
 }
 
-async function runCheck() {
-  const message = $("message-input").value.trim();
+async function runCheck({ save = true } = {}) {
+  const input = $("message-input");
+  const message = input.value.trim();
   const banner = $("error-banner");
-  banner.classList.add("hidden");
+  hideBanner(banner);
   if (!message) {
-    banner.textContent = "Type or paste a message first.";
-    banner.classList.remove("hidden");
+    showBanner(banner, "Type or paste an SMS message first.");
+    input.focus();
+    return;
+  }
+  if (message.length > MAX_MESSAGE_LENGTH) {
+    showBanner(banner, `That message is ${message.length} characters — the limit is ${MAX_MESSAGE_LENGTH}.`);
     return;
   }
   const button = $("btn-check");
-  button.disabled = true;
-  button.textContent = "Checking…";
+  setBusy(button, true, "Checking…");
   try {
-    const analysis = await api(API.analyze, { message });
-    renderAnalysis(analysis);
-  } catch (err) {
-    banner.textContent = err.message;
-    banner.classList.remove("hidden");
+    const analysis = await postJson(API.analyze, { message });
+    renderAnalysis(analysis, { save });
+  } catch (failure) {
+    showBanner(banner, describeError(failure));
   } finally {
-    button.disabled = false;
-    button.textContent = "Check message";
+    setBusy(button, false, "Check message");
   }
 }
 
@@ -319,38 +638,54 @@ function parseBatchInput() {
 }
 
 function updateBatchCount() {
-  const n = parseBatchInput().length;
-  $("batch-count").textContent = `${n} message${n === 1 ? "" : "s"}`;
+  const messages = parseBatchInput();
+  const count = messages.length;
+  const characters = messages.reduce((total, message) => total + message.length, 0);
+  $("batch-count").textContent =
+    `${count} message${count === 1 ? "" : "s"} · ${characters.toLocaleString()} characters`;
 }
 
 async function runBatch() {
   const messages = parseBatchInput();
   const banner = $("batch-error");
-  banner.classList.add("hidden");
+  hideBanner(banner);
   if (!messages.length) {
-    banner.textContent = "Paste at least one message (one per line).";
-    banner.classList.remove("hidden");
+    showBanner(banner, "Paste at least one message (one per line).");
     return;
   }
-  if (messages.length > 50) {
-    banner.textContent = "Batch is limited to 50 messages — remove some lines and try again.";
-    banner.classList.remove("hidden");
+  if (messages.length > BATCH_LIMIT) {
+    showBanner(banner, `Batch is limited to ${BATCH_LIMIT} messages — remove some lines and try again.`);
+    return;
+  }
+  const oversized = messages.findIndex((message) => message.length > MAX_MESSAGE_LENGTH);
+  if (oversized !== -1) {
+    showBanner(banner, `Message ${oversized + 1} is longer than ${MAX_MESSAGE_LENGTH} characters.`);
     return;
   }
   const button = $("btn-batch");
-  button.disabled = true;
-  button.textContent = "Checking…";
+  setBusy(button, true, "Checking…");
   try {
-    const data = await api(API.analyzeBatch, { messages });
-    renderBatch(data.results);
-    for (const analysis of data.results) addHistory(analysis, "batch");
-  } catch (err) {
-    banner.textContent = err.message;
-    banner.classList.remove("hidden");
+    const data = await postJson(API.analyzeBatch, { messages });
+    const results = Array.isArray(data.results) ? data.results : [];
+    renderBatch(results);
+    if (historyEnabled) {
+      for (const analysis of results) addHistory(analysis, "batch", { render: false });
+      renderHistory();
+      updateHistoryBadge();
+      announceHistory(`Saved in this browser: ${loadHistory().length} of ${HISTORY_LIMIT} checks.`);
+    }
+  } catch (failure) {
+    showBanner(banner, describeError(failure));
   } finally {
-    button.disabled = false;
-    button.textContent = "Check all";
+    setBusy(button, false, "Check all");
   }
+}
+
+function openBatchResult(analysis) {
+  $("message-input").value = analysis.message;
+  updateCharCount();
+  switchTab("check");
+  renderAnalysis(analysis, { save: false });
 }
 
 function renderBatch(results) {
@@ -360,89 +695,99 @@ function renderBatch(results) {
   $("batch-results").classList.remove("hidden");
   tbody.replaceChildren();
 
-  const stats = { spam: 0, suspicious: 0, safe: 0 };
+  const stats = { likely_scam: 0, suspicious: 0, looks_safe: 0 };
   results.forEach((analysis, index) => {
-    const band = bandOf(analysis.spam_probability);
+    const band = bandOf(analysis);
     stats[band] += 1;
 
     const row = document.createElement("tr");
-    const num = document.createElement("td");
-    num.textContent = String(index + 1);
-    const msgCell = document.createElement("td");
-    msgCell.className = "batch-msg";
-    msgCell.textContent = analysis.message;
-    msgCell.title = analysis.message;
+    row.tabIndex = 0;
+    row.setAttribute("aria-label",
+      `Message ${index + 1}: ${bandView(band).title}, ${pct(analysis.spam_probability)} scam probability. Press Enter to open the full analysis.`);
+    const numberCell = document.createElement("td");
+    numberCell.textContent = String(index + 1);
+    const messageCell = document.createElement("td");
+    messageCell.className = "batch-msg";
+    messageCell.textContent = analysis.message;
+    messageCell.title = analysis.message;
     const verdictCell = document.createElement("td");
     verdictCell.append(verdictPill(band));
     const riskCell = document.createElement("td");
     riskCell.className = "risk-cell";
     riskCell.append(miniMeter(analysis.spam_probability));
     const riskPct = document.createElement("span");
-    riskPct.textContent = `${Math.round(analysis.spam_probability * 100)}%`;
+    riskPct.textContent = pct(analysis.spam_probability);
     riskCell.append(riskPct);
-    const sigCell = document.createElement("td");
-    const types = [...new Set(analysis.matches.map((m) => m.type))];
-    sigCell.textContent = types.map((t) => SIGNAL_SHORT[t] || t).join(" · ") || "—";
+    const signalCell = document.createElement("td");
+    const matches = Array.isArray(analysis.matches) ? analysis.matches : [];
+    const types = [...new Set(matches.map((match) => match.type))];
+    signalCell.textContent = types.map((type) => SIGNAL_SHORT[type] || type).join(" · ") || "—";
 
-    row.append(num, msgCell, verdictCell, riskCell, sigCell);
-    row.addEventListener("click", () => {
-      $("message-input").value = analysis.message;
-      updateCharCount();
-      switchTab("check");
-      renderAnalysis(analysis, { save: false });
+    row.append(numberCell, messageCell, verdictCell, riskCell, signalCell);
+    row.addEventListener("click", () => openBatchResult(analysis));
+    row.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openBatchResult(analysis);
+      }
     });
     tbody.append(row);
   });
 
-  $("stat-scam").textContent = String(stats.spam);
+  $("stat-scam").textContent = String(stats.likely_scam);
   $("stat-suspicious").textContent = String(stats.suspicious);
-  $("stat-safe").textContent = String(stats.safe);
+  $("stat-safe").textContent = String(stats.looks_safe);
 }
 
 /* ---------- Wiring ---------- */
-document.addEventListener("DOMContentLoaded", () => {
-  for (const tab of document.querySelectorAll(".tab")) {
-    tab.addEventListener("click", () => switchTab(tab.dataset.tab));
-  }
-
+function initSingleCheck() {
   const input = $("message-input");
   input.addEventListener("input", updateCharCount);
   input.addEventListener("keydown", (event) => {
-    if ((event.metaKey || event.ctrlKey) && event.key === "Enter") runCheck();
+    if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+      event.preventDefault();
+      runCheck();
+    }
   });
-  $("btn-check").addEventListener("click", runCheck);
+  $("btn-check").addEventListener("click", () => runCheck());
   $("btn-clear").addEventListener("click", () => {
     input.value = "";
     updateCharCount();
     $("result").classList.add("hidden");
-    $("error-banner").classList.add("hidden");
+    hideBanner($("error-banner"));
     input.focus();
   });
-
   for (const chip of document.querySelectorAll(".example-chip")) {
     chip.addEventListener("click", () => {
-      input.value = EXAMPLES[chip.dataset.example];
+      input.value = EXAMPLES[chip.dataset.example] || "";
       updateCharCount();
       runCheck();
     });
   }
+  updateCharCount();
+}
 
-  const batchInput = $("batch-input");
-  batchInput.addEventListener("input", updateBatchCount);
-  batchInput.addEventListener("keydown", (event) => {
-    if ((event.metaKey || event.ctrlKey) && event.key === "Enter") runBatch();
-  });
-  $("btn-batch").addEventListener("click", runBatch);
-
-  $("btn-clear-history").addEventListener("click", () => {
-    if (loadHistory().length && confirm("Clear all saved checks from this browser?")) {
-      saveHistory([]);
-      renderHistory();
+function initBatchCheck() {
+  const input = $("batch-input");
+  input.addEventListener("input", updateBatchCount);
+  input.addEventListener("keydown", (event) => {
+    if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+      event.preventDefault();
+      runBatch();
     }
   });
-
-  updateCharCount();
+  $("btn-batch").addEventListener("click", () => runBatch());
   updateBatchCount();
-  updateHistoryBadge();
-  renderHistory();
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  initTabs();
+  initHistory();
+  initSingleCheck();
+  initBatchCheck();
+  renderModelInfo();
+  loadModelInfo();
 });
+
+/* Expose a tiny read-only hook for manual debugging in the console. */
+window.phSmsd = { prefersReducedMotion, bandOf, modelInfo: () => modelInfo };

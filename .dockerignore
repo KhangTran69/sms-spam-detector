@@ -1,0 +1,47 @@
+# Keep the build context small and never ship secrets/data/artifacts.
+
+# Version control and local env
+.git
+.gitignore
+.gitattributes
+.github
+.vscode
+.idea
+.venv
+venv
+.env
+.env.*
+*.env
+
+# Python caches / build output
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Data and model artifacts (never in the image; mount models/ at runtime)
+data/
+models/
+*.pkl
+*.joblib
+notebooks/
+*.ipynb
+
+# Docs/tests/tooling are not needed by the runtime image
+docs/
+tests/
+Makefile
+docker-compose.yml
+.zwork/
+
+# OS junk
+.DS_Store
+Thumbs.db

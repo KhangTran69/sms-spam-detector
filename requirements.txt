@@ -1,10 +1,21 @@
-numpy>=1.24
-pandas>=2.0
-scikit-learn>=1.3
-fastapi>=0.100
-uvicorn[standard]>=0.23
-pydantic>=2.0
-joblib>=1.3
-matplotlib>=3.7
-pytest>=7.4
-httpx>=0.24  # required by fastapi.testclient.TestClient
+# Runtime + test dependencies for the Philippine SMS spam/scam detector.
+#
+# Bounded compatible ranges: the lower bound is the oldest release the code is
+# expected to work with, the upper bound blocks the next breaking major. This
+# project is developed and verified on Python 3.13; Python >= 3.11 is required
+# (see pyproject.toml and docs/DEPLOYMENT.md).
+#
+# Replicate the exact tester environment with:
+#   pip install -r requirements.txt -c constraints.txt
+# (constraints.txt records `pip freeze` from the verified Python 3.13 venv.)
+
+numpy>=1.24,<3
+pandas>=2.0,<4
+scikit-learn>=1.3,<2
+joblib>=1.3,<2
+fastapi>=0.100,<1
+uvicorn[standard]>=0.23,<1
+pydantic>=2.0,<3
+matplotlib>=3.7,<4
+pytest>=7.4,<10
+httpx>=0.24,<1        # required by fastapi.testclient.TestClient

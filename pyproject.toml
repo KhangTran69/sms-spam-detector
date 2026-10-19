@@ -1,0 +1,67 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "philippine-sms-spam-detector"
+version = "2.0.0"
+description = "TF-IDF + LogisticRegression SMS spam/scam classifier with a FastAPI service and a no-build web UI"
+readme = "README.md"
+requires-python = ">=3.11"
+# Dependencies are intentionally NOT duplicated here: requirements.txt is the
+# single maintained source of truth (bounded ranges; constraints.txt for exact
+# pins). Install the project's tooling with `pip install -r requirements.txt`.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+# CI has no data/raw/spam.csv and no models/* artifact (both git-ignored, except
+# the synthetic Philippine CSVs). Tests must skip or synthesize their own data
+# instead of depending on those paths.
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+src = ["src", "api", "tests"]
+# The EDA notebook is a checked-in artifact, not maintained source; linting it
+# as Python produces notebook-only noise (E402 per cell, etc.).
+extend-exclude = ["notebooks"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # import sorting
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "SIM", # flake8-simplify
+]
+# E501 is handled by `ruff format` (line-length above); ignoring it in the linter
+# avoids fighting the formatter over long strings and comments.
+# B905: not every zip() needs strict=; the data lengths are checked upstream.
+# SIM108: a small if/else in the metric calibration loop is clearer than a
+# nested ternary.
+ignore = ["E501", "B905", "SIM108"]
+# FastAPI's `Depends(...)`/`Query(...)` defaults are function calls in argument
+# defaults by design.
+extend-ignore = ["B008"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["src", "api"]
+
+[tool.mypy]
+python_version = "3.11"
+files = ["src", "api"]
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_unused_configs = true
+# Deliberately not strict: the project values readable, lightly typed code.
+# Do not enable disallow-untyped-defs/check-untyped-defs repo-wide without a
+# coordinated typing pass.
+#
+# Check the project's own modules only. Installed scientific stacks ship heavy
+# stubs whose syntax can be newer than the minimum supported Python (e.g. PEP 695
+# `type` aliases in numpy 2.5 break parsing when mypy targets 3.11), and typing
+# them is not this project's contract. Third-party imports resolve to Any
+# (ignore_missing_imports above).
+no_site_packages = true

@@ -3,50 +3,71 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="referrer" content="no-referrer" />
   <title>PH SMS Scam Detector</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>" />
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+
   <header class="site-header">
     <div class="header-inner">
-      <div class="brand"><span class="brand-icon">🛡️</span> PH SMS Scam Detector</div>
+      <div class="brand"><span class="brand-icon" aria-hidden="true">🛡️</span> PH SMS Scam Detector</div>
       <nav class="tabs" role="tablist" aria-label="Views">
-        <button class="tab active" id="tab-check" data-tab="check" role="tab" aria-selected="true">Check a message</button>
-        <button class="tab" id="tab-batch" data-tab="batch" role="tab" aria-selected="false">Batch check</button>
-        <button class="tab" id="tab-history" data-tab="history" role="tab" aria-selected="false">
+        <button type="button" class="tab active" id="tab-check" data-tab="check" role="tab"
+          aria-selected="true" aria-controls="panel-check" tabindex="0">Check a message</button>
+        <button type="button" class="tab" id="tab-batch" data-tab="batch" role="tab"
+          aria-selected="false" aria-controls="panel-batch" tabindex="-1">Batch check</button>
+        <button type="button" class="tab" id="tab-history" data-tab="history" role="tab"
+          aria-selected="false" aria-controls="panel-history" tabindex="-1">
           History <span id="history-count" class="badge hidden">0</span>
         </button>
       </nav>
     </div>
   </header>
 
-  <main>
+  <main id="main-content" tabindex="-1">
+    <!-- ============ Model information (from GET /model-info) ============ -->
+    <section id="model-status" class="card model-card" role="status" aria-live="polite" aria-atomic="true">
+      <div class="model-card-head">
+        <h2>Model information</h2>
+        <span id="model-version" class="model-version">Loading…</span>
+      </div>
+      <p id="model-note" class="model-note">This model is trained and evaluated on synthetic Philippine
+        data; it is not proof of real-world accuracy. Treat every verdict as a hint, not a fact.</p>
+      <p id="model-thresholds" class="model-thresholds">Decision threshold and risk bands are loading from the API.</p>
+      <p id="model-warning" class="model-warning hidden"></p>
+    </section>
+
     <!-- ============ Single check ============ -->
-    <section id="panel-check" class="panel active" role="tabpanel">
+    <section id="panel-check" class="panel active" role="tabpanel" aria-labelledby="tab-check" tabindex="0">
       <div class="card input-card">
         <label for="message-input">Paste the SMS you want to check</label>
-        <textarea id="message-input" maxlength="10000" rows="5"
+        <textarea id="message-input" name="message" maxlength="10000" rows="5"
+          aria-describedby="message-help char-count"
           placeholder="e.g. BDO: Your account will be locked in 24 hours. Verify now at http://bdo-verify.ph/login or call 09171234567"></textarea>
+        <p id="message-help" class="hint">At most 10,000 characters. Messages are analysed in memory and are
+          never stored on the server.</p>
         <div class="input-row">
           <span id="char-count" class="char-count">0 / 10000</span>
           <div class="buttons">
-            <button id="btn-clear" class="btn ghost">Clear</button>
-            <button id="btn-check" class="btn primary">Check message</button>
+            <button type="button" id="btn-clear" class="btn ghost">Clear</button>
+            <button type="button" id="btn-check" class="btn primary">Check message</button>
           </div>
         </div>
-        <div id="error-banner" class="error hidden" role="alert"></div>
+        <div id="error-banner" class="error hidden" role="alert" aria-live="assertive"></div>
       </div>
 
-      <div class="examples">
+      <div class="examples" aria-label="Example messages">
         <span class="examples-label">Try an example:</span>
-        <button class="example-chip scam" data-example="scam">🚨 Scam sample</button>
-        <button class="example-chip safe" data-example="safe">✅ Safe sample</button>
+        <button type="button" class="example-chip scam" data-example="scam">🚨 Scam sample</button>
+        <button type="button" class="example-chip safe" data-example="safe">✅ Safe sample</button>
       </div>
 
-      <div id="result" class="result hidden">
+      <div id="result" class="result hidden" role="status" aria-live="polite" aria-label="Analysis result">
         <div id="verdict-card" class="card verdict">
-          <div id="verdict-icon" class="verdict-icon">🚨</div>
+          <div id="verdict-icon" class="verdict-icon" aria-hidden="true">🚨</div>
           <div class="verdict-text">
             <div id="verdict-title" class="verdict-title">Likely scam</div>
             <div id="verdict-sub" class="verdict-sub"></div>
@@ -58,15 +79,16 @@
             <h2>Scam risk</h2>
             <div id="meter-value" class="meter-value">0%</div>
           </div>
-          <div class="meter" aria-hidden="true">
-            <div id="meter-marker" class="meter-marker" style="left:0%"></div>
+          <div id="risk-meter" class="meter" role="meter" aria-label="Estimated scam probability"
+            aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="0% estimated scam probability">
+            <div id="meter-marker" class="meter-marker" aria-hidden="true" style="left:0%"></div>
           </div>
-          <div class="meter-labels"><span>Safe</span><span>Suspicious</span><span>Scam</span></div>
+          <div class="meter-labels" aria-hidden="true"><span>Looks safe</span><span>Suspicious</span><span>Likely scam</span></div>
         </div>
 
         <div class="card">
           <h2>Message signals</h2>
-          <div id="highlighted" class="highlighted"></div>
+          <div id="highlighted" class="highlighted" aria-label="Message with detected signals highlighted"></div>
           <div id="signals" class="signals"></div>
         </div>
 
@@ -78,20 +100,23 @@
     </section>
 
     <!-- ============ Batch check ============ -->
-    <section id="panel-batch" class="panel" role="tabpanel">
+    <section id="panel-batch" class="panel" role="tabpanel" aria-labelledby="tab-batch" tabindex="0" hidden>
       <div class="card input-card">
         <label for="batch-input">Paste messages — one per line (up to 50)</label>
-        <textarea id="batch-input" rows="8" placeholder="One message per line…&#10;Claim ₱500,000 now! Call 09171234567&#10;Your OTP is 123456. Do not share."></textarea>
+        <textarea id="batch-input" name="messages" rows="8" aria-describedby="batch-help batch-count"
+          placeholder="One message per line…&#10;Claim ₱500,000 now! Call 09171234567&#10;Your OTP is 123456. Do not share."></textarea>
+        <p id="batch-help" class="hint">One message per line. At most 50 messages and 200,000 characters in
+          total; blank lines are ignored. Nothing is stored on the server.</p>
         <div class="input-row">
           <span id="batch-count" class="char-count">0 messages</span>
           <div class="buttons">
-            <button id="btn-batch" class="btn primary">Check all</button>
+            <button type="button" id="btn-batch" class="btn primary">Check all</button>
           </div>
         </div>
-        <div id="batch-error" class="error hidden" role="alert"></div>
+        <div id="batch-error" class="error hidden" role="alert" aria-live="assertive"></div>
       </div>
 
-      <div id="batch-summary" class="summary hidden">
+      <div id="batch-summary" class="summary hidden" role="status" aria-live="polite">
         <div class="stat stat-scam"><span id="stat-scam" class="stat-num">0</span><span class="stat-label">Likely scam</span></div>
         <div class="stat stat-suspicious"><span id="stat-suspicious" class="stat-num">0</span><span class="stat-label">Suspicious</span></div>
         <div class="stat stat-safe"><span id="stat-safe" class="stat-num">0</span><span class="stat-label">Looks safe</span></div>
@@ -99,31 +124,48 @@
 
       <div id="batch-results" class="card table-card hidden">
         <table class="batch-table">
+          <caption>Batch analysis results — one row per message. Select a row (or press Enter or Space)
+            to open its full analysis.</caption>
           <thead>
-            <tr><th class="col-num">#</th><th>Message</th><th>Verdict</th><th>Risk</th><th>Signals</th></tr>
+            <tr>
+              <th scope="col" class="col-num">#</th>
+              <th scope="col">Message</th>
+              <th scope="col">Verdict</th>
+              <th scope="col">Scam risk</th>
+              <th scope="col">Signals</th>
+            </tr>
           </thead>
           <tbody id="batch-tbody"></tbody>
         </table>
-        <p class="hint">Click a row to open the full analysis.</p>
       </div>
     </section>
 
-    <!-- ============ History ============ -->
-    <section id="panel-history" class="panel" role="tabpanel">
+    <!-- ============ History (browser-only, opt-in) ============ -->
+    <section id="panel-history" class="panel" role="tabpanel" aria-labelledby="tab-history" tabindex="0" hidden>
       <div class="card">
         <div class="history-head">
           <h2>Recent checks</h2>
-          <button id="btn-clear-history" class="btn ghost danger">Clear history</button>
+          <button type="button" id="btn-clear-history" class="btn ghost danger" disabled>Clear history</button>
         </div>
-        <p class="hint">Stored in this browser only (localStorage) — newest first, up to 50 entries.</p>
-        <ul id="history-list" class="history-list"></ul>
-        <div id="history-empty" class="empty">No checks yet. Check a message and it will appear here.</div>
+        <div class="privacy-control">
+          <input type="checkbox" id="history-optin" aria-describedby="history-privacy" />
+          <label for="history-optin">Save my checks in this browser</label>
+        </div>
+        <p id="history-privacy" class="hint">Off by default. When on, the last 50 checks are stored only in
+          this browser's localStorage — message text is never sent to or stored on the server. Turn it off
+          to delete saved history from this browser.</p>
+        <p id="history-status" class="hint history-status" role="status" aria-live="polite"></p>
+        <ul id="history-list" class="history-list" aria-label="Saved checks"></ul>
+        <div id="history-empty" class="empty">History is off. Turn it on to keep the last 50 checks in this browser.</div>
       </div>
     </section>
   </main>
 
   <footer class="site-footer">
-    <p>Heuristic aid, not a guarantee. Verify money or account messages through the official app or hotline — and never share OTPs or PINs.</p>
+    <p>Heuristic aid, not a guarantee. Verify money or account messages through the official app or hotline —
+      and never share OTPs or PINs.</p>
+    <p>This model is trained and evaluated on synthetic Philippine data; its scores are not proof of
+      real-world accuracy.</p>
   </footer>
 
   <script src="/static/app.js"></script>
