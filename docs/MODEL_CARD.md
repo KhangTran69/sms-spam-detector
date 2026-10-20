@@ -7,10 +7,12 @@ maintainers. Last reviewed: 2026-10-20.
 ## 1. What this model is
 
 A text classifier that returns `spam` or `ham` for a single SMS message, plus an
-uncalibrated spam score, signal flags, and highlighted spans (URLs, phone numbers,
-money amounts, urgency words, brand names). It is a TF-IDF (word 1–2 grams) +
-indicator-feature pipeline with a class-balanced `LogisticRegression` as the
-primary model and a `MultinomialNB` baseline. The model is **assistive**: it
+calibrated spam score, signal flags, and highlighted spans (URLs, phone numbers,
+money amounts, urgency words, brand names). It is a TF-IDF (word 1–2 grams +
+character 3–5 grams) + indicator-feature pipeline. The primary classifier is
+picked by cross-validated spam F1 from class-balanced `LogisticRegression` and
+`LinearSVC` over a C grid, wrapped in sigmoid `CalibratedClassifierCV`, with a
+`MultinomialNB` baseline. The model is **assistive**: it
 points a reader at likely scam patterns.
 
 ## 2. Intended use
@@ -83,8 +85,8 @@ spam score reaches the threshold) and a
 `suspicious_threshold` for the UI warning band; both are chosen on a validation
 split with a precision-first objective (protect legitimate OTP/bank messages) and
 are exposed by `GET /model-info`. `POST /analyze` returns a legacy field named
-`spam_probability`; its value is an uncalibrated model score in current
-artifacts, alongside `decision_threshold`, `margin`, `confidence`, and
+`spam_probability`; in current artifacts it is a sigmoid-calibrated score
+(`probability_calibrated: true`), alongside `decision_threshold`, `margin`, `confidence`, and
 `risk_band`.
 
 - Raising the threshold **increases precision** (fewer false alarms) and
@@ -93,11 +95,11 @@ artifacts, alongside `decision_threshold`, `margin`, `confidence`, and
   best single F1. For "don't scare people with false alarms", move it up; for
   "catch as much as possible, review later", move it down.
 - `probability` in `/predict` is a legacy field name for the score of the
-  **returned class**, not a calibrated probability. `/analyze`'s
-  `spam_probability` is also an uncalibrated score unless calibration is
-  explicitly fitted and validated.
-- **Do not treat scores as calibrated guarantees.** The evaluation includes
-  calibration diagnostics; calibration is not currently fitted. Prefer qualitative bands (likely scam / suspicious / looks safe) in
+  **returned class**. Calibration is fitted on training folds only; on the
+  UCI test split ECE fell from 0.083 (uncalibrated LogisticRegression) to
+  0.016.
+- **Do not treat scores as calibrated guarantees.** Calibration was measured on
+  English UCI data and synthetic Philippine examples, not real Philippine traffic. Prefer qualitative bands (likely scam / suspicious / looks safe) in
   user-facing copy, over precise percentages.
 - A model that changes threshold but not weights is still the same artifact
   version for audit purposes; record which operating point a deployment uses.
