@@ -398,3 +398,20 @@ def test_no_obvious_secrets_committed() -> None:
             if pattern.search(content):
                 findings.append(f"{path.relative_to(ROOT)}: possible {label}")
     assert not findings, "possible secrets committed:\n" + "\n".join(findings)
+
+
+def test_per_python_constraints_pin_runtime_dependencies() -> None:
+    runtime = {"numpy", "pandas", "scikit-learn", "joblib", "fastapi", "uvicorn", "pydantic", "matplotlib"}
+    for version in ("3.11", "3.12", "3.13"):
+        text = (ROOT / "constraints" / f"py{version}.txt").read_text(encoding="utf-8")
+        assert f"--python-version {version}" in text
+        pinned = {line.split("==")[0].split("[")[0].strip().lower() for line in text.splitlines() if "==" in line}
+        assert runtime <= pinned, (version, runtime - pinned)
+
+
+def test_web_assets_are_packaged_with_api() -> None:
+    import api.main
+
+    assert api.main.WEB_DIR == ROOT / "api" / "web"
+    assert (api.main.WEB_DIR / "index.html").is_file()
+    assert '"web/*"' in (ROOT / "pyproject.toml").read_text(encoding="utf-8")

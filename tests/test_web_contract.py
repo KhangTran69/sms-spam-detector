@@ -1,7 +1,7 @@
 """Static contract checks between the bundled web UI and the FastAPI app.
 
-These tests read ``api/main.py``, ``web/index.html``, ``web/app.js`` and
-``web/styles.css`` as text: they are deterministic, fast, and catch drift such
+These tests read ``api/main.py``, ``api/web/index.html``, ``api/web/app.js`` and
+``api/web/styles.css`` as text: they are deterministic, fast, and catch drift such
 as an endpoint renamed on the server but not in the client, a referenced DOM id
 that no longer exists, or accessibility/privacy regressions.
 """
@@ -15,14 +15,16 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 API_MAIN = ROOT / "api" / "main.py"
-INDEX_HTML = ROOT / "web" / "index.html"
-APP_JS = ROOT / "web" / "app.js"
-STYLES_CSS = ROOT / "web" / "styles.css"
+API_ROUTES = ROOT / "api" / "routes.py"
+API_SCHEMAS = ROOT / "api" / "schemas.py"
+INDEX_HTML = ROOT / "api" / "web" / "index.html"
+APP_JS = ROOT / "api" / "web" / "app.js"
+STYLES_CSS = ROOT / "api" / "web" / "styles.css"
 
 
 @pytest.fixture(scope="module")
 def api_source() -> str:
-    return API_MAIN.read_text(encoding="utf-8")
+    return "".join(path.read_text(encoding="utf-8") for path in (API_MAIN, API_ROUTES, API_SCHEMAS))
 
 
 @pytest.fixture(scope="module")
@@ -49,7 +51,7 @@ def html_ids(html: str) -> set[str]:
 
 
 def api_routes(api_source: str) -> set[str]:
-    return set(re.findall(r'@app\.(?:get|post|put|patch|delete)\(\s*["\']([^"\']+)["\']', api_source))
+    return set(re.findall(r'@(?:app|router)\.(?:get|post|put|patch|delete)\(\s*["\']([^"\']+)["\']', api_source))
 
 
 def js_endpoint_paths(js: str) -> set[str]:
@@ -70,7 +72,7 @@ def test_every_endpoint_referenced_by_app_js_exists_on_the_api(api_source, js):
     routes = api_routes(api_source)
     assert {"/model-info", "/analyze", "/analyze/batch"} <= referenced, referenced
     missing = referenced - routes
-    assert not missing, f"app.js calls endpoints missing from api/main.py: {sorted(missing)}"
+    assert not missing, f"app.js calls endpoints missing from api/main.py + api/routes.py: {sorted(missing)}"
 
 
 def test_app_js_uses_model_info_thresholds_and_risk_band(js):
@@ -239,7 +241,7 @@ def test_message_signals_are_described_as_text_patterns(html, js, css):
     versioned_assets = re.findall(r"/static/(?:styles\.css|app\.js)\?v=([a-z0-9-]+)", html)
     assert versioned_assets and len(versioned_assets) == 2, "signal CSS/JS updates must bypass stale browser caches"
     assert versioned_assets[0] == versioned_assets[1], "CSS and JS cache-bust versions must match"
-    sw = (ROOT / "web" / "sw.js").read_text(encoding="utf-8")
+    sw = (ROOT / "api" / "web" / "sw.js").read_text(encoding="utf-8")
     sw_asset_versions = re.findall(r"/static/(?:styles\.css|app\.js)\?v=([a-z0-9-]+)", sw)
     assert sw_asset_versions == versioned_assets, "service-worker shell must fetch the current UI asset versions"
     assert 'id="signals-guidance"' in html
@@ -416,14 +418,14 @@ def test_service_worker_never_caches_messages(js, html, api_source):
     assert 'rel="manifest"' in html and "/manifest.webmanifest" in html
     assert '"/sw.js"' in js and "serviceWorker" in js
     # The SW must exist, only cache GETs, and never intercept analysis endpoints.
-    sw = (ROOT / "web" / "sw.js").read_text(encoding="utf-8")
+    sw = (ROOT / "api" / "web" / "sw.js").read_text(encoding="utf-8")
     assert 'request.method !== "GET"' in sw
     for endpoint in ("/analyze", "/predict", "/feedback", "/model-info"):
         assert endpoint in sw, f"service worker must explicitly exclude {endpoint}"
     assert "caches" in sw
     # Manifest and SW must be served by the app.
     assert '"/manifest.webmanifest"' in api_source and '"/sw.js"' in api_source
-    manifest = (ROOT / "web" / "manifest.webmanifest").read_text(encoding="utf-8")
+    manifest = (ROOT / "api" / "web" / "manifest.webmanifest").read_text(encoding="utf-8")
     assert '"start_url": "/"' in manifest
     assert "icons" in manifest
 
