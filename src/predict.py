@@ -48,9 +48,18 @@ class ModelArtifactError(RuntimeError):
 
 
 def default_model_path() -> Path:
-    """Artifact path, overridable with ``SMSD_MODEL_PATH`` for container deploys."""
+    """Artifact path, overridable with ``SMSD_MODEL_PATH`` for container deploys.
+
+    In a source checkout this is ``models/spam_detector_v1.pkl`` in the repo. When
+    the package is installed (no ``models/`` directory beside it) it falls back
+    to ``./models/spam_detector_v1.pkl`` in the current working directory.
+    """
     override = os.environ.get("SMSD_MODEL_PATH")
-    return Path(override) if override else DEFAULT_MODEL
+    if override:
+        return Path(override)
+    if DEFAULT_MODEL.parent.is_dir():
+        return DEFAULT_MODEL
+    return Path.cwd() / "models" / DEFAULT_MODEL.name
 
 
 def _format_path(path: Path) -> str:

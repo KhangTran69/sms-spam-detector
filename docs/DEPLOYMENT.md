@@ -114,7 +114,7 @@ curl -s -X POST http://127.0.0.1:8000/predict \
 
 The image is built from `python:3.12-slim` in two stages (dependency install,
 then a minimal runtime). It installs `requirements.txt` only, copies `src/`,
-`api/`, and `web/`, runs as **non-root uid 10001**, exposes 8000, and defines a
+and `api/` (including `api/web/`), runs as **non-root uid 10001**, exposes 8000, and defines a
 stdlib-Python `HEALTHCHECK` against `/health` (curl is not in the slim image).
 OCI labels are set in the Dockerfile.
 

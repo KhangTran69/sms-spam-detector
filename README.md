@@ -18,10 +18,16 @@ pip install -e ".[dev]"
 
 Runtime dependencies are declared in `pyproject.toml`; the requirements files
 mirror those declarations for Docker and existing workflows. `pip install .`
-resolves package dependencies, but the built wheel does not include the root
-data and web assets. Run the application from a source checkout or use the
-documented Docker image. `constraints.txt` captures one Python 3.13 environment
-and is not a cross-platform lock file.
+produces a working service: the web UI ships inside the `api` package, and the
+`smsd-serve` command starts it. Point it at a model with `SMSD_MODEL_PATH`, or
+place one at `./models/spam_detector_v1.pkl`. Training still needs a source
+checkout because the data files are not packaged.
+
+Reproducible pins per supported Python version live in `constraints/py3.11.txt`,
+`constraints/py3.12.txt`, and `constraints/py3.13.txt` (generated with `uv pip
+compile` for Linux; the command is in each file header). Install with
+`pip install -r constraints/py3.12.txt -e .`. The older root `constraints.txt`
+is one tester's macOS Python 3.13 `pip freeze`, kept for reference.
 
 Python 3.11+ is required. The base SMS corpus is not committed. Use the documented UCI SMS Spam Collection import after reviewing its CC BY 4.0 terms, or provide another dataset only after independently verifying its source and usage terms. The importer writes an attributed normalized file; pass it explicitly with `python -m src.train --data data/raw/imported/uci_sms_spam.csv`. Accepted formats are Kaggle `v1`/`v2` and `label`/`message` CSVs, but schema compatibility does not establish a dataset's license or provenance.
 
@@ -165,7 +171,7 @@ data/raw/        ignored source data plus tracked synthetic fixtures
 data/templates/  blank consented-data intake schema
 src/             validation, preprocessing, features, training, metrics, inference
 api/             FastAPI endpoints
-web/             bundled single-page UI
+api/web/         bundled single-page UI (packaged with api)
 models/          ignored trained model artifacts
 docs/            data, review, model, privacy, retraining, deployment guidance
 tests/           data, model, API, preprocessing, and web-contract checks
