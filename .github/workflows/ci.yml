@@ -25,7 +25,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install runtime dependencies
-        run: python -m pip install -r requirements.txt
+        run: python -m pip install -r requirements.txt -c constraints/py3.12.txt
       - name: Train an explicitly synthetic fixture artifact
         run: |
           python -m src.train \
@@ -121,6 +121,52 @@ jobs:
               raise AssertionError("unexpected request field should be rejected")
           PY
 
+  uci-quality-gate:
+    name: UCI train + F1 >= 0.90 gate
+    runs-on: ubuntu-latest
+    env:
+      UCI_URL: https://archive.ics.uci.edu/static/public/228/sms+spam+collection.zip
+      # SHA-256 of the UCI SMS Spam Collection archive (CC BY 4.0), verified 2026-10-21.
+      UCI_ZIP_SHA256: 1587ea43e58e82b14ff1f5425c88e17f8496bfcdb67a583dbff9eefaf9963ce3
+      UCI_TSV_SHA256: 7d039a24a6083ed9ef0f806ebad56bbb976e3aeb8de05669173bfdc4996c239d
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install runtime dependencies
+        run: python -m pip install -r requirements.txt -c constraints/py3.12.txt
+      - name: Restore cached UCI archive
+        id: uci-cache
+        uses: actions/cache@v4
+        with:
+          path: .cache/uci
+          key: uci-sms-spam-${{ env.UCI_ZIP_SHA256 }}
+      - name: Download UCI SMS Spam Collection (CC BY 4.0)
+        if: steps.uci-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p .cache/uci
+          curl --fail --location --retry 3 --silent --show-error -o .cache/uci/smsspamcollection.zip "$UCI_URL"
+      - name: Verify archive and extracted file hashes
+        run: |
+          echo "$UCI_ZIP_SHA256  .cache/uci/smsspamcollection.zip" | sha256sum --check --strict
+          unzip -o -q .cache/uci/smsspamcollection.zip SMSSpamCollection -d .cache/uci
+          echo "$UCI_TSV_SHA256  .cache/uci/SMSSpamCollection" | sha256sum --check --strict
+      - name: Import with attribution
+        run: python -m src.import_public_dataset --input .cache/uci/SMSSpamCollection --format uci-tsv
+      - name: Train on UCI + tracked synthetic PH supplements
+        run: |
+          python -m src.train \
+            --data data/raw/imported/uci_sms_spam.csv \
+            --output models/uci-ci.pkl \
+            --metadata-output models/uci-ci.metadata.json \
+            --model-version ci-uci-gate
+      - name: Fail if internal test F1 < 0.90
+        run: python scripts/check_quality_gate.py models/uci-ci.metadata.json --min-f1 0.90
+
   quality:
     name: Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
@@ -145,7 +191,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt -r requirements-dev.txt
+          pip install -r requirements.txt -r requirements-dev.txt -c "constraints/py${{ matrix.python-version }}.txt"
 
       - name: Lint (ruff)
         run: ruff check .
