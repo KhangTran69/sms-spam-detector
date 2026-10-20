@@ -20,3 +20,132 @@ synthetic,ham,Paalala: Biyernes ang pasahan ng proyekto. I-upload ito sa portal 
 synthetic,ham,Nasa gate na ako. Text me when you’re downstairs.,personal_taglish,en,synthetic_legitimate_v5,high,meetup_chat_g
 synthetic,ham,"Nasa gate na ko, message mo ako pag baba ka na.",personal_taglish,taglish,synthetic_legitimate_v5,high,meetup_chat_g
 synthetic,ham,Nasa may tarangkahan na ako. I-text mo ako kapag nasa baba ka na.,personal_taglish,tl,synthetic_legitimate_v5,high,meetup_chat_g
+synthetic,spam,Landbank: Your account is temporarily locked. Verify your identity at http://secure-login.xyz/ph within 24 hours.,bank_phishing,en,synthetic_generator_train_v1,high,tr_bank_locked
+synthetic,spam,SampleBank: Your account is temporarily locked. Verify your identity at https://tinyurl.com/claim-now within 24 hours.,bank_phishing,en,synthetic_generator_train_v1,high,tr_bank_locked
+synthetic,spam,Landbank: Your account is temporarily locked. Verify your identity at https://tinyurl.com/claim-now within 24 hours.,bank_phishing,en,synthetic_generator_train_v1,high,tr_bank_locked
+synthetic,spam,BDO ALERT: unusual login detected. Confirm your details here https://tinyurl.com/claim-now to avoid suspension.,bank_phishing,en,synthetic_generator_train_v1,high,tr_bank_locked
+synthetic,spam,Landbank ALERT: unusual login detected. Confirm your details here https://tinyurl.com/claim-now to avoid suspension.,bank_phishing,en,synthetic_generator_train_v1,high,tr_bank_locked
+synthetic,spam,SampleBank ALERT: unusual login detected. Confirm your details here http://bit.ly/verify-acct to avoid suspension.,bank_phishing,en,synthetic_generator_train_v1,high,tr_bank_locked
+synthetic,spam,SampleBank: Kailangan i-update ang account mo ngayon. Click http://bit.ly/verify-acct para hindi ma-block.,bank_phishing,taglish,synthetic_generator_train_v1,high,tr_bank_update
+synthetic,spam,Landbank: Kailangan i-update ang account mo ngayon. Click https://tinyurl.com/claim-now para hindi ma-block.,bank_phishing,taglish,synthetic_generator_train_v1,high,tr_bank_update
+synthetic,spam,BPI: Kailangan i-update ang account mo ngayon. Click http://secure-login.xyz/ph para hindi ma-block.,bank_phishing,taglish,synthetic_generator_train_v1,high,tr_bank_update
+synthetic,spam,"Hello po, from BPI. Na-hold ang card mo, paki-verify sa http://bit.ly/verify-acct bago 7:30 PM.",bank_phishing,taglish,synthetic_generator_train_v1,high,tr_bank_update
+synthetic,spam,"Hello po, from BDO. Na-hold ang card mo, paki-verify sa http://bit.ly/verify-acct bago 3PM.",bank_phishing,taglish,synthetic_generator_train_v1,high,tr_bank_update
+synthetic,spam,"Hello po, from SampleBank. Na-hold ang card mo, paki-verify sa http://secure-login.xyz/ph bago 3PM.",bank_phishing,taglish,synthetic_generator_train_v1,high,tr_bank_update
+synthetic,spam,"Maya: May ₱3,499 rewards ka na hindi pa na-claim! Mag-login sa https://tinyurl.com/claim-now para makuha.",ewallet_phishing,taglish,synthetic_generator_train_v1,high,tr_wallet_reward
+synthetic,spam,GCash: May ₱899 rewards ka na hindi pa na-claim! Mag-login sa http://secure-login.xyz/ph para makuha.,ewallet_phishing,taglish,synthetic_generator_train_v1,high,tr_wallet_reward
+synthetic,spam,Maya: May ₱560 rewards ka na hindi pa na-claim! Mag-login sa http://secure-login.xyz/ph para makuha.,ewallet_phishing,taglish,synthetic_generator_train_v1,high,tr_wallet_reward
+synthetic,spam,"Congrats! Nanalo ang GCash number mo ng ₱120,000. I-claim sa http://bit.ly/verify-acct ngayong araw lang.",ewallet_phishing,taglish,synthetic_generator_train_v1,high,tr_wallet_reward
+synthetic,spam,"Congrats! Nanalo ang Maya number mo ng ₱300,000. I-claim sa http://bit.ly/verify-acct ngayong araw lang.",ewallet_phishing,taglish,synthetic_generator_train_v1,high,tr_wallet_reward
+synthetic,spam,"Congrats! Nanalo ang GCash number mo ng ₱120,000. I-claim sa http://secure-login.xyz/ph ngayong araw lang.",ewallet_phishing,taglish,synthetic_generator_train_v1,high,tr_wallet_reward
+synthetic,spam,"J&T Express: Your parcel is on hold due to unpaid customs fee of ₱1,250. Pay at https://tinyurl.com/claim-now.",parcel_scam,en,synthetic_generator_train_v1,high,tr_parcel_fee
+synthetic,spam,"J&T Express: Your parcel is on hold due to unpaid customs fee of ₱3,499. Pay at http://secure-login.xyz/ph.",parcel_scam,en,synthetic_generator_train_v1,high,tr_parcel_fee
+synthetic,spam,"LBC: Your parcel is on hold due to unpaid customs fee of ₱3,499. Pay at https://tinyurl.com/claim-now.",parcel_scam,en,synthetic_generator_train_v1,high,tr_parcel_fee
+synthetic,spam,"Ninja Van notice: delivery failed, address incomplete. Update and pay ₱560 at http://secure-login.xyz/ph.",parcel_scam,en,synthetic_generator_train_v1,high,tr_parcel_fee
+synthetic,spam,"Ninja Van notice: delivery failed, address incomplete. Update and pay ₱899 at http://secure-login.xyz/ph.",parcel_scam,en,synthetic_generator_train_v1,high,tr_parcel_fee
+synthetic,spam,"LBC notice: delivery failed, address incomplete. Update and pay ₱1,250 at http://secure-login.xyz/ph.",parcel_scam,en,synthetic_generator_train_v1,high,tr_parcel_fee
+synthetic,spam,"Hi! Part-time job, like at share lang ng videos, kita ₱560 kada araw. Message 09995554321 sa WhatsApp.",job_scam,taglish,synthetic_generator_train_v1,high,tr_job_like
+synthetic,spam,"Hi! Part-time job, like at share lang ng videos, kita ₱3,499 kada araw. Message 09995554321 sa WhatsApp.",job_scam,taglish,synthetic_generator_train_v1,high,tr_job_like
+synthetic,spam,"Hi! Part-time job, like at share lang ng videos, kita ₱899 kada araw. Message 09281112233 sa WhatsApp.",job_scam,taglish,synthetic_generator_train_v1,high,tr_job_like
+synthetic,spam,"HIRING: online encoder, no experience needed, ₱25,000 monthly. Text 09281112233 para mag-apply.",job_scam,taglish,synthetic_generator_train_v1,high,tr_job_like
+synthetic,spam,"HIRING: online encoder, no experience needed, ₱120,000 monthly. Text 09171234567 para mag-apply.",job_scam,taglish,synthetic_generator_train_v1,high,tr_job_like
+synthetic,spam,"HIRING: online encoder, no experience needed, ₱50,000 monthly. Text 09995554321 para mag-apply.",job_scam,taglish,synthetic_generator_train_v1,high,tr_job_like
+synthetic,spam,"Aprubado na ang loan mo na ₱120,000! Magbayad lang ng processing fee na ₱1,250 sa Maya 09281112233.",loan_scam,tl,synthetic_generator_train_v1,high,tr_loan_approved
+synthetic,spam,"Aprubado na ang loan mo na ₱50,000! Magbayad lang ng processing fee na ₱3,499 sa GCash 09171234567.",loan_scam,tl,synthetic_generator_train_v1,high,tr_loan_approved
+synthetic,spam,"Aprubado na ang loan mo na ₱120,000! Magbayad lang ng processing fee na ₱3,499 sa Maya 09171234567.",loan_scam,tl,synthetic_generator_train_v1,high,tr_loan_approved
+synthetic,spam,"Kailangan mo ng pera? Pautang ₱120,000, walang collateral. I-text ang 09995554321 ngayon.",loan_scam,tl,synthetic_generator_train_v1,high,tr_loan_approved
+synthetic,spam,"Kailangan mo ng pera? Pautang ₱300,000, walang collateral. I-text ang 09995554321 ngayon.",loan_scam,tl,synthetic_generator_train_v1,high,tr_loan_approved
+synthetic,spam,"Kailangan mo ng pera? Pautang ₱25,000, walang collateral. I-text ang 09171234567 ngayon.",loan_scam,tl,synthetic_generator_train_v1,high,tr_loan_approved
+synthetic,spam,"Congratulations! Napili ka sa Lazada anniversary raffle, premyo ₱300,000. Tumawag sa 09171234567 bago tomorrow morning.",prize_scam,taglish,synthetic_generator_train_v1,high,tr_raffle
+synthetic,spam,"Congratulations! Napili ka sa Lazada anniversary raffle, premyo ₱300,000. Tumawag sa 09171234567 bago 7:30 PM.",prize_scam,taglish,synthetic_generator_train_v1,high,tr_raffle
+synthetic,spam,"Congratulations! Napili ka sa Lazada anniversary raffle, premyo ₱120,000. Tumawag sa 09281112233 bago 10AM.",prize_scam,taglish,synthetic_generator_train_v1,high,tr_raffle
+synthetic,spam,"Shopee: Ikaw ang lucky winner ng ₱25,000! Para ma-claim, i-send ang buong pangalan sa 09281112233.",prize_scam,taglish,synthetic_generator_train_v1,high,tr_raffle
+synthetic,spam,"Lazada: Ikaw ang lucky winner ng ₱120,000! Para ma-claim, i-send ang buong pangalan sa 09995554321.",prize_scam,taglish,synthetic_generator_train_v1,high,tr_raffle
+synthetic,spam,"Shopee: Ikaw ang lucky winner ng ₱25,000! Para ma-claim, i-send ang buong pangalan sa 09171234567.",prize_scam,taglish,synthetic_generator_train_v1,high,tr_raffle
+synthetic,spam,"Hi this is GCash support. We sent you a 6-digit code by mistake, please forward it to 09281112233.",otp_theft,en,synthetic_generator_train_v1,high,tr_otp_request
+synthetic,spam,"Hi this is Maya support. We sent you a 6-digit code by mistake, please forward it to 09995554321.",otp_theft,en,synthetic_generator_train_v1,high,tr_otp_request
+synthetic,spam,"Hi this is GCash support. We sent you a 6-digit code by mistake, please forward it to 09995554321.",otp_theft,en,synthetic_generator_train_v1,high,tr_otp_request
+synthetic,spam,"BDO agent here. To cancel the unauthorized transfer, reply with the OTP you just received.",otp_theft,en,synthetic_generator_train_v1,high,tr_otp_request
+synthetic,spam,"SampleBank agent here. To cancel the unauthorized transfer, reply with the OTP you just received.",otp_theft,en,synthetic_generator_train_v1,high,tr_otp_request
+synthetic,spam,"BPI agent here. To cancel the unauthorized transfer, reply with the OTP you just received.",otp_theft,en,synthetic_generator_train_v1,high,tr_otp_request
+synthetic,spam,"Earn ₱50,000 in 7 days with our guaranteed crypto plan. Minimum ₱1,250. Join: http://secure-login.xyz/ph",investment_scam,en,synthetic_generator_train_v1,high,tr_crypto
+synthetic,spam,"Earn ₱50,000 in 7 days with our guaranteed crypto plan. Minimum ₱3,499. Join: http://bit.ly/verify-acct",investment_scam,en,synthetic_generator_train_v1,high,tr_crypto
+synthetic,spam,"Earn ₱25,000 in 7 days with our guaranteed crypto plan. Minimum ₱12,000. Join: http://secure-login.xyz/ph",investment_scam,en,synthetic_generator_train_v1,high,tr_crypto
+synthetic,spam,"Limited slots! Double your money in 48 hours, trusted by 10,000 Filipinos. Register https://tinyurl.com/claim-now",investment_scam,en,synthetic_generator_train_v1,high,tr_crypto
+synthetic,spam,"Limited slots! Double your money in 48 hours, trusted by 10,000 Filipinos. Register http://secure-login.xyz/ph",investment_scam,en,synthetic_generator_train_v1,high,tr_crypto
+synthetic,spam,"Limited slots! Double your money in 48 hours, trusted by 10,000 Filipinos. Register http://bit.ly/verify-acct",investment_scam,en,synthetic_generator_train_v1,high,tr_crypto
+synthetic,spam,Ang SIM mo ay made-deactivate ngayong 10AM. I-register ulit sa http://bit.ly/verify-acct para hindi mawala ang number mo.,sim_registration_scam,taglish,synthetic_generator_train_v1,high,tr_sim_reg
+synthetic,spam,Ang SIM mo ay made-deactivate ngayong tomorrow morning. I-register ulit sa http://bit.ly/verify-acct para hindi mawala ang number mo.,sim_registration_scam,taglish,synthetic_generator_train_v1,high,tr_sim_reg
+synthetic,spam,Ang SIM mo ay made-deactivate ngayong 10AM. I-register ulit sa http://secure-login.xyz/ph para hindi mawala ang number mo.,sim_registration_scam,taglish,synthetic_generator_train_v1,high,tr_sim_reg
+synthetic,spam,SIM REG FINAL NOTICE: kumpletuhin ang registration sa http://secure-login.xyz/ph o ma-block ang linya mo.,sim_registration_scam,taglish,synthetic_generator_train_v1,high,tr_sim_reg
+synthetic,spam,SIM REG FINAL NOTICE: kumpletuhin ang registration sa http://bit.ly/verify-acct o ma-block ang linya mo.,sim_registration_scam,taglish,synthetic_generator_train_v1,high,tr_sim_reg
+synthetic,spam,SIM REG FINAL NOTICE: kumpletuhin ang registration sa https://tinyurl.com/claim-now o ma-block ang linya mo.,sim_registration_scam,taglish,synthetic_generator_train_v1,high,tr_sim_reg
+synthetic,ham,"Your Maya verification code is [CODE]. Never share this code with anyone, including GCash staff.",otp,en,synthetic_generator_train_v1,high,tr_otp_legit
+synthetic,ham,"Your GCash verification code is [CODE]. Never share this code with anyone, including GCash staff.",otp,en,synthetic_generator_train_v1,high,tr_otp_legit
+synthetic,ham,"Your Maya verification code is [CODE]. Never share this code with anyone, including Maya staff.",otp,en,synthetic_generator_train_v1,high,tr_otp_legit
+synthetic,ham,Landbank: [CODE] is your one-time PIN for login. BDO will never ask for your OTP.,otp,en,synthetic_generator_train_v1,high,tr_otp_legit
+synthetic,ham,SampleBank: [CODE] is your one-time PIN for login. BPI will never ask for your OTP.,otp,en,synthetic_generator_train_v1,high,tr_otp_legit
+synthetic,ham,SampleBank: [CODE] is your one-time PIN for login. BDO will never ask for your OTP.,otp,en,synthetic_generator_train_v1,high,tr_otp_legit
+synthetic,ham,"Landbank: A purchase of ₱12,000 was made on your card ending 1234. Not you? Call the hotline on the back of your card.",bank_alert,en,synthetic_generator_train_v1,high,tr_bank_debit
+synthetic,ham,"BDO: A purchase of ₱3,499 was made on your card ending 1234. Not you? Call the hotline on the back of your card.",bank_alert,en,synthetic_generator_train_v1,high,tr_bank_debit
+synthetic,ham,BDO: A purchase of ₱899 was made on your card ending 1234. Not you? Call the hotline on the back of your card.,bank_alert,en,synthetic_generator_train_v1,high,tr_bank_debit
+synthetic,ham,"BPI: You received ₱1,250 via InstaPay. Available balance updated.",bank_alert,en,synthetic_generator_train_v1,high,tr_bank_debit
+synthetic,ham,BDO: You received ₱899 via InstaPay. Available balance updated.,bank_alert,en,synthetic_generator_train_v1,high,tr_bank_debit
+synthetic,ham,Landbank: You received ₱560 via InstaPay. Available balance updated.,bank_alert,en,synthetic_generator_train_v1,high,tr_bank_debit
+synthetic,ham,LBC: Your order from Lazada is out for delivery today. Rider will call before arrival.,delivery,en,synthetic_generator_train_v1,high,tr_delivery_update
+synthetic,ham,J&T Express: Your order from Lazada is out for delivery today. Rider will call before arrival.,delivery,en,synthetic_generator_train_v1,high,tr_delivery_update
+synthetic,ham,Ninja Van: Your order from Shopee is out for delivery today. Rider will call before arrival.,delivery,en,synthetic_generator_train_v1,high,tr_delivery_update
+synthetic,ham,LBC: Package delivered and received. Thank you for using Ninja Van.,delivery,en,synthetic_generator_train_v1,high,tr_delivery_update
+synthetic,ham,Ninja Van: Package delivered and received. Thank you for using J&T Express.,delivery,en,synthetic_generator_train_v1,high,tr_delivery_update
+synthetic,ham,J&T Express: Package delivered and received. Thank you for using J&T Express.,delivery,en,synthetic_generator_train_v1,high,tr_delivery_update
+synthetic,ham,"Tita Lorna, nasa Jollibee Cubao na ako. Text mo lang ako pag malapit ka na.",personal,taglish,synthetic_generator_train_v1,high,tr_family_meetup
+synthetic,ham,"Tita Lorna, nasa SM North na ako. Text mo lang ako pag malapit ka na.",personal,taglish,synthetic_generator_train_v1,high,tr_family_meetup
+synthetic,ham,"Rico, nasa SM North na ako. Text mo lang ako pag malapit ka na.",personal,taglish,synthetic_generator_train_v1,high,tr_family_meetup
+synthetic,ham,"Ma, uuwi ako mga 7:30 PM. May ipapabili ka ba bago ako umuwi?",personal,taglish,synthetic_generator_train_v1,high,tr_family_meetup
+synthetic,ham,"Ma, uuwi ako mga 3PM. May ipapabili ka ba bago ako umuwi?",personal,taglish,synthetic_generator_train_v1,high,tr_family_meetup
+synthetic,ham,"Ma, uuwi ako mga tomorrow morning. May ipapabili ka ba bago ako umuwi?",personal,taglish,synthetic_generator_train_v1,high,tr_family_meetup
+synthetic,ham,"Uy Rico, kita tayo sa SM North mga 10AM? Libre ko ang merienda.",personal,taglish,synthetic_generator_train_v1,high,tr_family_meetup
+synthetic,ham,"Uy Tita Lorna, kita tayo sa Jollibee Cubao mga 7:30 PM? Libre ko ang merienda.",personal,taglish,synthetic_generator_train_v1,high,tr_family_meetup
+synthetic,ham,"Uy Ana, kita tayo sa simbahan mga 3PM? Libre ko ang merienda.",personal,taglish,synthetic_generator_train_v1,high,tr_family_meetup
+synthetic,ham,"Anak, nakapagluto na ako. Kumain ka bago 7:30 PM ha.",personal,tl,synthetic_generator_train_v1,high,tr_family_chat
+synthetic,ham,"Anak, nakapagluto na ako. Kumain ka bago 10AM ha.",personal,tl,synthetic_generator_train_v1,high,tr_family_chat
+synthetic,ham,"Anak, nakapagluto na ako. Kumain ka bago 3PM ha.",personal,tl,synthetic_generator_train_v1,high,tr_family_chat
+synthetic,ham,"Mae, salamat sa padala kahapon. Natanggap na namin, ingat ka diyan.",personal,tl,synthetic_generator_train_v1,high,tr_family_chat
+synthetic,ham,"Rico, salamat sa padala kahapon. Natanggap na namin, ingat ka diyan.",personal,tl,synthetic_generator_train_v1,high,tr_family_chat
+synthetic,ham,"Ana, salamat sa padala kahapon. Natanggap na namin, ingat ka diyan.",personal,tl,synthetic_generator_train_v1,high,tr_family_chat
+synthetic,ham,Pakisabi kay Tita Lorna na tumawag siya kay Lola mamaya.,personal,tl,synthetic_generator_train_v1,high,tr_family_chat
+synthetic,ham,Pakisabi kay Mae na tumawag siya kay Lola mamaya.,personal,tl,synthetic_generator_train_v1,high,tr_family_chat
+synthetic,ham,Pakisabi kay Rico na tumawag siya kay Lola mamaya.,personal,tl,synthetic_generator_train_v1,high,tr_family_chat
+synthetic,ham,"Hi team, the meeting moved to 10AM. Please bring the updated sales report.",work,en,synthetic_generator_train_v1,high,tr_work_note
+synthetic,ham,"Hi team, the meeting moved to 3PM. Please bring the updated sales report.",work,en,synthetic_generator_train_v1,high,tr_work_note
+synthetic,ham,"Hi team, the meeting moved to 7:30 PM. Please bring the updated sales report.",work,en,synthetic_generator_train_v1,high,tr_work_note
+synthetic,ham,"Rico, can you send me the invoice for ₱12,000 before 7:30 PM? Thanks!",work,en,synthetic_generator_train_v1,high,tr_work_note
+synthetic,ham,"Tita Lorna, can you send me the invoice for ₱560 before 3PM? Thanks!",work,en,synthetic_generator_train_v1,high,tr_work_note
+synthetic,ham,"Tita Lorna, can you send me the invoice for ₱12,000 before 10AM? Thanks!",work,en,synthetic_generator_train_v1,high,tr_work_note
+synthetic,ham,"Running late, traffic papuntang Jollibee Cubao. Start without me, Mae.",work,en,synthetic_generator_train_v1,high,tr_work_note
+synthetic,ham,"Running late, traffic papuntang simbahan. Start without me, Rico.",work,en,synthetic_generator_train_v1,high,tr_work_note
+synthetic,ham,"Running late, traffic papuntang SM North. Start without me, Ana.",work,en,synthetic_generator_train_v1,high,tr_work_note
+synthetic,ham,Reminder: your dental appointment is on 10AM at SM North. Reply C to confirm.,appointment,en,synthetic_generator_train_v1,high,tr_clinic_reminder
+synthetic,ham,Reminder: your dental appointment is on 7:30 PM at the office. Reply C to confirm.,appointment,en,synthetic_generator_train_v1,high,tr_clinic_reminder
+synthetic,ham,Reminder: your dental appointment is on 3PM at the office. Reply C to confirm.,appointment,en,synthetic_generator_train_v1,high,tr_clinic_reminder
+synthetic,ham,"Hi Rico, this confirms your checkup schedule at 7:30 PM. Please bring your valid ID.",appointment,en,synthetic_generator_train_v1,high,tr_clinic_reminder
+synthetic,ham,"Hi Mae, this confirms your checkup schedule at tomorrow morning. Please bring your valid ID.",appointment,en,synthetic_generator_train_v1,high,tr_clinic_reminder
+synthetic,ham,"Hi Mae, this confirms your checkup schedule at 3PM. Please bring your valid ID.",appointment,en,synthetic_generator_train_v1,high,tr_clinic_reminder
+synthetic,ham,Good day parents! Walang pasok sa 10AM dahil sa bagyo. Stay safe po.,school,taglish,synthetic_generator_train_v1,high,tr_school
+synthetic,ham,Good day parents! Walang pasok sa tomorrow morning dahil sa bagyo. Stay safe po.,school,taglish,synthetic_generator_train_v1,high,tr_school
+synthetic,ham,Good day parents! Walang pasok sa 7:30 PM dahil sa bagyo. Stay safe po.,school,taglish,synthetic_generator_train_v1,high,tr_school
+synthetic,ham,Reminder: PTA meeting sa 10AM. Paki-dala ang report card ng anak ninyo.,school,taglish,synthetic_generator_train_v1,high,tr_school
+synthetic,ham,Reminder: PTA meeting sa 3PM. Paki-dala ang report card ng anak ninyo.,school,taglish,synthetic_generator_train_v1,high,tr_school
+synthetic,ham,Reminder: PTA meeting sa 7:30 PM. Paki-dala ang report card ng anak ninyo.,school,taglish,synthetic_generator_train_v1,high,tr_school
+synthetic,ham,"Your load balance is ₱3,499. Thank you for staying with us.",telco_notice,en,synthetic_generator_train_v1,high,tr_telco_balance
+synthetic,ham,Your load balance is ₱899. Thank you for staying with us.,telco_notice,en,synthetic_generator_train_v1,high,tr_telco_balance
+synthetic,ham,"Your load balance is ₱1,250. Thank you for staying with us.",telco_notice,en,synthetic_generator_train_v1,high,tr_telco_balance
+synthetic,ham,Your bill of ₱899 has been posted. Pay on or before the due date via the official app.,telco_notice,en,synthetic_generator_train_v1,high,tr_telco_balance
+synthetic,ham,"Your bill of ₱3,499 has been posted. Pay on or before the due date via the official app.",telco_notice,en,synthetic_generator_train_v1,high,tr_telco_balance
+synthetic,ham,"Your bill of ₱1,250 has been posted. Pay on or before the due date via the official app.",telco_notice,en,synthetic_generator_train_v1,high,tr_telco_balance
+synthetic,ham,PAGASA advisory: Signal No. 1 raised over your area until 3PM. Monitor official updates.,legit_link,en,synthetic_generator_train_v1,high,tr_gov_advisory
+synthetic,ham,PAGASA advisory: Signal No. 1 raised over your area until 10AM. Monitor official updates.,legit_link,en,synthetic_generator_train_v1,high,tr_gov_advisory
+synthetic,ham,PAGASA advisory: Signal No. 1 raised over your area until tomorrow morning. Monitor official updates.,legit_link,en,synthetic_generator_train_v1,high,tr_gov_advisory
+synthetic,ham,Your passport appointment is confirmed for 10AM. Details are in your registered email.,legit_link,en,synthetic_generator_train_v1,high,tr_gov_advisory
+synthetic,ham,Your passport appointment is confirmed for tomorrow morning. Details are in your registered email.,legit_link,en,synthetic_generator_train_v1,high,tr_gov_advisory
+synthetic,ham,Your passport appointment is confirmed for 3PM. Details are in your registered email.,legit_link,en,synthetic_generator_train_v1,high,tr_gov_advisory
