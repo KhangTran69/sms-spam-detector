@@ -54,7 +54,7 @@ const context = vm.createContext({ console, AbortController, tabs, panels, busyC
     },
     documentElement: element('html'),
     addEventListener() {}, createElement: tagName => element(tagName), createTextNode: text => ({ textContent: text }) } });
-vm.runInContext(fs.readFileSync(path.join(__dirname, '../web/app.js'), 'utf8'), context);
+vm.runInContext(fs.readFileSync(path.join(__dirname, '../api/web/app.js'), 'utf8'), context);
 vm.runInContext(`
   var pending = [];
   var rendered = [];
