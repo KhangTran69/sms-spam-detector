@@ -43,14 +43,13 @@ const BAND_VIEW = {
 };
 
 const SIGNALS = {
-  url: { label: "Link" },
-  phone: { label: "Phone number" },
-  money: { label: "Money amount" },
-  urgency: { label: "Urgency" },
-  brand: { label: "Brand mention" },
+  url: { label: "Link", plural: "links", explanation: "Link-like text appears here. It may still be legitimate; check destinations independently." },
+  phone: { label: "Phone number", plural: "phone numbers", explanation: "A phone number appears. This does not identify who sent the message." },
+  money: { label: "Money amount", plural: "money amounts", explanation: "An amount appears. Legitimate bills and transaction alerts can include amounts." },
+  urgency: { label: "Urgency wording", plural: "urgency phrases", explanation: "These words can add time pressure, but urgency alone does not prove a scam." },
+  brand: { label: "Brand name", plural: "brand names", explanation: "A brand is mentioned. This does not verify the sender or prove impersonation." },
 };
-
-const SIGNAL_SHORT = { url: "link", phone: "phone", money: "₱", urgency: "urgent", brand: "brand" };
+const isSignalType = (type) => Object.prototype.hasOwnProperty.call(SIGNALS, type);
 
 const BRANDS = {
   bdo: "BDO", bpi: "BPI", metrobank: "Metrobank", unionbank: "UnionBank", rcbc: "RCBC",
@@ -64,9 +63,24 @@ const BRANDS = {
 };
 
 const EXAMPLES = {
-  scam: "BDO: Your account will be PERMANENTLY LOCKED in 24 hours. Verify now at http://bdo-secure-ph.xyz/login or call 09171234567 immediately.",
-  safe: "Your BDO OTP is 294831. Do not share this code with anyone.",
+  scam: [
+    "BDO ALERT: Your account access will be suspended today. Confirm your details at bdo-verify.example to keep it active.",
+    "Nanalo ka ng ₱50,000! I-claim agad sa prize-claim.example bago mag-expire ang promo.",
+    "Delivery notice: May kulang na ₱35 fee. Bayaran ngayon sa parcel-pay.example para ma-release ang package.",
+    "GCash security check: May unusual activity. I-verify ang wallet mo sa gcash-review.example ngayon.",
+    "Work from home! Earn ₱8,000 kada araw. Send your ID and registration fee today to reserve your slot.",
+    "SIM registration failed. I-update ang details mo sa sim-update.example within 2 hours para hindi ma-disable ang number.",
+  ],
+  safe: [
+    "Your one-time code is [CODE]. Never share it with anyone, even someone claiming to be from your bank.",
+    "BDO: Your transfer was completed. If you don't recognize it, check your account using the official app.",
+    "Your parcel is out for delivery today. Track it in the official courier app. No payment is due by SMS.",
+    "Meralco reminder: Your bill is ready. Please check the amount and due date in the official app.",
+    "Reminder: Parent meeting is on Friday at 3 PM in the school library. Salamat po!",
+    "Uy, kita tayo after class? I can bring the notes from yesterday. Message me when you're nearby.",
+  ],
 };
+const EXAMPLE_INDEX = { scam: -1, safe: -1 };
 
 const $ = (id) => document.getElementById(id);
 
@@ -85,6 +99,14 @@ function pct(value) {
 
 function prefersReducedMotion() {
   return Boolean(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+}
+
+function nextExample(kind) {
+  const examples = EXAMPLES[kind];
+  if (!examples) return null;
+  const index = (EXAMPLE_INDEX[kind] + 1) % examples.length;
+  EXAMPLE_INDEX[kind] = index;
+  return { message: examples[index], index: index + 1, total: examples.length };
 }
 
 function normalizeModelInfo(info) {
@@ -325,56 +347,91 @@ function renderHighlighted(analysis) {
   const message = typeof analysis.message === "string" ? analysis.message : "";
   const characters = Array.from(message); // API offsets count Unicode code points.
   container.replaceChildren();
-  const matches = Array.isArray(analysis.matches) ? analysis.matches : [];
-  let position = 0;
-  for (const match of matches) {
-    const start = numberOr(match.start, -1);
-    const end = numberOr(match.end, -1);
-    if (start < position || end <= start || end > characters.length) continue;
-    if (start > position) container.append(document.createTextNode(characters.slice(position, start).join("")));
+  const matches = signalMatches(analysis, characters);
+  const boundaries = [...new Set([0, characters.length, ...matches.flatMap(({ start, end }) => [start, end])])]
+    .sort((left, right) => left - right);
+  for (let index = 0; index < boundaries.length - 1; index += 1) {
+    const start = boundaries[index];
+    const end = boundaries[index + 1];
+    if (end <= start) continue;
+    const text = characters.slice(start, end).join("");
+    const active = matches.filter((match) => match.start <= start && match.end >= end);
+    if (!active.length) {
+      container.append(document.createTextNode(text));
+      continue;
+    }
+    const types = [...new Set(active.map((match) => match.type))];
     const mark = document.createElement("mark");
-    mark.className = `sig sig-${match.type}`;
-    mark.textContent = characters.slice(start, end).join("");
-    mark.title = `${(SIGNALS[match.type] && SIGNALS[match.type].label) || match.type} signal`;
+    mark.className = `sig ${types.map((type) => `sig-${type}`).join(" ")}`;
+    mark.setAttribute("aria-describedby", active.map((match) => `signal-${match.id}`).join(" "));
+    // Keep the visual highlight free of numeric prefixes; the accessible
+    // description still links it to the matching signal detail row.
+    mark.append(document.createTextNode(text));
     container.append(mark);
-    position = end;
   }
-  if (position < characters.length) container.append(document.createTextNode(characters.slice(position).join("")));
-  if (!container.childNodes.length) container.append(document.createTextNode(message));
+  if (!characters.length) container.append(document.createTextNode(""));
+}
+
+function signalMatches(analysis, characters) {
+  const messageCharacters = characters || Array.from(
+    analysis && typeof analysis.message === "string" ? analysis.message : "",
+  );
+  const matches = analysis && Array.isArray(analysis.matches) ? analysis.matches : [];
+  return matches
+    .filter((match) => match && isSignalType(match.type)
+      && Number.isInteger(match.start) && Number.isInteger(match.end)
+      && match.start >= 0 && match.end > match.start && match.end <= messageCharacters.length)
+    .map((match) => ({
+      type: match.type,
+      start: match.start,
+      end: match.end,
+      text: messageCharacters.slice(match.start, match.end).join(""),
+    }))
+    .sort((left, right) => left.start - right.start || left.end - right.end)
+    .map((match, index) => ({ ...match, id: index + 1 }));
 }
 
 function renderSignals(analysis) {
   const container = $("signals");
   container.replaceChildren();
-  const matches = Array.isArray(analysis.matches) ? analysis.matches : [];
-  const counts = {};
-  for (const match of matches) counts[match.type] = (counts[match.type] || 0) + 1;
-  const dotColor = { url: "#2563eb", phone: "#7c3aed", money: "#d97706", urgency: "#dc2626", brand: "#db2777" };
-  for (const [type, count] of Object.entries(counts)) {
-    const chip = document.createElement("span");
-    chip.className = `chip chip-${type}`;
-    const dot = document.createElement("span");
-    dot.className = "dot";
-    dot.style.background = dotColor[type] || "#94a3b8";
-    const label = (SIGNALS[type] && SIGNALS[type].label) || type;
-    chip.append(dot, document.createTextNode(`${label}${count > 1 ? ` ×${count}` : ""}`));
-    container.append(chip);
+  const message = typeof analysis.message === "string" ? analysis.message : "";
+  const matches = signalMatches(analysis, Array.from(message));
+  if (!matches.length) {
+    const empty = document.createElement("li");
+    empty.className = "signal-empty";
+    empty.textContent = "No supported text patterns were detected. That alone does not mean the message is safe.";
+    container.append(empty);
+    return;
   }
-  const brands = Array.isArray(analysis.brands) ? analysis.brands : [];
-  if (brands.length) {
-    const names = brands.map((brand) => BRANDS[brand] || String(brand).toUpperCase()).join(", ");
-    const brandChip = document.createElement("span");
-    const risky = bandOf(analysis) !== "looks_safe";
-    brandChip.className = `chip ${risky ? "chip-brands-warn" : "chip-brand"}`;
-    brandChip.textContent = risky ? `⚠ Possibly impersonating ${names}` : `Mentions: ${names}`;
-    container.append(brandChip);
+  for (const match of matches) {
+    const item = document.createElement("li");
+    item.id = `signal-${match.id}`;
+    item.className = `signal-item signal-item-${match.type}`;
+    const reference = document.createElement("span");
+    reference.className = "signal-reference";
+    reference.setAttribute("aria-label", `Signal ${match.id}`);
+    reference.textContent = String(match.id);
+    const label = document.createElement("strong");
+    label.textContent = SIGNALS[match.type].label;
+    const explanation = document.createElement("span");
+    explanation.className = "signal-explanation";
+    explanation.textContent = SIGNALS[match.type].explanation;
+    const example = document.createElement("q");
+    example.className = "signal-match-text";
+    example.textContent = match.text;
+    item.append(reference, label, explanation, example);
+    container.append(item);
   }
-  if (!container.childNodes.length) {
-    const clean = document.createElement("span");
-    clean.className = "chip chip-clean";
-    clean.textContent = "No classic scam markers — verdict comes from the model's text analysis";
-    container.append(clean);
-  }
+}
+
+function signalSummary(analysis) {
+  const matches = signalMatches(analysis);
+  if (!matches.length) return "No supported text patterns";
+  const counts = new Map();
+  for (const match of matches) counts.set(match.type, (counts.get(match.type) || 0) + 1);
+  return [...counts.entries()]
+    .map(([type, count]) => `${SIGNALS[type].label}${count > 1 ? ` ×${count}` : ""}`)
+    .join(" · ");
 }
 
 function buildTips(analysis) {
@@ -386,7 +443,7 @@ function buildTips(analysis) {
   if (risky) {
     tips.push("Do not reply, tap links, or call the number in this message.");
     if (brandNames.length) {
-      tips.push(`Scammers impersonate ${brandNames.join(", ")} — verify any account claim in the official app or via the hotline on their website, never a number or link from this message.`);
+      tips.push(`This message mentions ${brandNames.join(", ")}; that does not verify who sent it. Confirm account claims in the official app or through a trusted contact channel.`);
     }
   }
   if (flags.has("has_url")) tips.push("Don't open links from unexpected texts. Open the official app or type the address yourself.");
@@ -657,6 +714,8 @@ function invalidateSingle() {
   singleRevision += 1;
   window.currentAnalysis = null;
   $("result").classList.add("hidden");
+  $("highlighted").replaceChildren();
+  $("signals").replaceChildren();
   hideBanner($("error-banner"));
   setBusy($("btn-check"), false, "Check message");
 }
@@ -781,8 +840,6 @@ function renderBatch(results) {
 
     const row = document.createElement("tr");
     row.tabIndex = 0;
-    row.setAttribute("aria-label",
-      `Message ${index + 1}: ${bandView(band).title}, ${pct(analysis.spam_probability)} model score. Press Enter to open the full analysis.`);
     const numberCell = document.createElement("td");
     numberCell.textContent = String(index + 1);
     const messageCell = document.createElement("td");
@@ -798,9 +855,10 @@ function renderBatch(results) {
     riskPct.textContent = pct(analysis.spam_probability);
     riskCell.append(riskPct);
     const signalCell = document.createElement("td");
-    const matches = Array.isArray(analysis.matches) ? analysis.matches : [];
-    const types = [...new Set(matches.map((match) => match.type))];
-    signalCell.textContent = types.map((type) => SIGNAL_SHORT[type] || type).join(" · ") || "—";
+    const patterns = signalSummary(analysis);
+    signalCell.textContent = patterns;
+    row.setAttribute("aria-label",
+      `Message ${index + 1}: ${bandView(band).title}, ${pct(analysis.spam_probability)} model score. Detected text patterns: ${patterns}. Press Enter to open the full analysis.`);
 
     row.append(numberCell, messageCell, verdictCell, riskCell, signalCell);
     row.addEventListener("click", () => openBatchResult(analysis));
@@ -840,8 +898,13 @@ function initSingleCheck() {
   });
   for (const chip of document.querySelectorAll(".example-chip")) {
     chip.addEventListener("click", () => {
-      input.value = EXAMPLES[chip.dataset.example] || "";
+      const example = nextExample(chip.dataset.example);
+      if (!example) return;
+      invalidateSingle();
+      input.value = example.message;
       updateCharCount();
+      $("example-status").textContent =
+        `Fictional ${chip.dataset.example} example ${example.index} of ${example.total}; checking it now. Click again for another example.`;
       runCheck();
     });
   }

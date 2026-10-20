@@ -234,6 +234,29 @@ def test_index_html_has_model_status_region(html):
     assert re.search(r'id="model-status"[^>]*aria-live', html) or re.search(r'aria-live[^>]*id="model-status"', html)
 
 
+def test_message_signals_are_described_as_text_patterns(html, js, css):
+    normalized = collapse_whitespace(html)
+    assert "/static/styles.css?v=signals-no-inline-numbers-20261020" in html, (
+        "signal CSS updates must bypass stale browser caches"
+    )
+    assert "/static/app.js?v=signals-no-inline-numbers-20261020" in html
+    assert 'id="signals-guidance"' in html
+    assert "do not show which features influenced the model’s verdict" in normalized
+    assert "can appear in legitimate messages too" in normalized
+    assert 'id="highlighted"' in html and 'role="group"' in html
+    assert 'id="signals"' in html and 'aria-labelledby="signals-heading"' in html
+    assert ".signal-reference" in css and "vertical-align: super" in css
+    for explanation in (
+        "Link-like text appears here.",
+        "A phone number appears.",
+        "An amount appears.",
+        "These words can add time pressure",
+        "This does not verify the sender or prove impersonation.",
+    ):
+        assert explanation in js
+    assert "signalSummary(analysis)" in js, "batch and single views should share signal labels"
+
+
 def test_styles_have_visible_focus_and_responsive_layout(css):
     assert ":focus-visible" in css
     assert ".skip-link" in css

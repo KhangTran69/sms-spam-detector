@@ -14,6 +14,45 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  deployment-smoke:
+    name: Container smoke test (missing-model behavior)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Build runtime image
+        run: docker build --tag smsd-ci-smoke .
+      - name: Verify liveness and readiness contracts
+        run: |
+          docker run --detach --rm --name smsd-ci-smoke -p 127.0.0.1:8000:8000 smsd-ci-smoke
+          trap 'docker stop smsd-ci-smoke >/dev/null 2>&1 || true' EXIT
+          python - <<'PY'
+          import time
+          import urllib.error
+          import urllib.request
+
+          base = "http://127.0.0.1:8000"
+          for attempt in range(30):
+              try:
+                  with urllib.request.urlopen(f"{base}/health", timeout=2) as response:
+                      assert response.status == 200
+                      break
+              except (OSError, urllib.error.URLError):
+                  if attempt == 29:
+                      raise
+                  time.sleep(1)
+          else:
+              raise AssertionError("health endpoint did not become ready")
+
+          try:
+              urllib.request.urlopen(f"{base}/ready", timeout=2)
+          except urllib.error.HTTPError as response:
+              assert response.code == 503
+              assert b"model_unavailable" in response.read()
+          else:
+              raise AssertionError("readiness must fail when the model artifact is absent")
+          PY
+
   quality:
     name: Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest

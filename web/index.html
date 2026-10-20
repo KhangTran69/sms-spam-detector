@@ -6,7 +6,7 @@
   <meta name="referrer" content="no-referrer" />
   <title>PH SMS Scam Detector</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>" />
-  <link rel="stylesheet" href="/static/styles.css" />
+  <link rel="stylesheet" href="/static/styles.css?v=signals-no-inline-numbers-20261020" />
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -61,8 +61,9 @@
 
       <div class="examples" aria-label="Example messages">
         <span class="examples-label">Try an example:</span>
-        <button type="button" class="example-chip scam" data-example="scam">🚨 Scam sample</button>
-        <button type="button" class="example-chip safe" data-example="safe">✅ Safe sample</button>
+        <button type="button" class="example-chip scam" data-example="scam">🚨 Scam example</button>
+        <button type="button" class="example-chip safe" data-example="safe">✅ Safe example</button>
+        <span id="example-status" class="example-status" role="status" aria-live="polite">Fictional demo examples only. Click either button again to cycle through more messages.</span>
       </div>
 
       <div id="result" class="result hidden" role="status" aria-live="polite" aria-label="Analysis result">
@@ -87,10 +88,10 @@
         </div>
 
         <div class="card">
-          <h2>Message signals</h2>
-          <p class="muted">Highlights show detected text patterns, not why the model made its decision. Legitimate messages can contain the same patterns.</p>
-          <div id="highlighted" class="highlighted" aria-label="Message with detected signals highlighted"></div>
-          <div id="signals" class="signals"></div>
+          <h2 id="signals-heading">Message signals</h2>
+          <p id="signals-guidance" class="muted">These highlights mark text patterns the detector recognizes. They do not show which features influenced the model’s verdict. Links, numbers, amounts, urgency, and brand names can appear in legitimate messages too.</p>
+          <div id="highlighted" class="highlighted" role="group" aria-label="Message text with detected text patterns" aria-describedby="signals-guidance"></div>
+          <ul id="signals" class="signals" aria-labelledby="signals-heading"></ul>
         </div>
 
         <div class="card">
@@ -194,6 +195,6 @@
     <p>Checks using synthetic Philippine data are not proof of real-world accuracy.</p>
   </footer>
 
-  <script src="/static/app.js"></script>
+  <script src="/static/app.js?v=signals-no-inline-numbers-20261020"></script>
 </body>
 </html>

@@ -36,13 +36,14 @@ points a reader at likely scam patterns.
 
 | Source | What it is | Size / role | In Git? |
 |---|---|---|---|
-| UCI SMS Spam Collection (via Kaggle re-upload) | Public **English** SMS corpus, 4,827 ham / 747 spam (5,574 total) | Base training corpus | No (`data/raw/spam.csv` git-ignored) |
-| `data/raw/ph_supplement.csv` | **Synthetic**, template-based Philippine scam and legitimate messages | Merged into training | Yes (template text only) |
-| `data/raw/ph_supplement_2.csv` | **Synthetic**, category-labeled scam/legit templates (second batch) | Merged into training | Yes (template text only) |
-| `data/raw/ph_holdout.csv` | **Synthetic**, disjoint labeled holdout | Evaluation only, never training | Yes |
+| `data/raw/spam.csv` | Operator-supplied English-style base file; its source/license are unknown until verified | Merged into training when present | No (git-ignored) |
+| Verified UCI SMS Spam Collection | Public historical English SMS corpus, 5,574 rows, CC BY 4.0; importer does not download it | Supported import; not added by this change | No |
+| `data/raw/ph_supplement.csv`, `_2.csv`, `_3.csv`, `_4.csv`, `_5.csv` | **Synthetic**, template-based Philippine scam and legitimate examples; `_4` adds 42 scam variants and `_5` adds 21 legitimate variants | Merged into training | Yes (template text only) |
+| `data/raw/ph_holdout.csv` | **Synthetic**, small labeled diagnostic holdout | Evaluation only, never training | Yes |
 | Real Philippine messages | none collected | — | — |
 
-- The base corpus is English-heavy and dated. The Philippine coverage comes from
+- The configured base file has unknown provenance in the audited workspace. A
+  verified UCI import would be English-heavy and dated. The Philippine coverage comes from
   hand-written synthetic templates covering prize scams, bank/e-wallet
   impersonation, parcel-fee phishing, SIM-registration threats, job/loan/
   investment lures, OTP social engineering, and legitimate counterparts (OTPs,
@@ -84,11 +85,12 @@ artifact version together.
 
 ## 5. Thresholds, precision, and confidence
 
-The artifact stores a `decision_threshold` (spam when P(spam) ≥ threshold) and a
+The artifact stores a `decision_threshold` (classify as spam when the raw model
+spam score reaches the threshold) and a
 `suspicious_threshold` for the UI warning band; both are chosen on a validation
 split with a precision-first objective (protect legitimate OTP/bank messages) and
 are exposed by `GET /model-info`. `POST /analyze` returns
-`spam_probability`, `decision_threshold`, `margin`, `confidence`, and
+`spam_probability` (an uncalibrated score in current artifacts), `decision_threshold`, `margin`, `confidence`, and
 `risk_band`.
 
 - Raising the threshold **increases precision** (fewer false alarms) and
@@ -96,11 +98,12 @@ are exposed by `GET /model-info`. `POST /analyze` returns
 - Choose the operating point for the deployment's cost of errors, not for the
   best single F1. For "don't scare people with false alarms", move it up; for
   "catch as much as possible, review later", move it down.
-- `probability` in `/predict` is the probability of the **returned class**, not
-  P(spam). Use `/analyze`'s `spam_probability` when you need the raw score.
-- **Do not treat probabilities as calibrated guarantees.** The evaluation
-  includes calibration diagnostics; check them before showing percentages as
-  "truth". Prefer qualitative bands (likely scam / suspicious / looks safe) in
+- `probability` in `/predict` is a legacy field name for the score of the
+  **returned class**, not a calibrated probability. `/analyze`'s
+  `spam_probability` is also an uncalibrated score unless calibration is
+  explicitly fitted and validated.
+- **Do not treat scores as calibrated guarantees.** The evaluation includes
+  calibration diagnostics; calibration is not currently fitted. Prefer qualitative bands (likely scam / suspicious / looks safe) in
   user-facing copy, over precise percentages.
 - A model that changes threshold but not weights is still the same artifact
   version for audit purposes; record which operating point a deployment uses.

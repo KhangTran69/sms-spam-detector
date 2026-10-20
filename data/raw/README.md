@@ -10,12 +10,28 @@ the synthetic, shareable Philippine files listed below and this README.
 | `ph_supplement.csv` | synthetic templates | Small Taglish/English scam + legitimate patterns merged into training. |
 | `ph_supplement_2.csv` | synthetic templates | Larger categorized set (prize, bank phishing, delivery, loan, job, romance, load, investment, impersonation, legitimate). |
 | `ph_supplement_3.csv` | synthetic templates | Additional labeled scam and legitimate patterns with source/category metadata. |
+| `ph_supplement_4.csv` | synthetic scam templates | 42 new fictional scam-only variations across seven categories, three languages, and 14 campaign-family groups. Uses reserved `example.com` URLs and bracketed placeholders; automatically included in default training. |
+| `ph_supplement_5.csv` | synthetic legitimate templates | 21 fictional legitimate examples across OTP, bank, delivery, bill, promotion, school/work, and personal-message categories; three language variants per group. Automatically included in default training. |
 | `ph_holdout.csv` | synthetic benchmark | Disjoint-by-message holdout with `category`, `language`, `source`, and `labeling_confidence` metadata. Used only for evaluation, never training. |
 | `spam.csv` (not tracked) | unknown until verified | Operator-supplied base file. Its current provenance is unverified; do not assume it is the UCI corpus. |
 
 **None of these files are a representative sample of real Philippine SMS
 traffic.** They exist so the pipeline, tests, and evaluation harness can run
 reproducibly. Do not quote their scores as real-world accuracy.
+
+The fourth supplement adds 42 messages (all labeled `spam`): six each for bank
+phishing, delivery, prize, job, loan, investment, and impersonation scams.
+Each category has two campaign-family groups with three wording variants per
+group. Variants stay together during grouped splitting. The messages are
+developer-authored synthetic training material, not collected SMS and not an
+independent evaluation set. They do not change `ph_holdout.csv`.
+
+The fifth supplement adds 21 messages (all labeled `ham`) as fictional,
+developer-authored legitimate examples. It covers seven categories in English,
+Filipino, and Taglish, with three variants per explicit campaign family. Some
+legitimate rows use the reserved `example.com` domain and placeholders, so
+those tokens no longer occur only in scam training rows. These examples do not
+represent the natural distribution of Philippine messages.
 
 ## Labeled CSV schema
 
@@ -89,8 +105,11 @@ The loader (`src/data.py`) fails with an actionable error on:
 - unknown labels or the same message carrying conflicting labels;
 - missing classes, or classes with fewer than two examples.
 
-Exact duplicate messages are removed **before** splitting (first occurrence
-kept) with a warning. The training/validation/test split is group-aware by
+Exact duplicates and duplicates after Unicode NFKC normalization, case-folding,
+and whitespace collapsing are removed **before** splitting (first occurrence
+kept) with a warning. Conflicting labels are rejected after normalization.
+Punctuation and semantic variants are not normalized. The holdout is checked
+for exact and normalized overlap. The training/validation/test split is group-aware by
 template family, so related examples do not cross split boundaries.
 
 ## Privacy rules for real data

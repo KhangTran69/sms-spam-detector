@@ -10,6 +10,7 @@ import pytest
 from src.data import (
     DEFAULT_DATA,
     DEFAULT_SUPPLEMENTS,
+    Dataset,
     DatasetError,
     group_leakage_report,
     grouped_splits,
@@ -27,6 +28,8 @@ ROOT = Path(__file__).resolve().parents[1]
 SUPPLEMENT = ROOT / "data" / "raw" / "ph_supplement.csv"
 SUPPLEMENT_2 = ROOT / "data" / "raw" / "ph_supplement_2.csv"
 SUPPLEMENT_3 = ROOT / "data" / "raw" / "ph_supplement_3.csv"
+SUPPLEMENT_4 = ROOT / "data" / "raw" / "ph_supplement_4.csv"
+SUPPLEMENT_5 = ROOT / "data" / "raw" / "ph_supplement_5.csv"
 HOLDOUT = ROOT / "data" / "raw" / "ph_holdout.csv"
 
 BRIEF_EXAMPLES = (
@@ -256,6 +259,27 @@ def test_cross_source_label_conflict_rejected(tmp_path):
         load_training_dataset(base, [supplement])
 
 
+def test_normalized_duplicates_are_removed_and_conflicts_rejected(tmp_path):
+    path = write_csv(
+        tmp_path / "normalized.csv",
+        [
+            ("ham", "  ＨＥＬＬＯ   there "),
+            ("ham", "hello there"),
+            ("ham", "A different message"),
+        ],
+    )
+    dataset = load_dataset(path, require_both_classes=False, min_class_count=0)
+    assert len(dataset) == 2
+    assert any("1 exact or normalized duplicate" in warning for warning in dataset.warnings)
+
+    conflict = write_csv(
+        tmp_path / "normalized_conflict.csv",
+        [("ham", "Hello  there"), ("spam", " hello there ")],
+    )
+    with pytest.raises(DatasetError, match="conflicting labels"):
+        load_dataset(conflict, require_both_classes=False, min_class_count=0)
+
+
 def test_explicit_missing_supplement_fails_but_default_missing_is_skipped(tmp_path):
     base = tiny_training_csv(tmp_path / "base.csv")
     with pytest.raises(DatasetError, match="Supplement CSV not found"):
@@ -265,13 +289,13 @@ def test_explicit_missing_supplement_fails_but_default_missing_is_skipped(tmp_pa
     assert any("Optional supplement not found" in warning for warning in dataset.warnings)
 
 
-def test_default_training_dataset_includes_all_three_supplements():
+def test_default_training_dataset_includes_all_five_supplements():
     if not DEFAULT_DATA.exists():
         pytest.skip("base dataset not downloaded")
     dataset = load_training_dataset()
     assert len(dataset.records) == 1 + len(DEFAULT_SUPPLEMENTS)
     loaded_paths = {Path(record.path) for record in dataset.records}
-    assert {SUPPLEMENT, SUPPLEMENT_2, SUPPLEMENT_3} <= loaded_paths
+    assert {SUPPLEMENT, SUPPLEMENT_2, SUPPLEMENT_3, SUPPLEMENT_4, SUPPLEMENT_5} <= loaded_paths
     assert dataset.class_counts["ham"] > 1000
     assert dataset.class_counts["spam"] > 100
 
@@ -282,6 +306,83 @@ def test_supplement_files_have_both_classes_and_no_blank_messages():
         assert dataset.class_counts["ham"] > 0
         assert dataset.class_counts["spam"] > 0
         assert all(message.strip() for message in dataset.messages)
+
+
+def test_fourth_supplement_is_synthetic_varied_and_campaign_grouped():
+    dataset = load_dataset(SUPPLEMENT_4, require_both_classes=False)
+    assert len(dataset) == 42
+    assert dataset.class_counts == {"ham": 0, "spam": 42}
+    assert dataset.frame["data_kind"].eq("synthetic").all()
+    assert dataset.frame["source"].eq("synthetic_template_v4").all()
+    assert set(dataset.frame["language"]) == {"en", "tl", "taglish"}
+    assert set(dataset.frame["category"]) == {
+        "bank_phishing",
+        "delivery_scam",
+        "prize_scam",
+        "job_scam",
+        "loan_scam",
+        "investment_scam",
+        "impersonation_scam",
+    }
+    assert dataset.frame["group"].nunique() == 14
+    assert dataset.frame.groupby("group").size().eq(3).all()
+    assert len(set(dataset.messages)) == len(dataset)
+    assert dataset.frame["message"].str.contains(r"example\.com").all()
+    assert not dataset.frame["message"].str.contains(r"(?:\+?63|0)\d{9,}").any()
+    for existing in (SUPPLEMENT, SUPPLEMENT_2, SUPPLEMENT_3):
+        assert not (set(dataset.messages) & set(load_dataset(existing).messages))
+
+
+def test_fourth_supplement_campaign_groups_stay_in_one_split():
+    scam = load_dataset(SUPPLEMENT_4, require_both_classes=False).frame
+    ham = scam.copy()
+    ham["message"] = [f"Fictional everyday note number {index}" for index in range(len(ham))]
+    ham["label"] = "ham"
+    ham["category"] = "personal_taglish"
+    ham["group"] = [f"everyday_family_{index // 3}" for index in range(len(ham))]
+    combined = Dataset(pd.concat([scam, ham], ignore_index=True))
+    split = grouped_splits(combined, val_size=0.2, test_size=0.2, seed=31)
+    assigned: dict[str, set[str]] = {}
+    for split_name, indices in split.splits.items():
+        for index in indices:
+            group = str(combined.frame.iloc[index]["group"])
+            assigned.setdefault(group, set()).add(split_name)
+    for group in scam["group"].unique():
+        assert len(assigned[str(group)]) == 1
+
+
+def test_fifth_supplement_balances_synthetic_coverage_and_is_disjoint():
+    dataset = load_dataset(SUPPLEMENT_5, require_both_classes=False, min_class_count=0)
+    assert len(dataset) == 21
+    assert dataset.class_counts == {"ham": 21, "spam": 0}
+    assert dataset.frame["data_kind"].eq("synthetic").all()
+    assert dataset.frame["source"].eq("synthetic_legitimate_v5").all()
+    assert dataset.frame["group"].nunique() == 7
+    assert dataset.frame.groupby("group").size().eq(3).all()
+    assert set(dataset.frame["language"]) == {"en", "tl", "taglish"}
+    assert {"otp", "bank_alert", "delivery", "bill", "promo", "school_work", "personal_taglish"} == set(
+        dataset.frame["category"]
+    )
+    assert dataset.frame["message"].str.contains(r"example\.com").sum() > 0
+    all_training_supplements = set()
+    for path in (SUPPLEMENT, SUPPLEMENT_2, SUPPLEMENT_3, SUPPLEMENT_4):
+        all_training_supplements.update(load_dataset(path, require_both_classes=False).messages)
+    assert not (set(dataset.messages) & all_training_supplements)
+    holdout = load_holdout()
+    assert holdout is not None
+    assert not (set(dataset.messages) & set(holdout.messages))
+
+
+def test_holdout_normalized_overlap_is_rejected(tmp_path):
+    training_path = write_csv(tmp_path / "training.csv", [("ham", "Hello,   there"), ("ham", "see you")])
+    holdout_path = write_csv(
+        tmp_path / "holdout.csv",
+        [("ham", "HELLO, there"), ("spam", "scam a"), ("spam", "scam b")],
+    )
+    training = load_dataset(training_path, require_both_classes=False, min_class_count=0)
+    holdout = load_dataset(holdout_path, role="holdout", require_both_classes=False, min_class_count=0)
+    with pytest.raises(DatasetError, match="normalized message duplicate"):
+        group_leakage_report(training, holdout)
 
 
 def test_second_supplement_is_categorized_and_disjoint():
@@ -301,8 +402,8 @@ def test_holdout_metadata_and_disjointness():
         assert column in holdout.frame.columns
         assert holdout.frame[column].ne("unknown").all()
     supplement_messages = set()
-    for path in (SUPPLEMENT, SUPPLEMENT_2, SUPPLEMENT_3):
-        supplement_messages |= set(load_dataset(path).messages)
+    for path in (SUPPLEMENT, SUPPLEMENT_2, SUPPLEMENT_3, SUPPLEMENT_4, SUPPLEMENT_5):
+        supplement_messages |= set(load_dataset(path, require_both_classes=False).messages)
     assert not (set(holdout.messages) & supplement_messages)
     for example in BRIEF_EXAMPLES:
         assert example not in set(holdout.messages)

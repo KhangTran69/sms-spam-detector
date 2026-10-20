@@ -36,6 +36,7 @@ REQUIRED_FILES = [
     ".github/workflows/ci.yml",
     "docs/README.md",
     "docs/DATA_COLLECTION.md",
+    "docs/DATASET_INVENTORY.md",
     "docs/DEPLOYMENT.md",
     "docs/MODEL_CARD.md",
     "docs/RETRAINING.md",
@@ -290,6 +291,7 @@ def test_ci_runs_quality_gates_on_supported_versions() -> None:
     assert "ruff format --check ." in workflow
     assert "mypy src api" in workflow
     assert "pytest -q" in workflow
+    assert "docker build" in workflow and "deployment-smoke" in workflow
     assert "permissions:" in workflow and "contents: read" in workflow
     assert "secrets." not in workflow, "CI must not reference repository secrets"
 

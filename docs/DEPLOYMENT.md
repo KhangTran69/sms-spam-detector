@@ -36,15 +36,25 @@ python -m src.train                 # writes models/spam_detector_v1.pkl (+ side
 python -m src.evaluate              # held-out metrics, threshold sweep, synthetic PH holdout
 ```
 
-- `data/raw/spam.csv` (base corpus) is required for a full training run and is
-  **not committed** (public UCI-derived English dataset; download links are in
-  the [README](../README.md)).
+- `data/raw/spam.csv` (base corpus) is operator-supplied, required for the
+  default full training run, and **not committed**. Its provenance and license
+  are unknown until the operator verifies them; do not assume it is UCI data.
+  See [data/raw/README.md](../data/raw/README.md) for the verified UCI import
+  process. Training can use an imported corpus explicitly with
+  `python -m src.train --data data/raw/imported/uci_sms_spam.csv`.
 - The synthetic Philippine CSVs are committed and merged automatically.
 - The artifact is a joblib-serialized **bundle** (model pipeline + decision
   threshold + label mapping + training config + data-source hashes + version
   metadata + metrics), with a human-readable
   `models/spam_detector_v1.metadata.json` sidecar. `models/` is git-ignored —
   artifacts travel through a registry/volume, not Git.
+- The API resolves `SMSD_MODEL_PATH` at startup; when it is unset, code defaults
+  to `models/spam_detector_v1.pkl`. Check the running instance with
+  `GET /model-info` because a local file or candidate training run does not
+  prove what a separately hosted demo serves. In this workspace, no API process
+  was running during the 2026-10-20 audit, so the remote/running demo artifact
+  could not be confirmed. The locally present `spam_detector_v2_1.pkl` is a
+  separate ignored artifact and is not the configured fallback.
 - For the authoritative current CLI flags run `python -m src.train --help` and
   `python -m src.evaluate --help`.
 

@@ -12,7 +12,7 @@ source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt -r requirements-dev.txt
 ```
 
-Python 3.11+ is required. The base SMS corpus is not committed. Download the Kaggle [Spam Text Message Classification](https://www.kaggle.com/datasets/anthonytherrien/spam-text-message-classification) CSV, or use the documented UCI SMS Spam Collection source, and save it as `data/raw/spam.csv`. Accepted formats are Kaggle `v1`/`v2` and `label`/`message` CSVs.
+Python 3.11+ is required. The base SMS corpus is not committed. Use the documented UCI SMS Spam Collection import after reviewing its CC BY 4.0 terms, or provide another dataset only after independently verifying its source and usage terms. The importer writes an attributed normalized file; pass it explicitly with `python -m src.train --data data/raw/imported/uci_sms_spam.csv`. Accepted formats are Kaggle `v1`/`v2` and `label`/`message` CSVs, but schema compatibility does not establish a dataset's license or provenance.
 
 The tracked Philippine supplements and holdout are synthetic templates for repeatable pipeline checks. See [data/raw/README.md](data/raw/README.md) and [docs/DATA_COLLECTION.md](docs/DATA_COLLECTION.md) before adding any real messages. Raw real messages, model artifacts, and feedback reports are excluded from Git.
 
@@ -25,9 +25,9 @@ python -m src.train
 python -m src.evaluate --json-out data/processed/evaluation.json
 ```
 
-Training validates schemas and labels, removes exact duplicates before splitting, keeps campaign/template groups together, tunes the decision threshold on validation data, and reports the final test metrics separately. The artifact contains the model, threshold, training/data provenance, and version metadata. The public English corpus and three synthetic Philippine supplements are used by default when present.
+Training validates schemas and labels, removes exact and normalized duplicates before splitting, keeps campaign/template groups together, tunes the decision threshold on validation data, and reports the final test metrics separately. The artifact contains the model, threshold, training/data provenance, and version metadata. The configured base file and five synthetic Philippine supplements are used by default when present; unknown provenance stays marked unknown.
 
-Training records per-file source metadata and label/language/category/provenance coverage in the artifact and a message-free `models/*.manifest.json` sidecar. The manifest includes input/retained row counts, duplicates, file hashes, class counts, split method/seed/fingerprint, and whether metadata was unverified. Small per-class splits are flagged so scores with limited support are not mistaken for stable estimates.
+Training records per-file source metadata and label/language/category/provenance coverage in the artifact and a message-free `models/*.manifest.json` sidecar. The manifest includes input/retained row counts, duplicates, file hashes, class counts, split method/seed/fingerprint, and whether metadata was unverified. Small per-class splits are flagged so scores with limited support are not mistaken for stable estimates. See the dated [dataset inventory](docs/DATASET_INVENTORY.md) for this workspace's audited counts and provenance limits.
 
 For real data with reliable `received_at` timestamps and campaign groups, chronological validation/test splits are available:
 
@@ -37,7 +37,7 @@ python -m src.train --split-by time
 
 Time splits require valid dates for every row and fail if both classes cannot be represented. Use `--split-by group` for the default group-aware split. The random split option is diagnostic only and can leak related examples.
 
-Evaluation reports class metrics, false positives by legitimate category, threshold tradeoffs, calibration diagnostics, and holdout/template overlap. It prints sample counts and labels synthetic results. The model currently reports uncalibrated scores; a score is not a probability guarantee. Do not use synthetic holdout results as a real-world accuracy claim.
+Evaluation reports class metrics, false positives by legitimate category, threshold tradeoffs, calibration diagnostics, language/category coverage, and holdout/template overlap. Reports label each split from its declared provenance and omit SMS content from errors. The model currently reports uncalibrated scores; a score is not a probability guarantee. Do not use synthetic or unknown-provenance results as a real-world accuracy claim.
 
 Run `python -m src.train --help` and `python -m src.evaluate --help` for all data, threshold, split, and output options.
 

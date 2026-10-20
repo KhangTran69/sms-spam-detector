@@ -5,17 +5,17 @@ Build and validate a maintainable SMS classifier that identifies spam and scams 
 
 ## Phase 1: Prepare the dataset
 
-- Download the Kaggle Spam Text Message Classification CSV and save it as `data/raw/spam.csv`.
+- Use the documented UCI import only after reviewing its source and CC BY 4.0 terms, or provide another corpus after independently verifying its terms. The ignored `data/raw/spam.csv` has unknown provenance until verified; a compatible schema does not prove its source.
 - Confirm the file uses `v1`/`v2` or `label`/`message` columns and labels map to `spam` and `ham`.
 - Add Philippine examples only when they are labeled and sourced responsibly. Include both scams and legitimate messages such as OTPs, bank alerts, delivery notices, and everyday Tagalog/Taglish messages.
-- Remove or mask personal information before committing or sharing data. Keep raw data out of Git.
+- Keep real SMS text out of Git and reports. Collect only under documented consent, mask before storage, and follow the revocation, retention, review, and deletion workflow in `docs/DATA_COLLECTION.md`.
 - Record dataset source, collection date, labeling method, and any known sampling bias.
 
 **Deliverable:** documented, usable CSV with both classes and representative Philippine messages.
 
 ## Phase 2: Inspect and prepare the data
 
-- Run `notebooks/01_eda.ipynb` to inspect class balance, message lengths, duplicates, and label quality.
+- Inspect the message-free source manifest and evaluation coverage for class balance, duplicates, metadata gaps, and group isolation.
 - Check that train/test splitting keeps both classes represented.
 - Review the preprocessing rules for Taglish normalization, phone numbers, URLs, currency, and urgency words.
 - Save any approved cleaned or derived data under `data/processed/`; preserve the original source data.
@@ -35,7 +35,7 @@ Build and validate a maintainable SMS classifier that identifies spam and scams 
 ## Phase 4: Validate Philippine scam coverage
 
 - Run `python -m src.evaluate --data data/raw/spam.csv --plot data/processed/confusion_matrix.png`.
-- Review the three built-in Philippine scam examples as diagnostic cases, not as a substitute for a labeled test set.
+- Treat the three built-in Philippine prompts as synthetic diagnostics, not as a substitute for a consented labeled test set.
 - Build a Philippine holdout set containing scams, legitimate OTPs, bank messages, and ordinary Tagalog/Taglish texts.
 - Measure precision and recall by message type and inspect errors for leakage, duplicates, and source bias.
 - Add new scam patterns only with representative labeled examples; avoid rules that flag legitimate messages solely because they contain a link, amount, or phone number.
@@ -63,11 +63,11 @@ Build and validate a maintainable SMS classifier that identifies spam and scams 
 
 ## Remaining validation work
 
-1. Confirm the public corpus is present at `data/raw/spam.csv` and record its provenance.
-2. Run the EDA notebook and record dataset limitations.
-3. Add labeled Philippine scam and legitimate-message examples when available.
-4. Train and compare models, then inspect false positives.
-5. Evaluate against a Philippine holdout set before relying on predictions.
-6. Start the API and verify its behavior locally.
+1. Verify provenance and usage terms for the operator-supplied base corpus; otherwise leave it labeled `unknown`.
+2. Collect a sufficiently broad Philippine set only through the documented consent and privacy workflow.
+3. Hold out real campaigns and, where possible, later collection periods; keep that test set untouched.
+4. Compare model versions on the same independent set before claiming a change in performance.
+5. Reassess false positives on legitimate OTPs, bank alerts, delivery notices, promotions, and everyday messages.
+6. Establish deployment monitoring and review using aggregate, privacy-safe outcomes.
 
-The repository already implements grouped splitting, validation-only threshold tuning, API validation, automated checks, opt-in browser history, and text-free correction reports. These engineering features do not establish real-world Philippine accuracy. Use `data_kind` (`synthetic`, `real`, or `unknown`) to declare row provenance. Missing provenance remains unknown. Scores are uncalibrated; detected signals are not causal model explanations.
+The repository implements grouped splitting, validation-only threshold tuning, API validation, automated checks, opt-in browser history, and text-free correction reports. These engineering features do not establish real-world Philippine accuracy. Use `data_kind` (`synthetic`, `public`, `consented`, or `unknown`) to declare row provenance; legacy `real` is accepted as an alias for consented data. Missing provenance remains unknown. Scores are uncalibrated unless calibration is fitted and validated; detected text signals are not explanations of the model's decision.

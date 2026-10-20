@@ -23,6 +23,7 @@ import hashlib
 import json
 import math
 import re
+import unicodedata
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -41,6 +42,8 @@ DEFAULT_SUPPLEMENTS: tuple[Path, ...] = (
     RAW_DIR / "ph_supplement.csv",
     RAW_DIR / "ph_supplement_2.csv",
     RAW_DIR / "ph_supplement_3.csv",
+    RAW_DIR / "ph_supplement_4.csv",
+    RAW_DIR / "ph_supplement_5.csv",
 )
 DEFAULT_HOLDOUT = RAW_DIR / "ph_holdout.csv"
 
@@ -163,6 +166,11 @@ def _normalize_labels(series: pd.Series, path: Path) -> pd.Series:
             f"Allowed values: {sorted(set(LABEL_ALIASES))}; unknown rows must be fixed or removed."
         )
     return normalized.astype(str)
+
+
+def _normalized_message_key(message: str) -> str:
+    """Normalize Unicode, case, and whitespace for duplicate detection only."""
+    return " ".join(unicodedata.normalize("NFKC", message).casefold().split())
 
 
 def make_group_key(message: str, *, category: str | None = None, source: str | None = None) -> str:
@@ -342,7 +350,8 @@ def _load_one(
     if working.empty:
         raise DatasetError(f"{path}: no usable rows after dropping blank messages.")
 
-    conflicts = working.groupby("message")["label"].nunique()
+    working["_message_key"] = working["message"].map(_normalized_message_key)
+    conflicts = working.groupby("_message_key")["label"].nunique()
     conflicting_messages = conflicts[conflicts > 1]
     if len(conflicting_messages):
         raise DatasetError(
@@ -350,9 +359,11 @@ def _load_one(
             "Resolve the labels before training; duplicate text cannot be both ham and spam."
         )
 
-    duplicates = int(working.duplicated(subset="message", keep="first").sum())
+    exact_duplicates = int(working.duplicated(subset="message", keep="first").sum())
+    duplicates = int(working.duplicated(subset="_message_key", keep="first").sum())
     if duplicates:
-        working = working.drop_duplicates(subset="message", keep="first").reset_index(drop=True)
+        working = working.drop_duplicates(subset="_message_key", keep="first").reset_index(drop=True)
+    working = working.drop(columns=["_message_key"])
 
     working["group"] = [
         provided
@@ -379,8 +390,8 @@ def _load_one(
     warnings: list[str] = []
     if duplicates:
         warnings.append(
-            f"{path}: removed {duplicates} exact duplicate message(s) before splitting "
-            "(first occurrence kept; prevents a template from being double-counted)."
+            f"{path}: removed {duplicates} exact or normalized duplicate message(s) before splitting "
+            f"({exact_duplicates} exact; Unicode NFKC, case-folding, and whitespace normalization; first occurrence kept)."
         )
     nonzero = [count for count in class_counts.values() if count > 0]
     if len(nonzero) == 2 and min(nonzero) > 0 and max(nonzero) / min(nonzero) > IMBALANCE_WARN_RATIO:
@@ -518,7 +529,8 @@ def load_training_dataset(
         warnings.extend(supplement.warnings)
 
     combined = pd.concat(frames, ignore_index=True)
-    conflicts = combined.groupby("message")["label"].nunique()
+    combined["_message_key"] = combined["message"].map(_normalized_message_key)
+    conflicts = combined.groupby("_message_key")["label"].nunique()
     conflicting = conflicts[conflicts > 1]
     if len(conflicting):
         raise DatasetError(
@@ -526,7 +538,11 @@ def load_training_dataset(
             "Fix the labels before training; identical text cannot be both ham and spam."
         )
     before = len(combined)
-    combined = combined.drop_duplicates(subset="message", keep="first").reset_index(drop=True)
+    combined = (
+        combined.drop_duplicates(subset="_message_key", keep="first")
+        .drop(columns="_message_key")
+        .reset_index(drop=True)
+    )
     cross_source_duplicates = before - len(combined)
     if cross_source_duplicates:
         warnings.append(f"Removed {cross_source_duplicates} duplicate message(s) across sources before splitting.")
@@ -554,24 +570,28 @@ def load_holdout(path: str | Path | None = DEFAULT_HOLDOUT, *, strict: bool = Tr
 def group_leakage_report(training: Dataset, holdout: Dataset) -> dict[str, Any]:
     """Compare training and holdout at message/template-family level.
 
-    Exact duplicate messages between training and the holdout are a hard
-    leakage error. Template-family overlap is reported (synthetic Philippine
+    Exact or normalized duplicate messages between training and the holdout
+    are a hard leakage error. Template-family overlap is reported (synthetic Philippine
     templates deliberately share families) and must be disclosed wherever
     holdout metrics are shown.
     """
     train_messages = set(training.messages)
     holdout_messages = set(holdout.messages)
-    exact_overlap = sorted(train_messages & holdout_messages)
-    if exact_overlap:
+    exact_overlap_count = len(train_messages & holdout_messages)
+    normalized_train = {_normalized_message_key(message) for message in train_messages}
+    normalized_holdout = {_normalized_message_key(message) for message in holdout_messages}
+    normalized_overlap = normalized_train & normalized_holdout
+    if normalized_overlap:
         raise DatasetError(
-            f"Holdout contains {len(exact_overlap)} message(s) that are also in training data; "
+            f"Holdout contains {len(normalized_overlap)} exact or normalized message duplicate(s) from training data; "
             "this leaks the answer. Remove overlapping rows from the holdout or training files."
         )
     train_groups = set(training.groups)
     holdout_groups = set(holdout.groups)
     overlapping_groups = sorted(train_groups & holdout_groups)
     return {
-        "exact_message_overlap": 0,
+        "exact_message_overlap": exact_overlap_count,
+        "normalized_message_overlap": 0,
         "template_family_overlap": len(overlapping_groups),
         "holdout_template_family_count": len(holdout_groups),
         "template_family_overlap_ratio": (

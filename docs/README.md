@@ -8,6 +8,7 @@ dataset details, measured metrics, and API examples; this directory covers the
 | Document | What it answers |
 |---|---|
 | [DATA_COLLECTION.md](DATA_COLLECTION.md) | How message data is collected, consented, masked, labeled, grouped, stored, and separated into synthetic vs. real data. |
+| [DATASET_INVENTORY.md](DATASET_INVENTORY.md) | Message-free audit of the current workspace's sources, counts, provenance, coverage, and evidence limits. |
 | [DEPLOYMENT.md](DEPLOYMENT.md) | Local setup, training, serving, Docker/compose, reverse proxy + TLS, environment variables, health/readiness, artifact mounting, rollback, and limits. |
 | [MODEL_CARD.md](MODEL_CARD.md) | What the model is and is not for, training data provenance, evaluation caveats, threshold/confidence guidance, known failure modes, fairness, and ethics. |
 | [RETRAINING.md](RETRAINING.md) | Retraining cadence and triggers, validation gates, artifact versioning, reproducible splits, monitoring, incident response, and audit trail. |
@@ -16,9 +17,11 @@ dataset details, measured metrics, and API examples; this directory covers the
 
 ## Read this first: scope of current evidence
 
-- The base corpus is the public **UCI SMS Spam Collection** (English), loaded via
-  a Kaggle re-upload; the Philippine coverage in this repository is
-  **synthetic, template-based** data written to exercise the pipeline.
+- The ignored base corpus in a developer's workspace has **unverified
+  provenance** until its source and terms are checked. The supported verified
+  import is the public **UCI SMS Spam Collection** (English, CC BY 4.0); its
+  importer does not download data. The Philippine coverage in this repository
+  is **synthetic, template-based** data written to exercise the pipeline.
 - **No representative real-world Philippine SMS dataset has been collected or
   evaluated.** Every number currently reported is a synthetic/UCI test-set or
   synthetic-holdout number. See [MODEL_CARD.md](MODEL_CARD.md) and the

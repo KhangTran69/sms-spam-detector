@@ -48,6 +48,19 @@ For any non-synthetic donation:
 4. On withdrawal, delete the donor's rows (or re-run the masking job) and
    regenerate any derived artifacts; record the deletion in the audit log.
 
+Operational sequence: obtain and version the consent text before collection;
+store unmasked exports only in an encrypted, access-controlled location outside
+this repository; mask and run the automated PII scan before creating a CSV;
+have two reviewers label independently and quarantine disagreements; assign a
+campaign/donor pseudonym shared only by rows that must remain in one split;
+then copy only the masked, reviewed CSV into a restricted evaluation workspace.
+Set a deletion date at collection time, review access periodically, and delete
+the raw export, masked rows, backups, and derived model/evaluation artifacts
+when consent is withdrawn or retention expires. Keep the consent mapping and
+deletion log separately from message data. Record only aggregate counts in
+public reports. The CSV's `source_file` and `group` metadata must never contain
+names, phone numbers, or other donor identifiers.
+
 Do not rely on "publicly posted" as consent for re-publishing someone's private
 messages. Do not scrape private groups or inboxes.
 

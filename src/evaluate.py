@@ -45,7 +45,6 @@ from src.metrics import (
     threshold_sweep,
 )
 from src.predict import ModelBundle, load_model, spam_probabilities
-from src.preprocess import redact_message
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_MODEL = ROOT / "models" / "spam_detector_v1.pkl"
@@ -53,6 +52,29 @@ DEFAULT_PLOT = ROOT / "data" / "processed" / "evaluation.png"
 KEY_THRESHOLDS = (0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
 SYNTHETIC_BANNER = "SYNTHETIC BENCHMARK — NOT REAL-WORLD PERFORMANCE"
 LEGIT_CATEGORIES = ("otp", "bank_alert", "delivery", "bill", "personal_taglish", "promo")
+
+
+def _provenance_banner(dataset: Dataset) -> str:
+    kinds = set(dataset.frame["data_kind"].astype(str))
+    if kinds == {"synthetic"}:
+        return SYNTHETIC_BANNER
+    if "unknown" in kinds or not kinds:
+        return "UNVERIFIED OR MIXED-PROVENANCE BENCHMARK — NOT REAL-WORLD PERFORMANCE"
+    if "synthetic" in kinds:
+        return "MIXED-PROVENANCE BENCHMARK — NOT REAL-WORLD PERFORMANCE"
+    if kinds == {"public"}:
+        return "PUBLIC-CORPUS BENCHMARK — NOT PHILIPPINE REAL-WORLD PERFORMANCE"
+    if "public" in kinds and kinds <= {"public", "consented", "real"}:
+        return "MIXED PUBLIC AND CONSENTED-DATA BENCHMARK — REPRESENTATIVENESS NOT ESTABLISHED"
+    return "CONSENTED-DATA BENCHMARK — REPRESENTATIVENESS NOT ESTABLISHED"
+
+
+def _coverage_counts(frame: Any, column: str) -> dict[str, int]:
+    if column not in frame:
+        return {"unknown": len(frame)}
+    counts = frame[column].fillna("unknown").astype(str).value_counts()
+    return {str(key): int(value) for key, value in sorted(counts.items())}
+
 
 # Diagnostic examples from the project brief. They are deliberately excluded
 # from every data file (tests assert this) so predictions show generalized
@@ -113,7 +135,6 @@ def evaluate(
     json_output: str | Path | None = None,
     strict_supplement_paths: bool = False,
     strict_data: bool = True,
-    show_messages: bool = False,
     val_size: float | None = None,
     test_size: float | None = None,
     seed: int | None = None,
@@ -135,6 +156,14 @@ def evaluate(
     train_set, val_set, test_set = split_dataset(dataset, split)
 
     warnings = [*dataset.warnings, *split.warnings, *_data_hash_warnings(bundle, dataset)]
+    for split_name, split_data in (("validation", val_set), ("test", test_set)):
+        small = {
+            label: split_data.labels.count(label) for label in ("ham", "spam") if split_data.labels.count(label) < 30
+        }
+        if small:
+            warnings.append(
+                f"Small class support in {split_name} split: {small}; precision/recall estimates may be unstable."
+            )
     artifact_split = bundle.metadata.get("split", {})
     if artifact_split.get("group_fingerprint"):
         current_fingerprint = split.group_fingerprint(dataset.groups)
@@ -162,14 +191,11 @@ def evaluate(
     test_metrics = binary_metrics(test_set.labels, test_probabilities, threshold)
     test_at_default = binary_metrics(test_set.labels, test_probabilities, 0.5)
     test_calibration = calibration_metrics(test_set.labels, test_probabilities)
-    test_groups = per_group_metrics(
-        test_set.frame, test_probabilities, threshold, group_columns=("source_file", "category")
-    )
     thresholds = sorted({*KEY_THRESHOLDS, round(threshold, 4)})
     validation_sweep = threshold_sweep(val_set.labels, val_probabilities, thresholds=thresholds)
 
     results: dict[str, Any] = {
-        "banner": SYNTHETIC_BANNER,
+        "banner": _provenance_banner(test_set),
         "model": bundle.model_info(),
         "threshold": threshold,
         "dataset": dataset.summary(),
@@ -181,6 +207,9 @@ def evaluate(
                     label: int((dataset.frame.iloc[indices]["label"] == label).sum()) for label in ("ham", "spam")
                 },
                 "groups": int(dataset.frame.iloc[indices]["group"].nunique()),
+                "provenance": _coverage_counts(dataset.frame.iloc[indices], "data_kind"),
+                "language": _coverage_counts(dataset.frame.iloc[indices], "language"),
+                "category": _coverage_counts(dataset.frame.iloc[indices], "category"),
             }
             for name, indices in split.splits.items()
         },
@@ -192,7 +221,9 @@ def evaluate(
             "at_threshold": test_metrics,
             "at_default_0.5": test_at_default,
             "calibration": test_calibration,
-            "by_source_category": test_groups,
+            "by_source_category_language": per_group_metrics(
+                test_set.frame, test_probabilities, threshold, group_columns=("source_file", "category", "language")
+            ),
         },
         "warnings": warnings,
     }
@@ -225,8 +256,18 @@ def evaluate(
             }
             for name in sorted(set(holdout.frame["category"].astype(str)))
         }
+        small_categories = {
+            name: entry["ham_rows"]
+            for name, entry in by_category.items()
+            if entry["ham_rows"] and entry["ham_rows"] < 10
+        }
+        if small_categories:
+            warnings.append(
+                "Small legitimate holdout category support "
+                f"({small_categories}); category false-positive counts are descriptive only."
+            )
         results["holdout"] = {
-            "banner": SYNTHETIC_BANNER,
+            "banner": _provenance_banner(holdout),
             "data_note": bundle.data_note,
             "at_threshold": holdout_metrics,
             "at_default_0.5": holdout_at_default,
@@ -236,18 +277,18 @@ def evaluate(
             "legitimate_flagged_total": flagged_legit,
             "by_category": by_category,
             "leakage": leakage,
-            "errors": _errors(holdout, holdout_probabilities, threshold, show_messages=show_messages),
+            "errors": _errors(holdout, holdout_probabilities, threshold),
         }
 
     results = jsonable(results)
     diagnostic_probabilities = spam_probabilities(bundle, list(PHILIPPINE_EXAMPLES))
     results["diagnostic_examples"] = [
         {
-            "message": redact_message(message, max_length=120),
+            "example_id": index + 1,
             "prediction": "spam" if probability >= threshold else "ham",
-            "spam_probability": round(float(probability), 4),
+            "uncalibrated_spam_score": round(float(probability), 4),
         }
-        for message, probability in zip(PHILIPPINE_EXAMPLES, diagnostic_probabilities)
+        for index, probability in enumerate(diagnostic_probabilities)
     ]
     if plot_path:
         _plot(
@@ -260,29 +301,24 @@ def evaluate(
         if verbose:
             print(f"Evaluation metrics written to {output}")
     if verbose:
-        _print_report(results, threshold, holdout, show_messages)
+        _print_report(results, threshold, holdout)
     return results
 
 
-def _errors(
-    dataset: Dataset, probabilities: list[float], threshold: float, *, show_messages: bool
-) -> list[dict[str, Any]]:
+def _errors(dataset: Dataset, probabilities: list[float], threshold: float) -> list[dict[str, Any]]:
     predictions = ["spam" if probability >= threshold else "ham" for probability in probabilities]
     errors: list[dict[str, Any]] = []
     for index, (label, prediction) in enumerate(zip(dataset.labels, predictions)):
         if label == prediction:
             continue
-        message = dataset.messages[index]
         errors.append(
             {
                 "index": index,
                 "label": label,
                 "prediction": prediction,
-                "spam_probability": round(float(probabilities[index]), 4),
+                "uncalibrated_spam_score": round(float(probabilities[index]), 4),
                 "category": str(dataset.frame.iloc[index].get("category", "unknown")),
                 "language": str(dataset.frame.iloc[index].get("language", "unknown")),
-                "message": message if show_messages else redact_message(message),
-                "redacted": not show_messages,
             }
         )
     return errors
@@ -329,7 +365,7 @@ def _plot(
             label="test reliability",
         )
     axes[1, 0].set_title(f"Calibration (test) ECE={calibration['expected_calibration_error']:.3f}")
-    axes[1, 0].set_xlabel("mean predicted spam probability")
+    axes[1, 0].set_xlabel("mean uncalibrated spam score")
     axes[1, 0].set_ylabel("observed spam rate")
     axes[1, 0].set_xlim(0, 1)
     axes[1, 0].set_ylim(0, 1)
@@ -348,7 +384,7 @@ def _plot(
     else:
         axes[1, 1].text(0.5, 0.5, "No holdout configured", ha="center", va="center")
         axes[1, 1].set_axis_off()
-    figure.suptitle(f"{SYNTHETIC_BANNER}\nmodel={results['model']['model_version']}", fontsize=10)
+    figure.suptitle(f"{results['banner']}\nmodel={results['model']['model_version']}", fontsize=10)
     figure.tight_layout()
     output = Path(plot_path)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -356,8 +392,8 @@ def _plot(
     plt.close(figure)
 
 
-def _print_report(results: dict[str, Any], threshold: float, holdout: Dataset | None, show_messages: bool) -> None:
-    print(f"\n=== {SYNTHETIC_BANNER} ===")
+def _print_report(results: dict[str, Any], threshold: float, holdout: Dataset | None) -> None:
+    print(f"\n=== {results['banner']} ===")
     print(results["model"]["data_note"])
     print(f"model_version={results['model']['model_version']} threshold={threshold:.2f}")
     split_summary = results["split_summary"]
@@ -389,7 +425,7 @@ def _print_report(results: dict[str, Any], threshold: float, holdout: Dataset | 
 
     if "holdout" in results:
         holdout_results = results["holdout"]
-        print(f"\n=== {SYNTHETIC_BANNER} (separate holdout) ===")
+        print(f"\n=== {holdout_results['banner']} (separate holdout) ===")
         print(_format_metrics("holdout at tuned threshold", holdout_results["at_threshold"]))
         print(_format_metrics("holdout at 0.5", holdout_results["at_default_0.5"]))
         print(f"Legitimate holdout messages flagged: {holdout_results['legitimate_flagged_total']}")
@@ -407,18 +443,22 @@ def _print_report(results: dict[str, Any], threshold: float, holdout: Dataset | 
             f"({leakage['template_family_overlap_ratio']:.0%})"
         )
         if holdout_results["errors"]:
-            print(f"Errors ({len(holdout_results['errors'])}); messages are redacted unless --show-messages:")
+            print(f"Errors ({len(holdout_results['errors'])}; message content omitted):")
             for error in holdout_results["errors"]:
                 print(
-                    f"  [{error['label']} -> {error['prediction']} p={error['spam_probability']:.3f}] "
-                    f"category={error['category']} {error['message']}"
+                    f"  [{error['label']} -> {error['prediction']} "
+                    f"score={error['uncalibrated_spam_score']:.3f}] "
+                    f"category={error['category']} language={error['language']}"
                 )
     else:
         print("\nNo separate holdout configured; internal test split only.")
 
     print("\n=== Diagnostic examples from the project brief (not a benchmark) ===")
     for entry in results["diagnostic_examples"]:
-        print(f"{entry['prediction']:>4} (p={entry['spam_probability']:.3f}) | {entry['message']}")
+        print(
+            f"example {entry['example_id']}: {entry['prediction']:>4} "
+            f"(uncalibrated score={entry['uncalibrated_spam_score']:.3f})"
+        )
 
     for warning in results["warnings"]:
         print(f"warning: {warning}")
@@ -450,9 +490,6 @@ def _main(argv: list[str] | None = None) -> int:
     parser.add_argument("--holdout", default=str(DEFAULT_HOLDOUT), help="Holdout CSV; pass 'none' to skip.")
     parser.add_argument("--plot", default=str(DEFAULT_PLOT), help="Plot output path; pass 'none' to skip.")
     parser.add_argument("--json-out", default=None, help="Write JSON metrics (no raw messages) to this path.")
-    parser.add_argument(
-        "--show-messages", action="store_true", help="Print full holdout messages in errors (synthetic data only)."
-    )
     parser.add_argument("--lenient-data", action="store_true")
     args = parser.parse_args(argv)
 
@@ -469,7 +506,6 @@ def _main(argv: list[str] | None = None) -> int:
             json_output=args.json_out,
             strict_supplement_paths=strict_supplement_paths,
             strict_data=not args.lenient_data,
-            show_messages=args.show_messages,
         )
     except DatasetError as exc:
         print(f"data error: {exc}")
