@@ -231,6 +231,37 @@ def test_model_hash_verification_accepts_matching_digest(trained_artifact, monke
     assert load_model(model_path).path == model_path
 
 
+def test_hash_verified_bytes_are_the_bytes_given_to_joblib(trained_artifact, monkeypatch):
+    _, model_path = trained_artifact
+    import joblib
+
+    original_load = joblib.load
+    received: list[bytes] = []
+
+    def capture(source):
+        payload = source.read()
+        received.append(payload)
+        return original_load(io.BytesIO(payload))
+
+    import io
+
+    monkeypatch.setattr(joblib, "load", capture)
+    monkeypatch.setenv("SMSD_MODEL_SHA256", hashlib.sha256(model_path.read_bytes()).hexdigest())
+    assert load_model(model_path).path == model_path
+    assert received == [model_path.read_bytes()]
+
+
+def test_compatible_word_only_feature_version_loads_with_warning(trained_artifact, tmp_path):
+    artifact, _ = trained_artifact
+    payload = dict(artifact)
+    payload["feature_version"] = "2.1.0"
+    path = tmp_path / "compatible-word.pkl"
+    joblib.dump(payload, path)
+    bundle = load_model(path)
+    assert bundle.version == artifact["model_version"]
+    assert any("compatible 2.1.0 word-only" in warning for warning in bundle.metadata["warnings"])
+
+
 def test_model_hash_verification_rejects_mismatch(trained_artifact, monkeypatch):
     _, model_path = trained_artifact
     monkeypatch.setenv("SMSD_MODEL_SHA256", "0" * 64)

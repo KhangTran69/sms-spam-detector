@@ -19,6 +19,8 @@ PIP ?= $(PYTHON) -m pip
 UVICORN ?= .venv/bin/uvicorn
 IMAGE ?= philippine-sms-spam-detector:local
 PORT ?= 8000
+DEMO_MODEL ?= models/demo_synthetic.pkl
+DEMO_EVALUATION ?= data/processed/demo-synthetic.json
 
 .PHONY: install dev-install package-install test lint format typecheck train evaluate demo serve docker-build docker-run clean
 
@@ -51,17 +53,18 @@ evaluate:
 	$(PYTHON) -m src.evaluate
 
 demo:
+	@mkdir -p "$(dir $(DEMO_MODEL))" "$(dir $(DEMO_EVALUATION))"
 	$(PYTHON) -m src.train --data data/raw/ph_supplement.csv \
 		--supplement data/raw/ph_supplement_2.csv data/raw/ph_supplement_3.csv \
 		data/raw/ph_supplement_4.csv data/raw/ph_supplement_5.csv \
-		--holdout data/raw/ph_holdout.csv --output models/demo_synthetic.pkl \
+		--holdout data/raw/ph_holdout.csv --output "$(DEMO_MODEL)" \
 		--model-version synthetic-demo-word --text-features word
 	$(PYTHON) -m src.evaluate --data data/raw/ph_supplement.csv \
 		--supplement data/raw/ph_supplement_2.csv data/raw/ph_supplement_3.csv \
 		data/raw/ph_supplement_4.csv data/raw/ph_supplement_5.csv \
-		--holdout data/raw/ph_holdout.csv --model models/demo_synthetic.pkl \
-		--plot none --json-out data/processed/demo-synthetic.json
-	$(PYTHON) -c 'from fastapi.testclient import TestClient; import api.main as a; from src.predict import load_model; b=load_model("models/demo_synthetic.pkl"); a._model=b; a.get_model=lambda: b; c=TestClient(a.app); r=c.post("/analyze", json={"message":"Claim your free prize now!"}); assert r.status_code == 200, r.status_code; print({"api_smoke":"passed", "model_version": b.version, "synthetic_training_data": b.metadata.get("synthetic_training_data"), "feature_mode": b.metadata.get("text_feature_mode")})'
+		--holdout data/raw/ph_holdout.csv --model "$(DEMO_MODEL)" \
+		--plot none --json-out "$(DEMO_EVALUATION)"
+	$(PYTHON) scripts/demo_smoke.py --model "$(DEMO_MODEL)"
 
 serve:
 	$(UVICORN) api.main:app --host 127.0.0.1 --port $(PORT) --reload

@@ -39,7 +39,8 @@ fixtures, writes an ignored candidate at `models/demo_synthetic.pkl`, runs the
 internal split and synthetic holdout evaluation, and smoke-tests the API
 against that candidate. It does not start a server or replace the configured
 serving artifact. Do not interpret its scores as deployment performance
-evidence.
+evidence. Override `DEMO_MODEL` and `DEMO_EVALUATION` to direct outputs outside
+the checkout during isolated packaging checks.
 
 ## 2. Train (artifact required before serving)
 
@@ -65,6 +66,14 @@ python -m src.evaluate              # held-out metrics, threshold sweep, synthet
   pin the expected model SHA-256 with `SMSD_MODEL_SHA256` (for example,
   `shasum -a 256 models/spam_detector_v1.pkl`). The expected digest must come
   from a trusted channel; this check is not a signature or provenance system.
+  When configured, the loader hashes and deserializes the same in-memory bytes,
+  avoiding a verify-then-reopen race. It still does not authenticate or make a
+  malicious pickle safe.
+- Feature version 2.2.0 adds optional char/combined TF-IDF modes without
+  changing 2.1.0 word-only preprocessing. The loader accepts that prior mode
+  only after checking fitted vectorizer settings and input columns; a version
+  label alone does not establish compatibility. Incompatible feature modes or
+  schemas still fail readiness.
 - The API resolves `SMSD_MODEL_PATH` at startup; when it is unset, code defaults
   to `models/spam_detector_v1.pkl`. Check the running instance with
   `GET /model-info` because a local file or candidate training run does not
@@ -170,6 +179,9 @@ These variables are read by the application. None is a secret.
   request/read timeouts, concurrency limits, and rate limiting at the reverse
   proxy or gateway before exposing the API publicly. The app does not currently
   implement rate limiting or an operational metrics endpoint.
+- The request body cap and security headers share one ASGI middleware. Keep
+  ingress request/read timeouts, concurrency limits, and rate limits configured
+  at the reverse proxy or gateway; the app does not enforce those controls.
 - **Never put secrets in these variables or in Git.** No API keys are needed.
   TLS private keys belong in the reverse proxy's secret store, outside the
   repository and image.

@@ -248,6 +248,9 @@ def test_message_signals_are_described_as_text_patterns(html, js, css):
     assert 'id="highlighted"' in html and 'role="group"' in html
     assert 'id="signals"' in html and 'aria-labelledby="signals-heading"' in html
     assert ".signal-reference" in css and "vertical-align: super" in css
+    assert "Loaded fictional {kind} message" in js
+    assert "Fictional {kind} example {index}" not in js
+    assert 'register("/sw.js", { updateViaCache: "none" })' in js
     for explanation in (
         "Link-like text appears here.",
         "A phone number appears.",

@@ -185,6 +185,23 @@ def test_requirements_are_bounded() -> None:
         assert ">=" in specs and "<" in specs, f"{name} must be bounded in requirements-dev.txt: {specs!r}"
 
 
+def test_requirements_files_do_not_drift_from_pyproject() -> None:
+    project = tomllib.loads(_text("pyproject.toml"))["project"]
+    runtime = _requirement_specs("requirements.txt")
+    development = _requirement_specs("requirements-dev.txt")
+
+    def project_specs(requirements: list[str]) -> dict[str, str]:
+        parsed: dict[str, str] = {}
+        for requirement in requirements:
+            match = re.match(r"^(?P<name>[A-Za-z0-9][A-Za-z0-9._-]*)(?:\[[^\]]+\])?\s*(?P<specs>.*)$", requirement)
+            assert match, f"unparseable pyproject requirement: {requirement!r}"
+            parsed[match.group("name").lower()] = match.group("specs").strip()
+        return parsed
+
+    assert runtime == project_specs(project["dependencies"])
+    assert development == project_specs(project["optional-dependencies"]["dev"])
+
+
 def test_constraints_match_bounded_ranges() -> None:
     constraints_text = _text("constraints.txt")
     assert "pip freeze" in constraints_text

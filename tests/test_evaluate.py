@@ -3,7 +3,7 @@
 import pandas as pd
 
 from src.data import Dataset
-from src.evaluate import _errors, _provenance_banner
+from src.evaluate import _errors, _length_strata, _provenance_banner
 
 
 def test_misclassification_records_never_contain_message_text() -> None:
@@ -33,3 +33,8 @@ def test_evaluation_banner_reflects_declared_provenance() -> None:
     assert "SYNTHETIC" in _provenance_banner(synthetic)
     assert "UNVERIFIED" in _provenance_banner(unknown)
     assert "PUBLIC-CORPUS" in _provenance_banner(public)
+
+
+def test_message_length_metrics_use_documented_codepoint_ranges() -> None:
+    frame = pd.DataFrame({"message": ["a" * 70, "b" * 71, "c" * 161]})
+    assert _length_strata(frame)["message_length_range"].tolist() == ["1-70", "71-160", "161+"]

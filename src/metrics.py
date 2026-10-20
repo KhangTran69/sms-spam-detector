@@ -149,6 +149,8 @@ def select_threshold(
     target_precision: float = 0.98,
     min_recall: float = 0.0,
     default_threshold: float = 0.5,
+    false_positive_cost: float | None = None,
+    false_negative_cost: float | None = None,
 ) -> ThresholdChoice:
     """Pick a spam threshold on validation data with a documented tradeoff.
 
@@ -158,6 +160,16 @@ def select_threshold(
     target, fall back to the threshold maximising F0.5 (precision-weighted) and
     say so explicitly; never silently pretend the target was met.
     """
+    if (false_positive_cost is None) != (false_negative_cost is None):
+        raise ValueError("false_positive_cost and false_negative_cost must be provided together")
+    if false_positive_cost is not None and (
+        not math.isfinite(false_positive_cost)
+        or false_positive_cost <= 0
+        or false_negative_cost is None
+        or not math.isfinite(false_negative_cost)
+        or false_negative_cost <= 0
+    ):
+        raise ValueError("false-positive and false-negative costs must be positive")
     if not 0.0 <= target_precision <= 1.0:
         raise ValueError("target_precision must be within [0, 1]")
     if not 0.0 <= min_recall <= 1.0:
@@ -168,6 +180,29 @@ def select_threshold(
     candidates = [row for row in sweep if 0.0 < row["threshold"] < 1.0]
     if not candidates:  # pragma: no cover - only possible for empty input
         candidates = [binary_metrics(labels, probabilities, default_threshold)]
+    if false_positive_cost is not None and false_negative_cost is not None:
+        best = min(
+            candidates,
+            key=lambda row: (
+                row["fp"] * false_positive_cost + row["fn"] * false_negative_cost,
+                -row["threshold"],
+            ),
+        )
+        return ThresholdChoice(
+            threshold=best["threshold"],
+            precision=best["precision"],
+            recall=best["recall"],
+            f1=best["f1"],
+            fbeta=fbeta(best["precision"], best["recall"], beta=0.5),
+            target_precision=target_precision,
+            min_recall=min_recall,
+            achieved_target=best["precision"] >= target_precision and best["recall"] >= min_recall,
+            strategy="minimum_validation_weighted_error_cost",
+            note=(
+                "Threshold minimizes user-supplied FP/FN error costs on validation data only; "
+                "these costs are exploratory and are not an approved production policy."
+            ),
+        )
     qualifying = [row for row in candidates if row["precision"] >= target_precision and row["recall"] >= min_recall]
     if qualifying:
         # Among thresholds that satisfy the precision/recall contract, pick the
@@ -227,6 +262,64 @@ def select_threshold(
     # The default threshold is reported for comparison even when not selected.
     _ = default_threshold
     return choice
+
+
+def campaign_bootstrap_intervals(
+    frame,
+    probabilities: Iterable[float],
+    threshold: float,
+    *,
+    group_column: str = "group",
+    replicates: int = 1000,
+    seed: int = 42,
+    minimum_groups: int = 10,
+) -> dict[str, Any]:
+    """Percentile intervals from resampling whole campaign/template groups.
+
+    This cluster bootstrap differs from Wilson's binomial marginal intervals:
+    it keeps rows in each supplied group together. Groups are only as meaningful
+    as the source metadata; a derived template family is not proof of a real
+    campaign. Too few independent groups produce an explicit unavailable result.
+    """
+    if replicates < 1:
+        raise ValueError("replicates must be positive")
+    if group_column not in frame.columns:
+        return {"available": False, "reason": f"missing group column {group_column!r}"}
+    labels = _labels(frame["label"].astype(str).tolist())
+    probs = _positive_probabilities(probabilities)
+    if len(frame) != len(probs):
+        raise ValueError(f"frame and probabilities differ in length ({len(frame)} != {len(probs)})")
+    groups = frame[group_column].fillna("unknown").astype(str).to_numpy()
+    group_values = np.unique(groups)
+    if len(group_values) < minimum_groups:
+        return {
+            "available": False,
+            "reason": f"requires at least {minimum_groups} distinct group IDs; found {len(group_values)}",
+            "group_count": int(len(group_values)),
+        }
+    row_indices = [np.flatnonzero(groups == group) for group in group_values]
+    rng = np.random.default_rng(seed)
+    samples: dict[str, list[float]] = {name: [] for name in ("precision", "recall", "f1", "false_positive_rate")}
+    for _ in range(replicates):
+        chosen = rng.integers(0, len(row_indices), size=len(row_indices))
+        indices = np.concatenate([row_indices[index] for index in chosen])
+        values = binary_metrics(labels[indices].tolist(), probs[indices], threshold)
+        for name in samples:
+            samples[name].append(float(values[name]))
+    intervals = {
+        name: [float(np.quantile(values, 0.025)), float(np.quantile(values, 0.975))] for name, values in samples.items()
+    }
+    return {
+        "available": True,
+        "method": "percentile cluster bootstrap; resample whole group IDs with replacement",
+        "group_column": group_column,
+        "group_count": int(len(group_values)),
+        "replicates": replicates,
+        "seed": seed,
+        "confidence_level": 0.95,
+        "intervals": intervals,
+        "note": "Group validity depends on source metadata; template families may not be independent real campaigns.",
+    }
 
 
 def expected_calibration_error(

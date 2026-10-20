@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import io
 import json
 import os
 import sys
@@ -165,6 +166,37 @@ def _validate_pipeline(pipeline: Any, path: Path) -> None:
         )
 
 
+def _validate_feature_version(feature_version: Any, signature: dict[str, Any], path: Path) -> str | None:
+    """Allow the unchanged word-only contract from feature version 2.1.0.
+
+    Version 2.2.0 added selectable char/combined vectorizers; preprocessing and
+    word-vectorizer semantics did not change. Accept that prior word-only
+    contract only when the fitted pipeline confirms the exact settings.
+    """
+    if feature_version is None or str(feature_version) == FEATURE_VERSION:
+        return None
+    expected_word_params = {
+        "analyzer": "word",
+        "ngram_range": (1, 2),
+        "min_df": 1,
+        "max_features": 100_000,
+        "sublinear_tf": True,
+        "lowercase": True,
+    }
+    if (
+        str(feature_version) == "2.1.0"
+        and signature.get("text_mode") == "word"
+        and signature.get("vectorizer_params") == expected_word_params
+    ):
+        return (
+            "Loaded compatible 2.1.0 word-only features under 2.2.0; preprocessing and word vectorizer settings match."
+        )
+    raise ModelArtifactError(
+        f"Artifact {_format_path(path)} feature_version {feature_version!r} is not compatible with "
+        f"this code ({FEATURE_VERSION!r}); retrain the model with the current preprocessing."
+    )
+
+
 def load_model(path: str | Path | None = None) -> ModelBundle:
     """Load and validate an artifact; raises FileNotFoundError or ModelArtifactError."""
     artifact_path = Path(path) if path is not None else default_model_path()
@@ -176,22 +208,22 @@ def load_model(path: str | Path | None = None) -> ModelBundle:
     if artifact_path.is_dir():
         raise ModelArtifactError(f"Model path {artifact_path} is a directory; pass the .pkl bundle file.")
     expected_sha256 = os.environ.get("SMSD_MODEL_SHA256", "").strip().lower()
+    model_bytes: bytes | None = None
     if expected_sha256:
         if len(expected_sha256) != 64 or any(character not in "0123456789abcdef" for character in expected_sha256):
             raise ModelArtifactError("SMSD_MODEL_SHA256 must be a 64-character hexadecimal SHA-256 digest.")
-        digest = hashlib.sha256()
         try:
-            with artifact_path.open("rb") as model_file:
-                for block in iter(lambda: model_file.read(1024 * 1024), b""):
-                    digest.update(block)
+            model_bytes = artifact_path.read_bytes()
         except OSError as exc:
             raise ModelArtifactError(
                 f"Could not verify model artifact {artifact_path} ({type(exc).__name__})."
             ) from exc
-        if digest.hexdigest() != expected_sha256:
+        if hashlib.sha256(model_bytes).hexdigest() != expected_sha256:
             raise ModelArtifactError(f"Model artifact SHA-256 mismatch for {artifact_path}.")
     try:
-        artifact = joblib.load(artifact_path)
+        # Deserialize the exact immutable byte sequence whose digest was
+        # checked; hashing the path and reopening it would leave a TOCTOU gap.
+        artifact = joblib.load(io.BytesIO(model_bytes)) if model_bytes is not None else joblib.load(artifact_path)
     except Exception as exc:  # joblib/pickle can raise many exception types
         raise ModelArtifactError(
             f"Could not read model artifact {artifact_path} ({type(exc).__name__}: {exc}). "
@@ -220,11 +252,6 @@ def load_model(path: str | Path | None = None) -> ModelBundle:
             raise ModelArtifactError(f"Artifact {artifact_path} has no model/pipeline entry. Retrain the model.")
         metadata = {key: value for key, value in artifact.items() if key not in {"model", "pipeline"}}
         feature_version = metadata.get("feature_version")
-        if feature_version is not None and str(feature_version) != FEATURE_VERSION:
-            raise ModelArtifactError(
-                f"Artifact feature_version {feature_version!r} does not match this code ({FEATURE_VERSION!r}); "
-                "retrain the model with the current preprocessing."
-            )
         threshold = artifact.get("threshold", artifact.get("decision_threshold", LEGACY_THRESHOLD))
         if threshold is None:
             threshold = LEGACY_THRESHOLD
@@ -238,6 +265,12 @@ def load_model(path: str | Path | None = None) -> ModelBundle:
                     "Verify predictions after any dependency upgrade."
                 )
         _validate_pipeline(pipeline, artifact_path)
+        signature = pipeline_feature_signature(pipeline)
+        compatibility_warning = _validate_feature_version(feature_version, signature, artifact_path)
+        if compatibility_warning:
+            warnings = metadata.setdefault("warnings", [])
+            if isinstance(warnings, list):
+                warnings.append(compatibility_warning)
         return ModelBundle(
             pipeline=pipeline,
             threshold=float(threshold),

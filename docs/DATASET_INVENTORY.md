@@ -157,6 +157,42 @@ python -m src.train --data data/raw/ph_supplement.csv \
 The `char` and `combined` variants use the same command with distinct output
 paths. All artifacts are candidates; none replaces the serving artifact.
 
+## Repeated development split check (2026-10-21)
+
+The new command
+`python -m src.evaluate --model models/spam_detector_candidate_2026-10-20.pkl --stability-seeds 13 42 73 --plot none --json-out /tmp/sms-detector-stability-20261021.json`
+was run with the local `spam.csv` and all five tracked synthetic supplements.
+It first preserved the artifact's seed-42 test groups, then refit three
+word-only candidates using group-aware development train/validation splits.
+The validation thresholds were 0.45, 0.38, and 0.50 (range 0.12); each
+validation fold had 489 rows and its own threshold-selection metrics. These
+validation outcomes are not independent performance estimates.
+
+The untouched 814-row internal test split at the artifact threshold 0.75
+reported precision 0.958, recall 0.779, F1 0.859, 5 false positives, and 32
+false negatives. Its 757 group IDs produced percentile bootstrap 95% intervals
+of 0.912–0.991 for precision, 0.690–0.855 for recall, 0.795–0.908 for F1, and
+0.001–0.014 for false-positive rate. These are group-resampling intervals over
+the supplied group IDs, not Wilson's marginal binomial intervals. The local
+base data are unverified and most groups are derived template families, so the
+intervals must not be interpreted as real campaign-level uncertainty.
+
+The test split's language breakdown included 794 unknown-language rows
+(precision 0.962, recall 0.761, F1 0.850; 4 FP), 11 English (0.833/1.000/0.909;
+1 FP), 5 Taglish (1.000/1.000/1.000; 0 FP), and 4 Filipino (`tl`;
+1.000/1.000/1.000; 0 FP). Category support was very small: explicit
+legitimate categories contained 1–6 rows apiece, so category results are only
+descriptive. By Unicode code-point length, the 1–70 row group had n=439,
+P/R/F1 1.000/0.700/0.824 (0 FP); 71–160 had n=336, 0.962/0.791/0.868
+(4 FP); and 161+ had n=39, 0.800/0.667/0.727 (1 FP). The separate 46-row
+Philippine holdout remained synthetic-only and scored P/R/F1 1.000 with no
+errors; it is not independent real-world validation.
+
+This dated report is reproducible only with the same ignored local base file,
+candidate artifact, supplements, dependency versions, and seed list. The JSON
+report contains no message text and was written outside the repository. No data
+or model artifact was added or promoted by this evaluation.
+
 ```bash
 python -m src.train --output models/spam_detector_candidate_2026-10-20.pkl \
   --model-version candidate-2026-10-20 --holdout data/raw/ph_holdout.csv

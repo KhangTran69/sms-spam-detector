@@ -41,7 +41,8 @@ To run a tracked, synthetic-only demo without the ignored base corpus, run
 synthetic split and tracked synthetic holdout, and smoke-tests `/analyze` with
 the candidate artifact. Generated files stay in ignored paths. These results check
 repeatability and pipeline behavior only; they are not real-world performance
-evidence.
+evidence. Override `DEMO_MODEL` and `DEMO_EVALUATION` to direct outputs outside
+the checkout.
 
 To compare text representations, run the same training command, data, seed,
 split, and threshold settings three times with `--text-features word`,
@@ -66,7 +67,11 @@ python -m src.train --split-by time
 
 Time splits require valid dates for every row and fail if both classes cannot be represented. Use `--split-by group` for the default group-aware split. The random split option is diagnostic only and can leak related examples.
 
-Evaluation reports class metrics, false positives by legitimate category, threshold tradeoffs, calibration diagnostics, language/category coverage, and holdout/template overlap. Reports label each split from its declared provenance and omit SMS content from errors. The model currently reports uncalibrated scores; a score is not a probability guarantee. Do not use synthetic or unknown-provenance results as a real-world accuracy claim.
+Evaluation reports precision, recall, F1, false positives, sample counts, and coverage by language, category, and message length (1–70, 71–160, and 161+ Unicode code points). Wilson intervals are marginal binomial intervals; optional campaign-group bootstrap intervals resample whole group IDs and are withheld below ten groups. A group ID derived from a template is only a campaign proxy, not evidence of independent real campaigns. Reports label each split from its declared provenance and omit SMS content from errors.
+
+Use `python -m src.evaluate --stability-seeds 13 42 73 --json-out data/processed/stability.json` for repeated group-aware threshold stability checks. The final test groups are reserved first and excluded from these development-only refits; repeated validation metrics select their own thresholds and are not independent performance estimates. Preserve the seed list with the report. Synthetic diagnostics remain separate from real-world validation. Optional `--false-positive-cost` and `--false-negative-cost` training arguments must be supplied together; they configure an exploratory validation-only threshold choice and do not express an approved production policy.
+
+The model currently reports uncalibrated scores; a score is not a probability guarantee. Do not use synthetic or unknown-provenance results as a real-world accuracy claim.
 
 Run `python -m src.train --help` and `python -m src.evaluate --help` for all data, threshold, split, and output options.
 
@@ -171,6 +176,10 @@ tests/           data, model, API, preprocessing, and web-contract checks
 CSV files may include `data_kind` with `synthetic`, `public`, `consented`, or `unknown` (the default); legacy `real` is accepted as consented data. This is a source declaration, not independent verification. Training records fitted-row counts by kind; `synthetic_training_data` is true when synthetic rows were used, false only when all fitted rows are declared public or consented, and null when their status is unknown. Tracked Philippine fixtures are explicitly synthetic.
 
 Feature version 2.2.0 adds selectable word, character, or combined TF-IDF
-representations; the default remains word-only. The loader rejects incompatible
-older versioned artifacts, so retrain a candidate before using this code with a
-bundled model. This change has not been shown to improve real-world accuracy.
+representations; the default remains word-only. A 2.1.0 word-only artifact is
+accepted only when its fitted pipeline confirms the unchanged word-vectorizer
+settings and input schema. Other incompatible feature contracts still require
+retraining. When `SMSD_MODEL_SHA256` is configured, the loader hashes and
+deserializes the same in-memory bytes; SHA-256 verifies byte identity only and
+does not authenticate an untrusted pickle. This change has not been shown to
+improve real-world accuracy.

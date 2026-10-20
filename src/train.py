@@ -140,6 +140,8 @@ def train(
     random_state: int = DEFAULT_SEED,
     target_precision: float = DEFAULT_TARGET_PRECISION,
     min_recall: float = DEFAULT_MIN_RECALL,
+    false_positive_cost: float | None = None,
+    false_negative_cost: float | None = None,
     split_by: str = "group",
     strict_data: bool = True,
     strict_supplement_paths: bool = False,
@@ -197,6 +199,8 @@ def train(
         val_probabilities,
         target_precision=target_precision,
         min_recall=min_recall,
+        false_positive_cost=false_positive_cost,
+        false_negative_cost=false_negative_cost,
     )
     threshold = choice.threshold
     suspicious_threshold = round(max(0.001, min(threshold - 0.001, threshold / 2.0)), 4)
@@ -276,6 +280,8 @@ def train(
             "random_state": random_state,
             "target_precision": target_precision,
             "min_recall": min_recall,
+            "false_positive_cost": false_positive_cost,
+            "false_negative_cost": false_negative_cost,
             "split_by": split_by,
             "text_features": text_features,
             "strict_data": strict_data,
@@ -495,6 +501,18 @@ def _main(argv: list[str] | None = None) -> int:
         help=f"Minimum validation spam recall for threshold tuning (default {DEFAULT_MIN_RECALL}).",
     )
     parser.add_argument(
+        "--false-positive-cost",
+        type=float,
+        default=None,
+        help="Optional exploratory FP error cost; must be paired with --false-negative-cost (no production policy implied).",
+    )
+    parser.add_argument(
+        "--false-negative-cost",
+        type=float,
+        default=None,
+        help="Optional exploratory FN error cost; must be paired with --false-positive-cost (no production policy implied).",
+    )
+    parser.add_argument(
         "--split-by",
         choices=("group", "time", "random"),
         default="group",
@@ -520,6 +538,8 @@ def _main(argv: list[str] | None = None) -> int:
             random_state=args.seed,
             target_precision=args.target_precision,
             min_recall=args.min_recall,
+            false_positive_cost=args.false_positive_cost,
+            false_negative_cost=args.false_negative_cost,
             split_by=args.split_by,
             strict_data=not args.lenient_data,
             strict_supplement_paths=strict_supplement_paths,

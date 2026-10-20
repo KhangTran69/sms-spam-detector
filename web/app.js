@@ -78,7 +78,9 @@ const I18N = {
     "examples.scam": "Scam example",
     "examples.safe": "Safe example",
     "examples.note": "Fictional demo examples only. Click either button again to cycle through more messages.",
-    "examples.status": "Fictional {kind} example {index} of {total}; checking it now. Click again for another example.",
+    "examples.status": "Loaded fictional {kind} message {index} of {total}; checking it now. Click again for another example.",
+    "examples.scamKind": "scam",
+    "examples.safeKind": "safe",
     "result.aria": "Analysis result",
     "band.likely_scam": "Likely scam",
     "band.suspicious": "Suspicious",
@@ -220,7 +222,9 @@ const I18N = {
     "examples.scam": "Halimbawa ng scam",
     "examples.safe": "Halimbawang ligtas",
     "examples.note": "Gawa-gawa lamang na demo na mga halimbawa. I-click muli ang alinmang button para umikot sa ibang mensahe.",
-    "examples.status": "Gawa-gawang halimbawa ng {kind} ({index} ng {total}); sinusuri na. I-click muli para sa isa pang halimbawa.",
+    "examples.status": "Na-load ang gawa-gawang {kind} na mensahe ({index} ng {total}); sinusuri na. I-click muli para sa isa pa.",
+    "examples.scamKind": "scam",
+    "examples.safeKind": "ligtas",
     "result.aria": "Resulta ng pagsusuri",
     "band.likely_scam": "Malamang scam",
     "band.suspicious": "Kahina-hinala",
@@ -1564,7 +1568,7 @@ function initSingleCheck() {
       input.value = example.message;
       updateCharCount();
       $("example-status").textContent = t("examples.status", {
-        kind: chip.dataset.example === "scam" ? t("examples.scam") : t("examples.safe"),
+        kind: chip.dataset.example === "scam" ? t("examples.scamKind") : t("examples.safeKind"),
         index: example.index,
         total: example.total,
       });
@@ -1601,7 +1605,11 @@ function initServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
   const host = location.hostname;
   if (location.protocol !== "https:" && host !== "localhost" && host !== "127.0.0.1") return;
-  navigator.serviceWorker.register("/sw.js").catch(() => {
+  navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" }).then((registration) => {
+    // Check the release on normal visits so updated shell assets arrive without
+    // asking users to perform a hard refresh.
+    return registration.update();
+  }).catch(() => {
     /* Offline shell support is a bonus; ignore registration failures. */
   });
 }

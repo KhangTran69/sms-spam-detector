@@ -18,6 +18,8 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import numpy as np
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix
 
 from src.data import (
@@ -35,9 +37,11 @@ from src.data import (
     load_training_dataset,
     split_dataset,
 )
+from src.features import make_model, messages_to_frame
 from src.metrics import (
     binary_metrics,
     calibration_metrics,
+    campaign_bootstrap_intervals,
     false_positive_categories,
     jsonable,
     per_group_metrics,
@@ -125,6 +129,99 @@ def _data_hash_warnings(bundle: ModelBundle, dataset: Dataset) -> list[str]:
     return warnings
 
 
+def _length_strata(frame: Any) -> Any:
+    enriched = frame.copy()
+    lengths = enriched["message"].map(len)
+    enriched["message_length_range"] = lengths.map(
+        lambda size: "1-70" if size <= 70 else "71-160" if size <= 160 else "161+"
+    )
+    return enriched
+
+
+def _repeated_group_stability(
+    dataset: Dataset,
+    development_indices: list[int],
+    *,
+    seeds: Iterable[int],
+    val_size: float,
+    target_precision: float,
+    min_recall: float,
+    text_features: str,
+    false_positive_cost: float | None,
+    false_negative_cost: float | None,
+) -> dict[str, Any]:
+    """Repeat train/validation group splits within development data only.
+
+    The caller reserves the artifact's final test indices first and never passes
+    them here. Metrics below are threshold-selection diagnostics, not final test
+    estimates; each validation fold is used to choose its own threshold.
+    """
+    dev = Dataset(frame=dataset.frame.iloc[development_indices].reset_index(drop=True), records=dataset.records)
+    if len(set(dev.groups)) < 10:
+        return {"available": False, "reason": "requires at least 10 development template groups"}
+    runs: list[dict[str, Any]] = []
+    for seed in seeds:
+        try:
+            split = grouped_splits(dev, val_size=val_size, test_size=0.1, seed=int(seed), split_by="group")
+        except DatasetError as exc:
+            runs.append({"seed": int(seed), "available": False, "reason": str(exc)})
+            continue
+        if not split.grouped:
+            runs.append({"seed": int(seed), "available": False, "reason": "group-aware split unavailable"})
+            continue
+        fit_indices = sorted([*split.train_idx, *split.test_idx])
+        fit_frame = dev.frame.iloc[fit_indices]
+        val_frame = dev.frame.iloc[split.val_idx]
+        model = make_model(
+            LogisticRegression(class_weight="balanced", max_iter=2000, solver="liblinear", random_state=int(seed)),
+            text_features=text_features,
+        )
+        model.fit(messages_to_frame(fit_frame["message"].tolist()), fit_frame["label"].tolist())
+        val_probabilities = [
+            float(row[list(model.classes_).index("spam")])
+            for row in model.predict_proba(messages_to_frame(val_frame["message"].tolist()))
+        ]
+        choice = select_threshold(
+            val_frame["label"].tolist(),
+            val_probabilities,
+            target_precision=target_precision,
+            min_recall=min_recall,
+            false_positive_cost=false_positive_cost,
+            false_negative_cost=false_negative_cost,
+        )
+        metrics = binary_metrics(val_frame["label"].tolist(), val_probabilities, choice.threshold)
+        runs.append(
+            {
+                "seed": int(seed),
+                "group_count": int(dev.frame.iloc[split.val_idx]["group"].nunique()),
+                "validation_rows": len(split.val_idx),
+                "threshold": choice.threshold,
+                "threshold_strategy": choice.strategy,
+                "validation_selection_metrics": metrics,
+                "warning": "Validation metrics are used for threshold selection and are not independent performance estimates.",
+            }
+        )
+    usable = [run for run in runs if run.get("available", True) and "threshold" in run]
+    thresholds = [float(run["threshold"]) for run in usable]
+    return {
+        "available": bool(usable),
+        "method": "repeated stratified group splits within development data; final test groups excluded",
+        "seeds": [int(seed) for seed in seeds],
+        "runs": runs,
+        "threshold_summary": (
+            {
+                "min": min(thresholds),
+                "median": float(np.median(thresholds)),
+                "max": max(thresholds),
+                "range": max(thresholds) - min(thresholds),
+            }
+            if thresholds
+            else None
+        ),
+        "limitation": "Synthetic/unknown-provenance data remain diagnostics; repeated splits do not establish real-world performance.",
+    }
+
+
 def evaluate(
     data_path: str | Path = DEFAULT_DATA,
     supplement_path: str | Path | Iterable[str | Path] | None = DEFAULT_SUPPLEMENTS,
@@ -139,6 +236,7 @@ def evaluate(
     test_size: float | None = None,
     seed: int | None = None,
     split_by: str | None = None,
+    stability_seeds: Iterable[int] | None = None,
     verbose: bool = True,
 ) -> dict[str, Any]:
     """Evaluate the artifact; returns a JSON-safe metrics dictionary."""
@@ -181,6 +279,8 @@ def evaluate(
         val_probabilities,
         target_precision=float(config.get("target_precision", 0.98)),
         min_recall=float(config.get("min_recall", 0.0)),
+        false_positive_cost=config.get("false_positive_cost"),
+        false_negative_cost=config.get("false_negative_cost"),
     )
     if abs(recomputed.threshold - threshold) > 1e-9:
         warnings.append(
@@ -189,6 +289,10 @@ def evaluate(
         )
 
     test_metrics = binary_metrics(test_set.labels, test_probabilities, threshold)
+    test_frame_with_length = _length_strata(test_set.frame)
+    test_metrics["campaign_bootstrap_95"] = campaign_bootstrap_intervals(
+        test_set.frame, test_probabilities, threshold, seed=split.seed
+    )
     test_at_default = binary_metrics(test_set.labels, test_probabilities, 0.5)
     test_calibration = calibration_metrics(test_set.labels, test_probabilities)
     thresholds = sorted({*KEY_THRESHOLDS, round(threshold, 4)})
@@ -224,9 +328,42 @@ def evaluate(
             "by_source_category_language": per_group_metrics(
                 test_set.frame, test_probabilities, threshold, group_columns=("source_file", "category", "language")
             ),
+            "by_language": per_group_metrics(
+                test_set.frame, test_probabilities, threshold, group_columns=("language",)
+            ),
+            "by_category": per_group_metrics(
+                test_set.frame, test_probabilities, threshold, group_columns=("category",)
+            ),
+            "by_message_length_range": per_group_metrics(
+                test_frame_with_length, test_probabilities, threshold, group_columns=("message_length_range",)
+            ),
         },
         "warnings": warnings,
     }
+    if stability_seeds is not None:
+        seeds = tuple(int(seed_value) for seed_value in stability_seeds)
+        if not seeds:
+            raise ValueError("stability_seeds must include at least one seed")
+        dev_indices = sorted([*split.train_idx, *split.val_idx])
+        results["development_stability"] = _repeated_group_stability(
+            dataset,
+            dev_indices,
+            seeds=seeds,
+            val_size=min(
+                0.4,
+                float(config.get("val_size", DEFAULT_VAL_SIZE))
+                / max(0.01, 1.0 - float(config.get("test_size", DEFAULT_TEST_SIZE))),
+            ),
+            target_precision=float(config.get("target_precision", 0.98)),
+            min_recall=float(config.get("min_recall", 0.0)),
+            text_features=(
+                str(bundle.metadata.get("text_feature_mode"))
+                if str(bundle.metadata.get("text_feature_mode")) in {"word", "char", "combined"}
+                else "word"
+            ),
+            false_positive_cost=config.get("false_positive_cost"),
+            false_negative_cost=config.get("false_negative_cost"),
+        )
 
     holdout: Dataset | None = None
     holdout_probabilities: list[float] = []
@@ -270,6 +407,9 @@ def evaluate(
             "banner": _provenance_banner(holdout),
             "data_note": bundle.data_note,
             "at_threshold": holdout_metrics,
+            "campaign_bootstrap_95": campaign_bootstrap_intervals(
+                holdout.frame, holdout_probabilities, threshold, seed=split.seed
+            ),
             "at_default_0.5": holdout_at_default,
             "calibration": holdout_calibration,
             "by_source_category_language": holdout_groups,
@@ -491,6 +631,13 @@ def _main(argv: list[str] | None = None) -> int:
     parser.add_argument("--plot", default=str(DEFAULT_PLOT), help="Plot output path; pass 'none' to skip.")
     parser.add_argument("--json-out", default=None, help="Write JSON metrics (no raw messages) to this path.")
     parser.add_argument("--lenient-data", action="store_true")
+    parser.add_argument(
+        "--stability-seeds",
+        type=int,
+        nargs="+",
+        default=None,
+        help="Optional repeated group-aware train/validation seeds within development groups (never uses final test groups).",
+    )
     args = parser.parse_args(argv)
 
     supplements, strict_supplement_paths = _parse_supplements(args)
@@ -506,6 +653,7 @@ def _main(argv: list[str] | None = None) -> int:
             json_output=args.json_out,
             strict_supplement_paths=strict_supplement_paths,
             strict_data=not args.lenient_data,
+            stability_seeds=args.stability_seeds,
         )
     except DatasetError as exc:
         print(f"data error: {exc}")

@@ -10,11 +10,11 @@
  */
 "use strict";
 
-const CACHE_NAME = "smsd-shell-v5";
+const CACHE_NAME = "smsd-shell-v6";
 const SHELL_ASSETS = [
   "/",
-  "/static/styles.css?v=ui5-theme-toggle-20261020",
-  "/static/app.js?v=ui5-theme-toggle-20261020",
+  "/static/styles.css?v=ui6-eval-trust-20261021",
+  "/static/app.js?v=ui6-eval-trust-20261021",
   "/manifest.webmanifest",
 ];
 const NEVER_CACHE_PATHS = ["/analyze", "/analyze/batch", "/predict", "/feedback", "/model-info", "/health", "/ready"];
@@ -24,15 +24,18 @@ self.addEventListener("install", (event) => {
     caches.open(CACHE_NAME).then(async (cache) => {
       // Add assets individually so one failure does not block installation.
       await Promise.allSettled(SHELL_ASSETS.map((asset) => cache.add(asset)));
-    }),
+    }).then(() => self.skipWaiting()),
   );
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
+    Promise.all([
+      self.clients.claim(),
+      caches.keys().then((keys) =>
       Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))),
-    ),
+      ),
+    ]),
   );
 });
 

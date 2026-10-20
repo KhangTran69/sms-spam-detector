@@ -443,28 +443,8 @@ _ERROR_RESPONSES: dict[int | str, dict[str, Any]] = {
 
 
 # ---------------------------------------------------------------------------
-# Middleware: security headers + body-size cap
+# Middleware: bounded streaming request bodies + security headers
 # ---------------------------------------------------------------------------
-@app.middleware("http")
-async def security_and_size_middleware(request: Request, call_next):
-    declared_length = request.headers.get("content-length")
-    if declared_length:
-        try:
-            too_large = int(declared_length) > MAX_REQUEST_BYTES
-        except ValueError:
-            too_large = False
-        if too_large:
-            return _error_response(
-                413,
-                "payload_too_large",
-                f"Request body is too large; the limit is {MAX_REQUEST_BYTES} bytes.",
-            )
-    response = await call_next(request)
-    for name, value in SECURITY_HEADERS.items():
-        response.headers.setdefault(name, value)
-    return response
-
-
 app.add_middleware(RequestBodyLimitMiddleware)
 
 
@@ -640,12 +620,16 @@ if WEB_DIR.is_dir():
     @app.get("/", include_in_schema=False)
     def index():
         """Serve the bundled single-page UI."""
-        return FileResponse(WEB_DIR / "index.html")
+        return FileResponse(WEB_DIR / "index.html", headers={"Cache-Control": "no-cache"})
 
     @app.get("/manifest.webmanifest", include_in_schema=False)
     def webmanifest():
         """PWA manifest (installable app shell)."""
-        return FileResponse(WEB_DIR / "manifest.webmanifest", media_type="application/manifest+json")
+        return FileResponse(
+            WEB_DIR / "manifest.webmanifest",
+            media_type="application/manifest+json",
+            headers={"Cache-Control": "no-cache"},
+        )
 
     @app.get("/sw.js", include_in_schema=False)
     def service_worker():

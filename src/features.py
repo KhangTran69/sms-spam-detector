@@ -112,8 +112,30 @@ def pipeline_feature_signature(pipeline: Pipeline) -> dict[str, Any]:
             text_column = columns
         elif name == "numeric":
             numeric_columns = list(columns)
+    text_transformer = (
+        transformer.named_transformers_.get("text") if hasattr(transformer, "named_transformers_") else None
+    )
+    if text_transformer is None:
+        text_transformer = next((item for name, item, _ in transformer.transformers if name == "text"), None)
+    if isinstance(text_transformer, FeatureUnion):
+        text_mode = "combined"
+        vectorizer_params = None
+    elif isinstance(text_transformer, TfidfVectorizer):
+        text_mode = "word" if text_transformer.analyzer == "word" else "char"
+        vectorizer_params = text_transformer.get_params(deep=False)
+        # Runtime object metadata can include callables/types; retain only
+        # settings needed to validate the stable word feature contract.
+        vectorizer_params = {
+            key: vectorizer_params[key]
+            for key in ("analyzer", "ngram_range", "min_df", "max_features", "sublinear_tf", "lowercase")
+        }
+    else:
+        text_mode = "unknown"
+        vectorizer_params = None
     return {
         "feature_version": FEATURE_VERSION,
         "text_column": text_column,
         "numeric_columns": numeric_columns,
+        "text_mode": text_mode,
+        "vectorizer_params": vectorizer_params,
     }
