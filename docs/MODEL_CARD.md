@@ -1,19 +1,21 @@
 # Model Card: Philippine SMS Spam/Scam Detector
 
 Version: see `GET /model-info` (`model_version`, `artifact_schema_version`,
-`trained_at`) and the artifact sidecar `models/spam_detector_v1.metadata.json`.
-Owner: repository maintainers. Last reviewed: 2026-10-19.
+`trained_at`) and the sidecar for the configured artifact. Owner: repository
+maintainers. Last reviewed: 2026-10-20.
 
 ## 1. What this model is
 
-A text classifier that returns `spam` or `ham` for a single SMS message, plus a
-spam probability, signal flags, and highlighted spans (URLs, phone numbers,
+A text classifier that returns `spam` or `ham` for a single SMS message, plus an
+uncalibrated spam score, signal flags, and highlighted spans (URLs, phone numbers,
 money amounts, urgency words, brand names). It is a TF-IDF (word 1–2 grams) +
 indicator-feature pipeline with a class-balanced `LogisticRegression` as the
 primary model and a `MultinomialNB` baseline. The model is **assistive**: it
 points a reader at likely scam patterns.
 
 ## 2. Intended use
+
+The classifier target is **spam versus ham**. A spam label can include unwanted advertising as well as suspected fraud; it does not independently establish that a message is a scam. The UI uses scam-oriented safety language as a cautious aid, not as a fraud finding.
 
 - **In scope:** helping a person decide whether an SMS looks like a scam; a
   warning UI; a triage aid for a human reviewer; research/teaching on SMS
@@ -67,21 +69,12 @@ points a reader at likely scam patterns.
   evolution will differ.
 - The evaluation reports a threshold sweep, precision/recall, false positives on
   legitimate OTP/bank messages, source/category breakdown, and calibration
-  diagnostics. **Measured numbers are maintained in the README metrics section —
-  do not copy them into slides or claims without the caveat above.**
+  diagnostics. The current workspace's measured numbers and caveats are in the
+  dated dataset inventory; they are not representative real-world metrics.
 
-### Metrics table
+### Metrics source
 
-| Evaluation set | Spam precision | Spam recall | F1 | Accuracy | FP on legit OTP/bank | Calibration | As-of |
-|---|---|---|---|---|---|---|---|
-| Base + synthetic split (held-out test) | see README | see README | see README | see README | see README | see README | current artifact |
-| Synthetic Philippine holdout | see README | see README | see README | see README | see README | see README | current artifact |
-| Real Philippine traffic | **not evaluated** | **not evaluated** | — | — | — | — | — |
-
-Why the placeholder: the README is the single source of truth for numbers, and
-metrics change whenever the artifact is retrained. A stale number here would be
-worse than a pointer. If a number is quoted, quote the README revision and the
-artifact version together.
+The dated, machine-specific workspace evaluation and its limitations are recorded in [DATASET_INVENTORY.md](DATASET_INVENTORY.md). It is a synthetic diagnostic comparison, not a representative Philippine evaluation. The model artifact metadata is the authoritative record for the deployed model version and its training run. No real Philippine traffic has been evaluated.
 
 ## 5. Thresholds, precision, and confidence
 
@@ -89,8 +82,9 @@ The artifact stores a `decision_threshold` (classify as spam when the raw model
 spam score reaches the threshold) and a
 `suspicious_threshold` for the UI warning band; both are chosen on a validation
 split with a precision-first objective (protect legitimate OTP/bank messages) and
-are exposed by `GET /model-info`. `POST /analyze` returns
-`spam_probability` (an uncalibrated score in current artifacts), `decision_threshold`, `margin`, `confidence`, and
+are exposed by `GET /model-info`. `POST /analyze` returns a legacy field named
+`spam_probability`; its value is an uncalibrated model score in current
+artifacts, alongside `decision_threshold`, `margin`, `confidence`, and
 `risk_band`.
 
 - Raising the threshold **increases precision** (fewer false alarms) and
@@ -174,5 +168,14 @@ are exposed by `GET /model-info`. `POST /analyze` returns
 ## 10. Maintenance
 
 Retraining cadence, validation gates, rollback, and monitoring are in
-[RETRAINING.md](RETRAINING.md). When the artifact changes, update the README
-metrics, the artifact sidecar metadata, and this card's version references.
+[RETRAINING.md](RETRAINING.md). When the artifact changes, preserve its sidecar
+metadata and update the versioned evaluation record and this card's version
+references.
+
+## Positive-label interpretation
+
+The classifier learns `spam` versus `ham`. A `spam` prediction can describe
+unsolicited advertising as well as suspected fraud; it does not by itself show
+that a message is a scam or that a sender is malicious. User-facing warnings
+are decision support. Verify with the sender through independently obtained
+official contact details.

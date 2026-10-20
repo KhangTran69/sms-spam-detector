@@ -52,6 +52,8 @@ MAX_BATCH = 50
 MAX_BATCH_CHARACTERS = 200_000
 MAX_REQUEST_BYTES = 1_000_000  # 1 MB cap on the raw JSON body
 FEEDBACK_ENABLED = os.environ.get("SMSD_FEEDBACK_ENABLED", "").strip().lower() in {"1", "true", "yes"}
+SMSD_ENV = os.environ.get("SMSD_ENV", "development").strip().lower()
+ALLOW_LEGACY_MODEL = os.environ.get("SMSD_ALLOW_LEGACY_MODEL", "").strip().lower() in {"1", "true", "yes"}
 _feedback_path = os.environ.get("SMSD_FEEDBACK_PATH", "").strip()
 FEEDBACK_PATH = Path(_feedback_path) if _feedback_path else ROOT / "data" / "feedback" / "reports.jsonl"
 MAX_FEEDBACK_BYTES = 10 * 1024 * 1024
@@ -140,6 +142,11 @@ def get_model():
         with _model_lock:
             if _model is None:
                 _model = load_model()
+    if SMSD_ENV == "production" and getattr(_model, "legacy", False) and not ALLOW_LEGACY_MODEL:
+        raise ModelArtifactError(
+            "Production requires a versioned model bundle with recorded training metadata. "
+            "Train and evaluate a candidate bundle before deployment."
+        )
     return _model
 
 

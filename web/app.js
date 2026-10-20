@@ -60,6 +60,7 @@ const I18N = {
     "model.thresholds.loading": "Decision threshold and risk bands are loading from the API.",
     "model.thresholds.line": "Decision threshold {threshold} · risk bands: likely scam ≥ {scam}, suspicious ≥ {suspicious}.",
     "model.fallbackSuffix": " Using built-in fallback thresholds until model information is available.",
+    "model.legacyWarning": "This is a legacy model with missing training metadata. Treat results as a demo only.",
     "check.label": "Paste the SMS you want to check",
     "check.placeholder": "e.g. Bank notice: Your account review is due. Visit bank-help.example to read more.",
     "check.help": "At most 10,000 characters. Messages are analysed in memory and are never stored on the server.",
@@ -202,6 +203,7 @@ const I18N = {
     "model.thresholds.loading": "Niloload mula sa API ang decision threshold at risk bands.",
     "model.thresholds.line": "Decision threshold {threshold} · risk bands: malamang scam ≥ {scam}, kahina-hinala ≥ {suspicious}.",
     "model.fallbackSuffix": " Ginagamit muna ang built-in na fallback thresholds hanggang makuha ang impormasyon ng modelo.",
+    "model.legacyWarning": "Lumang modelo ito na walang kumpletong training metadata. Demo lamang ang resulta.",
     "check.label": "I-paste ang SMS na gusto mong i-check",
     "check.placeholder": "Hal. May notice sa account mo. Tingnan sa bank-help.example kung kailangan ng action.",
     "check.help": "Hanggang 10,000 karakter. Sinusuri sa memory ang mga mensahe at hindi kailanman iniimbak sa server.",
@@ -561,6 +563,7 @@ function normalizeModelInfo(info) {
       looks_safe: numberOr(bands.looks_safe, FALLBACK_BANDS.looks_safe),
     },
     data_note: dataNote,
+    legacy_artifact: safe.legacy_artifact === true,
     feedback_enabled: safe.feedback_enabled === true,
     probability_calibrated: safe.probability_calibrated === true,
   };
@@ -719,6 +722,14 @@ function initTabs() {
 function renderModelInfo() {
   $("model-version").textContent = `${t("model.versionPrefix")}${modelInfo.model_version}`;
   $("model-note").textContent = modelInfo.data_note;
+  const warning = $("model-warning");
+  if (modelInfo.legacy_artifact) {
+    warning.textContent = t("model.legacyWarning");
+    warning.classList.remove("hidden");
+  } else if (warning.textContent === t("model.legacyWarning")) {
+    warning.textContent = "";
+    warning.classList.add("hidden");
+  }
   $("model-thresholds").textContent = t("model.thresholds.line", {
     threshold: pct(modelInfo.decision_threshold),
     scam: pct(modelInfo.bands.likely_scam),

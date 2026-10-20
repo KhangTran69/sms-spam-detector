@@ -161,6 +161,30 @@ def test_ready_loads_model(client):
     assert body["model_version"] == MODEL_VERSION
 
 
+def test_production_rejects_legacy_artifact_unless_explicitly_allowed(monkeypatch):
+    legacy = ModelBundle(pipeline=fixed_pipeline(), legacy=True, metadata={"model_version": "legacy-test"})
+    monkeypatch.setattr(api_main, "SMSD_ENV", "production")
+    monkeypatch.setattr(api_main, "ALLOW_LEGACY_MODEL", False)
+    monkeypatch.setattr(api_main, "_model", None)
+    monkeypatch.setattr(api_main, "load_model", lambda: legacy)
+    with TestClient(api_main.app) as test_client:
+        response = test_client.get("/ready")
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "model_unavailable"
+    assert "versioned model bundle" in response.json()["error"]["message"]
+
+
+def test_explicit_legacy_override_allows_production_readiness(monkeypatch):
+    legacy = ModelBundle(pipeline=fixed_pipeline(), legacy=True, metadata={"model_version": "legacy-test"})
+    monkeypatch.setattr(api_main, "SMSD_ENV", "production")
+    monkeypatch.setattr(api_main, "ALLOW_LEGACY_MODEL", True)
+    monkeypatch.setattr(api_main, "_model", None)
+    monkeypatch.setattr(api_main, "load_model", lambda: legacy)
+    with TestClient(api_main.app) as test_client:
+        response = test_client.get("/ready")
+    assert response.status_code == 200
+
+
 def test_ready_503_when_model_missing(missing_model_client):
     response = missing_model_client.get("/ready")
     assert response.status_code == 503

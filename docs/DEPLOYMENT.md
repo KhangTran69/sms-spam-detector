@@ -14,11 +14,10 @@ verified on **Python 3.13**. CI runs on 3.11 and 3.12.
 python -m venv .venv
 source .venv/bin/activate           # Windows: .venv\Scripts\activate
 
-# Runtime + test dependencies (test tooling is kept in requirements.txt so a
-# single install supports training, tests, and serving)
+# Runtime dependencies (API, training, and evaluation)
 pip install -r requirements.txt
 
-# Development/CI tools (ruff, mypy, pytest-cov)
+# Test and quality tools for development/CI
 pip install -r requirements-dev.txt
 
 # Optional: replicate the exact tester environment (Python 3.13 pins)
@@ -132,6 +131,8 @@ These variables are read by the application. None is a secret.
 
 | Variable | Default | Meaning |
 |---|---|---|
+| `SMSD_ENV` | `development` | Set to `production` to reject legacy bare-pipeline artifacts at readiness and inference. |
+| `SMSD_ALLOW_LEGACY_MODEL` | `false` | Explicit development-only override for a legacy artifact while `SMSD_ENV=production`; avoid using it for deployed traffic. |
 | `SMSD_MODEL_PATH` | `models/spam_detector_v1.pkl` (repo-relative, resolved from the project root; `/app/models/spam_detector_v1.pkl` in the container) | Path to the joblib model bundle to load. Must be readable by the runtime user; mount `models/` read-only. |
 | `SMSD_CORS_ORIGINS` | `http://127.0.0.1:8000,http://localhost:8000` | Comma-separated allowlist of browser origins. Wildcard `*` entries are ignored, and an empty/wildcard-only value falls back to the default local origins; credentials are disabled. Set your reverse-proxy origin (e.g. `https://sms.example.org`) if the UI is served from a different origin. |
 | `SMSD_FEEDBACK_ENABLED` | `false` | Enables the optional anonymous label-correction endpoint and UI. Keep disabled unless the operator has reviewed retention and abuse controls. |

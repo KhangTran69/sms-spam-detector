@@ -173,8 +173,6 @@ def test_requirements_are_bounded() -> None:
         "uvicorn",
         "pydantic",
         "matplotlib",
-        "pytest",
-        "httpx",
     }
     assert expected <= set(runtime), f"missing runtime dependencies: {sorted(expected - set(runtime))}"
     for name, specs in runtime.items():
@@ -182,7 +180,7 @@ def test_requirements_are_bounded() -> None:
         assert "<" in specs, f"{name} needs an upper bound in requirements.txt: {specs!r}"
 
     dev = _requirement_specs("requirements-dev.txt")
-    assert {"ruff", "mypy"} <= set(dev)
+    assert {"ruff", "mypy", "pytest", "httpx"} <= set(dev)
     for name, specs in dev.items():
         assert ">=" in specs and "<" in specs, f"{name} must be bounded in requirements-dev.txt: {specs!r}"
 
@@ -349,10 +347,10 @@ def test_docs_state_synthetic_only_and_privacy_limits() -> None:
 
     model_card = _doc("docs/MODEL_CARD.md").lower()
     assert "synthetic" in model_card
-    assert "not evaluated" in model_card
+    assert "no real philippine traffic has been evaluated" in model_card
     assert "assistive" in model_card
     assert re.search(r"no\W+representative\W+real\W+philippine", model_card)
-    assert "see readme" in model_card, "model card metrics table must point at README"
+    assert "dataset_inventory.md" in model_card, "model card metrics source must link the dated evaluation inventory"
 
     privacy = _doc("docs/PRIVACY.md").lower()
     assert "no server-side message persistence" in privacy

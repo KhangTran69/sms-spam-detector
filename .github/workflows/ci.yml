@@ -20,6 +20,20 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+      - name: Set up Python for a synthetic smoke model
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install runtime dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Train an explicitly synthetic fixture artifact
+        run: |
+          python -m src.train \
+            --data data/raw/ph_supplement.csv \
+            --supplement data/raw/ph_supplement_2.csv data/raw/ph_supplement_3.csv data/raw/ph_supplement_4.csv data/raw/ph_supplement_5.csv \
+            --holdout none \
+            --output models/ci-smoke.pkl \
+            --model-version ci-synthetic-smoke
       - name: Build runtime image
         run: docker build --tag smsd-ci-smoke .
       - name: Verify liveness and readiness contracts
@@ -51,6 +65,60 @@ jobs:
               assert b"model_unavailable" in response.read()
           else:
               raise AssertionError("readiness must fail when the model artifact is absent")
+          PY
+      - name: Verify production readiness and prediction contracts with fixture model
+        run: |
+          docker run --detach --rm --name smsd-ci-fixture \
+            -p 127.0.0.1:8001:8000 \
+            -v "$PWD/models:/app/models:ro" \
+            -e SMSD_MODEL_PATH=/app/models/ci-smoke.pkl \
+            -e SMSD_ENV=production \
+            smsd-ci-smoke
+          trap 'docker stop smsd-ci-fixture >/dev/null 2>&1 || true' EXIT
+          python - <<'PY'
+          import json
+          import time
+          import urllib.error
+          import urllib.request
+
+          base = "http://127.0.0.1:8001"
+          for attempt in range(30):
+              try:
+                  with urllib.request.urlopen(f"{base}/ready", timeout=2) as response:
+                      assert response.status == 200
+                  break
+              except (OSError, urllib.error.URLError):
+                  if attempt == 29:
+                      raise
+                  time.sleep(1)
+
+          def post(path, body):
+              request = urllib.request.Request(
+                  f"{base}{path}", data=json.dumps(body).encode(),
+                  headers={"Content-Type": "application/json"},
+              )
+              with urllib.request.urlopen(request, timeout=5) as response:
+                  return json.load(response)
+
+          info = json.load(urllib.request.urlopen(f"{base}/model-info", timeout=2))
+          assert info["model_version"] == "ci-synthetic-smoke"
+          assert info["feature_version"] != "unknown"
+          assert post("/predict", {"message": "CI fixture message"})["prediction"] in {"ham", "spam"}
+          assert len(post("/analyze/batch", {"messages": ["fixture one", "fixture two"]})["results"]) == 2
+          with urllib.request.urlopen(f"{base}/", timeout=2) as response:
+              assert b"SMS" in response.read()
+
+          secret = "DO_NOT_ECHO_CI_MESSAGE"
+          request = urllib.request.Request(
+              f"{base}/predict", data=json.dumps({"message": secret + "x" * 10000}).encode(),
+              headers={"Content-Type": "application/json"},
+          )
+          try:
+              urllib.request.urlopen(request, timeout=5)
+          except urllib.error.HTTPError as response:
+              assert secret.encode() not in response.read()
+          else:
+              raise AssertionError("unexpected request field should be rejected")
           PY
 
   quality:

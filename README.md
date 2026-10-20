@@ -4,6 +4,10 @@ An assistive SMS classifier and web demo for Philippine English, Filipino, and T
 
 > **Evidence limit:** Philippine examples currently tracked here are synthetic. The public UCI SMS Spam Collection is English-heavy. This repository does not contain a representative, consented Philippine SMS dataset, so its scores are engineering checks—not evidence of real-world accuracy. Do not block, delete, report, or penalize anyone based only on a prediction.
 
+The model is trained on a **spam vs. ham** label. Its spam class can include
+unsolicited promotions as well as suspected fraud; a positive result does not
+prove that a message or sender is a scam. Scores are uncalibrated model scores.
+
 ## Setup
 
 ```bash

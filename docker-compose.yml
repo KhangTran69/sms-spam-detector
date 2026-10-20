@@ -25,6 +25,7 @@ services:
     environment:
       # Path to the joblib ModelBundle inside the container.
       SMSD_MODEL_PATH: /app/models/spam_detector_v1.pkl
+      SMSD_ENV: production
       SMSD_FEEDBACK_ENABLED: ${SMSD_FEEDBACK_ENABLED:-false}
       SMSD_FEEDBACK_PATH: /app/data/feedback/reports.jsonl
       # Comma-separated browser origins allowed by CORS. The bundled UI is

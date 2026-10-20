@@ -95,3 +95,32 @@ masked, independently labeled messages with enough legitimate OTP, bank-alert,
 delivery, bill, promotion, and everyday-message examples, plus scam campaigns
 held out by campaign and time. Keep that final set untouched until release
 evaluation.
+
+## Candidate training run (2026-10-20)
+
+The local candidate `candidate-2026-10-20` was trained to the ignored artifact
+`models/spam_detector_candidate_2026-10-20.pkl` from the current 5,698-row
+combined input (4,685 ham, 1,013 spam after global deduplication). It records
+source SHA-256 hashes, feature version, Python/scikit-learn versions, split
+fingerprint, training timestamp, and validation-selected threshold in its
+artifact and ignored sidecars. The base `spam.csv` provenance remains unknown;
+this candidate is not suitable evidence for Philippine performance and was
+not promoted to the serving model.
+
+Re-evaluating that exact artifact produced internal test precision 0.958,
+recall 0.779, F1 0.859 (n=814; 669 ham, 145 spam) at its validation-selected
+0.75 threshold. At 0.50, test precision was 0.950, recall 0.924, F1 0.937,
+with 7 false positives and 11 false negatives. On the separate synthetic
+Philippine holdout it scored 1.000 precision/recall/F1 (n=46), with zero
+false positives among 26 synthetic legitimate messages and zero group overlap.
+These are reproducible diagnostics, not real-world performance claims. Some
+category supports are only one example, and confidence intervals would be
+uninformative at that scale. The machine-readable evaluation JSON and model
+artifacts are ignored outputs; rerun these commands to reproduce them.
+
+```bash
+python -m src.train --output models/spam_detector_candidate_2026-10-20.pkl \
+  --model-version candidate-2026-10-20 --holdout data/raw/ph_holdout.csv
+python -m src.evaluate --model models/spam_detector_candidate_2026-10-20.pkl \
+  --json-out data/processed/candidate-2026-10-20.json
+```
