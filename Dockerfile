@@ -24,7 +24,9 @@ RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:${PATH}"
 
 COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+COPY constraints/ ./constraints/
+ARG PYTHON_VERSION
+RUN pip install --no-cache-dir -r requirements.txt -c "constraints/py${PYTHON_VERSION}.txt"
 
 # ---------- runtime: minimal image, non-root ----------
 FROM python:${PYTHON_VERSION}-slim AS runtime
@@ -52,7 +54,7 @@ WORKDIR /app
 COPY --from=builder /opt/venv /opt/venv
 COPY --chown=10001:10001 src/ ./src/
 COPY --chown=10001:10001 api/ ./api/
-COPY --chown=10001:10001 web/ ./web/
+
 
 # Mount point for the read-only model artifact (kept out of the image).
 RUN mkdir -p /app/models /app/data/feedback \

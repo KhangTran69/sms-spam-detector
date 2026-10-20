@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "philippine-sms-spam-detector"
 version = "2.0.0"
-description = "TF-IDF + LogisticRegression SMS spam/scam classifier with a FastAPI service and a no-build web UI"
+description = "TF-IDF SMS spam/scam classifier with a FastAPI service and a no-build web UI"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -27,6 +27,13 @@ dev = [
     "httpx>=0.24,<1",
     "pytest-cov>=4.1,<8",
 ]
+
+[project.scripts]
+smsd-serve = "api.cli:main"
+
+[tool.setuptools.package-data]
+# The no-build web UI ships inside the api package so `pip install .` serves it.
+api = ["web/*", "py.typed"]
 
 [tool.setuptools.packages.find]
 where = ["."]

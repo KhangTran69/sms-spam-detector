@@ -34,7 +34,7 @@ accounts, so privacy is a first-class design constraint.
 
 ## 3. Browser history (opt-in only)
 
-The bundled web UI (`web/`) can keep recent checks in the browser's
+The bundled web UI (`api/web/`) can keep recent checks in the browser's
 `localStorage`. Rules:
 
 - **Opt-in.** History is disabled unless the user explicitly enables it; the
@@ -135,7 +135,7 @@ Retention:
 - [ ] Browser history is opt-in and clearable; users on shared devices are warned
 - [ ] Model and data artifacts are git-ignored; repository contains no personal
       messages or secrets
-- [ ] No third-party analytics/scripts in `web/`
+- [ ] No third-party analytics/scripts in `api/web/`
 - [ ] If anonymous feedback is enabled, queue retention and abuse controls are configured; summaries contain aggregate counts only
 - [ ] Exposure is behind TLS + access controls if not localhost-only
 - [ ] Incident path for accidental PII in logs/artifacts is documented
