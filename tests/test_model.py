@@ -103,8 +103,15 @@ def test_artifact_contains_required_metadata(trained_artifact):
     assert artifact["label_map"] == {"ham": "ham", "spam": "spam"}
     assert artifact["classes"] == ["ham", "spam"]
     assert artifact["training_config"]["random_state"] == 7
-    assert artifact["text_feature_mode"] == "word"
-    assert artifact["training_config"]["text_features"] == "word"
+    assert artifact["text_feature_mode"] == "combined"
+    assert artifact["training_config"]["text_features"] == "combined"
+    assert artifact["probability_calibrated"] is True
+    assert artifact["model_selection"]["selected"] in {
+        row["candidate"] for row in artifact["model_selection"]["candidates"]
+    }
+    decision = artifact["threshold_selection"]["decision"]
+    assert decision["policy"] == "cv-robust"
+    assert artifact["threshold"] == decision["threshold"]
     assert artifact["data_sources"][0]["sha256"]
     assert "model_version" in artifact
     assert "metrics" in artifact
@@ -166,7 +173,7 @@ def test_analyze_message_contract_and_threshold_consistency(trained_artifact):
         "model_version",
     }
     assert result["decision_threshold"] == pytest.approx(bundle.threshold)
-    assert result["probability_calibrated"] is False
+    assert result["probability_calibrated"] is True
     assert result["prediction"] == ("spam" if result["spam_probability"] >= bundle.threshold else "ham")
     assert result["margin"] == pytest.approx(abs(result["spam_probability"] - bundle.threshold))
     assert result["confidence"] in {"low", "medium", "high"}
@@ -251,8 +258,22 @@ def test_hash_verified_bytes_are_the_bytes_given_to_joblib(trained_artifact, mon
     assert received == [model_path.read_bytes()]
 
 
-def test_compatible_word_only_feature_version_loads_with_warning(trained_artifact, tmp_path):
-    artifact, _ = trained_artifact
+def test_compatible_word_only_feature_version_loads_with_warning(tmp_path):
+    data_path = make_tiny_dataset(tmp_path / "tiny.csv")
+    artifact = train(
+        data_path=data_path,
+        model_path=tmp_path / "word.pkl",
+        supplement_path=None,
+        holdout_path=None,
+        val_size=0.2,
+        test_size=0.2,
+        random_state=7,
+        target_precision=0.5,
+        min_recall=0.0,
+        text_features="word",
+        write_metadata=False,
+        verbose=False,
+    )
     payload = dict(artifact)
     payload["feature_version"] = "2.1.0"
     path = tmp_path / "compatible-word.pkl"

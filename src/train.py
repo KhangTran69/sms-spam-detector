@@ -4,9 +4,13 @@ Pipeline:
 1. Load base + all supplement CSVs (schema/label/duplicate/class validation).
 2. Deduplicate globally, then create deterministic group-aware train/val/test
    splits (no template family crosses a boundary).
-3. Fit a MultinomialNB baseline and a class-balanced LogisticRegression primary.
-4. Tune the spam decision threshold on the *validation* split with a stated
-   precision/recall target; never on the test split or the holdout.
+3. Fit a MultinomialNB baseline. Choose the primary classifier (class-balanced
+   LogisticRegression or LinearSVC over a C grid) by group-aware
+   cross-validated spam F1 on the training split, then calibrate it with
+   sigmoid CalibratedClassifierCV.
+4. Use a 0.5 decision threshold unless the validation-tuned threshold shows a
+   robust out-of-fold F1 gain (see ``src.model_selection``); never tune on the
+   test split or the holdout.
 5. Save one joblib artifact containing the pipeline, threshold, label mapping,
    data-source hashes, training configuration, version, and measured metrics.
 """
@@ -23,7 +27,6 @@ from typing import Any
 
 import joblib
 import sklearn
-from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import MultinomialNB
 
 from src.data import (
@@ -56,12 +59,19 @@ from src.metrics import (
     select_threshold,
     threshold_sweep,
 )
+from src.model_selection import (
+    calibrated_model,
+    out_of_fold_probabilities,
+    robust_threshold_decision,
+    select_classifier,
+)
 from src.predict import ARTIFACT_SCHEMA_VERSION, DEFAULT_MODEL, ModelBundle, spam_probabilities
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_TARGET_PRECISION = 0.95
 DEFAULT_MIN_RECALL = 0.80
 MIN_EVALUATION_CLASS_COUNT = 30
+THRESHOLD_POLICIES = ("cv-robust", "validation")
 KEY_THRESHOLDS = (0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
 
 # Backward-compatible aliases for the notebook and older scripts.
@@ -146,7 +156,8 @@ def train(
     strict_data: bool = True,
     strict_supplement_paths: bool = False,
     model_version: str | None = None,
-    text_features: str = "word",
+    text_features: str = "combined",
+    threshold_policy: str = "cv-robust",
     write_metadata: bool = True,
     metadata_output: str | Path | None = None,
     verbose: bool = True,
@@ -181,17 +192,17 @@ def train(
             print(f"warning: {warning}")
 
     baseline = make_model(MultinomialNB(), text_features=text_features)
-    primary = make_model(
-        LogisticRegression(
-            class_weight="balanced",
-            max_iter=2000,
-            solver="liblinear",
-            random_state=random_state,
-        ),
-        text_features=text_features,
+    if threshold_policy not in THRESHOLD_POLICIES:
+        raise ValueError(f"threshold_policy must be one of {THRESHOLD_POLICIES}, got {threshold_policy!r}")
+    train_frame = _frame(train_set.messages)
+    selection = select_classifier(
+        train_frame, train_set.labels, train_set.groups, text_features=text_features, seed=random_state
     )
-    baseline.fit(_frame(train_set.messages), train_set.labels)
-    primary.fit(_frame(train_set.messages), train_set.labels)
+    primary = calibrated_model(
+        selection.estimator, text_features=text_features, seed=random_state, labels=train_set.labels
+    )
+    baseline.fit(train_frame, train_set.labels)
+    primary.fit(train_frame, train_set.labels)
 
     val_probabilities = _probabilities(primary, val_set.messages)
     choice = select_threshold(
@@ -202,7 +213,24 @@ def train(
         false_positive_cost=false_positive_cost,
         false_negative_cost=false_negative_cost,
     )
-    threshold = choice.threshold
+    if threshold_policy == "validation":
+        threshold_decision: dict[str, Any] = {
+            "policy": "validation",
+            "threshold": choice.threshold,
+            "adopted": True,
+            "candidate_threshold": choice.threshold,
+        }
+    else:
+        folds = out_of_fold_probabilities(
+            selection.estimator,
+            train_frame,
+            train_set.labels,
+            train_set.groups,
+            text_features=text_features,
+            seed=random_state,
+        )
+        threshold_decision = {"policy": "cv-robust", **robust_threshold_decision(choice.threshold, folds)}
+    threshold = float(threshold_decision["threshold"])
     suspicious_threshold = round(max(0.001, min(threshold - 0.001, threshold / 2.0)), 4)
 
     baseline_metrics, _ = _metrics(baseline, test_set, 0.5)
@@ -270,7 +298,9 @@ def train(
         "threshold": threshold,
         "decision_threshold": threshold,  # explicit alias used by some clients
         "suspicious_threshold": suspicious_threshold,
-        "threshold_selection": choice.as_dict(),
+        "threshold_selection": {**choice.as_dict(), "decision": jsonable(threshold_decision)},
+        "model_selection": selection.as_dict(),
+        "calibration_method": "sigmoid CalibratedClassifierCV (5-fold, training split only)",
         "training_config": {
             "data_path": str(Path(data_path)),
             "supplement_paths": [str(path) for path in _supplement_paths_used(supplement_path)],
@@ -284,6 +314,7 @@ def train(
             "false_negative_cost": false_negative_cost,
             "split_by": split_by,
             "text_features": text_features,
+            "threshold_policy": threshold_policy,
             "strict_data": strict_data,
         },
         "data_sources": [record.as_dict() for record in dataset.records],
@@ -308,8 +339,8 @@ def train(
             else False
         ),
         "training_data_kind_counts": train_set.frame["data_kind"].value_counts().to_dict(),
-        # Calibration is measured and reported, but no calibration transform is fitted.
-        "probability_calibrated": False,
+        # Sigmoid calibration is fitted on training folds only; test/holdout ECE is reported.
+        "probability_calibrated": True,
         "data_note": (
             "Training data may include synthetic examples and messages with unverified provenance. "
             "Synthetic examples are engineering checks, not proof of real-world accuracy. "
@@ -392,21 +423,33 @@ def _print_report(
     for warning in split.warnings:
         print(f"warning: {warning}")
 
+    selection = artifact["model_selection"]
+    print("\n=== Model selection (training split, cross-validated spam F1) ===")
+    for row in selection["candidates"]:
+        marker = " <- selected" if row["candidate"] == selection["selected"] else ""
+        print(f"{row['candidate']:>32}: {row['cv_f1_mean']:.4f} +/- {row['cv_f1_std']:.4f}{marker}")
+    print(f"calibration: {artifact['calibration_method']}")
+
     print("\n=== Threshold tuning (validation only) ===")
     print(choice.note)
     print(
         f"chosen={choice.threshold:.2f} val precision={choice.precision:.4f} "
         f"val recall={choice.recall:.4f} achieved_target={choice.achieved_target}"
     )
+    decision = artifact["threshold_selection"]["decision"]
+    print(
+        f"policy={decision['policy']} candidate={decision['candidate_threshold']} "
+        f"adopted={decision['adopted']} fold_gains={decision.get('fold_f1_gains')} -> threshold={decision['threshold']}"
+    )
     print(f"{'threshold':>9} | {'precision':>9} | {'recall':>7} | {'FP':>5} | {'FN':>5}")
     for row in artifact["metrics"]["validation_sweep"]:
-        marker = " <- chosen" if abs(row["threshold"] - choice.threshold) < 1e-9 else ""
+        marker = " <- validation pick" if abs(row["threshold"] - choice.threshold) < 1e-9 else ""
         print(
             f"{row['threshold']:>9.2f} | {row['precision']:>9.4f} | {row['recall']:>7.4f} | "
             f"{row['fp']:>5d} | {row['fn']:>5d}{marker}"
         )
 
-    print("\n=== Test split (reported at the tuned threshold) ===")
+    print("\n=== Test split (reported at the served threshold) ===")
     print(_format_metrics("primary", primary_metrics))
     print(_format_metrics("primary @0.5", primary_at_default))
     print(_format_metrics("baseline NB @0.5", baseline_metrics))
@@ -478,8 +521,15 @@ def _main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--text-features",
         choices=TEXT_FEATURE_MODES,
-        default="word",
-        help="TF-IDF representation to fit; use identical seed/splits to compare word, char, and combined.",
+        default="combined",
+        help="TF-IDF representation to fit (default: word+char combined).",
+    )
+    parser.add_argument(
+        "--threshold-policy",
+        choices=THRESHOLD_POLICIES,
+        default="cv-robust",
+        help="cv-robust: use 0.5 unless the validation-tuned threshold improves out-of-fold F1 in every fold "
+        "and by >=0.01 on average; validation: always use the validation-tuned threshold.",
     )
     parser.add_argument(
         "--val-size", type=float, default=DEFAULT_VAL_SIZE, help="Validation fraction for threshold tuning."
@@ -545,6 +595,7 @@ def _main(argv: list[str] | None = None) -> int:
             strict_supplement_paths=strict_supplement_paths,
             model_version=args.model_version,
             text_features=args.text_features,
+            threshold_policy=args.threshold_policy,
             write_metadata=not args.no_metadata,
             metadata_output=args.metadata_output,
         )

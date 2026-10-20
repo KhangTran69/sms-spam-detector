@@ -58,7 +58,7 @@ demo:
 		--supplement data/raw/ph_supplement_2.csv data/raw/ph_supplement_3.csv \
 		data/raw/ph_supplement_4.csv data/raw/ph_supplement_5.csv \
 		--holdout data/raw/ph_holdout.csv --output "$(DEMO_MODEL)" \
-		--model-version synthetic-demo-word --text-features word
+		--model-version synthetic-demo --text-features combined
 	$(PYTHON) -m src.evaluate --data data/raw/ph_supplement.csv \
 		--supplement data/raw/ph_supplement_2.csv data/raw/ph_supplement_3.csv \
 		data/raw/ph_supplement_4.csv data/raw/ph_supplement_5.csv \

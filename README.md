@@ -6,7 +6,8 @@ An assistive SMS classifier and web demo for Philippine English, Filipino, and T
 
 The model is trained on a **spam vs. ham** label. Its spam class can include
 unsolicited promotions as well as suspected fraud; a positive result does not
-prove that a message or sender is a scam. Scores are uncalibrated model scores.
+prove that a message or sender is a scam. Scores are sigmoid-calibrated on the training split (see `docs/MODEL_CARD.md`);
+calibration on English UCI data does not transfer automatically to Philippine traffic.
 
 ## Setup
 
@@ -51,9 +52,18 @@ to a different output path. Character n-grams may help with spacing and
 spelling variation, but their addition does not establish an improvement.
 Compare identical untouched test membership, report sample counts and
 confidence intervals, and keep the separate holdout out of model/threshold
-selection. The default and serving representation remains word-only until an
-operator reviews and deliberately promotes a candidate. Synthetic evaluation
-is not a substitute for consented Philippine data.
+selection. The default representation is `combined` (word + character
+n-grams), promoted after it beat word-only on the UCI test split (F1 0.938 vs
+0.912 at 0.5). Synthetic evaluation is not a substitute for consented
+Philippine data.
+
+The primary classifier is chosen by 5-fold group-aware cross-validated spam F1
+on the training split from class-balanced LogisticRegression (C in
+0.3/1/3/10/30) and LinearSVC (C in 0.03/0.1/0.3/1), then wrapped in sigmoid
+`CalibratedClassifierCV`. The decision threshold is 0.5 unless the
+validation-tuned threshold improves out-of-fold F1 in every fold and by at
+least 0.01 on average (`--threshold-policy cv-robust`, the default); use
+`--threshold-policy validation` to restore the old behaviour.
 
 Training validates schemas and labels, removes exact and normalized duplicates before splitting, keeps campaign/template groups together, tunes the decision threshold on validation data, and reports the final test metrics separately. The artifact contains the model, threshold, training/data provenance, and version metadata. The configured base file and five synthetic Philippine supplements are used by default when present; unknown provenance stays marked unknown.
 
@@ -71,7 +81,7 @@ Evaluation reports precision, recall, F1, false positives, sample counts, and co
 
 Use `python -m src.evaluate --stability-seeds 13 42 73 --json-out data/processed/stability.json` for repeated group-aware threshold stability checks. The final test groups are reserved first and excluded from these development-only refits; repeated validation metrics select their own thresholds and are not independent performance estimates. Preserve the seed list with the report. Synthetic diagnostics remain separate from real-world validation. Optional `--false-positive-cost` and `--false-negative-cost` training arguments must be supplied together; they configure an exploratory validation-only threshold choice and do not express an approved production policy.
 
-The model currently reports uncalibrated scores; a score is not a probability guarantee. Do not use synthetic or unknown-provenance results as a real-world accuracy claim.
+Scores are calibrated on training folds and the test ECE is reported, but a calibrated score is still not a probability guarantee on unseen traffic. Do not use synthetic or unknown-provenance results as a real-world accuracy claim.
 
 Run `python -m src.train --help` and `python -m src.evaluate --help` for all data, threshold, split, and output options.
 
@@ -176,7 +186,7 @@ tests/           data, model, API, preprocessing, and web-contract checks
 CSV files may include `data_kind` with `synthetic`, `public`, `consented`, or `unknown` (the default); legacy `real` is accepted as consented data. This is a source declaration, not independent verification. Training records fitted-row counts by kind; `synthetic_training_data` is true when synthetic rows were used, false only when all fitted rows are declared public or consented, and null when their status is unknown. Tracked Philippine fixtures are explicitly synthetic.
 
 Feature version 2.2.0 adds selectable word, character, or combined TF-IDF
-representations; the default remains word-only. A 2.1.0 word-only artifact is
+representations; the default is now `combined`. A 2.1.0 word-only artifact is
 accepted only when its fitted pipeline confirms the unchanged word-vectorizer
 settings and input schema. Other incompatible feature contracts still require
 retraining. When `SMSD_MODEL_SHA256` is configured, the loader hashes and
