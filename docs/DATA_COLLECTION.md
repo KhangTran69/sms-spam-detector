@@ -256,6 +256,31 @@ report once on the held-out synthetic set and (when it exists) the real holdout.
    and known sampling bias. Do not publish performance numbers from synthetic
    data without the synthetic-only caveat.
 
+### Importing consented real messages
+
+1. Copy `data/templates/consented_ph_sms_template.csv` and fill one row per
+   message inside the approved secure workspace. Required on every row: `label`,
+   `message` (redacted), `group` (campaign or donor), `consent_id`,
+   `consent_recorded_at`, `redaction_reviewed_by`, and `labeler`. Fill
+   `second_labeler`/`second_label` when you double-label.
+2. Replace names, numbers, OTPs, accounts, and emails with `[NAME]`, `[PHONE]`,
+   `[CODE]`, `[ACCOUNT]`, and `[EMAIL]`.
+3. Run `python -m src.import_consented --input batch.csv` (or `--role holdout`).
+   The importer rejects the whole file if it finds a PH mobile number, an email, or a
+   6+ digit code. It drops double-labeled rows where the labelers disagree, writes
+   `data_kind=consented` rows under the git-ignored `data/raw/consented/`, and
+   prints counts only, never message text.
+4. Train with `python -m src.train --supplement data/raw/consented/batch.csv`
+   or evaluate with `--holdout data/raw/consented/holdout_batch.csv`.
+
+### Regenerating synthetic data
+
+`python scripts/curate_supplements.py data/raw/ph_supplement_2.csv` dedupes and
+caps template families. `python scripts/generate_synthetic_ph.py --train-out
+data/raw/ph_supplement_5.csv --holdout-out data/raw/ph_holdout.csv` rebuilds
+the generated rows deterministically. Training and holdout families are
+disjoint, and `tests/test_synthetic_ph.py` checks separation and balance.
+
 ## 9. Storage, access, and retention
 
 - **Raw/unmasked** real messages: encrypted at rest, access limited to named

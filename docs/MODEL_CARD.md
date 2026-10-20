@@ -40,9 +40,14 @@ The classifier target is **spam versus ham**. A spam label can include unwanted 
 |---|---|---|---|
 | `data/raw/spam.csv` | Operator-supplied English-style base file; its source/license are unknown until verified | Merged into training when present | No (git-ignored) |
 | Verified UCI SMS Spam Collection | Public historical English SMS corpus, 5,574 rows, CC BY 4.0; importer does not download it | Supported import; not added by this change | No |
-| `data/raw/ph_supplement.csv`, `_2.csv`, `_3.csv`, `_4.csv`, `_5.csv` | **Synthetic**, template-based Philippine scam and legitimate examples; `_4` adds 42 scam variants and `_5` adds 21 legitimate variants | Merged into training | Yes (template text only) |
-| `data/raw/ph_holdout.csv` | **Synthetic**, small labeled diagnostic holdout | Evaluation only, never training | Yes |
-| Real Philippine messages | none collected | — | — |
+| `data/raw/ph_supplement.csv`, `_2.csv`, `_3.csv`, `_4.csv`, `_5.csv` | **Synthetic**, developer-authored Philippine scam and legitimate examples. `_2` was deduped and capped at 2 rows per template family (311 → 141). `_5` adds 129 generated rows from 20 families (`scripts/generate_synthetic_ph.py`) | 513 rows merged into training: ham 237, spam 276 | Yes (synthetic text only) |
+| `data/raw/ph_holdout.csv` | **Synthetic** holdout: 264 rows (ham 124, spam 140), 23 generated families with brands, phrasings and link shapes not used in training, plus the 46 earlier hand-written rows | Evaluation only, never training. 0 template-family overlap; max character-5-gram Jaccard similarity to any training row is 0.53 | Yes |
+| Real Philippine messages | **none collected yet.** `src/import_consented.py` and `data/templates/consented_ph_sms_template.csv` are ready, but no consented data exists | — | — |
+
+> **All Philippine data in this repository is still synthetic.** Rebalancing,
+> deduplication, and a larger holdout make the pipeline checks less fragile.
+> They do not make holdout scores evidence of real-world accuracy: one author
+> wrote both training and holdout templates, so style overlap remains.
 
 - The configured base file has unknown provenance in the audited workspace. A
   verified UCI import would be English-heavy and dated. The Philippine coverage comes from
