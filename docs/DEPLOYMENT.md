@@ -51,10 +51,12 @@ python -m src.evaluate              # held-out metrics, threshold sweep, synthet
 - The API resolves `SMSD_MODEL_PATH` at startup; when it is unset, code defaults
   to `models/spam_detector_v1.pkl`. Check the running instance with
   `GET /model-info` because a local file or candidate training run does not
-  prove what a separately hosted demo serves. In this workspace, no API process
-  was running during the 2026-10-20 audit, so the remote/running demo artifact
-  could not be confirmed. The locally present `spam_detector_v2_1.pkl` is a
-  separate ignored artifact and is not the configured fallback.
+  prove what a separately hosted demo serves. On 2026-10-20, the local API at
+  `127.0.0.1:8000` reported `spam_detector_v1` (schema 1, threshold 0.50,
+  uncalibrated); its process ran from this repository. The API reports the
+  artifact version but does not expose its resolved filesystem path. The
+  locally present `spam_detector_v2_1.pkl` is a separate ignored artifact and
+  is not the configured fallback.
 - For the authoritative current CLI flags run `python -m src.train --help` and
   `python -m src.evaluate --help`.
 

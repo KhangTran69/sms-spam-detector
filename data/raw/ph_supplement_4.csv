@@ -1,0 +1,43 @@
+data_kind,label,message,category,language,source,labeling_confidence,group
+synthetic,spam,SampleBank alert: your access will be blocked today. Send [CODE] at example.com/bank to keep the account open.,bank_phishing,en,synthetic_template_v4,high,bank_review_a
+synthetic,spam,SampleBank kuno ito: na-freeze ang online access mo. I-check daw sa example.com/bank bago mag-24 oras.,bank_phishing,taglish,synthetic_template_v4,high,bank_review_a
+synthetic,spam,May problema raw sa SampleBank profile. Ipadala ang [CODE] sa review page: example.com/bank para maibalik ang access.,bank_phishing,tl,synthetic_template_v4,high,bank_review_a
+synthetic,spam,Your SampleBank account will close today unless you confirm [ACCOUNT] at example.com/confirm.,bank_phishing,en,synthetic_template_v4,high,bank_device_b
+synthetic,spam,May login daw mula sa ibang device. I-verify ang [ACCOUNT] mo sa example.com/confirm o ma-lock ito.,bank_phishing,taglish,synthetic_template_v4,high,bank_device_b
+synthetic,spam,"Kung hindi ikaw ang nag-login, ilagay ang [CODE] sa example.com/confirm para kanselahin ang alert.",bank_phishing,tl,synthetic_template_v4,high,bank_device_b
+synthetic,spam,Delivery notice: the parcel is held until the [AMOUNT] release charge is paid at example.com/parcel.,delivery_scam,en,synthetic_template_v4,high,parcel_release_a
+synthetic,spam,Naka-hold daw ang package mo. Bayaran ang [AMOUNT] sa example.com/parcel para ma-reschedule ang delivery.,delivery_scam,taglish,synthetic_template_v4,high,parcel_release_a
+synthetic,spam,Hindi raw maihatid ang padala dahil kulang ang address. Magbayad ng [AMOUNT] sa example.com/parcel.,delivery_scam,tl,synthetic_template_v4,high,parcel_release_a
+synthetic,spam,Your shipment cannot leave the sorting center until you submit a redelivery fee: [AMOUNT]. Visit example.com/route.,delivery_scam,en,synthetic_template_v4,high,parcel_route_b
+synthetic,spam,May kulang daw sa delivery details. I-update ang address sa example.com/route at bayaran ang [AMOUNT].,delivery_scam,taglish,synthetic_template_v4,high,parcel_route_b
+synthetic,spam,Ipinapaalam na hindi mailalabas ang parcel hangga't hindi nababayaran ang [AMOUNT] sa example.com/route.,delivery_scam,tl,synthetic_template_v4,high,parcel_route_b
+synthetic,spam,Congrats! You were picked for a reward. Pay [AMOUNT] at example.com/reward to release your prize today.,prize_scam,en,synthetic_template_v4,high,reward_fee_a
+synthetic,spam,Napili raw ang number mo sa raffle. I-claim ang premyo matapos magbayad ng [AMOUNT] sa example.com/reward.,prize_scam,taglish,synthetic_template_v4,high,reward_fee_a
+synthetic,spam,May napanalunan ka raw na papremyo. Ipadala ang [ACCOUNT] at bayad na [AMOUNT] sa example.com/reward.,prize_scam,tl,synthetic_template_v4,high,reward_fee_a
+synthetic,spam,"Congratulations, a surprise grant is waiting. Enter [ACCOUNT] and [CODE] at example.com/claim before midnight.",prize_scam,en,synthetic_template_v4,high,reward_claim_b
+synthetic,spam,Congrats! May cash prize ka raw. I-submit ang [CODE] sa example.com/claim ngayong araw para ma-release.,prize_scam,taglish,synthetic_template_v4,high,reward_claim_b
+synthetic,spam,May gantimpala ka raw na nakalaan. Ilagay ang [ACCOUNT] sa example.com/claim bago matapos ang araw.,prize_scam,tl,synthetic_template_v4,high,reward_claim_b
+synthetic,spam,Remote rating work pays [AMOUNT] per day. Send an enrollment deposit at example.com/work to reserve your slot.,job_scam,en,synthetic_template_v4,high,work_deposit_a
+synthetic,spam,"WFH daw, malaking kita kahit walang experience. Magbayad muna ng [AMOUNT] sa example.com/work para makapagsimula.",job_scam,taglish,synthetic_template_v4,high,work_deposit_a
+synthetic,spam,May trabahong online na mataas ang sahod. Ipadala ang [AMOUNT] na registration fee sa example.com/work.,job_scam,tl,synthetic_template_v4,high,work_deposit_a
+synthetic,spam,Hiring now for a guaranteed remote role. Upload your ID and pay the training kit fee at example.com/hiring.,job_scam,en,synthetic_template_v4,high,work_kit_b
+synthetic,spam,Pasok ka na raw sa online job. I-upload ang [ACCOUNT] details at bayaran ang kit sa example.com/hiring.,job_scam,taglish,synthetic_template_v4,high,work_kit_b
+synthetic,spam,Tinanggap ka raw sa trabaho mula bahay. Magbayad ng training materials sa example.com/hiring bago ang orientation.,job_scam,tl,synthetic_template_v4,high,work_kit_b
+synthetic,spam,A [AMOUNT] loan is pre-approved with no checks. Pay the release fee at example.com/loan before funds are sent.,loan_scam,en,synthetic_template_v4,high,loan_release_a
+synthetic,spam,Approved na raw ang loan mo kahit walang requirements. I-release ang [AMOUNT] fee sa example.com/loan.,loan_scam,taglish,synthetic_template_v4,high,loan_release_a
+synthetic,spam,May pautang daw na agarang makukuha. Bayaran muna ang processing fee na [AMOUNT] sa example.com/loan.,loan_scam,tl,synthetic_template_v4,high,loan_release_a
+synthetic,spam,Need cash today? Your loan limit is ready. Confirm [ACCOUNT] and pay the verification charge at example.com/credit.,loan_scam,en,synthetic_template_v4,high,loan_verify_b
+synthetic,spam,Cash daw agad sa wallet mo. I-verify ang [ACCOUNT] at bayaran ang fee sa example.com/credit para ma-credit.,loan_scam,taglish,synthetic_template_v4,high,loan_verify_b
+synthetic,spam,Makakakuha ka raw ng pautang ngayon. Ibigay ang [CODE] sa example.com/credit at bayaran ang [AMOUNT].,loan_scam,tl,synthetic_template_v4,high,loan_verify_b
+synthetic,spam,Join today and earn fixed daily returns! Send [AMOUNT] at example.com/invest to activate your spot.,investment_scam,en,synthetic_template_v4,high,invest_fixed_a
+synthetic,spam,Guaranteed daw ang kita kada araw. Magpasok ng [AMOUNT] sa example.com/invest para ma-activate ang account.,investment_scam,taglish,synthetic_template_v4,high,invest_fixed_a
+synthetic,spam,Sigurado raw ang tubo sa loob ng isang linggo. Ipadala ang [AMOUNT] sa example.com/invest para sumali.,investment_scam,tl,synthetic_template_v4,high,invest_fixed_a
+synthetic,spam,Double your savings this month with no risk. Submit [ACCOUNT] and an initial [AMOUNT] at example.com/growth.,investment_scam,en,synthetic_template_v4,high,invest_growth_b
+synthetic,spam,Dodoble raw ang ipon mo ngayong buwan. Maghulog ng [AMOUNT] sa example.com/growth para makita ang returns.,investment_scam,taglish,synthetic_template_v4,high,invest_growth_b
+synthetic,spam,"Walang panganib at doble agad ang puhunan, ayon sa alok. Ipadala ang [AMOUNT] sa example.com/growth.",investment_scam,tl,synthetic_template_v4,high,invest_growth_b
+synthetic,spam,This is the school office. A student account has an urgent unpaid balance. Settle [AMOUNT] at example.com/notice.,impersonation_scam,en,synthetic_template_v4,high,urgent_notice_a
+synthetic,spam,School office daw ito. May bayarin kuno na dapat ayusin ngayon; bayaran ang [AMOUNT] sa example.com/notice.,impersonation_scam,taglish,synthetic_template_v4,high,urgent_notice_a
+synthetic,spam,Mula raw ito sa tanggapan ng paaralan. Bayaran agad ang [AMOUNT] sa example.com/notice para maiwasan ang multa.,impersonation_scam,tl,synthetic_template_v4,high,urgent_notice_a
+synthetic,spam,"Ate, emergency! I lost my phone. Send [AMOUNT] through example.com/help now and please don’t call.",impersonation_scam,en,synthetic_template_v4,high,relative_emergency_b
+synthetic,spam,May kamag-anak daw na nangangailangan ng tulong. Ipadala agad ang [AMOUNT] sa example.com/help; huwag munang tumawag.,impersonation_scam,taglish,synthetic_template_v4,high,relative_emergency_b
+synthetic,spam,May problema raw ang kapamilya mo. Magpadala ng [AMOUNT] sa example.com/help at huwag sabihin kaninuman.,impersonation_scam,tl,synthetic_template_v4,high,relative_emergency_b

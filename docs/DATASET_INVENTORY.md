@@ -3,8 +3,8 @@
 This is a message-free, machine-specific snapshot of the developer workspace.
 The ignored base file and model artifact are not distributed with the repo, so
 their counts can differ or be absent elsewhere. Counts describe CSV rows after
-the loader's exact-message deduplication where stated. No new dataset was
-downloaded or added for this audit.
+the loader's exact and normalized-message deduplication where stated. No
+external dataset was downloaded; one synthetic legitimate supplement was added.
 
 | Source | Role / rows | Labels | Provenance and rights | Coverage / confidence |
 |---|---:|---|---|---|
@@ -12,7 +12,7 @@ downloaded or added for this audit.
 | `ph_supplement.csv` (tracked) | Training supplement: 128 retained | ham 70; spam 58 | Marked synthetic; file-level license terms are not stated in this repository | Filipino/Taglish intent is not encoded consistently; language/category largely unknown; high confidence it is synthetic, low metadata coverage |
 | `ph_supplement_2.csv` (tracked) | 311 input; 296 retained, 15 duplicates removed | ham 41; spam 255 | Marked synthetic; file-level license terms are not stated in this repository | Scam/legitimate categories are present, language mostly unknown; high synthetic confidence |
 | `ph_supplement_3.csv` (tracked) | Training supplement: 52 retained | ham 36; spam 16 | Marked synthetic; file-level license terms are not stated in this repository | Language: English 42, Taglish 10; includes bank, delivery, OTP, bill, promo, school and scam categories with small counts; high synthetic confidence |
-| `ph_supplement_4.csv` (tracked) | Training supplement: 42 retained, added in this change | spam 42 | Explicitly synthetic, developer-authored; no separate dataset license is declared | English 14, Taglish 14, Filipino 14; bank, delivery, prize, job, loan, investment, and impersonation scams. Fourteen groups, three wording variants each; reserved `example.com` domains and bracketed placeholders only. |
+| `ph_supplement_4.csv` (tracked) | Training supplement: 42 retained; four ambiguous/descriptive rows revised in this audit | spam 42 | Explicitly synthetic, developer-authored; no separate dataset license is declared | English 14, Taglish 14, Filipino 14; bank, delivery, prize, job, loan, investment, and impersonation scams. Fourteen groups, three wording variants each; reserved `example.com` domains and bracketed placeholders only. |
 | `ph_supplement_5.csv` (tracked) | Training supplement: 21 retained, added in this change | ham 21 | Explicitly synthetic, developer-authored; no separate dataset license is declared | English 7, Taglish 7, Filipino 7; OTP, bank alert, delivery, bill, promotion, school/work, and personal conversation. Seven groups, three variants each. Uses reserved URLs/placeholders in both safe and scam training contexts. |
 | Combined training input | 5,698 retained after exact and normalized global deduplication | ham 4,685; spam 1,013 | Mix of 5,159 unknown and 539 synthetic rows | Language: 5,583 unknown, 63 English, 31 Taglish, 21 Filipino. Category is unknown for 5,267 rows; the rest are synthetic categories with small supports. |
 | `data/raw/ph_holdout.csv` (tracked) | Separate diagnostic holdout: 46 rows | ham 26; spam 20 | Synthetic only; not a real-world test set | English 29, Taglish 17; categories are represented by only a few examples each. No exact message or group overlap with the current training input was found; campaign independence is not established. |
@@ -26,6 +26,58 @@ should not be inferred from that label; clarify project licensing before
 reusing them outside this repository. The local `spam.csv` must remain
 `unknown` unless its actual source and terms are verified. A familiar schema or
 matching row count is not proof that it is UCI data.
+
+## Synthetic supplement audit and comparison
+
+Review of supplement 4 found one ambiguous bank alert and three rows phrased
+more like descriptions than recipient-facing texts. Those four rows were
+rewritten as fictional SMS-style messages. Its 42 rows still all use a reserved
+`example.com` URL (39 use placeholders), so supplement 5 adds six legitimate
+rows with that reserved domain and 12 with placeholders. Exact/normalized
+duplicate checks found no duplicate within either new file. A simple character
+similarity scan found no cross-group pair at or above 0.76; the deliberate
+English/Filipino/Taglish variants remain together in their explicit family
+groups. This is a mechanical check, not a Filipino language quality review.
+
+Reproducible comparison, run on 2026-10-20 with the local `spam.csv`, Python
+environment in `.venv`, seed 42, group-aware split, and the same fixed
+`ph_holdout.csv` (SHA-256
+`036e6dcb6dd62767ce3b0c20c5650a5d716a54d24e323372550ce6071b399844`):
+
+| Training rows | Validation-selected threshold | Holdout P / R / F1 | FP / FN | Holdout counts |
+|---|---:|---:|---:|---|
+| Baseline: supplements 1–3 (5,635 rows) | 0.51 | 0.909 / 1.000 / 0.952 | 2 / 0 | 46 (26 ham, 20 spam) |
+| Expanded: supplements 1–5 (5,698 rows) | 0.75 | 1.000 / 1.000 / 1.000 | 0 / 0 | 46 (26 ham, 20 spam) |
+
+The apparent difference above comes from different validation-selected
+thresholds, not demonstrated score separation: at the shared 0.51 threshold
+both artifacts have P 0.909, R 1.000, F1 0.952, FP 2, FN 0; at 0.75 both
+have P/R/F1 1.000 and no errors. At 0.51 the two false positives are the same
+English legitimate examples: delivery (1/4) and a legitimate link (1/1).
+At 0.75 there are no false positives among 26 legitimate messages. The
+validation-selected expanded threshold yields English P/R/F1 1.000/1.000/1.000
+(n=29; 21 ham, 8 spam) and Taglish 1.000/1.000/1.000 (n=17; 5 ham, 12 spam);
+at the shared 0.51 threshold both models have English 0.800/1.000/0.889 and
+Taglish 1.000/1.000/1.000. Filipino is absent from this holdout. Legitimate
+category supports at threshold 0.75 are OTP 4, bank alert 4, delivery 4,
+bills 3, promotion 3, personal Taglish 5, appointment 1, school 1, and link 1;
+all have 0 false positives. Scam category supports range from 1 to 4 and are
+too small for stable category-level performance claims. No exact/normalized
+message or group overlap with training was found. This is a synthetic diagnostic
+comparison only; at shared thresholds, the additions show no measured change.
+
+Commands used to create the training artifacts outside the repository (neither
+replaces the serving model):
+
+```bash
+./.venv/bin/python -m src.train --supplement data/raw/ph_supplement.csv data/raw/ph_supplement_2.csv data/raw/ph_supplement_3.csv --output /tmp/sms-detector-baseline.pkl --holdout none
+./.venv/bin/python -m src.train --output /tmp/sms-detector-expanded.pkl --holdout none
+```
+
+The artifacts were loaded with `src.predict.load_model`; spam scores were
+calculated on the fixed holdout and `src.metrics.binary_metrics` was applied at
+each stored validation threshold and shared thresholds 0.51 and 0.75. No
+threshold was selected from holdout results.
 
 ## Evaluation interpretation
 

@@ -124,22 +124,23 @@ def _requirement_specs(relative_path: str) -> dict[str, str]:
 
 def _gitignore_lines() -> list[str]:
     return [
-        line.strip()
-        for line in _text(".gitignore").splitlines()
-        if line.strip() and not line.strip().startswith(("#", "!"))
+        line.strip() for line in _text(".gitignore").splitlines() if line.strip() and not line.strip().startswith("#")
     ]
 
 
 def _is_git_ignored(relative_path: str) -> bool:
     rel = relative_path.replace("\\", "/")
     basename = Path(rel).name
-    for pattern in _gitignore_lines():
+    ignored = False
+    for raw_pattern in _gitignore_lines():
+        negated = raw_pattern.startswith("!")
+        pattern = raw_pattern[1:] if negated else raw_pattern
         pattern = pattern.rstrip("/")
-        if fnmatch.fnmatch(rel, pattern) or fnmatch.fnmatch(basename, pattern):
-            return True
-        if "/" not in pattern and (rel == pattern or rel.startswith(pattern + "/")):
-            return True
-    return False
+        matches = fnmatch.fnmatch(rel, pattern) or fnmatch.fnmatch(basename, pattern)
+        matches = matches or ("/" not in pattern and (rel == pattern or rel.startswith(pattern + "/")))
+        if matches:
+            ignored = not negated
+    return ignored
 
 
 def _iter_text_files() -> list[Path]:
@@ -324,6 +325,8 @@ def test_gitignore_keeps_docs_tests_tracked_and_artifacts_ignored() -> None:
     ):
         assert _is_git_ignored(path), f".gitignore should ignore {path}"
     assert not _is_git_ignored("data/templates/consented_ph_sms_template.csv")
+    assert not _is_git_ignored("data/raw/ph_supplement_4.csv")
+    assert not _is_git_ignored("data/raw/ph_supplement_5.csv")
 
 
 def test_required_docs_are_present_and_linked_from_index() -> None:

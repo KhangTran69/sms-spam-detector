@@ -30,4 +30,6 @@ dist/
 !data/raw/ph_supplement.csv
 !data/raw/ph_supplement_2.csv
 !data/raw/ph_supplement_3.csv
+!data/raw/ph_supplement_4.csv
+!data/raw/ph_supplement_5.csv
 !data/raw/ph_holdout.csv

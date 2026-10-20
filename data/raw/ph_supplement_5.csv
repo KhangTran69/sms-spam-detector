@@ -1,0 +1,22 @@
+data_kind,label,message,category,language,source,labeling_confidence,group
+synthetic,ham,Your SampleApp sign-in code is [CODE]. It expires soon. We will never ask you to share it.,otp,en,synthetic_legitimate_v5,high,otp_notice_a
+synthetic,ham,Code mo sa SampleApp: [CODE]. Ikaw lang ang dapat gumamit nito.,otp,taglish,synthetic_legitimate_v5,high,otp_notice_a
+synthetic,ham,Ang iyong code sa SampleApp ay [CODE]. Huwag itong ibahagi kaninuman.,otp,tl,synthetic_legitimate_v5,high,otp_notice_a
+synthetic,ham,"SampleBank: Your card purchase of [AMOUNT] was approved. If this was not you, call the number on your card.",bank_alert,en,synthetic_legitimate_v5,high,bank_purchase_b
+synthetic,ham,SampleBank alert: may transaction kang [AMOUNT]. Check mo sa official app kung hindi ikaw iyon.,bank_alert,taglish,synthetic_legitimate_v5,high,bank_purchase_b
+synthetic,ham,SampleBank: May transaksiyong [AMOUNT] sa card mo. Tingnan sa opisyal na app kung hindi ikaw iyon.,bank_alert,tl,synthetic_legitimate_v5,high,bank_purchase_b
+synthetic,ham,Your parcel is out for delivery today. Track order [ORDER] in the SampleApp or at example.com/track.,delivery,en,synthetic_legitimate_v5,high,delivery_update_c
+synthetic,ham,Out for delivery na ang order [ORDER]. Check mo sa app o example.com/track para sa update.,delivery,taglish,synthetic_legitimate_v5,high,delivery_update_c
+synthetic,ham,Ihahatid ngayong araw ang order [ORDER]. Tingnan ang update sa app o example.com/track.,delivery,tl,synthetic_legitimate_v5,high,delivery_update_c
+synthetic,ham,Your Sample Utility bill of [AMOUNT] is due on [DATE]. View your statement in the official app.,bill,en,synthetic_legitimate_v5,high,bill_reminder_d
+synthetic,ham,Due na sa [DATE] ang bill mong [AMOUNT]. Makikita ang statement sa official app.,bill,taglish,synthetic_legitimate_v5,high,bill_reminder_d
+synthetic,ham,Due sa [DATE] ang bayarin mong [AMOUNT]. Tingnan ang statement sa opisyal na app.,bill,tl,synthetic_legitimate_v5,high,bill_reminder_d
+synthetic,ham,This weekend only: 10% off selected items at SampleShop. See store details at example.com/deals.,promo,en,synthetic_legitimate_v5,high,store_promo_e
+synthetic,ham,May 10% off sa piling items this weekend sa SampleShop. Details: example.com/deals,promo,taglish,synthetic_legitimate_v5,high,store_promo_e
+synthetic,ham,May diskuwento sa piling produkto ngayong weekend sa SampleShop. Detalye: example.com/deals,promo,tl,synthetic_legitimate_v5,high,store_promo_e
+synthetic,ham,Reminder: the class project is due Friday. Please upload your file to the school portal.,school_work,en,synthetic_legitimate_v5,high,class_reminder_f
+synthetic,ham,"Reminder lang, due Friday ang project natin. Upload sa school portal pag ready na.",school_work,taglish,synthetic_legitimate_v5,high,class_reminder_f
+synthetic,ham,Paalala: Biyernes ang pasahan ng proyekto. I-upload ito sa portal ng paaralan.,school_work,tl,synthetic_legitimate_v5,high,class_reminder_f
+synthetic,ham,Nasa gate na ako. Text me when you’re downstairs.,personal_taglish,en,synthetic_legitimate_v5,high,meetup_chat_g
+synthetic,ham,"Nasa gate na ko, message mo ako pag baba ka na.",personal_taglish,taglish,synthetic_legitimate_v5,high,meetup_chat_g
+synthetic,ham,Nasa may tarangkahan na ako. I-text mo ako kapag nasa baba ka na.,personal_taglish,tl,synthetic_legitimate_v5,high,meetup_chat_g

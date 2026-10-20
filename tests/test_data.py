@@ -259,6 +259,13 @@ def test_cross_source_label_conflict_rejected(tmp_path):
         load_training_dataset(base, [supplement])
 
 
+def test_cross_source_normalized_conflict_rejected(tmp_path):
+    base = tiny_training_csv(tmp_path / "base.csv")
+    supplement = write_csv(tmp_path / "normalized_conflict.csv", [("spam", "Ｓａｌａｍａｔ sa tulong mo kahapon")])
+    with pytest.raises(DatasetError, match="conflicting labels"):
+        load_training_dataset(base, [supplement])
+
+
 def test_normalized_duplicates_are_removed_and_conflicts_rejected(tmp_path):
     path = write_csv(
         tmp_path / "normalized.csv",
@@ -328,6 +335,7 @@ def test_fourth_supplement_is_synthetic_varied_and_campaign_grouped():
     assert dataset.frame.groupby("group").size().eq(3).all()
     assert len(set(dataset.messages)) == len(dataset)
     assert dataset.frame["message"].str.contains(r"example\.com").all()
+    assert not dataset.frame["message"].str.contains("fictional reward", case=False).any()
     assert not dataset.frame["message"].str.contains(r"(?:\+?63|0)\d{9,}").any()
     for existing in (SUPPLEMENT, SUPPLEMENT_2, SUPPLEMENT_3):
         assert not (set(dataset.messages) & set(load_dataset(existing).messages))
@@ -364,6 +372,8 @@ def test_fifth_supplement_balances_synthetic_coverage_and_is_disjoint():
         dataset.frame["category"]
     )
     assert dataset.frame["message"].str.contains(r"example\.com").sum() > 0
+    assert not dataset.frame["message"].str.contains(r"(?:\+?63|0)\d{9,}").any()
+    assert not dataset.frame["message"].str.contains(r"https?://|www\.", case=False).any()
     all_training_supplements = set()
     for path in (SUPPLEMENT, SUPPLEMENT_2, SUPPLEMENT_3, SUPPLEMENT_4):
         all_training_supplements.update(load_dataset(path, require_both_classes=False).messages)

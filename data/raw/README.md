@@ -88,7 +88,8 @@ Almeida and Hidalgo (2011), UCI Dataset 228, and comply with CC BY 4.0
 attribution when redistributing or adapting the corpus. The corpus is old and
 English-heavy, uses sources from several regions, and does not establish
 Philippine SMS performance. Avoid adding other mirrors of the same corpus: the
-global exact-message deduplicator will remove copies, while near-duplicates can
+global normalized-message deduplicator will remove Unicode/case/whitespace
+variants, while punctuation and semantic near-duplicates can
 still bias metrics.
 
 No additional public Philippine SMS corpus with sufficiently clear provenance,
