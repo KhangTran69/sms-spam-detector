@@ -1,312 +1,142 @@
-data_kind,message,label,category,message_length,has_url,has_phone,has_money,has_urgency
-synthetic,"LTO: Your driver's license renewal appointment is confirmed for Oct 25, 2026.",ham,legitimate,77,False,False,False,False
-synthetic,"PCSO: Your number was selected! You won 1M. To claim, provide your bank details to 09123456789",spam,prize_scam,94,False,True,False,False
-synthetic,"Double your money in 3 days! Minimum PHP 5,000. PM 09281234567 for details",spam,investment_scam,74,False,True,True,False
-synthetic,"Personal loan PHP 50,000 guaranteed approval! Message 09234567890 now!",spam,loan_scam,70,False,True,True,True
-synthetic,Flash Express: Your package needs additional payment of PHP 500. Complete here: ph-parcel.top,spam,delivery_scam,93,True,False,True,False
-synthetic,GCash: Your wallet has been temporarily disabled. Reactivate: bit.ly/gcash2026,spam,bank_phishing,78,True,False,False,False
-synthetic,You are the lucky winner of 2M pesos in our ABS-CBN raffle! Send your details to 09456789012,spam,prize_scam,92,False,True,True,False
-synthetic,"Invest PHP 1,000,000 today, get PHP 1,000 in 7 days! 100% legit! Message 09345678901",spam,investment_scam,84,False,True,True,False
-synthetic,"ALERT: High-paying job abroad! PHP 1,000 monthly! Process your papers fast. Call 09567890123",spam,job_scam,92,False,True,True,False
-synthetic,Flash Express: Your package needs additional payment of PHP 100. Complete here: ph-parcel.top,spam,delivery_scam,93,True,False,True,False
-synthetic,"SEC registered lending! Borrow PHP 2M, pay in 30 days! Apply: bit.ly/verifybdo",spam,loan_scam,78,True,False,True,False
-synthetic,Easy loan approval! PHP 1M in 5 minutes! No collateral! Text 09567890123,spam,loan_scam,72,False,True,True,False
-synthetic,"Hi, I saw your profile. You look familiar. Want to be friends? Add me on WhatsApp 09678901234",spam,romance_scam,93,False,True,False,False
-synthetic,"Sir/Ma'am, this is Mayor's office. You have pending business permit. Settle PHP 1,000 to 09789012345",spam,impersonation_scam,100,False,True,True,False
-synthetic,"Metrobank: Your OTP is 384756. For your security, do not share.",ham,legitimate,63,False,False,False,False
-synthetic,UnionBank: Security alert! Your account was accessed from unknown device. Verify: bit.ly/gcash2026,spam,bank_phishing,98,True,False,False,True
-synthetic,"You are the lucky winner of 10,000 pesos in our TNT raffle! Send your details to 09234567890",spam,prize_scam,92,False,True,True,False
-synthetic,Load giveaway! First 100 texters get PHP 2M! Text LOAD to 09345678901,spam,load_scam,69,False,True,True,False
-synthetic,Flash Express: Your package needs additional payment of PHP 200. Complete here: ph-bank.verify.com,spam,delivery_scam,98,True,False,True,False
-synthetic,Easy loan approval! PHP 2M in 5 minutes! No collateral! Text 09789012345,spam,loan_scam,72,False,True,True,False
-synthetic,Payroll: Your salary for October 2026 has been deposited to your BDO account.,ham,legitimate,77,False,False,False,False
-synthetic,GCash: Your wallet has been temporarily disabled. Reactivate: ph-parcel.top,spam,bank_phishing,75,True,False,False,False
-synthetic,Hi! I'm an OFW looking for partner. Add me on Viber 09456789012 let's chat,spam,romance_scam,74,False,True,False,False
-synthetic,"Load giveaway! First 100 texters get PHP 50,000! Text LOAD to 09678901234",spam,load_scam,73,False,True,True,False
-synthetic,Flash Express: Your package needs additional payment of PHP 350. Complete here: secure.ph-banks.com,spam,delivery_scam,99,True,False,True,False
-synthetic,"Sir/Ma'am, this is Mayor's office. You have pending business permit. Settle PHP 5,000 to 09567890123",spam,impersonation_scam,100,False,True,True,False
-synthetic,"Data encoder needed! PHP 3,000 per day! Message your details to 09123456789",spam,job_scam,75,False,True,True,False
-synthetic,"PCSO: Your number was selected! You won 500,000. To claim, provide your bank details to 09789012345",spam,prize_scam,99,False,True,False,False
-synthetic,"Hi, I saw your profile. You look familiar. Want to be friends? Add me on WhatsApp 09456789012",spam,romance_scam,93,False,True,False,False
-synthetic,"UnionBank: Salary credit PHP 25,000.00 from ABC Corporation.",ham,legitimate,60,False,False,True,False
-synthetic,PNP: You have a traffic violation. Pay PHP 1M fine to 09456789012 to avoid warrant.,spam,impersonation_scam,83,False,True,True,False
-synthetic,Data encoder needed! PHP 500 per day! Message your details to 09456789012,spam,job_scam,73,False,True,True,False
-synthetic,ABS-CBN: Congrats! Your mobile number won 500 in our anniversary promo. Call 09123456789,spam,prize_scam,88,False,True,False,False
-synthetic,Fast cash loan! PHP 1M direct to GCash! No documents needed. Text 09456789012,spam,loan_scam,77,False,True,True,False
-synthetic,"PCSO: Your number was selected! You won 50,000. To claim, provide your bank details to 09234567890",spam,prize_scam,98,False,True,False,False
-synthetic,Foodpanda: Your order #FP789456 is being prepared. Estimated delivery: 30 mins.,ham,legitimate,79,False,False,False,False
-synthetic,BDO: Your account has been LOCKED due to suspicious activity. Verify here: account-update.xyz to avoid closure.,spam,bank_phishing,111,True,False,False,False
-synthetic,Fast cash loan! PHP 2M direct to GCash! No documents needed. Text 09567890123,spam,loan_scam,77,False,True,True,False
-synthetic,Flash Express: Your package needs additional payment of PHP 500. Complete here: ph-bank.verify.com,spam,delivery_scam,98,True,False,True,False
-synthetic,"SEC registered lending! Borrow PHP 1M, pay in 30 days! Apply: bit.ly/verifybdo",spam,loan_scam,78,True,False,True,False
-synthetic,"ALERT: High-paying job abroad! PHP 1,000 monthly! Process your papers fast. Call 09181234567",spam,job_scam,92,False,True,True,False
-synthetic,BDO: Your account has been LOCKED due to suspicious activity. Verify here: verify-now.click to avoid closure.,spam,bank_phishing,109,False,False,False,True
-synthetic,"PNP: You have a traffic violation. Pay PHP 1,000,000 fine to 09567890123 to avoid warrant.",spam,impersonation_scam,90,False,True,True,False
-synthetic,"Meralco: Your bill for Account 1234567890 is PHP 2,345.67 due on Oct 25, 2026.",ham,legitimate,78,False,False,True,False
-synthetic,Shopee: Your order #123456789 has been shipped via J&T Express.,ham,legitimate,63,False,False,False,False
-synthetic,Nag-claim ka ng 1M sa Sun Cellular! Call 09456789012 now to verify. Limited time only!,spam,prize_scam,86,False,True,False,True
-synthetic,Your BPI confirmation code is 583920. Valid for 10 minutes.,ham,legitimate,59,False,False,False,False
-synthetic,BDO: Your account has been LOCKED due to suspicious activity. Verify here: secure.ph-banks.com to avoid closure.,spam,bank_phishing,112,True,False,False,False
-synthetic,LANDBANK OTP: 193847. This code expires in 5 minutes.,ham,legitimate,53,False,False,False,True
-synthetic,"PCSO: Your number was selected! You won 2M. To claim, provide your bank details to 09456789012",spam,prize_scam,94,False,True,False,False
-synthetic,You caught my attention. I'm single and searching. Text me 09181234567,spam,romance_scam,70,False,True,False,False
-synthetic,"Load giveaway! First 100 texters get PHP 5,000! Text LOAD to 09391234567",spam,load_scam,72,False,True,True,False
-synthetic,"FREE LOAD! Get PHP 5,000 load now! Just send your number to 09181234567",spam,load_scam,71,False,True,True,True
-synthetic,This is your boss. I need you to buy load worth PHP 1M for a client. Send to 09456789012 ASAP.,spam,impersonation_scam,94,False,True,True,True
-synthetic,"GMA Kapuso Foundation: You won 10,000! Text CLAIM to 09345678901. Winner until midnight only!",spam,prize_scam,93,False,True,False,False
-synthetic,"Be an ONLINE SELLER! Earn 5,000 daily! Just invest PHP 100 capital. Text 09123456789",spam,job_scam,84,False,True,True,False
-synthetic,"Sir/Ma'am, this is Mayor's office. You have pending business permit. Settle PHP 100,000 to 09391234567",spam,impersonation_scam,102,False,True,True,False
-synthetic,Flash Express: Your package needs additional payment of PHP 200. Complete here: bit.ly/verifybdo,spam,delivery_scam,96,True,False,True,False
-synthetic,Easy loan approval! PHP 1M in 5 minutes! No collateral! Text 09345678901,spam,loan_scam,72,False,True,True,False
-synthetic,"URGENT HIRING! Work from home, earn PHP 1,000/day! No experience needed. Message 09281234567 now!",spam,job_scam,97,False,True,True,True
-synthetic,FREE LOAD! Get PHP 1M load now! Just send your number to 09345678901,spam,load_scam,68,False,True,True,True
-synthetic,"Hi Ma'am, this is your child's school. Classes are suspended today due to weather.",ham,legitimate,82,False,False,False,False
-synthetic,LBC: Failed delivery attempt. Your parcel requires PHP 50 redelivery fee. Settle: ph-parcel.top,spam,delivery_scam,95,True,False,True,False
-synthetic,"Hello handsome/beautiful, I'm looking for serious relationship. Message me on Telegram 09567890123",spam,romance_scam,98,False,True,False,False
-synthetic,"Personal loan PHP 5,000 guaranteed approval! Message 09456789012 now!",spam,loan_scam,69,False,True,True,True
-synthetic,"PCSO: Your number was selected! You won 1M. To claim, provide your bank details to 09678901234",spam,prize_scam,94,False,True,False,False
-synthetic,"PCSO: Your number was selected! You won 1,000. To claim, provide your bank details to 09456789012",spam,prize_scam,97,False,True,False,False
-synthetic,"Be an ONLINE SELLER! Earn 5,000 daily! Just invest PHP 200 capital. Text 09456789012",spam,job_scam,84,False,True,True,False
-synthetic,"COMELEC: Your voter registration is confirmed for Brgy. San Jose, Quezon City.",ham,legitimate,78,False,False,False,False
-synthetic,Ninja Van: Your shipment is stuck at customs. Pay PHP 500 to release: bit.ly/jnt-customs,spam,delivery_scam,88,True,False,True,False
-synthetic,Metrobank: Your account will be suspended. Update your info here: bit.ly/jnt-customs,spam,bank_phishing,84,True,False,False,False
-synthetic,"This is your boss. I need you to buy load worth PHP 500,000 for a client. Send to 09789012345 ASAP.",spam,impersonation_scam,99,False,True,True,True
-synthetic,"You are the lucky winner of 1,000 pesos in our TNT raffle! Send your details to 09181234567",spam,prize_scam,91,False,True,True,False
-synthetic,LBC: Failed delivery attempt. Your parcel requires PHP 500 redelivery fee. Settle: gcash-promo.top,spam,delivery_scam,98,True,False,True,False
-synthetic,Nag-claim ka ng 2M sa SM Supermalls! Call 09181234567 now to verify. Limited time only!,spam,prize_scam,87,False,True,False,True
-synthetic,"TNT/Smart/Globe: You earned 50,000 free load! Claim: secure-login.ml",spam,load_scam,68,False,False,False,False
-synthetic,"Crypto trading guaranteed profit! Turn PHP 2M to PHP 1,000! Join: bit.ly/jnt-customs",spam,investment_scam,84,True,False,True,False
-synthetic,Hi! I'm an OFW looking for partner. Add me on Viber 09181234567 let's chat,spam,romance_scam,74,False,True,False,False
-synthetic,Security Bank: Your online banking is blocked. Unblock here: gcash-promo.top,spam,bank_phishing,76,True,False,False,False
-synthetic,"Personal loan PHP 5,000 guaranteed approval! Message 09181234567 now!",spam,loan_scam,69,False,True,True,True
-synthetic,LBC: Failed delivery attempt. Your parcel requires PHP 999 redelivery fee. Settle: secure-login.ml,spam,delivery_scam,98,False,False,True,False
-synthetic,"SEC registered lending! Borrow PHP 1,000, pay in 30 days! Apply: gcash-promo.top",spam,loan_scam,80,True,False,True,False
-synthetic,"Hi, I saw your profile. You look familiar. Want to be friends? Add me on WhatsApp 09789012345",spam,romance_scam,93,False,True,False,False
-synthetic,"ABS-CBN: Congrats! Your mobile number won 50,000 in our anniversary promo. Call 09234567890",spam,prize_scam,91,False,True,False,False
-synthetic,"Sir/Ma'am, this is Mayor's office. You have pending business permit. Settle PHP 1,000 to 09456789012",spam,impersonation_scam,100,False,True,True,False
-synthetic,"Data encoder needed! PHP 1,500 per day! Message your details to 09391234567",spam,job_scam,75,False,True,True,False
-synthetic,BDO: Your account has been LOCKED due to suspicious activity. Verify here: bit.ly/gcash2026 to avoid closure.,spam,bank_phishing,109,True,False,False,False
-synthetic,TNT/Smart/Globe: You earned 1M free load! Claim: bit.ly/3xK9mP2,spam,load_scam,63,True,False,False,False
-synthetic,Your GCash verification code is 482913. Do not share this with anyone.,ham,legitimate,70,False,False,False,False
-synthetic,"ABS-CBN: Congrats! Your mobile number won 10,000 in our anniversary promo. Call 09123456789",spam,prize_scam,91,False,True,False,False
-synthetic,"TNT/Smart/Globe: You earned 1,000,000 free load! Claim: account-update.xyz",spam,load_scam,74,True,False,False,False
-synthetic,Easy loan approval! PHP 2M in 5 minutes! No collateral! Text 09123456789,spam,loan_scam,72,False,True,True,False
-synthetic,"Manila Water: Current bill: PHP 567.89. Due date: Oct 28, 2026.",ham,legitimate,63,False,False,True,False
-synthetic,Security Bank: Your online banking is blocked. Unblock here: ph-bank.verify.com,spam,bank_phishing,79,True,False,False,False
-synthetic,"SEC registered lending! Borrow PHP 10,000, pay in 30 days! Apply: bit.ly/3xK9mP2",spam,loan_scam,80,True,False,True,False
-synthetic,"SEC registered lending! Borrow PHP 50,000, pay in 30 days! Apply: bit.ly/3xK9mP2",spam,loan_scam,80,True,False,True,False
-synthetic,Facebook Admin job! PHP 500/week. Message 09567890123 to apply. No interview needed!,spam,job_scam,84,False,True,True,False
-synthetic,"Facebook Admin job! PHP 1,500/week. Message 09123456789 to apply. No interview needed!",spam,job_scam,86,False,True,True,False
-synthetic,"CONGRATS! You won PHP 100,000 from TNT! To claim, text your NAME/AGE/ADDRESS to 09567890123. Claim now!",spam,prize_scam,103,False,True,True,True
-synthetic,Your DTR for Oct 1-15 has been approved by your supervisor.,ham,legitimate,59,False,False,False,False
-synthetic,"FREE LOAD! Get PHP 5,000 load now! Just send your number to 09678901234",spam,load_scam,71,False,True,True,True
-synthetic,J&T Express: Your package PH123456789 is out for delivery. Track at jtexpress.ph,ham,legitimate,80,True,False,False,False
-synthetic,"URGENT HIRING! Work from home, earn PHP 3,000/day! No experience needed. Message 09234567890 now!",spam,job_scam,97,False,True,True,True
-synthetic,"Easy loan approval! PHP 500,000 in 5 minutes! No collateral! Text 09678901234",spam,loan_scam,77,False,True,True,False
-synthetic,Hi! I'm an OFW looking for partner. Add me on Viber 09678901234 let's chat,spam,romance_scam,74,False,True,False,False
-synthetic,LBC: Failed delivery attempt. Your parcel requires PHP 150 redelivery fee. Settle: tinyurl.com/bpi-secure,spam,delivery_scam,105,True,False,True,False
-synthetic,PNP: You have a traffic violation. Pay PHP 500 fine to 09181234567 to avoid warrant.,spam,impersonation_scam,84,False,True,True,False
-synthetic,Load giveaway! First 100 texters get PHP 500! Text LOAD to 09181234567,spam,load_scam,70,False,True,True,False
-synthetic,"Hello handsome/beautiful, I'm looking for serious relationship. Message me on Telegram 09123456789",spam,romance_scam,98,False,True,False,False
-synthetic,"TNT/Smart/Globe: You earned 1,000 free load! Claim: bit.ly/jnt-customs",spam,load_scam,70,True,False,False,False
-synthetic,"Metrobank: PHP 1,500.00 debited from your account. Ref: MB123456.",ham,legitimate,65,False,False,True,False
-synthetic,"Load giveaway! First 100 texters get PHP 50,000! Text LOAD to 09345678901",spam,load_scam,73,False,True,True,False
-synthetic,Facebook Admin job! PHP 500/week. Message 09789012345 to apply. No interview needed!,spam,job_scam,84,False,True,True,False
-synthetic,"Sir/Ma'am, this is Mayor's office. You have pending business permit. Settle PHP 2M to 09789012345",spam,impersonation_scam,97,False,True,True,False
-synthetic,"Crypto trading guaranteed profit! Turn PHP 500,000 to PHP 50,000! Join: gcash-promo.top",spam,investment_scam,87,True,False,True,False
-synthetic,Shopee: Your order requires customs clearance fee PHP 150. Pay now: gcash-promo.top,spam,delivery_scam,83,True,False,True,True
-synthetic,UnionBank: Security alert! Your account was accessed from unknown device. Verify: secure.ph-banks.com,spam,bank_phishing,101,True,False,False,True
-synthetic,"Hello handsome/beautiful, I'm looking for serious relationship. Message me on Telegram 09678901234",spam,romance_scam,98,False,True,False,False
-synthetic,"Hi, I saw your profile. You look familiar. Want to be friends? Add me on WhatsApp 09181234567",spam,romance_scam,93,False,True,False,False
-synthetic,Shopee: Your order requires customs clearance fee PHP 100. Pay now: secure.ph-banks.com,spam,delivery_scam,87,True,False,True,True
-synthetic,Flash Express: Your shipment FL789456123 has arrived at the sorting facility.,ham,legitimate,77,False,False,False,False
-synthetic,"TNT/Smart/Globe: You earned 1,000 free load! Claim: secure.ph-banks.com",spam,load_scam,71,True,False,False,False
-synthetic,"Easy loan approval! PHP 100,000 in 5 minutes! No collateral! Text 09234567890",spam,loan_scam,77,False,True,True,False
-synthetic,TNT/Smart/Globe: You earned 1M free load! Claim: secure.ph-banks.com,spam,load_scam,68,True,False,False,False
-synthetic,"Hello handsome/beautiful, I'm looking for serious relationship. Message me on Telegram 09181234567",spam,romance_scam,98,False,True,False,False
-synthetic,"Invest PHP 1,000,000 today, get PHP 5,000 in 7 days! 100% legit! Message 09678901234",spam,investment_scam,84,False,True,True,False
-synthetic,Ninja Van: Package NV456789123 will be delivered today. Please keep your phone accessible.,ham,legitimate,90,False,False,False,False
-synthetic,Metrobank: Your account will be suspended. Update your info here: bit.ly/3xK9mP2,spam,bank_phishing,80,True,False,False,False
-synthetic,"Sir/Ma'am, this is Mayor's office. You have pending business permit. Settle PHP 10,000 to 09789012345",spam,impersonation_scam,101,False,True,True,False
-synthetic,"TNT/Smart/Globe: You earned 100,000 free load! Claim: account-update.xyz",spam,load_scam,72,True,False,False,False
-synthetic,Shopee: Your order requires customs clearance fee PHP 99. Pay now: verify-now.click,spam,delivery_scam,83,False,False,True,True
-synthetic,TNT/Smart/Globe: You earned 1M free load! Claim: ph-bank.verify.com,spam,load_scam,67,True,False,False,False
-synthetic,Security Bank: 927463 is your OTP. Valid for 3 minutes only.,ham,legitimate,60,False,False,False,False
-synthetic,"SEC registered lending! Borrow PHP 5,000, pay in 30 days! Apply: gcash-promo.top",spam,loan_scam,80,True,False,True,False
-synthetic,Be an ONLINE SELLER! Earn 500 daily! Just invest PHP 50 capital. Text 09391234567,spam,job_scam,81,False,True,True,False
-synthetic,LBC: Failed delivery attempt. Your parcel requires PHP 50 redelivery fee. Settle: ph-bank.verify.com,spam,delivery_scam,100,True,False,True,False
-synthetic,"URGENT HIRING! Work from home, earn PHP 1,000/day! No experience needed. Message 09234567890 now!",spam,job_scam,97,False,True,True,True
-synthetic,UnionBank: Security alert! Your account was accessed from unknown device. Verify: bit.ly/gcash2026,spam,bank_phishing,98,True,False,False,True
-synthetic,Fast cash loan! PHP 1M direct to GCash! No documents needed. Text 09678901234,spam,loan_scam,77,False,True,True,False
-synthetic,"Data encoder needed! PHP 5,000 per day! Message your details to 09567890123",spam,job_scam,75,False,True,True,False
-synthetic,Hi! I'm an OFW looking for partner. Add me on Viber 09567890123 let's chat,spam,romance_scam,74,False,True,False,False
-synthetic,"Hi, I saw your profile. You look familiar. Want to be friends? Add me on WhatsApp 09281234567",spam,romance_scam,93,False,True,False,False
-synthetic,"PNP: You have a traffic violation. Pay PHP 1,000,000 fine to 09391234567 to avoid warrant.",spam,impersonation_scam,90,False,True,True,False
-synthetic,FREE LOAD! Get PHP 500 load now! Just send your number to 09181234567,spam,load_scam,69,False,True,True,True
-synthetic,Metrobank: Your account will be suspended. Update your info here: account-update.xyz,spam,bank_phishing,84,True,False,False,False
-synthetic,"SEC registered lending! Borrow PHP 100,000, pay in 30 days! Apply: bit.ly/3xK9mP2",spam,loan_scam,81,True,False,True,False
-synthetic,"Sir/Ma'am, this is Mayor's office. You have pending business permit. Settle PHP 2M to 09181234567",spam,impersonation_scam,97,False,True,True,False
-synthetic,"GMA Kapuso Foundation: You won 1,000! Text CLAIM to 09345678901. Winner until midnight only!",spam,prize_scam,92,False,True,False,False
-synthetic,"Double your money in 3 days! Minimum PHP 50,000. PM 09234567890 for details",spam,investment_scam,75,False,True,True,False
-synthetic,"Fast cash loan! PHP 1,000,000 direct to GCash! No documents needed. Text 09281234567",spam,loan_scam,84,False,True,True,False
-synthetic,Hi! I'm an OFW looking for partner. Add me on Viber 09234567890 let's chat,spam,romance_scam,74,False,True,False,False
-synthetic,UnionBank: Security alert! Your account was accessed from unknown device. Verify: account-update.xyz,spam,bank_phishing,100,True,False,False,True
-synthetic,"Be an ONLINE SELLER! Earn 3,000 daily! Just invest PHP 999 capital. Text 09391234567",spam,job_scam,84,False,True,True,False
-synthetic,"TNT/Smart/Globe: You earned 1,000 free load! Claim: gcash-promo.top",spam,load_scam,67,True,False,False,False
-synthetic,"Data encoder needed! PHP 3,000 per day! Message your details to 09123456789",spam,job_scam,75,False,True,True,False
-synthetic,Ninja Van: Your shipment is stuck at customs. Pay PHP 500 to release: gcash-promo.top,spam,delivery_scam,85,True,False,True,False
-synthetic,"Facebook Admin job! PHP 2,000/week. Message 09789012345 to apply. No interview needed!",spam,job_scam,86,False,True,True,False
-synthetic,RCBC: Your one-time PIN is 746291. Do not share with anyone.,ham,legitimate,60,False,False,False,False
-synthetic,"RCBC: Confirm your account to receive PHP 100,000 refund. Click: secure-login.ml",spam,bank_phishing,80,False,False,True,False
-synthetic,This is your boss. I need you to buy load worth PHP 2M for a client. Send to 09345678901 ASAP.,spam,impersonation_scam,94,False,True,True,True
-synthetic,"TNT/Smart/Globe: You earned 10,000 free load! Claim: ph-parcel.top",spam,load_scam,66,True,False,False,False
-synthetic,"Nag-claim ka ng 1,000 sa Smart Communications! Call 09678901234 now to verify. Limited time only!",spam,prize_scam,97,False,True,False,True
-synthetic,"PLDT: Your account 0212345678 bill is PHP 1,799.00 due Oct 20, 2026.",ham,legitimate,68,False,False,True,False
-synthetic,"RCBC: Confirm your account to receive PHP 1,000,000 refund. Click: bit.ly/verifybdo",spam,bank_phishing,83,True,False,True,False
-synthetic,"Hi, this is Dr. Santos' clinic. Your appointment is confirmed for Oct 21, 2026 at 3PM.",ham,legitimate,86,False,False,False,False
-synthetic,You caught my attention. I'm single and searching. Text me 09789012345,spam,romance_scam,70,False,True,False,False
-synthetic,Your PayMaya code is 659201. Never share this code with others.,ham,legitimate,63,False,False,False,False
-synthetic,"Stock trading insider tips! Guaranteed returns! Send PHP 50,000 to start. Text 09567890123",spam,investment_scam,90,False,True,True,False
-synthetic,"RCBC: Confirm your account to receive PHP 50,000 refund. Click: ph-parcel.top",spam,bank_phishing,77,True,False,True,False
-synthetic,Stock trading insider tips! Guaranteed returns! Send PHP 500 to start. Text 09123456789,spam,investment_scam,87,False,True,True,False
-synthetic,"Hi anak, this is Mama. My phone broke. Send PHP 5,000 to 09234567890 via GCash. Emergency.",spam,impersonation_scam,90,False,True,True,False
-synthetic,"Nag-claim ka ng 50,000 sa Jollibee! Call 09281234567 now to verify. Limited time only!",spam,prize_scam,86,False,True,False,True
-synthetic,GCash: Your wallet has been temporarily disabled. Reactivate: bit.ly/3xK9mP2,spam,bank_phishing,76,True,False,False,False
-synthetic,"Double your money in 3 days! Minimum PHP 50,000. PM 09567890123 for details",spam,investment_scam,75,False,True,True,False
-synthetic,PhilHealth: Your member contribution for Q3 2026 has been posted.,ham,legitimate,65,False,False,False,False
-synthetic,GCash: You received PHP 500.00 from Juan Dela Cruz. Ref: 123456789.,ham,legitimate,67,False,False,True,False
-synthetic,Shopee: Your order requires customs clearance fee PHP 100. Pay now: secure-login.ml,spam,delivery_scam,83,False,False,True,True
-synthetic,"Sir/Ma'am, this is Mayor's office. You have pending business permit. Settle PHP 1,000,000 to 09391234567",spam,impersonation_scam,104,False,True,True,False
-synthetic,Hi! I'm an OFW looking for partner. Add me on Viber 09456789012 let's chat,spam,romance_scam,74,False,True,False,False
-synthetic,"ABS-CBN: Congrats! Your mobile number won 1,000 in our anniversary promo. Call 09567890123",spam,prize_scam,90,False,True,False,False
-synthetic,"Hi, I saw your profile. You look familiar. Want to be friends? Add me on WhatsApp 09181234567",spam,romance_scam,93,False,True,False,False
-synthetic,Hi! I'm an OFW looking for partner. Add me on Viber 09281234567 let's chat,spam,romance_scam,74,False,True,False,False
-synthetic,J&T Express: Your package is on HOLD due to unpaid customs fee of PHP 350. Pay here: bit.ly/jnt-customs,spam,delivery_scam,103,True,False,True,False
-synthetic,"Forex trading signals! 90% win rate! Invest PHP 1,000,000 now. Contact 09789012345",spam,investment_scam,82,False,True,True,True
-synthetic,"Data encoder needed! PHP 5,000 per day! Message your details to 09456789012",spam,job_scam,75,False,True,True,False
-synthetic,"CONGRATS! You won PHP 100,000 from Sun Cellular! To claim, text your NAME/AGE/ADDRESS to 09181234567. Claim now!",spam,prize_scam,112,False,True,True,True
-synthetic,"Hi, I saw your profile. You look familiar. Want to be friends? Add me on WhatsApp 09391234567",spam,romance_scam,93,False,True,False,False
-synthetic,J&T Express: Your package is on HOLD due to unpaid customs fee of PHP 999. Pay here: secure-login.ml,spam,delivery_scam,100,False,False,True,False
-synthetic,"Facebook Admin job! PHP 3,000/week. Message 09345678901 to apply. No interview needed!",spam,job_scam,86,False,True,True,False
-synthetic,TNT/Smart/Globe: You earned 2M free load! Claim: bit.ly/3xK9mP2,spam,load_scam,63,True,False,False,False
-synthetic,NBI: Your clearance application #NBI2026123456 is ready for pickup.,ham,legitimate,67,False,False,False,False
-synthetic,"This is your boss. I need you to buy load worth PHP 500,000 for a client. Send to 09678901234 ASAP.",spam,impersonation_scam,99,False,True,True,True
-synthetic,TNT/Smart/Globe: You earned 2M free load! Claim: gcash-promo.top,spam,load_scam,64,True,False,False,False
-synthetic,This is your boss. I need you to buy load worth PHP 2M for a client. Send to 09234567890 ASAP.,spam,impersonation_scam,94,False,True,True,True
-synthetic,"Crypto trading guaranteed profit! Turn PHP 100,000 to PHP 5,000! Join: verify-now.click",spam,investment_scam,87,False,False,True,True
-synthetic,"Converge: Your internet bill of PHP 1,599.00 is due on Oct 22, 2026.",ham,legitimate,68,False,False,True,False
-synthetic,Personal loan PHP 1M guaranteed approval! Message 09234567890 now!,spam,loan_scam,66,False,True,True,True
-synthetic,"FREE LOAD! Get PHP 100,000 load now! Just send your number to 09123456789",spam,load_scam,73,False,True,True,True
-synthetic,"SEC registered lending! Borrow PHP 500,000, pay in 30 days! Apply: ph-parcel.top",spam,loan_scam,80,True,False,True,False
-synthetic,"Hi, I saw your profile. You look familiar. Want to be friends? Add me on WhatsApp 09123456789",spam,romance_scam,93,False,True,False,False
-synthetic,J&T Express: Your package is on HOLD due to unpaid customs fee of PHP 200. Pay here: verify-now.click,spam,delivery_scam,101,False,False,True,True
-synthetic,Angkas: Your ride request has been accepted. Rider arriving in 5 minutes.,ham,legitimate,73,False,False,False,False
-synthetic,LBC: Parcel LB123456789 ready for pickup at SM Manila branch. Bring valid ID.,ham,legitimate,77,False,False,False,False
-synthetic,Your UnionBank verification code: 582947. Do not disclose to anyone.,ham,legitimate,68,False,False,False,False
-synthetic,UnionBank: Security alert! Your account was accessed from unknown device. Verify: secure.ph-banks.com,spam,bank_phishing,101,True,False,False,True
-synthetic,"BDO: Your account ending 4567 was credited PHP 5,000.00 on 10/19/2026.",ham,legitimate,70,False,False,True,False
-synthetic,HR: Your payslip for October 2026 is now available on the employee portal.,ham,legitimate,74,False,False,False,True
-synthetic,Shopee: Your order requires customs clearance fee PHP 500. Pay now: bit.ly/3xK9mP2,spam,delivery_scam,82,True,False,True,True
-synthetic,"Easy loan approval! PHP 100,000 in 5 minutes! No collateral! Text 09789012345",spam,loan_scam,77,False,True,True,False
-synthetic,"Invest PHP 1,000,000 today, get PHP 10,000 in 7 days! 100% legit! Message 09567890123",spam,investment_scam,85,False,True,True,False
-synthetic,"Hello handsome/beautiful, I'm looking for serious relationship. Message me on Telegram 09567890123",spam,romance_scam,98,False,True,False,False
-synthetic,RCBC: Confirm your account to receive PHP 1M refund. Click: secure.ph-banks.com,spam,bank_phishing,79,True,False,True,False
-synthetic,Facebook Admin job! PHP 500/week. Message 09567890123 to apply. No interview needed!,spam,job_scam,84,False,True,True,False
-synthetic,"Double your money in 3 days! Minimum PHP 1,000,000. PM 09281234567 for details",spam,investment_scam,78,False,True,True,False
-synthetic,"Double your money in 3 days! Minimum PHP 100,000. PM 09234567890 for details",spam,investment_scam,76,False,True,True,False
-synthetic,"FREE LOAD! Get PHP 1,000 load now! Just send your number to 09181234567",spam,load_scam,71,False,True,True,True
-synthetic,Ninja Van: Your shipment is stuck at customs. Pay PHP 350 to release: secure-login.ml,spam,delivery_scam,85,False,False,True,False
-synthetic,PNP: You have a traffic violation. Pay PHP 500 fine to 09234567890 to avoid warrant.,spam,impersonation_scam,84,False,True,True,False
-synthetic,GCash: Your wallet has been temporarily disabled. Reactivate: bit.ly/jnt-customs,spam,bank_phishing,80,True,False,False,False
-synthetic,"You are the lucky winner of 10,000 pesos in our PCSO raffle! Send your details to 09234567890",spam,prize_scam,93,False,True,True,False
-synthetic,EastWest: OTP 471829 for your transaction. Never share this.,ham,legitimate,60,False,False,False,False
-synthetic,"ABS-CBN: Congrats! Your mobile number won 10,000 in our anniversary promo. Call 09567890123",spam,prize_scam,91,False,True,False,False
-synthetic,"Stock trading insider tips! Guaranteed returns! Send PHP 1,000,000 to start. Text 09456789012",spam,investment_scam,93,False,True,True,False
-synthetic,"Data encoder needed! PHP 1,000 per day! Message your details to 09281234567",spam,job_scam,75,False,True,True,False
-synthetic,"Crypto trading guaranteed profit! Turn PHP 5,000 to PHP 20,000! Join: tinyurl.com/bpi-secure",spam,investment_scam,92,True,False,True,False
-synthetic,Hi! I'm an OFW looking for partner. Add me on Viber 09789012345 let's chat,spam,romance_scam,74,False,True,False,False
-synthetic,"RCBC: Confirm your account to receive PHP 50,000 refund. Click: verify-now.click",spam,bank_phishing,80,False,False,True,True
-synthetic,GCash: Your wallet has been temporarily disabled. Reactivate: gcash-promo.top,spam,bank_phishing,77,True,False,False,False
-synthetic,This is your boss. I need you to buy load worth PHP 500 for a client. Send to 09345678901 ASAP.,spam,impersonation_scam,95,False,True,True,True
-synthetic,"URGENT HIRING! Work from home, earn PHP 3,000/day! No experience needed. Message 09789012345 now!",spam,job_scam,97,False,True,True,True
-synthetic,"Stock trading insider tips! Guaranteed returns! Send PHP 1,000 to start. Text 09234567890",spam,investment_scam,89,False,True,True,False
-synthetic,Ninja Van: Your shipment is stuck at customs. Pay PHP 50 to release: bit.ly/verifybdo,spam,delivery_scam,85,True,False,True,False
-synthetic,"Hi anak, this is Mama. My phone broke. Send PHP 1,000 to 09391234567 via GCash. Emergency.",spam,impersonation_scam,90,False,True,True,False
-synthetic,"ALERT: High-paying job abroad! PHP 2,000 monthly! Process your papers fast. Call 09789012345",spam,job_scam,92,False,True,True,False
-synthetic,"Facebook Admin job! PHP 5,000/week. Message 09181234567 to apply. No interview needed!",spam,job_scam,86,False,True,True,False
-synthetic,BDO OTP: 847291 is your one-time password. Valid for 5 minutes.,ham,legitimate,63,False,False,False,False
-synthetic,Security Bank: Your online banking is blocked. Unblock here: ph-parcel.top,spam,bank_phishing,74,True,False,False,False
-synthetic,BDO: Your account has been LOCKED due to suspicious activity. Verify here: bit.ly/jnt-customs to avoid closure.,spam,bank_phishing,111,True,False,False,False
-synthetic,Hi! I'm an OFW looking for partner. Add me on Viber 09456789012 let's chat,spam,romance_scam,74,False,True,False,False
-synthetic,You caught my attention. I'm single and searching. Text me 09181234567,spam,romance_scam,70,False,True,False,False
-synthetic,"Hi, I saw your profile. You look familiar. Want to be friends? Add me on WhatsApp 09281234567",spam,romance_scam,93,False,True,False,False
-synthetic,"Fast cash loan! PHP 100,000 direct to GCash! No documents needed. Text 09678901234",spam,loan_scam,82,False,True,True,False
-synthetic,J&T Express: Your package is on HOLD due to unpaid customs fee of PHP 500. Pay here: gcash-promo.top,spam,delivery_scam,100,True,False,True,False
-synthetic,"Invest PHP 1,000,000 today, get PHP 5,000 in 7 days! 100% legit! Message 09391234567",spam,investment_scam,84,False,True,True,False
-synthetic,PNP: You have a traffic violation. Pay PHP 1M fine to 09281234567 to avoid warrant.,spam,impersonation_scam,83,False,True,True,False
-synthetic,Be an ONLINE SELLER! Earn 500 daily! Just invest PHP 100 capital. Text 09789012345,spam,job_scam,82,False,True,True,False
-synthetic,"Crypto trading guaranteed profit! Turn PHP 50,000 to PHP 1,000! Join: bit.ly/3xK9mP2",spam,investment_scam,84,True,False,True,False
-synthetic,Be an ONLINE SELLER! Earn 800 daily! Just invest PHP 350 capital. Text 09678901234,spam,job_scam,82,False,True,True,False
-synthetic,"You are the lucky winner of 100,000 pesos in our GMA Kapuso Foundation raffle! Send your details to 09345678901",spam,prize_scam,111,False,True,True,False
-synthetic,Shopee: Your order requires customs clearance fee PHP 350. Pay now: gcash-promo.top,spam,delivery_scam,83,True,False,True,True
-synthetic,"Invest PHP 100,000 today, get PHP 5,000 in 7 days! 100% legit! Message 09181234567",spam,investment_scam,82,False,True,True,False
-synthetic,"URGENT HIRING! Work from home, earn PHP 5,000/day! No experience needed. Message 09281234567 now!",spam,job_scam,97,False,True,True,True
-synthetic,"Pag-IBIG: Your MP2 dividend of PHP 1,234.56 has been credited.",ham,legitimate,62,False,False,True,False
-synthetic,"Invest PHP 1,000,000 today, get PHP 1,000 in 7 days! 100% legit! Message 09123456789",spam,investment_scam,84,False,True,True,False
-synthetic,"Stock trading insider tips! Guaranteed returns! Send PHP 5,000 to start. Text 09391234567",spam,investment_scam,89,False,True,True,False
-synthetic,"Nag-claim ka ng 10,000 sa SM Supermalls! Call 09391234567 now to verify. Limited time only!",spam,prize_scam,91,False,True,False,True
-synthetic,"Sir/Ma'am, this is Mayor's office. You have pending business permit. Settle PHP 2M to 09234567890",spam,impersonation_scam,97,False,True,True,False
-synthetic,"CONGRATS! You won PHP 1M from PCSO! To claim, text your NAME/AGE/ADDRESS to 09181234567. Claim now!",spam,prize_scam,99,False,True,True,True
-synthetic,"TNT/Smart/Globe: You earned 5,000 free load! Claim: verify-now.click",spam,load_scam,68,False,False,False,True
-synthetic,PNP: You have a traffic violation. Pay PHP 500 fine to 09234567890 to avoid warrant.,spam,impersonation_scam,84,False,True,True,False
-synthetic,"This is your boss. I need you to buy load worth PHP 5,000 for a client. Send to 09281234567 ASAP.",spam,impersonation_scam,97,False,True,True,True
-synthetic,"Double your money in 3 days! Minimum PHP 5,000. PM 09678901234 for details",spam,investment_scam,74,False,True,True,False
-synthetic,Shopee: Your order requires customs clearance fee PHP 150. Pay now: ph-bank.verify.com,spam,delivery_scam,86,True,False,True,True
-synthetic,"Personal loan PHP 10,000 guaranteed approval! Message 09181234567 now!",spam,loan_scam,70,False,True,True,True
-synthetic,BDO: Your account has been LOCKED due to suspicious activity. Verify here: secure-login.ml to avoid closure.,spam,bank_phishing,108,False,False,False,False
-synthetic,"You are the lucky winner of 50,000 pesos in our Globe Telecom raffle! Send your details to 09234567890",spam,prize_scam,102,False,True,True,False
-synthetic,"Crypto trading guaranteed profit! Turn PHP 1,000,000 to PHP 2,000! Join: bit.ly/3xK9mP2",spam,investment_scam,87,True,False,True,False
-synthetic,TNT/Smart/Globe: You earned 500 free load! Claim: bit.ly/verifybdo,spam,load_scam,66,True,False,False,False
-synthetic,"TNT/Smart/Globe: You earned 1,000,000 free load! Claim: ph-parcel.top",spam,load_scam,69,True,False,False,False
-synthetic,"Forex trading signals! 90% win rate! Invest PHP 100,000 now. Contact 09456789012",spam,investment_scam,80,False,True,True,True
-synthetic,SSS: Your loan application #SSS2026789012 has been approved.,ham,legitimate,60,False,False,False,False
-synthetic,You are the lucky winner of 1M pesos in our SM Supermalls raffle! Send your details to 09281234567,spam,prize_scam,98,False,True,True,False
-synthetic,"This is your boss. I need you to buy load worth PHP 1,000 for a client. Send to 09678901234 ASAP.",spam,impersonation_scam,97,False,True,True,True
-synthetic,"URGENT HIRING! Work from home, earn PHP 1,500/day! No experience needed. Message 09391234567 now!",spam,job_scam,97,False,True,True,True
-synthetic,Reminder: Team meeting today at 2PM via Zoom. Link: company.zoom.us/j/123456,ham,legitimate,76,False,False,False,False
-synthetic,"Personal loan PHP 1,000 guaranteed approval! Message 09181234567 now!",spam,loan_scam,69,False,True,True,True
-synthetic,"FREE LOAD! Get PHP 50,000 load now! Just send your number to 09789012345",spam,load_scam,72,False,True,True,True
-synthetic,"Hi anak, this is Mama. My phone broke. Send PHP 1,000 to 09281234567 via GCash. Emergency.",spam,impersonation_scam,90,False,True,True,False
-synthetic,UnionBank: Security alert! Your account was accessed from unknown device. Verify: bit.ly/gcash2026,spam,bank_phishing,98,True,False,False,True
-synthetic,"Nag-claim ka ng 100,000 sa Globe Telecom! Call 09123456789 now to verify. Limited time only!",spam,prize_scam,92,False,True,False,True
-synthetic,"Load giveaway! First 100 texters get PHP 1,000,000! Text LOAD to 09678901234",spam,load_scam,76,False,True,True,False
-synthetic,Hi! I'm an OFW looking for partner. Add me on Viber 09567890123 let's chat,spam,romance_scam,74,False,True,False,False
-synthetic,Lazada: Order #987654321 is out for delivery. Expected arrival today.,ham,legitimate,69,False,False,False,False
-synthetic,"SEC registered lending! Borrow PHP 500, pay in 30 days! Apply: verify-now.click",spam,loan_scam,79,False,False,True,True
-synthetic,"Your Grab booking CR123456 is confirmed. Driver: Juan, Plate: ABC1234.",ham,legitimate,70,False,False,False,False
-synthetic,Load giveaway! First 100 texters get PHP 1M! Text LOAD to 09345678901,spam,load_scam,69,False,True,True,False
-synthetic,"PayMaya: Cash-in of PHP 1,000.00 successful. New balance: PHP 2,500.00.",ham,legitimate,71,False,False,True,False
-synthetic,"Facebook Admin job! PHP 2,000/week. Message 09123456789 to apply. No interview needed!",spam,job_scam,86,False,True,True,False
-synthetic,"Hello handsome/beautiful, I'm looking for serious relationship. Message me on Telegram 09567890123",spam,romance_scam,98,False,True,False,False
-synthetic,"Hi, I saw your profile. You look familiar. Want to be friends? Add me on WhatsApp 09345678901",spam,romance_scam,93,False,True,False,False
-synthetic,Shopee: Your order requires customs clearance fee PHP 150. Pay now: ph-parcel.top,spam,delivery_scam,81,True,False,True,True
-synthetic,"Invest PHP 1M today, get PHP 1,000 in 7 days! 100% legit! Message 09456789012",spam,investment_scam,77,False,True,True,False
-synthetic,"SEC registered lending! Borrow PHP 2M, pay in 30 days! Apply: bit.ly/jnt-customs",spam,loan_scam,80,True,False,True,False
-synthetic,"This is your boss. I need you to buy load worth PHP 500,000 for a client. Send to 09123456789 ASAP.",spam,impersonation_scam,99,False,True,True,True
-synthetic,"Crypto trading guaranteed profit! Turn PHP 1,000 to PHP 20,000! Join: bit.ly/3xK9mP2",spam,investment_scam,84,True,False,True,False
-synthetic,"PCSO: Your number was selected! You won 50,000. To claim, provide your bank details to 09281234567",spam,prize_scam,98,False,True,False,False
-synthetic,BDO: Your account has been LOCKED due to suspicious activity. Verify here: account-update.xyz to avoid closure.,spam,bank_phishing,111,True,False,False,False
-synthetic,Flash Express: Your package needs additional payment of PHP 150. Complete here: bit.ly/gcash2026,spam,delivery_scam,96,True,False,True,False
-synthetic,"Double your money in 3 days! Minimum PHP 1,000. PM 09234567890 for details",spam,investment_scam,74,False,True,True,False
-synthetic,"Fast cash loan! PHP 1,000 direct to GCash! No documents needed. Text 09567890123",spam,loan_scam,80,False,True,True,False
-synthetic,"Double your money in 3 days! Minimum PHP 1,000,000. PM 09456789012 for details",spam,investment_scam,78,False,True,True,False
-synthetic,J&T Express: Your package is on HOLD due to unpaid customs fee of PHP 150. Pay here: tinyurl.com/bpi-secure,spam,delivery_scam,107,True,False,True,False
-synthetic,"SEC registered lending! Borrow PHP 1,000, pay in 30 days! Apply: ph-bank.verify.com",spam,loan_scam,83,True,False,True,False
-synthetic,"Stock trading insider tips! Guaranteed returns! Send PHP 1,000,000 to start. Text 09789012345",spam,investment_scam,93,False,True,True,False
-synthetic,You caught my attention. I'm single and searching. Text me 09234567890,spam,romance_scam,70,False,True,False,False
-synthetic,Security Bank: Your online banking is blocked. Unblock here: bit.ly/gcash2026,spam,bank_phishing,77,True,False,False,False
-synthetic,"BPI: ATM withdrawal of PHP 2,000.00 at BPI Makati on 10/19/2026 09:30AM.",ham,legitimate,72,False,False,True,False
-synthetic,"TNT/Smart/Globe: You earned 5,000 free load! Claim: tinyurl.com/bpi-secure",spam,load_scam,74,True,False,False,False
-synthetic,This is your boss. I need you to buy load worth PHP 500 for a client. Send to 09123456789 ASAP.,spam,impersonation_scam,95,False,True,True,True
-synthetic,Ninja Van: Your shipment is stuck at customs. Pay PHP 350 to release: ph-parcel.top,spam,delivery_scam,83,True,False,True,False
-synthetic,"Sir/Ma'am, this is Mayor's office. You have pending business permit. Settle PHP 100,000 to 09181234567",spam,impersonation_scam,102,False,True,True,False
+data_kind,message,label,category,message_length,has_url,has_phone,has_money,has_urgency,group
+synthetic,"LTO: Your driver's license renewal appointment is confirmed for Oct 25, 2026.",ham,legitimate,77,False,False,False,False,s2_lto_your_driver_s_license_ren
+synthetic,"PCSO: Your number was selected! You won 1M. To claim, provide your bank details to 09123456789",spam,prize_scam,94,False,True,False,False,s2_pcso_your_number_was_selected
+synthetic,"Double your money in 3 days! Minimum PHP 5,000. PM 09281234567 for details",spam,investment_scam,74,False,True,True,False,s2_double_your_money_in_days_m
+synthetic,"Personal loan PHP 50,000 guaranteed approval! Message 09234567890 now!",spam,loan_scam,70,False,True,True,True,s2_personal_loan_php_guaranteed
+synthetic,Flash Express: Your package needs additional payment of PHP 500. Complete here: ph-parcel.top,spam,delivery_scam,93,True,False,True,False,s2_flash_express_your_package_ne
+synthetic,GCash: Your wallet has been temporarily disabled. Reactivate: bit.ly/gcash2026,spam,bank_phishing,78,True,False,False,False,s2_gcash_your_wallet_has_been_te
+synthetic,You are the lucky winner of 2M pesos in our ABS-CBN raffle! Send your details to 09456789012,spam,prize_scam,92,False,True,True,False,s2_you_are_the_lucky_winner_of_m
+synthetic,"Invest PHP 1,000,000 today, get PHP 1,000 in 7 days! 100% legit! Message 09345678901",spam,investment_scam,84,False,True,True,False,s2_invest_php_today_get_php
+synthetic,"ALERT: High-paying job abroad! PHP 1,000 monthly! Process your papers fast. Call 09567890123",spam,job_scam,92,False,True,True,False,s2_alert_high_paying_job_abroad
+synthetic,Flash Express: Your package needs additional payment of PHP 100. Complete here: ph-parcel.top,spam,delivery_scam,93,True,False,True,False,s2_flash_express_your_package_ne
+synthetic,"SEC registered lending! Borrow PHP 2M, pay in 30 days! Apply: bit.ly/verifybdo",spam,loan_scam,78,True,False,True,False,s2_sec_registered_lending_borrow
+synthetic,Easy loan approval! PHP 1M in 5 minutes! No collateral! Text 09567890123,spam,loan_scam,72,False,True,True,False,s2_easy_loan_approval_php_m_in
+synthetic,"Hi, I saw your profile. You look familiar. Want to be friends? Add me on WhatsApp 09678901234",spam,romance_scam,93,False,True,False,False,s2_hi_i_saw_your_profile_you_lo
+synthetic,"Sir/Ma'am, this is Mayor's office. You have pending business permit. Settle PHP 1,000 to 09789012345",spam,impersonation_scam,100,False,True,True,False,s2_sir_ma_am_this_is_mayor_s_off
+synthetic,"Metrobank: Your OTP is 384756. For your security, do not share.",ham,legitimate,63,False,False,False,False,s2_metrobank_your_otp_is_for_y
+synthetic,UnionBank: Security alert! Your account was accessed from unknown device. Verify: bit.ly/gcash2026,spam,bank_phishing,98,True,False,False,True,s2_unionbank_security_alert_you
+synthetic,"You are the lucky winner of 10,000 pesos in our TNT raffle! Send your details to 09234567890",spam,prize_scam,92,False,True,True,False,s2_you_are_the_lucky_winner_of
+synthetic,Load giveaway! First 100 texters get PHP 2M! Text LOAD to 09345678901,spam,load_scam,69,False,True,True,False,s2_load_giveaway_first_texters
+synthetic,Easy loan approval! PHP 2M in 5 minutes! No collateral! Text 09789012345,spam,loan_scam,72,False,True,True,False,s2_easy_loan_approval_php_m_in
+synthetic,Payroll: Your salary for October 2026 has been deposited to your BDO account.,ham,legitimate,77,False,False,False,False,s2_payroll_your_salary_for_octob
+synthetic,GCash: Your wallet has been temporarily disabled. Reactivate: ph-parcel.top,spam,bank_phishing,75,True,False,False,False,s2_gcash_your_wallet_has_been_te
+synthetic,Hi! I'm an OFW looking for partner. Add me on Viber 09456789012 let's chat,spam,romance_scam,74,False,True,False,False,s2_hi_i_m_an_ofw_looking_for_par
+synthetic,"Load giveaway! First 100 texters get PHP 50,000! Text LOAD to 09678901234",spam,load_scam,73,False,True,True,False,s2_load_giveaway_first_texters
+synthetic,"Sir/Ma'am, this is Mayor's office. You have pending business permit. Settle PHP 5,000 to 09567890123",spam,impersonation_scam,100,False,True,True,False,s2_sir_ma_am_this_is_mayor_s_off
+synthetic,"Data encoder needed! PHP 3,000 per day! Message your details to 09123456789",spam,job_scam,75,False,True,True,False,s2_data_encoder_needed_php_per
+synthetic,"PCSO: Your number was selected! You won 500,000. To claim, provide your bank details to 09789012345",spam,prize_scam,99,False,True,False,False,s2_pcso_your_number_was_selected
+synthetic,"Hi, I saw your profile. You look familiar. Want to be friends? Add me on WhatsApp 09456789012",spam,romance_scam,93,False,True,False,False,s2_hi_i_saw_your_profile_you_lo
+synthetic,"UnionBank: Salary credit PHP 25,000.00 from ABC Corporation.",ham,legitimate,60,False,False,True,False,s2_unionbank_salary_credit_php
+synthetic,PNP: You have a traffic violation. Pay PHP 1M fine to 09456789012 to avoid warrant.,spam,impersonation_scam,83,False,True,True,False,s2_pnp_you_have_a_traffic_violat
+synthetic,Data encoder needed! PHP 500 per day! Message your details to 09456789012,spam,job_scam,73,False,True,True,False,s2_data_encoder_needed_php_per
+synthetic,ABS-CBN: Congrats! Your mobile number won 500 in our anniversary promo. Call 09123456789,spam,prize_scam,88,False,True,False,False,s2_abs_cbn_congrats_your_mobile
+synthetic,Fast cash loan! PHP 1M direct to GCash! No documents needed. Text 09456789012,spam,loan_scam,77,False,True,True,False,s2_fast_cash_loan_php_m_direct
+synthetic,Foodpanda: Your order #FP789456 is being prepared. Estimated delivery: 30 mins.,ham,legitimate,79,False,False,False,False,s2_foodpanda_your_order_fp_is
+synthetic,BDO: Your account has been LOCKED due to suspicious activity. Verify here: account-update.xyz to avoid closure.,spam,bank_phishing,111,True,False,False,False,s2_bdo_your_account_has_been_loc
+synthetic,Fast cash loan! PHP 2M direct to GCash! No documents needed. Text 09567890123,spam,loan_scam,77,False,True,True,False,s2_fast_cash_loan_php_m_direct
+synthetic,"SEC registered lending! Borrow PHP 1M, pay in 30 days! Apply: bit.ly/verifybdo",spam,loan_scam,78,True,False,True,False,s2_sec_registered_lending_borrow
+synthetic,"ALERT: High-paying job abroad! PHP 1,000 monthly! Process your papers fast. Call 09181234567",spam,job_scam,92,False,True,True,False,s2_alert_high_paying_job_abroad
+synthetic,BDO: Your account has been LOCKED due to suspicious activity. Verify here: verify-now.click to avoid closure.,spam,bank_phishing,109,False,False,False,True,s2_bdo_your_account_has_been_loc
+synthetic,"PNP: You have a traffic violation. Pay PHP 1,000,000 fine to 09567890123 to avoid warrant.",spam,impersonation_scam,90,False,True,True,False,s2_pnp_you_have_a_traffic_violat
+synthetic,"Meralco: Your bill for Account 1234567890 is PHP 2,345.67 due on Oct 25, 2026.",ham,legitimate,78,False,False,True,False,s2_meralco_your_bill_for_account
+synthetic,Shopee: Your order #123456789 has been shipped via J&T Express.,ham,legitimate,63,False,False,False,False,s2_shopee_your_order_has_been
+synthetic,Nag-claim ka ng 1M sa Sun Cellular! Call 09456789012 now to verify. Limited time only!,spam,prize_scam,86,False,True,False,True,s2_nag_claim_ka_ng_m_sa_sun_cell
+synthetic,Your BPI confirmation code is 583920. Valid for 10 minutes.,ham,legitimate,59,False,False,False,False,s2_your_bpi_confirmation_code_is
+synthetic,LANDBANK OTP: 193847. This code expires in 5 minutes.,ham,legitimate,53,False,False,False,True,s2_landbank_otp_this_code_expi
+synthetic,You caught my attention. I'm single and searching. Text me 09181234567,spam,romance_scam,70,False,True,False,False,s2_you_caught_my_attention_i_m_s
+synthetic,"FREE LOAD! Get PHP 5,000 load now! Just send your number to 09181234567",spam,load_scam,71,False,True,True,True,s2_free_load_get_php_load_now
+synthetic,This is your boss. I need you to buy load worth PHP 1M for a client. Send to 09456789012 ASAP.,spam,impersonation_scam,94,False,True,True,True,s2_this_is_your_boss_i_need_you
+synthetic,"GMA Kapuso Foundation: You won 10,000! Text CLAIM to 09345678901. Winner until midnight only!",spam,prize_scam,93,False,True,False,False,s2_gma_kapuso_foundation_you_won
+synthetic,"Be an ONLINE SELLER! Earn 5,000 daily! Just invest PHP 100 capital. Text 09123456789",spam,job_scam,84,False,True,True,False,s2_be_an_online_seller_earn_da
+synthetic,"URGENT HIRING! Work from home, earn PHP 1,000/day! No experience needed. Message 09281234567 now!",spam,job_scam,97,False,True,True,True,s2_urgent_hiring_work_from_home
+synthetic,FREE LOAD! Get PHP 1M load now! Just send your number to 09345678901,spam,load_scam,68,False,True,True,True,s2_free_load_get_php_m_load_now
+synthetic,"Hi Ma'am, this is your child's school. Classes are suspended today due to weather.",ham,legitimate,82,False,False,False,False,s2_hi_ma_am_this_is_your_child_s
+synthetic,LBC: Failed delivery attempt. Your parcel requires PHP 50 redelivery fee. Settle: ph-parcel.top,spam,delivery_scam,95,True,False,True,False,s2_lbc_failed_delivery_attempt
+synthetic,"Hello handsome/beautiful, I'm looking for serious relationship. Message me on Telegram 09567890123",spam,romance_scam,98,False,True,False,False,s2_hello_handsome_beautiful_i_m
+synthetic,"Personal loan PHP 5,000 guaranteed approval! Message 09456789012 now!",spam,loan_scam,69,False,True,True,True,s2_personal_loan_php_guaranteed
+synthetic,"Be an ONLINE SELLER! Earn 5,000 daily! Just invest PHP 200 capital. Text 09456789012",spam,job_scam,84,False,True,True,False,s2_be_an_online_seller_earn_da
+synthetic,"COMELEC: Your voter registration is confirmed for Brgy. San Jose, Quezon City.",ham,legitimate,78,False,False,False,False,s2_comelec_your_voter_registrati
+synthetic,Ninja Van: Your shipment is stuck at customs. Pay PHP 500 to release: bit.ly/jnt-customs,spam,delivery_scam,88,True,False,True,False,s2_ninja_van_your_shipment_is_st
+synthetic,Metrobank: Your account will be suspended. Update your info here: bit.ly/jnt-customs,spam,bank_phishing,84,True,False,False,False,s2_metrobank_your_account_will_b
+synthetic,"This is your boss. I need you to buy load worth PHP 500,000 for a client. Send to 09789012345 ASAP.",spam,impersonation_scam,99,False,True,True,True,s2_this_is_your_boss_i_need_you
+synthetic,"You are the lucky winner of 1,000 pesos in our TNT raffle! Send your details to 09181234567",spam,prize_scam,91,False,True,True,False,s2_you_are_the_lucky_winner_of
+synthetic,LBC: Failed delivery attempt. Your parcel requires PHP 500 redelivery fee. Settle: gcash-promo.top,spam,delivery_scam,98,True,False,True,False,s2_lbc_failed_delivery_attempt
+synthetic,Nag-claim ka ng 2M sa SM Supermalls! Call 09181234567 now to verify. Limited time only!,spam,prize_scam,87,False,True,False,True,s2_nag_claim_ka_ng_m_sa_sm_super
+synthetic,"TNT/Smart/Globe: You earned 50,000 free load! Claim: secure-login.ml",spam,load_scam,68,False,False,False,False,s2_tnt_smart_globe_you_earned
+synthetic,"Crypto trading guaranteed profit! Turn PHP 2M to PHP 1,000! Join: bit.ly/jnt-customs",spam,investment_scam,84,True,False,True,False,s2_crypto_trading_guaranteed_prof
+synthetic,Hi! I'm an OFW looking for partner. Add me on Viber 09181234567 let's chat,spam,romance_scam,74,False,True,False,False,s2_hi_i_m_an_ofw_looking_for_par
+synthetic,Security Bank: Your online banking is blocked. Unblock here: gcash-promo.top,spam,bank_phishing,76,True,False,False,False,s2_security_bank_your_online_ban
+synthetic,"ABS-CBN: Congrats! Your mobile number won 50,000 in our anniversary promo. Call 09234567890",spam,prize_scam,91,False,True,False,False,s2_abs_cbn_congrats_your_mobile
+synthetic,TNT/Smart/Globe: You earned 1M free load! Claim: bit.ly/3xK9mP2,spam,load_scam,63,True,False,False,False,s2_tnt_smart_globe_you_earned_m
+synthetic,Your GCash verification code is 482913. Do not share this with anyone.,ham,legitimate,70,False,False,False,False,s2_your_gcash_verification_code_i
+synthetic,"TNT/Smart/Globe: You earned 1,000,000 free load! Claim: account-update.xyz",spam,load_scam,74,True,False,False,False,s2_tnt_smart_globe_you_earned
+synthetic,"Manila Water: Current bill: PHP 567.89. Due date: Oct 28, 2026.",ham,legitimate,63,False,False,True,False,s2_manila_water_current_bill_ph
+synthetic,Security Bank: Your online banking is blocked. Unblock here: ph-bank.verify.com,spam,bank_phishing,79,True,False,False,False,s2_security_bank_your_online_ban
+synthetic,Facebook Admin job! PHP 500/week. Message 09567890123 to apply. No interview needed!,spam,job_scam,84,False,True,True,False,s2_facebook_admin_job_php_week
+synthetic,"Facebook Admin job! PHP 1,500/week. Message 09123456789 to apply. No interview needed!",spam,job_scam,86,False,True,True,False,s2_facebook_admin_job_php_week
+synthetic,"CONGRATS! You won PHP 100,000 from TNT! To claim, text your NAME/AGE/ADDRESS to 09567890123. Claim now!",spam,prize_scam,103,False,True,True,True,s2_congrats_you_won_php_from_t
+synthetic,Your DTR for Oct 1-15 has been approved by your supervisor.,ham,legitimate,59,False,False,False,False,s2_your_dtr_for_oct_has_been
+synthetic,"FREE LOAD! Get PHP 5,000 load now! Just send your number to 09678901234",spam,load_scam,71,False,True,True,True,s2_free_load_get_php_load_now
+synthetic,J&T Express: Your package PH123456789 is out for delivery. Track at jtexpress.ph,ham,legitimate,80,True,False,False,False,s2_j_t_express_your_package_ph
+synthetic,"URGENT HIRING! Work from home, earn PHP 3,000/day! No experience needed. Message 09234567890 now!",spam,job_scam,97,False,True,True,True,s2_urgent_hiring_work_from_home
+synthetic,"Easy loan approval! PHP 500,000 in 5 minutes! No collateral! Text 09678901234",spam,loan_scam,77,False,True,True,False,s2_easy_loan_approval_php_in
+synthetic,"Hello handsome/beautiful, I'm looking for serious relationship. Message me on Telegram 09123456789",spam,romance_scam,98,False,True,False,False,s2_hello_handsome_beautiful_i_m
+synthetic,"Metrobank: PHP 1,500.00 debited from your account. Ref: MB123456.",ham,legitimate,65,False,False,True,False,s2_metrobank_php_debited_from
+synthetic,"Crypto trading guaranteed profit! Turn PHP 500,000 to PHP 50,000! Join: gcash-promo.top",spam,investment_scam,87,True,False,True,False,s2_crypto_trading_guaranteed_prof
+synthetic,Shopee: Your order requires customs clearance fee PHP 150. Pay now: gcash-promo.top,spam,delivery_scam,83,True,False,True,True,s2_shopee_your_order_requires_cu
+synthetic,UnionBank: Security alert! Your account was accessed from unknown device. Verify: secure.ph-banks.com,spam,bank_phishing,101,True,False,False,True,s2_unionbank_security_alert_you
+synthetic,Shopee: Your order requires customs clearance fee PHP 100. Pay now: secure.ph-banks.com,spam,delivery_scam,87,True,False,True,True,s2_shopee_your_order_requires_cu
+synthetic,Flash Express: Your shipment FL789456123 has arrived at the sorting facility.,ham,legitimate,77,False,False,False,False,s2_flash_express_your_shipment_f
+synthetic,"Easy loan approval! PHP 100,000 in 5 minutes! No collateral! Text 09234567890",spam,loan_scam,77,False,True,True,False,s2_easy_loan_approval_php_in
+synthetic,TNT/Smart/Globe: You earned 1M free load! Claim: secure.ph-banks.com,spam,load_scam,68,True,False,False,False,s2_tnt_smart_globe_you_earned_m
+synthetic,"Invest PHP 1,000,000 today, get PHP 5,000 in 7 days! 100% legit! Message 09678901234",spam,investment_scam,84,False,True,True,False,s2_invest_php_today_get_php
+synthetic,Ninja Van: Package NV456789123 will be delivered today. Please keep your phone accessible.,ham,legitimate,90,False,False,False,False,s2_ninja_van_package_nv_will_be
+synthetic,Metrobank: Your account will be suspended. Update your info here: bit.ly/3xK9mP2,spam,bank_phishing,80,True,False,False,False,s2_metrobank_your_account_will_b
+synthetic,Security Bank: 927463 is your OTP. Valid for 3 minutes only.,ham,legitimate,60,False,False,False,False,s2_security_bank_is_your_otp
+synthetic,"GMA Kapuso Foundation: You won 1,000! Text CLAIM to 09345678901. Winner until midnight only!",spam,prize_scam,92,False,True,False,False,s2_gma_kapuso_foundation_you_won
+synthetic,"Double your money in 3 days! Minimum PHP 50,000. PM 09234567890 for details",spam,investment_scam,75,False,True,True,False,s2_double_your_money_in_days_m
+synthetic,"Fast cash loan! PHP 1,000,000 direct to GCash! No documents needed. Text 09281234567",spam,loan_scam,84,False,True,True,False,s2_fast_cash_loan_php_direct_t
+synthetic,Ninja Van: Your shipment is stuck at customs. Pay PHP 500 to release: gcash-promo.top,spam,delivery_scam,85,True,False,True,False,s2_ninja_van_your_shipment_is_st
+synthetic,RCBC: Your one-time PIN is 746291. Do not share with anyone.,ham,legitimate,60,False,False,False,False,s2_rcbc_your_one_time_pin_is_d
+synthetic,"RCBC: Confirm your account to receive PHP 100,000 refund. Click: secure-login.ml",spam,bank_phishing,80,False,False,True,False,s2_rcbc_confirm_your_account_to
+synthetic,"Nag-claim ka ng 1,000 sa Smart Communications! Call 09678901234 now to verify. Limited time only!",spam,prize_scam,97,False,True,False,True,s2_nag_claim_ka_ng_sa_smart_com
+synthetic,"PLDT: Your account 0212345678 bill is PHP 1,799.00 due Oct 20, 2026.",ham,legitimate,68,False,False,True,False,s2_pldt_your_account_bill_is_p
+synthetic,"RCBC: Confirm your account to receive PHP 1,000,000 refund. Click: bit.ly/verifybdo",spam,bank_phishing,83,True,False,True,False,s2_rcbc_confirm_your_account_to
+synthetic,"Hi, this is Dr. Santos' clinic. Your appointment is confirmed for Oct 21, 2026 at 3PM.",ham,legitimate,86,False,False,False,False,s2_hi_this_is_dr_santos_clinic
+synthetic,You caught my attention. I'm single and searching. Text me 09789012345,spam,romance_scam,70,False,True,False,False,s2_you_caught_my_attention_i_m_s
+synthetic,Your PayMaya code is 659201. Never share this code with others.,ham,legitimate,63,False,False,False,False,s2_your_paymaya_code_is_never_s
+synthetic,"Stock trading insider tips! Guaranteed returns! Send PHP 50,000 to start. Text 09567890123",spam,investment_scam,90,False,True,True,False,s2_stock_trading_insider_tips_gu
+synthetic,Stock trading insider tips! Guaranteed returns! Send PHP 500 to start. Text 09123456789,spam,investment_scam,87,False,True,True,False,s2_stock_trading_insider_tips_gu
+synthetic,"Hi anak, this is Mama. My phone broke. Send PHP 5,000 to 09234567890 via GCash. Emergency.",spam,impersonation_scam,90,False,True,True,False,s2_hi_anak_this_is_mama_my_phon
+synthetic,"Nag-claim ka ng 50,000 sa Jollibee! Call 09281234567 now to verify. Limited time only!",spam,prize_scam,86,False,True,False,True,s2_nag_claim_ka_ng_sa_jollibee
+synthetic,PhilHealth: Your member contribution for Q3 2026 has been posted.,ham,legitimate,65,False,False,False,False,s2_philhealth_your_member_contri
+synthetic,GCash: You received PHP 500.00 from Juan Dela Cruz. Ref: 123456789.,ham,legitimate,67,False,False,True,False,s2_gcash_you_received_php_from
+synthetic,J&T Express: Your package is on HOLD due to unpaid customs fee of PHP 350. Pay here: bit.ly/jnt-customs,spam,delivery_scam,103,True,False,True,False,s2_j_t_express_your_package_is_o
+synthetic,"Forex trading signals! 90% win rate! Invest PHP 1,000,000 now. Contact 09789012345",spam,investment_scam,82,False,True,True,True,s2_forex_trading_signals_win
+synthetic,"CONGRATS! You won PHP 100,000 from Sun Cellular! To claim, text your NAME/AGE/ADDRESS to 09181234567. Claim now!",spam,prize_scam,112,False,True,True,True,s2_congrats_you_won_php_from_s
+synthetic,J&T Express: Your package is on HOLD due to unpaid customs fee of PHP 999. Pay here: secure-login.ml,spam,delivery_scam,100,False,False,True,False,s2_j_t_express_your_package_is_o
+synthetic,NBI: Your clearance application #NBI2026123456 is ready for pickup.,ham,legitimate,67,False,False,False,False,s2_nbi_your_clearance_applicatio
+synthetic,"Converge: Your internet bill of PHP 1,599.00 is due on Oct 22, 2026.",ham,legitimate,68,False,False,True,False,s2_converge_your_internet_bill_o
+synthetic,Personal loan PHP 1M guaranteed approval! Message 09234567890 now!,spam,loan_scam,66,False,True,True,True,s2_personal_loan_php_m_guarantee
+synthetic,Angkas: Your ride request has been accepted. Rider arriving in 5 minutes.,ham,legitimate,73,False,False,False,False,s2_angkas_your_ride_request_has
+synthetic,LBC: Parcel LB123456789 ready for pickup at SM Manila branch. Bring valid ID.,ham,legitimate,77,False,False,False,False,s2_lbc_parcel_lb_ready_for_pick
+synthetic,Your UnionBank verification code: 582947. Do not disclose to anyone.,ham,legitimate,68,False,False,False,False,s2_your_unionbank_verification_co
+synthetic,"BDO: Your account ending 4567 was credited PHP 5,000.00 on 10/19/2026.",ham,legitimate,70,False,False,True,False,s2_bdo_your_account_ending_was
+synthetic,HR: Your payslip for October 2026 is now available on the employee portal.,ham,legitimate,74,False,False,False,True,s2_hr_your_payslip_for_october
+synthetic,EastWest: OTP 471829 for your transaction. Never share this.,ham,legitimate,60,False,False,False,False,s2_eastwest_otp_for_your_trans
+synthetic,"Hi anak, this is Mama. My phone broke. Send PHP 1,000 to 09391234567 via GCash. Emergency.",spam,impersonation_scam,90,False,True,True,False,s2_hi_anak_this_is_mama_my_phon
+synthetic,BDO OTP: 847291 is your one-time password. Valid for 5 minutes.,ham,legitimate,63,False,False,False,False,s2_bdo_otp_is_your_one_time_pa
+synthetic,"Fast cash loan! PHP 100,000 direct to GCash! No documents needed. Text 09678901234",spam,loan_scam,82,False,True,True,False,s2_fast_cash_loan_php_direct_t
+synthetic,"Pag-IBIG: Your MP2 dividend of PHP 1,234.56 has been credited.",ham,legitimate,62,False,False,True,False,s2_pag_ibig_your_mp_dividend_of
+synthetic,"Nag-claim ka ng 10,000 sa SM Supermalls! Call 09391234567 now to verify. Limited time only!",spam,prize_scam,91,False,True,False,True,s2_nag_claim_ka_ng_sa_sm_superm
+synthetic,"CONGRATS! You won PHP 1M from PCSO! To claim, text your NAME/AGE/ADDRESS to 09181234567. Claim now!",spam,prize_scam,99,False,True,True,True,s2_congrats_you_won_php_m_from
+synthetic,"Forex trading signals! 90% win rate! Invest PHP 100,000 now. Contact 09456789012",spam,investment_scam,80,False,True,True,True,s2_forex_trading_signals_win
+synthetic,SSS: Your loan application #SSS2026789012 has been approved.,ham,legitimate,60,False,False,False,False,s2_sss_your_loan_application_ss
+synthetic,You are the lucky winner of 1M pesos in our SM Supermalls raffle! Send your details to 09281234567,spam,prize_scam,98,False,True,True,False,s2_you_are_the_lucky_winner_of_m
+synthetic,Reminder: Team meeting today at 2PM via Zoom. Link: company.zoom.us/j/123456,ham,legitimate,76,False,False,False,False,s2_reminder_team_meeting_today_a
+synthetic,"Nag-claim ka ng 100,000 sa Globe Telecom! Call 09123456789 now to verify. Limited time only!",spam,prize_scam,92,False,True,False,True,s2_nag_claim_ka_ng_sa_globe_tel
+synthetic,Lazada: Order #987654321 is out for delivery. Expected arrival today.,ham,legitimate,69,False,False,False,False,s2_lazada_order_is_out_for_de
+synthetic,"Your Grab booking CR123456 is confirmed. Driver: Juan, Plate: ABC1234.",ham,legitimate,70,False,False,False,False,s2_your_grab_booking_cr_is_confi
+synthetic,"PayMaya: Cash-in of PHP 1,000.00 successful. New balance: PHP 2,500.00.",ham,legitimate,71,False,False,True,False,s2_paymaya_cash_in_of_php_succ
+synthetic,"Invest PHP 1M today, get PHP 1,000 in 7 days! 100% legit! Message 09456789012",spam,investment_scam,77,False,True,True,False,s2_invest_php_m_today_get_php
+synthetic,"BPI: ATM withdrawal of PHP 2,000.00 at BPI Makati on 10/19/2026 09:30AM.",ham,legitimate,72,False,False,True,False,s2_bpi_atm_withdrawal_of_php_a
