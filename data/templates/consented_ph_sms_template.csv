@@ -1,1 +1,1 @@
-label,message,source,category,language,labeling_confidence,labeler,labeled_at,group,received_at
+label,message,category,language,source,group,received_at,consent_id,consent_recorded_at,redaction_reviewed_by,labeler,labeled_at,second_labeler,second_label,labeling_confidence

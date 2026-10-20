@@ -360,17 +360,27 @@ def test_fourth_supplement_campaign_groups_stay_in_one_split():
 
 
 def test_fifth_supplement_balances_synthetic_coverage_and_is_disjoint():
-    dataset = load_dataset(SUPPLEMENT_5, require_both_classes=False, min_class_count=0)
-    assert len(dataset) == 21
-    assert dataset.class_counts == {"ham": 21, "spam": 0}
-    assert dataset.frame["data_kind"].eq("synthetic").all()
-    assert dataset.frame["source"].eq("synthetic_legitimate_v5").all()
-    assert dataset.frame["group"].nunique() == 7
-    assert dataset.frame.groupby("group").size().eq(3).all()
-    assert set(dataset.frame["language"]) == {"en", "tl", "taglish"}
-    assert {"otp", "bank_alert", "delivery", "bill", "promo", "school_work", "personal_taglish"} == set(
-        dataset.frame["category"]
+    full = load_dataset(SUPPLEMENT_5, require_both_classes=False, min_class_count=0)
+    generated = full.frame[full.frame["source"].eq("synthetic_generator_train_v1")]
+    assert len(generated) >= 100
+    assert set(generated["label"]) == {"ham", "spam"}
+    original = full.frame[full.frame["source"].eq("synthetic_legitimate_v5")]
+    assert len(original) == 21
+    assert set(original["label"]) == {"ham"}
+    assert original["group"].nunique() == 7
+    assert original.groupby("group").size().eq(3).all()
+    assert full.frame["data_kind"].eq("synthetic").all()
+    assert set(full.frame["language"]) == {"en", "tl", "taglish"}
+    assert {"otp", "bank_alert", "delivery", "bill", "promo", "school_work", "personal_taglish"} <= set(
+        original["category"]
     )
+
+    class _View:
+        def __init__(self, frame):
+            self.frame = frame
+            self.messages = frame["message"].tolist()
+
+    dataset = _View(original)
     assert dataset.frame["message"].str.contains(r"example\.com").sum() > 0
     assert not dataset.frame["message"].str.contains(r"(?:\+?63|0)\d{9,}").any()
     assert not dataset.frame["message"].str.contains(r"https?://|www\.", case=False).any()

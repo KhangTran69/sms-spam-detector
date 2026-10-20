@@ -1,47 +1,265 @@
-data_kind,label,message,category,language,source,labeling_confidence
-synthetic,spam,"Nag-claim ka ng ₱350,000 sa GMA Kapuso Foundation. Tumawag agad sa 09185551234 bago mag-5PM!",prize_scam,taglish,synthetic_holdout_v2,high
-synthetic,spam,BDO: Account suspended due to failed login attempts. Reactivate here: http://bit.ly/bdo-react,bank_phishing,en,synthetic_holdout_v2,high
-synthetic,spam,"Congrats! Nanalo ka ng ₱2M sa PCSO Grand Lotto. Send your name, address at bank details sa 09205551111",prize_scam,taglish,synthetic_holdout_v2,high
-synthetic,spam,"GCash: May ₱8,500 refund na naka-hold para sa iyo. Claim within 24 hours: http://bit.ly/gc-refund85",bank_phishing,taglish,synthetic_holdout_v2,high
-synthetic,spam,J&T: Parcel held - pay ₱75 customs fee now: bit.ly/jt-fee75,delivery_scam,en,synthetic_holdout_v2,high
-synthetic,spam,Smart: Free 50GB data for loyal subscribers! Register agad: http://smart-free50gb.xyz,load_scam,en,synthetic_holdout_v2,high
-synthetic,spam,Maya: Your account will be closed in 24 hours. Verify identity now: bit.ly/maya-id,bank_phishing,en,synthetic_holdout_v2,high
-synthetic,spam,"Ikaw ba ito? May ₱120,000 waitong claim sa pangalan mo. Call 09335559999 NOW!",impersonation_scam,taglish,synthetic_holdout_v2,high
-synthetic,ham,Your BDO OTP is 294831. Do not share with anyone. Expires in 5 minutes.,otp,en,synthetic_holdout_v2,high
-synthetic,ham,"GCash: You received ₱1,500 from ANA LIM. Balance: ₱6,200.00.",bank_alert,en,synthetic_holdout_v2,high
-synthetic,ham,J&T Express: Parcel JT5522878 out for delivery. Track at jtexpress.ph/track,delivery,en,synthetic_holdout_v2,high
-synthetic,ham,"Meralco: Your bill of ₱1,890.50 is due Nov 5. Pay via app or partner banks.",bill,en,synthetic_holdout_v2,high
-synthetic,ham,"Uwi ka na agad, ulan na dito sa amin. Ingat!",personal_taglish,taglish,synthetic_holdout_v2,high
-synthetic,ham,Shopee: Order SP-991234 delivered. Rate your purchase in the app.,delivery,en,synthetic_holdout_v2,high
-synthetic,ham,"BPI: OTP 558201. Never share this code with anyone, even BPI staff.",otp,en,synthetic_holdout_v2,high
-synthetic,ham,Salamat sa regalo mo! Sobrang happy ng bunso. See you Sunday sa reunion.,personal_taglish,taglish,synthetic_holdout_v2,high
-synthetic,ham,"Metrobank: Your PHP 7,500.00 bills payment to MAYNILAD is complete. Ref 4451209.",bill,en,synthetic_holdout_v2,high
-synthetic,ham,Globe: Your subscription to GOEXTRA90 renewed. Valid until Nov 18. Data: 8GB remaining.,promo,en,synthetic_holdout_v2,high
-synthetic,spam,PHLPost: Your parcel is on hold. Pay ₱120 clearance fee at phlpost-clearance.top before Nov 2.,parcel_scam,en,synthetic_holdout_v2,high
-synthetic,spam,NTC: Your SIM will be deactivated in 48 hours. Register your number now: http://ntc-simreg.info/verify,sim_registration_scam,en,synthetic_holdout_v2,high
-synthetic,spam,"Work from home! Earn PHP 3,000 daily, no experience needed. Message 09178881234 agad.",job_scam,taglish,synthetic_holdout_v2,high
-synthetic,spam,"Crypto investment: turn PHP 10,000 into PHP 100,000 in 7 days. PM 09293334444 now.",investment_scam,taglish,synthetic_holdout_v2,high
-synthetic,spam,"Approved na ang loan mo! PHP 80,000, walang collateral. I-claim agad sa 09194445555.",loan_scam,taglish,synthetic_holdout_v2,high
-synthetic,spam,"Hello, this is BDO support. May suspicious login. Please send the OTP we texted you to 09175556666.",otp_social_engineering,taglish,synthetic_holdout_v2,high
-synthetic,spam,"Panalo ka ng ₱1,200,000 sa PCSO! Claim within 24 hours, tawagan 09186667777 ngayon.",prize_scam,taglish,synthetic_holdout_v2,high
-synthetic,spam,UnionBank: KYC update required. Verify at unionbank-kyc.online/login or account will be blocked today.,bank_phishing,en,synthetic_holdout_v2,high
-synthetic,spam,"DSWD: Approved ang ₱10,000 educational assistance mo. Register at dswd-ayuda.xyz/claim agad.",government_subsidy_scam,taglish,synthetic_holdout_v2,high
-synthetic,spam,Globe: You have 5GB free load! Claim at globe-rewards.site before it expires ngayon.,load_scam,en,synthetic_holdout_v2,high
-synthetic,spam,"Hi po, I'm looking for someone to talk to. Can you send load to 09177778888? God bless.",romance_scam,taglish,synthetic_holdout_v2,high
-synthetic,spam,"Ma, nasa hospital ako. Kailangan ko ng ₱15,000 agad. Send sa GCash 09185559999. Huwag kang magsumbong.",relative_scam,taglish,synthetic_holdout_v2,high
-synthetic,ham,BPI: Your one-time PIN is 773410. Valid for 5 minutes. Never share it.,otp,en,synthetic_holdout_v2,high
-synthetic,ham,"UnionBank: ₱2,300.00 was debited from your account ending 4821 on Oct 18. Not you? Call the number on your card.",bank_alert,en,synthetic_holdout_v2,high
-synthetic,ham,"BDO: Your payroll credit of ₱18,500.00 has been posted. Available balance: ₱21,204.55.",bank_alert,en,synthetic_holdout_v2,high
-synthetic,ham,LBC: Your parcel LBC123456789 is out for delivery today. Prepare valid ID.,delivery,en,synthetic_holdout_v2,high
-synthetic,ham,Ninja Van: Parcel PH-88421 will be delivered between 2-5PM. Track in the app.,delivery,en,synthetic_holdout_v2,high
-synthetic,ham,"Manila Water: Your bill of ₱620.75 is due on Nov 10. Pay via GCash, Maya, or the app.",bill,en,synthetic_holdout_v2,high
-synthetic,ham,"Kumain ka na ba? Ingat sa byahe mamaya, umuulan dito.",personal_taglish,taglish,synthetic_holdout_v2,high
-synthetic,ham,Salamat ulit sa pagtulong kahapon. Bayaran kita sa Friday pag sweldo.,personal_taglish,taglish,synthetic_holdout_v2,high
-synthetic,ham,Globe: Your GO+ promo expires on Nov 5. Renew via *143# if you want to continue.,promo,en,synthetic_holdout_v2,high
-synthetic,ham,"City Health Office: Your vaccination appointment is confirmed for Oct 24, 9:00 AM. Bring your ID.",appointment,en,synthetic_holdout_v2,high
-synthetic,ham,"UPD Registrar: Your request for TOR is ready for pickup at Window 3, 8AM-5PM.",school,en,synthetic_holdout_v2,high
-synthetic,ham,"GCash: Your authentication code is 904162. Do not share this code with anyone, even GCash staff.",otp,en,synthetic_holdout_v2,high
-synthetic,ham,J&T Express: Track your parcel at jtexpress.ph/track using waybill JT7788123.,legit_link,en,synthetic_holdout_v2,high
-synthetic,ham,"Maya: You sent ₱350.00 to JUAN DELA CRUZ. Ref 889201. If this wasn't you, contact support.",bank_alert,en,synthetic_holdout_v2,high
-synthetic,ham,"Bukas na lang tayo magkita, may pasok pa ako. Good night!",personal_taglish,taglish,synthetic_holdout_v2,high
-synthetic,ham,Shopee: Flash sale starts 12NN. Free shipping on selected items. Unsubscribe: reply STOP.,promo,en,synthetic_holdout_v2,high
+data_kind,label,message,category,language,source,labeling_confidence,group
+synthetic,spam,"Nag-claim ka ng ₱350,000 sa GMA Kapuso Foundation. Tumawag agad sa 09185551234 bago mag-5PM!",prize_scam,taglish,synthetic_holdout_v2,high,cat:prize_scam|nag claim ka ng <money> sa gma kapuso
+synthetic,spam,BDO: Account suspended due to failed login attempts. Reactivate here: http://bit.ly/bdo-react,bank_phishing,en,synthetic_holdout_v2,high,cat:bank_phishing|bdo account suspended due to failed login attempts
+synthetic,spam,"Congrats! Nanalo ka ng ₱2M sa PCSO Grand Lotto. Send your name, address at bank details sa 09205551111",prize_scam,taglish,synthetic_holdout_v2,high,cat:prize_scam|congrats nanalo ka ng <money> sa pcso grand
+synthetic,spam,"GCash: May ₱8,500 refund na naka-hold para sa iyo. Claim within 24 hours: http://bit.ly/gc-refund85",bank_phishing,taglish,synthetic_holdout_v2,high,cat:bank_phishing|gcash may <money> refund na naka hold para
+synthetic,spam,J&T: Parcel held - pay ₱75 customs fee now: bit.ly/jt-fee75,delivery_scam,en,synthetic_holdout_v2,high,cat:delivery_scam|j t parcel held pay <money> customs fee
+synthetic,spam,Smart: Free 50GB data for loyal subscribers! Register agad: http://smart-free50gb.xyz,load_scam,en,synthetic_holdout_v2,high,cat:load_scam|smart free <num> gb data for loyal subscribers
+synthetic,spam,Maya: Your account will be closed in 24 hours. Verify identity now: bit.ly/maya-id,bank_phishing,en,synthetic_holdout_v2,high,cat:bank_phishing|maya your account will be closed in <num>
+synthetic,spam,"Ikaw ba ito? May ₱120,000 waitong claim sa pangalan mo. Call 09335559999 NOW!",impersonation_scam,taglish,synthetic_holdout_v2,high,cat:impersonation_scam|ikaw ba ito may <money> waitong claim sa
+synthetic,ham,Your BDO OTP is 294831. Do not share with anyone. Expires in 5 minutes.,otp,en,synthetic_holdout_v2,high,cat:otp|your bdo otp is <num> do not share
+synthetic,ham,"GCash: You received ₱1,500 from ANA LIM. Balance: ₱6,200.00.",bank_alert,en,synthetic_holdout_v2,high,cat:bank_alert|gcash you received <money> from ana lim balance
+synthetic,ham,J&T Express: Parcel JT5522878 out for delivery. Track at jtexpress.ph/track,delivery,en,synthetic_holdout_v2,high,cat:delivery|j t express parcel jt <num> out for
+synthetic,ham,"Meralco: Your bill of ₱1,890.50 is due Nov 5. Pay via app or partner banks.",bill,en,synthetic_holdout_v2,high,cat:bill|meralco your bill of <money> is due nov
+synthetic,ham,"Uwi ka na agad, ulan na dito sa amin. Ingat!",personal_taglish,taglish,synthetic_holdout_v2,high,cat:personal_taglish|uwi ka na agad ulan na dito sa
+synthetic,ham,Shopee: Order SP-991234 delivered. Rate your purchase in the app.,delivery,en,synthetic_holdout_v2,high,cat:delivery|shopee order sp <num> delivered rate your purchase
+synthetic,ham,"BPI: OTP 558201. Never share this code with anyone, even BPI staff.",otp,en,synthetic_holdout_v2,high,cat:otp|bpi otp <num> never share this code with
+synthetic,ham,Salamat sa regalo mo! Sobrang happy ng bunso. See you Sunday sa reunion.,personal_taglish,taglish,synthetic_holdout_v2,high,cat:personal_taglish|salamat sa regalo mo sobrang happy ng bunso
+synthetic,ham,"Metrobank: Your PHP 7,500.00 bills payment to MAYNILAD is complete. Ref 4451209.",bill,en,synthetic_holdout_v2,high,cat:bill|metrobank your <money> bills payment to maynilad is
+synthetic,ham,Globe: Your subscription to GOEXTRA90 renewed. Valid until Nov 18. Data: 8GB remaining.,promo,en,synthetic_holdout_v2,high,cat:promo|globe your subscription to goextra <num> renewed valid
+synthetic,spam,PHLPost: Your parcel is on hold. Pay ₱120 clearance fee at phlpost-clearance.top before Nov 2.,parcel_scam,en,synthetic_holdout_v2,high,cat:parcel_scam|phlpost your parcel is on hold pay <money>
+synthetic,spam,NTC: Your SIM will be deactivated in 48 hours. Register your number now: http://ntc-simreg.info/verify,sim_registration_scam,en,synthetic_holdout_v2,high,cat:sim_registration_scam|ntc your sim will be deactivated in <num>
+synthetic,spam,"Work from home! Earn PHP 3,000 daily, no experience needed. Message 09178881234 agad.",job_scam,taglish,synthetic_holdout_v2,high,cat:job_scam|work from home earn <money> daily no experience
+synthetic,spam,"Crypto investment: turn PHP 10,000 into PHP 100,000 in 7 days. PM 09293334444 now.",investment_scam,taglish,synthetic_holdout_v2,high,cat:investment_scam|crypto investment turn <money> into <money> in <num>
+synthetic,spam,"Approved na ang loan mo! PHP 80,000, walang collateral. I-claim agad sa 09194445555.",loan_scam,taglish,synthetic_holdout_v2,high,cat:loan_scam|approved na ang loan mo <money> walang collateral
+synthetic,spam,"Hello, this is BDO support. May suspicious login. Please send the OTP we texted you to 09175556666.",otp_social_engineering,taglish,synthetic_holdout_v2,high,cat:otp_social_engineering|hello this is bdo support may suspicious login
+synthetic,spam,"Panalo ka ng ₱1,200,000 sa PCSO! Claim within 24 hours, tawagan 09186667777 ngayon.",prize_scam,taglish,synthetic_holdout_v2,high,cat:prize_scam|panalo ka ng <money> sa pcso claim within
+synthetic,spam,UnionBank: KYC update required. Verify at unionbank-kyc.online/login or account will be blocked today.,bank_phishing,en,synthetic_holdout_v2,high,cat:bank_phishing|unionbank kyc update required verify at <url> or
+synthetic,spam,"DSWD: Approved ang ₱10,000 educational assistance mo. Register at dswd-ayuda.xyz/claim agad.",government_subsidy_scam,taglish,synthetic_holdout_v2,high,cat:government_subsidy_scam|dswd approved ang <money> educational assistance mo register
+synthetic,spam,Globe: You have 5GB free load! Claim at globe-rewards.site before it expires ngayon.,load_scam,en,synthetic_holdout_v2,high,cat:load_scam|globe you have <num> gb free load claim
+synthetic,spam,"Hi po, I'm looking for someone to talk to. Can you send load to 09177778888? God bless.",romance_scam,taglish,synthetic_holdout_v2,high,cat:romance_scam|hi po i m looking for someone to
+synthetic,spam,"Ma, nasa hospital ako. Kailangan ko ng ₱15,000 agad. Send sa GCash 09185559999. Huwag kang magsumbong.",relative_scam,taglish,synthetic_holdout_v2,high,cat:relative_scam|ma nasa hospital ako kailangan ko ng <money>
+synthetic,ham,BPI: Your one-time PIN is 773410. Valid for 5 minutes. Never share it.,otp,en,synthetic_holdout_v2,high,cat:otp|bpi your one time pin is <num> valid
+synthetic,ham,"UnionBank: ₱2,300.00 was debited from your account ending 4821 on Oct 18. Not you? Call the number on your card.",bank_alert,en,synthetic_holdout_v2,high,cat:bank_alert|unionbank <money> was debited from your account ending
+synthetic,ham,"BDO: Your payroll credit of ₱18,500.00 has been posted. Available balance: ₱21,204.55.",bank_alert,en,synthetic_holdout_v2,high,cat:bank_alert|bdo your payroll credit of <money> has been
+synthetic,ham,LBC: Your parcel LBC123456789 is out for delivery today. Prepare valid ID.,delivery,en,synthetic_holdout_v2,high,cat:delivery|lbc your parcel lbc <num> is out for
+synthetic,ham,Ninja Van: Parcel PH-88421 will be delivered between 2-5PM. Track in the app.,delivery,en,synthetic_holdout_v2,high,cat:delivery|ninja van parcel ph <num> will be delivered
+synthetic,ham,"Manila Water: Your bill of ₱620.75 is due on Nov 10. Pay via GCash, Maya, or the app.",bill,en,synthetic_holdout_v2,high,cat:bill|manila water your bill of <money> is due
+synthetic,ham,"Kumain ka na ba? Ingat sa byahe mamaya, umuulan dito.",personal_taglish,taglish,synthetic_holdout_v2,high,cat:personal_taglish|kumain ka na ba ingat sa byahe mamaya
+synthetic,ham,Salamat ulit sa pagtulong kahapon. Bayaran kita sa Friday pag sweldo.,personal_taglish,taglish,synthetic_holdout_v2,high,cat:personal_taglish|salamat ulit sa pagtulong kahapon bayaran kita sa
+synthetic,ham,Globe: Your GO+ promo expires on Nov 5. Renew via *143# if you want to continue.,promo,en,synthetic_holdout_v2,high,cat:promo|globe your go promo expires on nov <num>
+synthetic,ham,"City Health Office: Your vaccination appointment is confirmed for Oct 24, 9:00 AM. Bring your ID.",appointment,en,synthetic_holdout_v2,high,cat:appointment|city health office your vaccination appointment is confirmed
+synthetic,ham,"UPD Registrar: Your request for TOR is ready for pickup at Window 3, 8AM-5PM.",school,en,synthetic_holdout_v2,high,cat:school|upd registrar your request for tor is ready
+synthetic,ham,"GCash: Your authentication code is 904162. Do not share this code with anyone, even GCash staff.",otp,en,synthetic_holdout_v2,high,cat:otp|gcash your authentication code is <num> do not
+synthetic,ham,J&T Express: Track your parcel at jtexpress.ph/track using waybill JT7788123.,legit_link,en,synthetic_holdout_v2,high,cat:legit_link|j t express track your parcel at <url>
+synthetic,ham,"Maya: You sent ₱350.00 to JUAN DELA CRUZ. Ref 889201. If this wasn't you, contact support.",bank_alert,en,synthetic_holdout_v2,high,cat:bank_alert|maya you sent <money> to juan dela cruz
+synthetic,ham,"Bukas na lang tayo magkita, may pasok pa ako. Good night!",personal_taglish,taglish,synthetic_holdout_v2,high,cat:personal_taglish|bukas na lang tayo magkita may pasok pa
+synthetic,ham,Shopee: Flash sale starts 12NN. Free shipping on selected items. Unsubscribe: reply STOP.,promo,en,synthetic_holdout_v2,high,cat:promo|shopee flash sale starts <num> nn free shipping
+synthetic,spam,ChinaBank Notice: KYC expired. Your online banking will be restricted at Friday. Renew now: http://rebrand.ly/refund-ph,bank_phishing,en,synthetic_holdout_v3,high,ho_bank_kyc
+synthetic,spam,UnionBank Notice: KYC expired. Your online banking will be restricted at 9:15 AM. Renew now: https://ph-acct-review.top/u,bank_phishing,en,synthetic_holdout_v3,high,ho_bank_kyc
+synthetic,spam,UnionBank Notice: KYC expired. Your online banking will be restricted at 5PM. Renew now: https://ph-acct-review.top/u,bank_phishing,en,synthetic_holdout_v3,high,ho_bank_kyc
+synthetic,spam,ChinaBank Notice: KYC expired. Your online banking will be restricted at 9:15 AM. Renew now: https://claims-portal.site/a,bank_phishing,en,synthetic_holdout_v3,high,ho_bank_kyc
+synthetic,spam,"Dear client, Metrobank needs to re-validate your mobile number. Proceed at https://ph-acct-review.top/u to keep access.",bank_phishing,en,synthetic_holdout_v3,high,ho_bank_kyc
+synthetic,spam,"Dear client, UnionBank needs to re-validate your mobile number. Proceed at http://rebrand.ly/refund-ph to keep access.",bank_phishing,en,synthetic_holdout_v3,high,ho_bank_kyc
+synthetic,spam,"Dear client, ChinaBank needs to re-validate your mobile number. Proceed at https://claims-portal.site/a to keep access.",bank_phishing,en,synthetic_holdout_v3,high,ho_bank_kyc
+synthetic,spam,"Dear client, Metrobank needs to re-validate your mobile number. Proceed at https://claims-portal.site/a to keep access.",bank_phishing,en,synthetic_holdout_v3,high,ho_bank_kyc
+synthetic,spam,"UnionBank: We stopped a transaction of ₱7,800. If not you, cancel immediately at https://claims-portal.site/a",bank_phishing,en,synthetic_holdout_v3,high,ho_bank_kyc
+synthetic,spam,"Metrobank: We stopped a transaction of ₱7,800. If not you, cancel immediately at https://claims-portal.site/a",bank_phishing,en,synthetic_holdout_v3,high,ho_bank_kyc
+synthetic,spam,"RCBC: We stopped a transaction of ₱2,150. If not you, cancel immediately at https://claims-portal.site/a",bank_phishing,en,synthetic_holdout_v3,high,ho_bank_kyc
+synthetic,spam,"Metrobank: We stopped a transaction of ₱430. If not you, cancel immediately at https://ph-acct-review.top/u",bank_phishing,en,synthetic_holdout_v3,high,ho_bank_kyc
+synthetic,spam,Paalala mula sa PNB: may kahina-hinalang transaksyon na ₱430. Kanselahin sa http://rebrand.ly/refund-ph,bank_phishing,tl,synthetic_holdout_v3,high,ho_bank_tl
+synthetic,spam,"Paalala mula sa Metrobank: may kahina-hinalang transaksyon na ₱2,150. Kanselahin sa https://ph-acct-review.top/u",bank_phishing,tl,synthetic_holdout_v3,high,ho_bank_tl
+synthetic,spam,"Paalala mula sa UnionBank: may kahina-hinalang transaksyon na ₱15,600. Kanselahin sa https://ph-acct-review.top/u",bank_phishing,tl,synthetic_holdout_v3,high,ho_bank_tl
+synthetic,spam,"Paalala mula sa Metrobank: may kahina-hinalang transaksyon na ₱1,099. Kanselahin sa https://ph-acct-review.top/u",bank_phishing,tl,synthetic_holdout_v3,high,ho_bank_tl
+synthetic,spam,PNB: Hindi na magagamit ang card mo simula Friday. I-activate muli sa https://claims-portal.site/a,bank_phishing,tl,synthetic_holdout_v3,high,ho_bank_tl
+synthetic,spam,Metrobank: Hindi na magagamit ang card mo simula after lunch. I-activate muli sa https://ph-acct-review.top/u,bank_phishing,tl,synthetic_holdout_v3,high,ho_bank_tl
+synthetic,spam,PNB: Hindi na magagamit ang card mo simula 5PM. I-activate muli sa http://rebrand.ly/refund-ph,bank_phishing,tl,synthetic_holdout_v3,high,ho_bank_tl
+synthetic,spam,RCBC: Hindi na magagamit ang card mo simula 5PM. I-activate muli sa http://rebrand.ly/refund-ph,bank_phishing,tl,synthetic_holdout_v3,high,ho_bank_tl
+synthetic,spam,"ShopeePay: A refund of ₱15,600 is waiting for you. Claim before 9:15 AM via https://claims-portal.site/a",ewallet_phishing,en,synthetic_holdout_v3,high,ho_wallet_refund
+synthetic,spam,"ShopeePay: A refund of ₱2,150 is waiting for you. Claim before 5PM via http://rebrand.ly/refund-ph",ewallet_phishing,en,synthetic_holdout_v3,high,ho_wallet_refund
+synthetic,spam,"Coins.ph: A refund of ₱1,099 is waiting for you. Claim before 5PM via https://ph-acct-review.top/u",ewallet_phishing,en,synthetic_holdout_v3,high,ho_wallet_refund
+synthetic,spam,"ShopeePay: A refund of ₱2,150 is waiting for you. Claim before 9:15 AM via http://rebrand.ly/refund-ph",ewallet_phishing,en,synthetic_holdout_v3,high,ho_wallet_refund
+synthetic,spam,GrabPay security: your account will be frozen. Re-verify your selfie at http://rebrand.ly/refund-ph,ewallet_phishing,en,synthetic_holdout_v3,high,ho_wallet_refund
+synthetic,spam,Coins.ph security: your account will be frozen. Re-verify your selfie at https://claims-portal.site/a,ewallet_phishing,en,synthetic_holdout_v3,high,ho_wallet_refund
+synthetic,spam,ShopeePay security: your account will be frozen. Re-verify your selfie at https://claims-portal.site/a,ewallet_phishing,en,synthetic_holdout_v3,high,ho_wallet_refund
+synthetic,spam,GrabPay security: your account will be frozen. Re-verify your selfie at https://ph-acct-review.top/u,ewallet_phishing,en,synthetic_holdout_v3,high,ho_wallet_refund
+synthetic,spam,"You have a pending Coins.ph cashback of ₱2,150. Confirm receipt here: https://claims-portal.site/a",ewallet_phishing,en,synthetic_holdout_v3,high,ho_wallet_refund
+synthetic,spam,"You have a pending Coins.ph cashback of ₱2,150. Confirm receipt here: https://ph-acct-review.top/u",ewallet_phishing,en,synthetic_holdout_v3,high,ho_wallet_refund
+synthetic,spam,"You have a pending ShopeePay cashback of ₱7,800. Confirm receipt here: http://rebrand.ly/refund-ph",ewallet_phishing,en,synthetic_holdout_v3,high,ho_wallet_refund
+synthetic,spam,"You have a pending GrabPay cashback of ₱1,099. Confirm receipt here: https://claims-portal.site/a",ewallet_phishing,en,synthetic_holdout_v3,high,ho_wallet_refund
+synthetic,spam,XDE Logistics: Hindi na-deliver ang package mo. Mag-schedule ng redelivery at bayaran ang ₱430 sa https://claims-portal.site/a,parcel_scam,taglish,synthetic_holdout_v3,high,ho_parcel_redelivery
+synthetic,spam,2GO: Hindi na-deliver ang package mo. Mag-schedule ng redelivery at bayaran ang ₱430 sa http://rebrand.ly/refund-ph,parcel_scam,taglish,synthetic_holdout_v3,high,ho_parcel_redelivery
+synthetic,spam,"2GO: Hindi na-deliver ang package mo. Mag-schedule ng redelivery at bayaran ang ₱2,150 sa https://ph-acct-review.top/u",parcel_scam,taglish,synthetic_holdout_v3,high,ho_parcel_redelivery
+synthetic,spam,"Flash Express: Hindi na-deliver ang package mo. Mag-schedule ng redelivery at bayaran ang ₱1,099 sa https://claims-portal.site/a",parcel_scam,taglish,synthetic_holdout_v3,high,ho_parcel_redelivery
+synthetic,spam,"May naka-pending kang parcel sa 2GO warehouse. Kailangan bayaran ang storage fee na ₱2,150: https://claims-portal.site/a",parcel_scam,taglish,synthetic_holdout_v3,high,ho_parcel_redelivery
+synthetic,spam,"May naka-pending kang parcel sa XDE Logistics warehouse. Kailangan bayaran ang storage fee na ₱2,150: http://rebrand.ly/refund-ph",parcel_scam,taglish,synthetic_holdout_v3,high,ho_parcel_redelivery
+synthetic,spam,May naka-pending kang parcel sa XDE Logistics warehouse. Kailangan bayaran ang storage fee na ₱430: http://rebrand.ly/refund-ph,parcel_scam,taglish,synthetic_holdout_v3,high,ho_parcel_redelivery
+synthetic,spam,"May naka-pending kang parcel sa 2GO warehouse. Kailangan bayaran ang storage fee na ₱15,600: https://claims-portal.site/a",parcel_scam,taglish,synthetic_holdout_v3,high,ho_parcel_redelivery
+synthetic,spam,"Good day! Zalora is hiring order boosters. Earn ₱7,800 per task, paid daily. Chat 09618889900 on Telegram.",job_scam,en,synthetic_holdout_v3,high,ho_job_task
+synthetic,spam,"Good day! Zalora is hiring order boosters. Earn ₱1,099 per task, paid daily. Chat 09618889900 on Telegram.",job_scam,en,synthetic_holdout_v3,high,ho_job_task
+synthetic,spam,"Good day! Zalora is hiring order boosters. Earn ₱430 per task, paid daily. Chat 09618889900 on Telegram.",job_scam,en,synthetic_holdout_v3,high,ho_job_task
+synthetic,spam,"Good day! Zalora is hiring order boosters. Earn ₱430 per task, paid daily. Chat 09056667788 on Telegram.",job_scam,en,synthetic_holdout_v3,high,ho_job_task
+synthetic,spam,"Remote job offer: rate hotels online, ₱450,000 per week. Reply YES and add 09618889900 on WhatsApp.",job_scam,en,synthetic_holdout_v3,high,ho_job_task
+synthetic,spam,"Remote job offer: rate hotels online, ₱450,000 per week. Reply YES and add 09453332211 on WhatsApp.",job_scam,en,synthetic_holdout_v3,high,ho_job_task
+synthetic,spam,"Remote job offer: rate hotels online, ₱38,500 per week. Reply YES and add 09453332211 on WhatsApp.",job_scam,en,synthetic_holdout_v3,high,ho_job_task
+synthetic,spam,"Remote job offer: rate hotels online, ₱80,000 per week. Reply YES and add 09056667788 on WhatsApp.",job_scam,en,synthetic_holdout_v3,high,ho_job_task
+synthetic,spam,"Hi Lolo Ben, your resume was shortlisted. Daily salary ₱15,600, no interview. Contact HR at 09618889900",job_scam,en,synthetic_holdout_v3,high,ho_job_task
+synthetic,spam,"Hi Lolo Ben, your resume was shortlisted. Daily salary ₱430, no interview. Contact HR at 09618889900",job_scam,en,synthetic_holdout_v3,high,ho_job_task
+synthetic,spam,"Hi Carlo, your resume was shortlisted. Daily salary ₱1,099, no interview. Contact HR at 09056667788",job_scam,en,synthetic_holdout_v3,high,ho_job_task
+synthetic,spam,"Hi Lolo Ben, your resume was shortlisted. Daily salary ₱15,600, no interview. Contact HR at 09453332211",job_scam,en,synthetic_holdout_v3,high,ho_job_task
+synthetic,spam,"FINAL DEMAND: overdue ang loan mo. Kung hindi magbabayad ng ₱7,800 ngayong 9:15 AM, ipapakalat namin sa contacts mo.",loan_scam,taglish,synthetic_holdout_v3,high,ho_loan_harass
+synthetic,spam,"FINAL DEMAND: overdue ang loan mo. Kung hindi magbabayad ng ₱15,600 ngayong 9:15 AM, ipapakalat namin sa contacts mo.",loan_scam,taglish,synthetic_holdout_v3,high,ho_loan_harass
+synthetic,spam,"FINAL DEMAND: overdue ang loan mo. Kung hindi magbabayad ng ₱1,099 ngayong 5PM, ipapakalat namin sa contacts mo.",loan_scam,taglish,synthetic_holdout_v3,high,ho_loan_harass
+synthetic,spam,"FINAL DEMAND: overdue ang loan mo. Kung hindi magbabayad ng ₱1,099 ngayong after lunch, ipapakalat namin sa contacts mo.",loan_scam,taglish,synthetic_holdout_v3,high,ho_loan_harass
+synthetic,spam,"Pre-approved ka sa ₱38,500 cash loan! Mag-send lang ng ₱1,099 insurance fee sa 09056667788.",loan_scam,taglish,synthetic_holdout_v3,high,ho_loan_harass
+synthetic,spam,"Pre-approved ka sa ₱1,000,000 cash loan! Mag-send lang ng ₱7,800 insurance fee sa 09453332211.",loan_scam,taglish,synthetic_holdout_v3,high,ho_loan_harass
+synthetic,spam,"Pre-approved ka sa ₱38,500 cash loan! Mag-send lang ng ₱2,150 insurance fee sa 09056667788.",loan_scam,taglish,synthetic_holdout_v3,high,ho_loan_harass
+synthetic,spam,"Pre-approved ka sa ₱450,000 cash loan! Mag-send lang ng ₱1,099 insurance fee sa 09056667788.",loan_scam,taglish,synthetic_holdout_v3,high,ho_loan_harass
+synthetic,spam,"Zalora 10.10 grand draw: your number won ₱38,500! Present this code to agent 09453332211 to claim.",prize_scam,en,synthetic_holdout_v3,high,ho_promo_winner
+synthetic,spam,"Zalora 10.10 grand draw: your number won ₱80,000! Present this code to agent 09618889900 to claim.",prize_scam,en,synthetic_holdout_v3,high,ho_promo_winner
+synthetic,spam,"TikTok Shop 10.10 grand draw: your number won ₱450,000! Present this code to agent 09056667788 to claim.",prize_scam,en,synthetic_holdout_v3,high,ho_promo_winner
+synthetic,spam,"Zalora 10.10 grand draw: your number won ₱450,000! Present this code to agent 09453332211 to claim.",prize_scam,en,synthetic_holdout_v3,high,ho_promo_winner
+synthetic,spam,"Congratulations Ate Joy! You were chosen to receive a brand new phone from TikTok Shop. Pay ₱2,150 shipping at https://ph-acct-review.top/u",prize_scam,en,synthetic_holdout_v3,high,ho_promo_winner
+synthetic,spam,"Congratulations Ate Joy! You were chosen to receive a brand new phone from TikTok Shop. Pay ₱7,800 shipping at http://rebrand.ly/refund-ph",prize_scam,en,synthetic_holdout_v3,high,ho_promo_winner
+synthetic,spam,"Congratulations Ate Joy! You were chosen to receive a brand new phone from Zalora. Pay ₱7,800 shipping at https://claims-portal.site/a",prize_scam,en,synthetic_holdout_v3,high,ho_promo_winner
+synthetic,spam,"Congratulations Carlo! You were chosen to receive a brand new phone from Zalora. Pay ₱1,099 shipping at http://rebrand.ly/refund-ph",prize_scam,en,synthetic_holdout_v3,high,ho_promo_winner
+synthetic,spam,"DSWD AYUDA: Kwalipikado ka sa ₱80,000 financial assistance. Mag-fill up sa https://ph-acct-review.top/u bago after lunch.",government_impersonation,taglish,synthetic_holdout_v3,high,ho_ayuda
+synthetic,spam,"DSWD AYUDA: Kwalipikado ka sa ₱450,000 financial assistance. Mag-fill up sa http://rebrand.ly/refund-ph bago 9:15 AM.",government_impersonation,taglish,synthetic_holdout_v3,high,ho_ayuda
+synthetic,spam,"DSWD AYUDA: Kwalipikado ka sa ₱80,000 financial assistance. Mag-fill up sa http://rebrand.ly/refund-ph bago 9:15 AM.",government_impersonation,taglish,synthetic_holdout_v3,high,ho_ayuda
+synthetic,spam,"DSWD AYUDA: Kwalipikado ka sa ₱1,000,000 financial assistance. Mag-fill up sa http://rebrand.ly/refund-ph bago after lunch.",government_impersonation,taglish,synthetic_holdout_v3,high,ho_ayuda
+synthetic,spam,PhilHealth: May refund ka na ₱430. I-claim gamit ang link na ito: http://rebrand.ly/refund-ph,government_impersonation,taglish,synthetic_holdout_v3,high,ho_ayuda
+synthetic,spam,PhilHealth: May refund ka na ₱430. I-claim gamit ang link na ito: https://ph-acct-review.top/u,government_impersonation,taglish,synthetic_holdout_v3,high,ho_ayuda
+synthetic,spam,"PhilHealth: May refund ka na ₱1,099. I-claim gamit ang link na ito: https://ph-acct-review.top/u",government_impersonation,taglish,synthetic_holdout_v3,high,ho_ayuda
+synthetic,spam,"PhilHealth: May refund ka na ₱1,099. I-claim gamit ang link na ito: https://claims-portal.site/a",government_impersonation,taglish,synthetic_holdout_v3,high,ho_ayuda
+synthetic,spam,"SSS: Na-approve ang calamity benefit mo na ₱450,000. I-verify ang account sa http://rebrand.ly/refund-ph",government_impersonation,taglish,synthetic_holdout_v3,high,ho_ayuda
+synthetic,spam,"SSS: Na-approve ang calamity benefit mo na ₱1,000,000. I-verify ang account sa https://ph-acct-review.top/u",government_impersonation,taglish,synthetic_holdout_v3,high,ho_ayuda
+synthetic,spam,"SSS: Na-approve ang calamity benefit mo na ₱1,000,000. I-verify ang account sa https://claims-portal.site/a",government_impersonation,taglish,synthetic_holdout_v3,high,ho_ayuda
+synthetic,spam,"SSS: Na-approve ang calamity benefit mo na ₱80,000. I-verify ang account sa https://ph-acct-review.top/u",government_impersonation,taglish,synthetic_holdout_v3,high,ho_ayuda
+synthetic,spam,"LTO: You have an unpaid traffic violation of ₱2,150. Settle today at https://ph-acct-review.top/u to avoid license suspension.",government_impersonation,en,synthetic_holdout_v3,high,ho_traffic_fine
+synthetic,spam,"LTO: You have an unpaid traffic violation of ₱1,099. Settle today at http://rebrand.ly/refund-ph to avoid license suspension.",government_impersonation,en,synthetic_holdout_v3,high,ho_traffic_fine
+synthetic,spam,"LTO: You have an unpaid traffic violation of ₱2,150. Settle today at https://claims-portal.site/a to avoid license suspension.",government_impersonation,en,synthetic_holdout_v3,high,ho_traffic_fine
+synthetic,spam,"LTO: You have an unpaid traffic violation of ₱7,800. Settle today at https://claims-portal.site/a to avoid license suspension.",government_impersonation,en,synthetic_holdout_v3,high,ho_traffic_fine
+synthetic,spam,"BIR notice: tax penalty of ₱1,099 detected on your TIN. Pay now: https://claims-portal.site/a",government_impersonation,en,synthetic_holdout_v3,high,ho_traffic_fine
+synthetic,spam,BIR notice: tax penalty of ₱430 detected on your TIN. Pay now: https://ph-acct-review.top/u,government_impersonation,en,synthetic_holdout_v3,high,ho_traffic_fine
+synthetic,spam,"BIR notice: tax penalty of ₱1,099 detected on your TIN. Pay now: http://rebrand.ly/refund-ph",government_impersonation,en,synthetic_holdout_v3,high,ho_traffic_fine
+synthetic,spam,"BIR notice: tax penalty of ₱2,150 detected on your TIN. Pay now: https://ph-acct-review.top/u",government_impersonation,en,synthetic_holdout_v3,high,ho_traffic_fine
+synthetic,spam,"Hi po, si Lolo Ben ito. Na-send ko sa number mo yung code ko by mistake. Pakibalik yung 6 digits?",otp_theft,taglish,synthetic_holdout_v3,high,ho_wrong_otp
+synthetic,spam,"Hi po, si Nonoy ito. Na-send ko sa number mo yung code ko by mistake. Pakibalik yung 6 digits?",otp_theft,taglish,synthetic_holdout_v3,high,ho_wrong_otp
+synthetic,spam,"Hi po, si Bea ito. Na-send ko sa number mo yung code ko by mistake. Pakibalik yung 6 digits?",otp_theft,taglish,synthetic_holdout_v3,high,ho_wrong_otp
+synthetic,spam,"Hi po, si Carlo ito. Na-send ko sa number mo yung code ko by mistake. Pakibalik yung 6 digits?",otp_theft,taglish,synthetic_holdout_v3,high,ho_wrong_otp
+synthetic,spam,"Ate/Kuya, ShopeePay agent po ito. Pakibigay ang OTP para ma-reverse ang maling transfer na ₱1,099.",otp_theft,taglish,synthetic_holdout_v3,high,ho_wrong_otp
+synthetic,spam,"Ate/Kuya, ShopeePay agent po ito. Pakibigay ang OTP para ma-reverse ang maling transfer na ₱15,600.",otp_theft,taglish,synthetic_holdout_v3,high,ho_wrong_otp
+synthetic,spam,"Ate/Kuya, GrabPay agent po ito. Pakibigay ang OTP para ma-reverse ang maling transfer na ₱7,800.",otp_theft,taglish,synthetic_holdout_v3,high,ho_wrong_otp
+synthetic,spam,"Ate/Kuya, Coins.ph agent po ito. Pakibigay ang OTP para ma-reverse ang maling transfer na ₱15,600.",otp_theft,taglish,synthetic_holdout_v3,high,ho_wrong_otp
+synthetic,spam,"Sali na sa online paluwagan! Maglagay ng ₱430, balik ₱1,000,000 after 15 days. Message 09056667788",investment_scam,taglish,synthetic_holdout_v3,high,ho_paluwagan
+synthetic,spam,"Sali na sa online paluwagan! Maglagay ng ₱1,099, balik ₱450,000 after 15 days. Message 09056667788",investment_scam,taglish,synthetic_holdout_v3,high,ho_paluwagan
+synthetic,spam,"Sali na sa online paluwagan! Maglagay ng ₱7,800, balik ₱80,000 after 15 days. Message 09618889900",investment_scam,taglish,synthetic_holdout_v3,high,ho_paluwagan
+synthetic,spam,"Sali na sa online paluwagan! Maglagay ng ₱430, balik ₱1,000,000 after 15 days. Message 09453332211",investment_scam,taglish,synthetic_holdout_v3,high,ho_paluwagan
+synthetic,spam,"Kumikita na ang mga OFW sa forex signals namin, ₱1,000,000 kada buwan. Join group: http://rebrand.ly/refund-ph",investment_scam,taglish,synthetic_holdout_v3,high,ho_paluwagan
+synthetic,spam,"Kumikita na ang mga OFW sa forex signals namin, ₱450,000 kada buwan. Join group: http://rebrand.ly/refund-ph",investment_scam,taglish,synthetic_holdout_v3,high,ho_paluwagan
+synthetic,spam,"Kumikita na ang mga OFW sa forex signals namin, ₱1,000,000 kada buwan. Join group: https://ph-acct-review.top/u",investment_scam,taglish,synthetic_holdout_v3,high,ho_paluwagan
+synthetic,spam,"Kumikita na ang mga OFW sa forex signals namin, ₱38,500 kada buwan. Join group: https://ph-acct-review.top/u",investment_scam,taglish,synthetic_holdout_v3,high,ho_paluwagan
+synthetic,spam,"Hi dear, I am a US soldier on duty. I sent you a gift box but customs needs ₱1,099. Pay via GrabPay 09618889900",romance_scam,en,synthetic_holdout_v3,high,ho_romance
+synthetic,spam,"Hi dear, I am a US soldier on duty. I sent you a gift box but customs needs ₱15,600. Pay via Coins.ph 09056667788",romance_scam,en,synthetic_holdout_v3,high,ho_romance
+synthetic,spam,"Hi dear, I am a US soldier on duty. I sent you a gift box but customs needs ₱430. Pay via Coins.ph 09056667788",romance_scam,en,synthetic_holdout_v3,high,ho_romance
+synthetic,spam,"Hi dear, I am a US soldier on duty. I sent you a gift box but customs needs ₱1,099. Pay via Coins.ph 09453332211",romance_scam,en,synthetic_holdout_v3,high,ho_romance
+synthetic,spam,"Hello Ate Joy, we matched last week. I'm stuck at the airport and need ₱2,150 for my visa, can you help?",romance_scam,en,synthetic_holdout_v3,high,ho_romance
+synthetic,spam,"Hello Nonoy, we matched last week. I'm stuck at the airport and need ₱15,600 for my visa, can you help?",romance_scam,en,synthetic_holdout_v3,high,ho_romance
+synthetic,spam,"Hello Nonoy, we matched last week. I'm stuck at the airport and need ₱2,150 for my visa, can you help?",romance_scam,en,synthetic_holdout_v3,high,ho_romance
+synthetic,spam,"Hello Bea, we matched last week. I'm stuck at the airport and need ₱2,150 for my visa, can you help?",romance_scam,en,synthetic_holdout_v3,high,ho_romance
+synthetic,spam,Your SIM is due for 5G upgrade. Avoid losing service on 9:15 AM by confirming at https://claims-portal.site/a,sim_registration_scam,en,synthetic_holdout_v3,high,ho_sim_upgrade
+synthetic,spam,Your SIM is due for 5G upgrade. Avoid losing service on 5PM by confirming at https://ph-acct-review.top/u,sim_registration_scam,en,synthetic_holdout_v3,high,ho_sim_upgrade
+synthetic,spam,Your SIM is due for 5G upgrade. Avoid losing service on Friday by confirming at https://ph-acct-review.top/u,sim_registration_scam,en,synthetic_holdout_v3,high,ho_sim_upgrade
+synthetic,spam,Your SIM is due for 5G upgrade. Avoid losing service on 5PM by confirming at http://rebrand.ly/refund-ph,sim_registration_scam,en,synthetic_holdout_v3,high,ho_sim_upgrade
+synthetic,spam,NTC: Unregistered SIMs will be cut off at Friday. Re-register now: http://rebrand.ly/refund-ph,sim_registration_scam,en,synthetic_holdout_v3,high,ho_sim_upgrade
+synthetic,spam,NTC: Unregistered SIMs will be cut off at 9:15 AM. Re-register now: https://claims-portal.site/a,sim_registration_scam,en,synthetic_holdout_v3,high,ho_sim_upgrade
+synthetic,spam,NTC: Unregistered SIMs will be cut off at 5PM. Re-register now: http://rebrand.ly/refund-ph,sim_registration_scam,en,synthetic_holdout_v3,high,ho_sim_upgrade
+synthetic,spam,NTC: Unregistered SIMs will be cut off at Friday. Re-register now: https://claims-portal.site/a,sim_registration_scam,en,synthetic_holdout_v3,high,ho_sim_upgrade
+synthetic,ham,[CODE] ang OTP mo sa ShopeePay. Valid sa loob ng 5 minuto. Huwag ibigay kahit kanino.,otp,taglish,synthetic_holdout_v3,high,ho_otp_legit
+synthetic,ham,[CODE] ang OTP mo sa GrabPay. Valid sa loob ng 5 minuto. Huwag ibigay kahit kanino.,otp,taglish,synthetic_holdout_v3,high,ho_otp_legit
+synthetic,ham,[CODE] ang OTP mo sa Coins.ph. Valid sa loob ng 5 minuto. Huwag ibigay kahit kanino.,otp,taglish,synthetic_holdout_v3,high,ho_otp_legit
+synthetic,ham,RCBC: Gamitin ang [CODE] para tapusin ang transfer. Hindi kailanman hihingin ng Metrobank ang code na ito.,otp,taglish,synthetic_holdout_v3,high,ho_otp_legit
+synthetic,ham,ChinaBank: Gamitin ang [CODE] para tapusin ang transfer. Hindi kailanman hihingin ng ChinaBank ang code na ito.,otp,taglish,synthetic_holdout_v3,high,ho_otp_legit
+synthetic,ham,Metrobank: Gamitin ang [CODE] para tapusin ang transfer. Hindi kailanman hihingin ng Metrobank ang code na ito.,otp,taglish,synthetic_holdout_v3,high,ho_otp_legit
+synthetic,ham,UnionBank: Gamitin ang [CODE] para tapusin ang transfer. Hindi kailanman hihingin ng Metrobank ang code na ito.,otp,taglish,synthetic_holdout_v3,high,ho_otp_legit
+synthetic,ham,"ChinaBank: Your salary credit of ₱38,500 has been posted to your account.",bank_alert,en,synthetic_holdout_v3,high,ho_bank_credit
+synthetic,ham,"UnionBank: Your salary credit of ₱80,000 has been posted to your account.",bank_alert,en,synthetic_holdout_v3,high,ho_bank_credit
+synthetic,ham,"Metrobank: Your salary credit of ₱80,000 has been posted to your account.",bank_alert,en,synthetic_holdout_v3,high,ho_bank_credit
+synthetic,ham,"RCBC: Your salary credit of ₱80,000 has been posted to your account.",bank_alert,en,synthetic_holdout_v3,high,ho_bank_credit
+synthetic,ham,Security Bank: Bills payment of ₱430 to Meralco was successful. Ref no. 88213.,bank_alert,en,synthetic_holdout_v3,high,ho_bank_credit
+synthetic,ham,"Metrobank: Bills payment of ₱1,099 to Meralco was successful. Ref no. 88213.",bank_alert,en,synthetic_holdout_v3,high,ho_bank_credit
+synthetic,ham,"ChinaBank: Bills payment of ₱7,800 to Meralco was successful. Ref no. 88213.",bank_alert,en,synthetic_holdout_v3,high,ho_bank_credit
+synthetic,ham,"Metrobank: Bills payment of ₱7,800 to Meralco was successful. Ref no. 88213.",bank_alert,en,synthetic_holdout_v3,high,ho_bank_credit
+synthetic,ham,PNB: Your new card was shipped and will arrive in 5-7 banking days.,bank_alert,en,synthetic_holdout_v3,high,ho_bank_credit
+synthetic,ham,RCBC: Your new card was shipped and will arrive in 5-7 banking days.,bank_alert,en,synthetic_holdout_v3,high,ho_bank_credit
+synthetic,ham,UnionBank: Your new card was shipped and will arrive in 5-7 banking days.,bank_alert,en,synthetic_holdout_v3,high,ho_bank_credit
+synthetic,ham,Security Bank: Your new card was shipped and will arrive in 5-7 banking days.,bank_alert,en,synthetic_holdout_v3,high,ho_bank_credit
+synthetic,ham,"You have sent ₱7,800 to Carlo via GrabPay. Ref. No. 4402918.",ewallet_receipt,en,synthetic_holdout_v3,high,ho_wallet_receipt
+synthetic,ham,"You have sent ₱1,099 to Carlo via ShopeePay. Ref. No. 4402918.",ewallet_receipt,en,synthetic_holdout_v3,high,ho_wallet_receipt
+synthetic,ham,"You have sent ₱7,800 to Carlo via ShopeePay. Ref. No. 4402918.",ewallet_receipt,en,synthetic_holdout_v3,high,ho_wallet_receipt
+synthetic,ham,"You have sent ₱2,150 to Nonoy via Coins.ph. Ref. No. 4402918.",ewallet_receipt,en,synthetic_holdout_v3,high,ho_wallet_receipt
+synthetic,ham,"ShopeePay: You paid ₱7,800 to the clinic. Thank you!",ewallet_receipt,en,synthetic_holdout_v3,high,ho_wallet_receipt
+synthetic,ham,"ShopeePay: You paid ₱2,150 to the clinic. Thank you!",ewallet_receipt,en,synthetic_holdout_v3,high,ho_wallet_receipt
+synthetic,ham,"Coins.ph: You paid ₱15,600 to Robinsons Galleria. Thank you!",ewallet_receipt,en,synthetic_holdout_v3,high,ho_wallet_receipt
+synthetic,ham,Coins.ph: You paid ₱430 to Ayala Triangle. Thank you!,ewallet_receipt,en,synthetic_holdout_v3,high,ho_wallet_receipt
+synthetic,ham,"Hi po, rider ng 2GO ito. Nasa gate na po ako, pakikuha na lang ng order ninyo.",delivery,taglish,synthetic_holdout_v3,high,ho_delivery_rider
+synthetic,ham,"Hi po, rider ng XDE Logistics ito. Nasa gate na po ako, pakikuha na lang ng order ninyo.",delivery,taglish,synthetic_holdout_v3,high,ho_delivery_rider
+synthetic,ham,"Hi po, rider ng Flash Express ito. Nasa gate na po ako, pakikuha na lang ng order ninyo.",delivery,taglish,synthetic_holdout_v3,high,ho_delivery_rider
+synthetic,ham,"2GO: Darating ang parcel mo mula TikTok Shop bukas, 5PM. Salamat sa paghihintay.",delivery,taglish,synthetic_holdout_v3,high,ho_delivery_rider
+synthetic,ham,"2GO: Darating ang parcel mo mula Zalora bukas, 5PM. Salamat sa paghihintay.",delivery,taglish,synthetic_holdout_v3,high,ho_delivery_rider
+synthetic,ham,"XDE Logistics: Darating ang parcel mo mula Zalora bukas, Friday. Salamat sa paghihintay.",delivery,taglish,synthetic_holdout_v3,high,ho_delivery_rider
+synthetic,ham,"2GO: Darating ang parcel mo mula TikTok Shop bukas, after lunch. Salamat sa paghihintay.",delivery,taglish,synthetic_holdout_v3,high,ho_delivery_rider
+synthetic,ham,"Happy birthday Ate Joy! Dinner at Ayala Triangle on Friday, my treat.",personal,en,synthetic_holdout_v3,high,ho_friends
+synthetic,ham,"Happy birthday Carlo! Dinner at the clinic on 9:15 AM, my treat.",personal,en,synthetic_holdout_v3,high,ho_friends
+synthetic,ham,"Happy birthday Nonoy! Dinner at the clinic on 9:15 AM, my treat.",personal,en,synthetic_holdout_v3,high,ho_friends
+synthetic,ham,"Happy birthday Lolo Ben! Dinner at barangay hall on Friday, my treat.",personal,en,synthetic_holdout_v3,high,ho_friends
+synthetic,ham,Did you get home safe from Ayala Triangle? Text me when you can.,personal,en,synthetic_holdout_v3,high,ho_friends
+synthetic,ham,Did you get home safe from the clinic? Text me when you can.,personal,en,synthetic_holdout_v3,high,ho_friends
+synthetic,ham,Did you get home safe from Robinsons Galleria? Text me when you can.,personal,en,synthetic_holdout_v3,high,ho_friends
+synthetic,ham,Did you get home safe from barangay hall? Text me when you can.,personal,en,synthetic_holdout_v3,high,ho_friends
+synthetic,ham,"Ate Joy, I'm bringing pancit to Robinsons Galleria at after lunch. Don't be late!",personal,en,synthetic_holdout_v3,high,ho_friends
+synthetic,ham,"Bea, I'm bringing pancit to Ayala Triangle at after lunch. Don't be late!",personal,en,synthetic_holdout_v3,high,ho_friends
+synthetic,ham,"Lolo Ben, I'm bringing pancit to Ayala Triangle at after lunch. Don't be late!",personal,en,synthetic_holdout_v3,high,ho_friends
+synthetic,ham,"Bea, I'm bringing pancit to Robinsons Galleria at after lunch. Don't be late!",personal,en,synthetic_holdout_v3,high,ho_friends
+synthetic,ham,"Ate Joy, I left your umbrella at Robinsons Galleria. Pick it up anytime.",personal,en,synthetic_holdout_v3,high,ho_friends
+synthetic,ham,"Bea, I left your umbrella at Robinsons Galleria. Pick it up anytime.",personal,en,synthetic_holdout_v3,high,ho_friends
+synthetic,ham,"Nonoy, I left your umbrella at Robinsons Galleria. Pick it up anytime.",personal,en,synthetic_holdout_v3,high,ho_friends
+synthetic,ham,"Ate Joy, I left your umbrella at the clinic. Pick it up anytime.",personal,en,synthetic_holdout_v3,high,ho_friends
+synthetic,ham,"Nak, nagpadala na ako ng ₱1,099 pambayad sa tuition. Tingnan mo mamaya.",personal,tl,synthetic_holdout_v3,high,ho_family_tl
+synthetic,ham,"Nak, nagpadala na ako ng ₱430 pambayad sa tuition. Tingnan mo mamaya.",personal,tl,synthetic_holdout_v3,high,ho_family_tl
+synthetic,ham,"Nak, nagpadala na ako ng ₱15,600 pambayad sa tuition. Tingnan mo mamaya.",personal,tl,synthetic_holdout_v3,high,ho_family_tl
+synthetic,ham,"Nak, nagpadala na ako ng ₱2,150 pambayad sa tuition. Tingnan mo mamaya.",personal,tl,synthetic_holdout_v3,high,ho_family_tl
+synthetic,ham,"Lolo Ben, may handaan kina Lola sa Linggo. Sama ka ha.",personal,tl,synthetic_holdout_v3,high,ho_family_tl
+synthetic,ham,"Nonoy, may handaan kina Lola sa Linggo. Sama ka ha.",personal,tl,synthetic_holdout_v3,high,ho_family_tl
+synthetic,ham,"Bea, may handaan kina Lola sa Linggo. Sama ka ha.",personal,tl,synthetic_holdout_v3,high,ho_family_tl
+synthetic,ham,"Ate Joy, may handaan kina Lola sa Linggo. Sama ka ha.",personal,tl,synthetic_holdout_v3,high,ho_family_tl
+synthetic,ham,"Pauwi na ako mga after lunch, bili ako ng pandesal. Ilan gusto mo?",personal,tl,synthetic_holdout_v3,high,ho_family_tl
+synthetic,ham,"Pauwi na ako mga 9:15 AM, bili ako ng pandesal. Ilan gusto mo?",personal,tl,synthetic_holdout_v3,high,ho_family_tl
+synthetic,ham,"Pauwi na ako mga Friday, bili ako ng pandesal. Ilan gusto mo?",personal,tl,synthetic_holdout_v3,high,ho_family_tl
+synthetic,ham,"Pauwi na ako mga 5PM, bili ako ng pandesal. Ilan gusto mo?",personal,tl,synthetic_holdout_v3,high,ho_family_tl
+synthetic,ham,"Nonoy, nasaan ka na? Andito na kami sa Ayala Triangle.",personal,tl,synthetic_holdout_v3,high,ho_family_tl
+synthetic,ham,"Nonoy, nasaan ka na? Andito na kami sa Robinsons Galleria.",personal,tl,synthetic_holdout_v3,high,ho_family_tl
+synthetic,ham,"Carlo, nasaan ka na? Andito na kami sa the clinic.",personal,tl,synthetic_holdout_v3,high,ho_family_tl
+synthetic,ham,"Bea, nasaan ka na? Andito na kami sa Ayala Triangle.",personal,tl,synthetic_holdout_v3,high,ho_family_tl
+synthetic,ham,"Guys, extended ang deadline ng report hanggang 5PM. Paki-update ang tracker.",work,taglish,synthetic_holdout_v3,high,ho_work_taglish
+synthetic,ham,"Guys, extended ang deadline ng report hanggang after lunch. Paki-update ang tracker.",work,taglish,synthetic_holdout_v3,high,ho_work_taglish
+synthetic,ham,"Guys, extended ang deadline ng report hanggang 9:15 AM. Paki-update ang tracker.",work,taglish,synthetic_holdout_v3,high,ho_work_taglish
+synthetic,ham,"Guys, extended ang deadline ng report hanggang Friday. Paki-update ang tracker.",work,taglish,synthetic_holdout_v3,high,ho_work_taglish
+synthetic,ham,"Lolo Ben, pa-review naman ng slides bago ko i-send kay boss. Salamat!",work,taglish,synthetic_holdout_v3,high,ho_work_taglish
+synthetic,ham,"Carlo, pa-review naman ng slides bago ko i-send kay boss. Salamat!",work,taglish,synthetic_holdout_v3,high,ho_work_taglish
+synthetic,ham,"Nonoy, pa-review naman ng slides bago ko i-send kay boss. Salamat!",work,taglish,synthetic_holdout_v3,high,ho_work_taglish
+synthetic,ham,"Bea, pa-review naman ng slides bago ko i-send kay boss. Salamat!",work,taglish,synthetic_holdout_v3,high,ho_work_taglish
+synthetic,ham,Paws Clinic: Bea's vaccine booster is due on Friday. Call us to reschedule.,appointment,en,synthetic_holdout_v3,high,ho_vet_reminder
+synthetic,ham,Paws Clinic: Carlo's vaccine booster is due on 9:15 AM. Call us to reschedule.,appointment,en,synthetic_holdout_v3,high,ho_vet_reminder
+synthetic,ham,Paws Clinic: Bea's vaccine booster is due on 9:15 AM. Call us to reschedule.,appointment,en,synthetic_holdout_v3,high,ho_vet_reminder
+synthetic,ham,Paws Clinic: Lolo Ben's vaccine booster is due on 5PM. Call us to reschedule.,appointment,en,synthetic_holdout_v3,high,ho_vet_reminder
+synthetic,ham,"Your car is ready for pickup at Robinsons Galleria. Service total: ₱2,150.",appointment,en,synthetic_holdout_v3,high,ho_vet_reminder
+synthetic,ham,Your car is ready for pickup at barangay hall. Service total: ₱430.,appointment,en,synthetic_holdout_v3,high,ho_vet_reminder
+synthetic,ham,"Your car is ready for pickup at the clinic. Service total: ₱2,150.",appointment,en,synthetic_holdout_v3,high,ho_vet_reminder
+synthetic,ham,"Your car is ready for pickup at Robinsons Galleria. Service total: ₱15,600.",appointment,en,synthetic_holdout_v3,high,ho_vet_reminder
+synthetic,ham,Barangay advisory: may water interruption bukas mula 8AM hanggang Friday. Mag-ipon po ng tubig.,community,taglish,synthetic_holdout_v3,high,ho_barangay
+synthetic,ham,Barangay advisory: may water interruption bukas mula 8AM hanggang 5PM. Mag-ipon po ng tubig.,community,taglish,synthetic_holdout_v3,high,ho_barangay
+synthetic,ham,Barangay advisory: may water interruption bukas mula 8AM hanggang 9:15 AM. Mag-ipon po ng tubig.,community,taglish,synthetic_holdout_v3,high,ho_barangay
+synthetic,ham,Barangay advisory: may water interruption bukas mula 8AM hanggang after lunch. Mag-ipon po ng tubig.,community,taglish,synthetic_holdout_v3,high,ho_barangay
+synthetic,ham,Paalala: libreng bakuna sa Robinsons Galleria ngayong Sabado. Dalhin ang health card.,community,taglish,synthetic_holdout_v3,high,ho_barangay
+synthetic,ham,Paalala: libreng bakuna sa Ayala Triangle ngayong Sabado. Dalhin ang health card.,community,taglish,synthetic_holdout_v3,high,ho_barangay
+synthetic,ham,Paalala: libreng bakuna sa the clinic ngayong Sabado. Dalhin ang health card.,community,taglish,synthetic_holdout_v3,high,ho_barangay
+synthetic,ham,Paalala: libreng bakuna sa barangay hall ngayong Sabado. Dalhin ang health card.,community,taglish,synthetic_holdout_v3,high,ho_barangay
+synthetic,ham,"Meralco: Your bill for this month is ₱430, due on the 25th. View it in the official Meralco app.",legit_link,en,synthetic_holdout_v3,high,ho_utility
+synthetic,ham,"Meralco: Your bill for this month is ₱1,099, due on the 25th. View it in the official Meralco app.",legit_link,en,synthetic_holdout_v3,high,ho_utility
+synthetic,ham,"Meralco: Your bill for this month is ₱15,600, due on the 25th. View it in the official Meralco app.",legit_link,en,synthetic_holdout_v3,high,ho_utility
+synthetic,ham,"Meralco: Your bill for this month is ₱2,150, due on the 25th. View it in the official Meralco app.",legit_link,en,synthetic_holdout_v3,high,ho_utility
+synthetic,ham,Manila Water: scheduled maintenance in your area on 9:15 AM. We apologize for the inconvenience.,legit_link,en,synthetic_holdout_v3,high,ho_utility
+synthetic,ham,Manila Water: scheduled maintenance in your area on 5PM. We apologize for the inconvenience.,legit_link,en,synthetic_holdout_v3,high,ho_utility
+synthetic,ham,Manila Water: scheduled maintenance in your area on after lunch. We apologize for the inconvenience.,legit_link,en,synthetic_holdout_v3,high,ho_utility
+synthetic,ham,Manila Water: scheduled maintenance in your area on Friday. We apologize for the inconvenience.,legit_link,en,synthetic_holdout_v3,high,ho_utility
