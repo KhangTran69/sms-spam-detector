@@ -296,3 +296,19 @@ only selected labels and model metadata to the local queue. See
 - 413 → body over 1 MB; batch over limits → 422 with field details.
 - Unexpected verdicts → check `/model-info` version/threshold first, then review
   false positives per [RETRAINING.md](RETRAINING.md) monitoring guidance.
+
+## Appendix: optional anonymous correction reports
+
+The web form appears only when the operator opts in:
+
+```bash
+SMSD_FEEDBACK_ENABLED=true uvicorn api.main:app --host 127.0.0.1 --port 8000
+```
+
+A submitted report stores the chosen correction, broad category, timestamp, and model version in `data/feedback/reports.jsonl`. It never sends or stores the SMS text, sender details, or IP address. Reports are unverified review signals; they are never automatically added to training. The queue is local, ignored by Git, and capped at 10 MiB. For Docker Compose, set `SMSD_FEEDBACK_ENABLED=true`; reports persist in the named `smsd_feedback` Docker volume. Do not expose this anonymous endpoint publicly without authentication or deployment-level abuse controls and a retention policy.
+
+Summarize an enabled local queue without exporting report IDs or timestamps:
+
+```bash
+python -m src.feedback --path data/feedback/reports.jsonl --output data/processed/feedback-summary.json
+```
