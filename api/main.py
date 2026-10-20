@@ -547,3 +547,17 @@ if WEB_DIR.is_dir():
     def index():
         """Serve the bundled single-page UI."""
         return FileResponse(WEB_DIR / "index.html")
+
+    @app.get("/manifest.webmanifest", include_in_schema=False)
+    def webmanifest():
+        """PWA manifest (installable app shell)."""
+        return FileResponse(WEB_DIR / "manifest.webmanifest", media_type="application/manifest+json")
+
+    @app.get("/sw.js", include_in_schema=False)
+    def service_worker():
+        """Service worker for the offline static shell (never caches message data)."""
+        return FileResponse(
+            WEB_DIR / "sw.js",
+            media_type="text/javascript",
+            headers={"Service-Worker-Allowed": "/", "Cache-Control": "no-cache"},
+        )

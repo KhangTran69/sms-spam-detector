@@ -50,6 +50,10 @@ The bundled web UI (`web/`) can keep recent checks in the browser's
   devices.
 - **Incognito/private windows** do not persist `localStorage` beyond the session.
 
+The language and theme preferences are also stored in browser `localStorage` and contain no SMS text. The interface service worker may cache only the static app shell (HTML, CSS, JavaScript, and manifest) for offline reload. It never handles POST requests or caches `/analyze`, `/analyze/batch`, `/predict`, `/feedback`, or `/model-info`; new analysis still requires a network connection. Browser-managed service-worker and cache data can be removed by clearing this site's stored data in browser settings.
+
+**Copy summary** writes the displayed result, including the message text, to the user's clipboard only after the user clicks the button. **Download CSV** generates a file locally in the browser and includes batch message text; the file is outside the app's control after download. Users should review it before sharing and delete it when no longer needed.
+
 If the deployed UI does not show the opt-in toggle (older revision), assume
 history is being stored in the browser and clear it; see the UI's history panel.
 

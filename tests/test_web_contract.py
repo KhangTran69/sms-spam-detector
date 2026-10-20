@@ -161,7 +161,7 @@ def test_index_html_has_live_regions_meter_and_labels(html):
 def test_index_html_has_skip_link_table_semantics_and_button_types(html, css):
     assert 'class="skip-link"' in html and 'href="#main-content"' in html
     assert 'id="main-content"' in html
-    assert "<caption>" in html, "batch table needs a caption"
+    assert re.search(r"<caption\b", html), "batch table needs a caption"
     assert 'scope="col"' in html, "table headers need scope=col"
 
     buttons = re.findall(r"<button\b[^>]*>", html)
@@ -236,10 +236,9 @@ def test_index_html_has_model_status_region(html):
 
 def test_message_signals_are_described_as_text_patterns(html, js, css):
     normalized = collapse_whitespace(html)
-    assert "/static/styles.css?v=signals-no-inline-numbers-20261020" in html, (
-        "signal CSS updates must bypass stale browser caches"
-    )
-    assert "/static/app.js?v=signals-no-inline-numbers-20261020" in html
+    versioned_assets = re.findall(r"/static/(?:styles\.css|app\.js)\?v=([a-z0-9-]+)", html)
+    assert versioned_assets and len(versioned_assets) == 2, "signal CSS/JS updates must bypass stale browser caches"
+    assert versioned_assets[0] == versioned_assets[1], "CSS and JS cache-bust versions must match"
     assert 'id="signals-guidance"' in html
     assert "do not show which features influenced the model’s verdict" in normalized
     assert "can appear in legitimate messages too" in normalized
@@ -263,3 +262,168 @@ def test_styles_have_visible_focus_and_responsive_layout(css):
     assert "prefers-reduced-motion" in css
     assert "@media (max-width: 640px)" in css
     assert "--suspect" in css and "--scam" in css  # meter zones from API thresholds
+
+
+# ----------------------------- fetch correctness -----------------------------
+
+
+def test_in_flight_requests_are_aborted_not_just_ignored(js):
+    assert "AbortController" in js, "each check must run under an AbortController"
+    assert "singleAbortController" in js and "batchAbortController" in js
+    assert ".abort()" in js, "starting a new check must cancel the in-flight request"
+    assert "signal: controller.signal" in js, "the abort signal must reach fetch"
+    assert "revision !== singleRevision" in js and "revision !== batchRevision" in js
+    assert 'failure.name === "AbortError"' in js or "aborted" in js
+
+
+# ----------------------------- i18n -----------------------------
+
+
+def test_language_toggle_is_en_taglish_and_persisted(js, html):
+    assert 'id="btn-lang"' in html
+    assert "data-i18n" in html, "static strings must be translatable via data-i18n"
+    assert "data-i18n-aria-label" in html
+    assert 'data-i18n-placeholder="check.placeholder"' in html
+    assert 'data-i18n-placeholder="batch.placeholder"' in html
+    assert "LANG_KEY" in js
+    assert "localStorage.setItem(LANG_KEY, lang)" in js, "language preference must persist"
+    assert '"taglish"' in js and '"en"' in js
+    # Both dictionaries carry the core strings.
+    for key in (
+        "band.likely_scam",
+        "band.suspicious",
+        "band.looks_safe",
+        "check.run",
+        "batch.run",
+        "history.optin",
+        "footer.synthetic",
+        "signals.guidance",
+        "tips.otp",
+    ):
+        assert f'"{key}"' in js
+    assert "I18N.taglish" in js and "I18N.en" in js
+
+
+def test_i18n_dictionaries_have_identical_keys(js):
+    match = re.search(r"const I18N = \{(.*?)\n\};", js, re.DOTALL)
+    assert match, "I18N dictionary must exist"
+    dictionary_source = match.group(1)
+    blocks = re.findall(r"(en|taglish): \{(.*?)\n  \},", dictionary_source, re.DOTALL)
+    assert len(blocks) == 2, f"expected en+fil dictionaries, found {[name for name, _ in blocks]}"
+    keys = {}
+    for name, body in blocks:
+        keys[name] = set(re.findall(r'"([a-z][a-z0-9._]+)":', body))
+    assert keys["en"], "english dictionary must not be empty"
+    assert keys["en"] == keys["taglish"], (
+        f"dictionary key drift: en-only={sorted(keys['en'] - keys['taglish'])[:5]} "
+        f"taglish-only={sorted(keys['taglish'] - keys['en'])[:5]}"
+    )
+
+
+def test_signal_terminology_is_consistent_across_languages(js):
+    for signal in ("url", "phone", "money", "urgency", "brand"):
+        assert f'"signal.{signal}.label"' in js
+
+
+# ----------------------------- dark mode -----------------------------
+
+
+def test_dark_mode_variables_and_toggle(css, js, html):
+    assert 'id="btn-theme"' in html
+    assert 'data-i18n-aria-label="theme.aria"' in html
+    assert 'id="offline-banner"' in html
+    assert ':root[data-theme="dark"]' in css, "manual dark theme must define its own variables"
+    assert "prefers-color-scheme: dark" in css, "system dark preference must be honoured"
+    assert "prefers-color-scheme: light" in css or ":root:not([data-theme" in css
+    assert "color-scheme: light" in css and "color-scheme: dark" in css
+    assert "THEME_KEY" in js and "localStorage.setItem(THEME_KEY" in js, "theme choice must persist"
+    assert "readTheme" in js and "applyTheme" in js and "cycleTheme" in js
+    for state in ("auto", "light", "dark"):
+        assert f'"{state}"' in js
+    # Both themes must define the core palette variables (WCAG baseline).
+    for variable in (
+        "--bg",
+        "--card",
+        "--ink",
+        "--muted",
+        "--line",
+        "--primary",
+        "--focus",
+        "--red",
+        "--amber",
+        "--green",
+    ):
+        light_section = css.split(':root[data-theme="dark"]', 1)[0]
+        dark_section = css.split(':root[data-theme="dark"]', 1)[1]
+        assert light_section.count(variable) >= 1 and dark_section.count(variable) >= 1, variable
+
+
+# ----------------------------- sharing & export -----------------------------
+
+
+def test_copy_summary_is_client_side_only(js, html):
+    assert 'id="btn-copy-summary"' in html
+    assert "navigator.clipboard.writeText" in js
+    assert "execCommand" in js, "clipboard fallback for older browsers/insecure contexts"
+    assert 'id="copy-status"' in html
+
+
+def test_csv_export_escapes_and_is_client_side_only(js, html):
+    assert 'id="btn-csv"' in html
+    assert '""' in js, "CSV cells must escape double quotes"
+    assert "text/csv;charset=utf-8" in js
+    assert "\\uFEFF" in js, "CSV needs a BOM so Excel reads UTF-8 peso signs correctly"
+    assert "URL.createObjectURL" in js and "revokeObjectURL" in js
+    assert "XMLHttpRequest" not in js and "fetch(" in js  # no upload anywhere
+
+
+# ----------------------------- loading & empty states -----------------------------
+
+
+def test_batch_shows_progress_and_skeleton(js, html, css):
+    assert 'id="batch-progress"' in html
+    assert 'aria-live="polite"' in html.split('id="batch-progress"')[1][:200]
+    assert "showBatchProgress" in js
+    assert "updateBatchProgress" in js and "chunkSize = 10" in js
+    assert '"skeleton"' in js
+    assert ".skeleton" in css and "skeleton-shimmer" in css
+
+
+def test_model_info_failure_is_surfaced(js):
+    assert "model.fallbackSuffix" in js or "fallback thresholds" in js
+    assert "showOfflineBanner" in js
+
+
+# ----------------------------- offline / PWA -----------------------------
+
+
+def test_offline_banner_exists_and_is_wired(js, html):
+    assert 'id="offline-banner"' in html
+    assert 'role="alert"' in html.split('id="offline-banner"')[1][:300]
+    assert "initOfflineDetection" in js
+    assert 'addEventListener("offline"' in js and 'addEventListener("online"' in js
+    assert "navigator.onLine" in js
+
+
+def test_service_worker_never_caches_messages(js, html, api_source):
+    assert 'rel="manifest"' in html and "/manifest.webmanifest" in html
+    assert '"/sw.js"' in js and "serviceWorker" in js
+    # The SW must exist, only cache GETs, and never intercept analysis endpoints.
+    sw = (ROOT / "web" / "sw.js").read_text(encoding="utf-8")
+    assert 'request.method !== "GET"' in sw
+    for endpoint in ("/analyze", "/predict", "/feedback", "/model-info"):
+        assert endpoint in sw, f"service worker must explicitly exclude {endpoint}"
+    assert "caches" in sw
+    # Manifest and SW must be served by the app.
+    assert '"/manifest.webmanifest"' in api_source and '"/sw.js"' in api_source
+    manifest = (ROOT / "web" / "manifest.webmanifest").read_text(encoding="utf-8")
+    assert '"start_url": "/"' in manifest
+    assert "icons" in manifest
+
+
+def test_mobile_batch_cards_use_data_labels(css, js):
+    assert "data-label" in css, "mobile card layout labels cells via ::before content"
+    assert "messageCell.dataset.label" in js and "verdictCell.dataset.label" in js
+    assert "@media (max-width: 640px)" in css
+    assert ".batch-table thead { display: none; }" in css
+    assert "pointer: coarse" in css and "min-height: 44px" in css

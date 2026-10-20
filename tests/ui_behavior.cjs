@@ -12,6 +12,7 @@ function element(tagName = 'div') {
     classList: { add: c => classes.add(c), remove: c => classes.delete(c),
       contains: c => classes.has(c), toggle: (c, yes) => yes ? classes.add(c) : classes.delete(c) },
     setAttribute(name, value) { this.attributes[name] = String(value); },
+    getAttribute(name) { return Object.prototype.hasOwnProperty.call(this.attributes, name) ? this.attributes[name] : null; },
     removeAttribute(name) { delete this.attributes[name]; }, focus() {},
     append(...nodes) { ownText = ''; this.childNodes.push(...nodes); },
     replaceChildren(...nodes) { ownText = ''; this.childNodes = nodes; } };
@@ -22,9 +23,33 @@ const exampleChips = ['scam', 'safe'].map(kind => {
   chip.dataset.example = kind;
   return chip;
 });
-const context = vm.createContext({ console, window: { matchMedia: () => ({matches: false}) },
+const tabs = ['check', 'batch', 'history'].map(name => {
+  const tab = element('button');
+  tab.dataset.tab = name;
+  return tab;
+});
+const panels = ['check', 'batch', 'history'].map(name => {
+  const panel = element('section');
+  panel.id = `panel-${name}`;
+  return panel;
+});
+const busyCheckButton = element('button');
+busyCheckButton.id = 'btn-check';
+busyCheckButton.dataset.idleLabel = 'Check message';
+busyCheckButton.dataset.i18n = 'check.run';
+busyCheckButton.setAttribute('aria-busy', 'true');
+const context = vm.createContext({ console, AbortController, tabs, panels, busyCheckButton,
+  localStorage: { getItem: () => null, setItem() {}, removeItem() {} }, window: { matchMedia: () => ({matches: false}) },
   document: { getElementById(id) { if (!elements.has(id)) elements.set(id, element()); return elements.get(id); },
-    querySelectorAll(selector) { return selector === '.example-chip' ? exampleChips : []; },
+    querySelectorAll(selector) {
+      if (selector === '.example-chip') return exampleChips;
+      if (selector === '[role="tab"]') return tabs;
+      if (selector === '.panel') return panels;
+      if (selector === 'button[data-idle-label]') return [busyCheckButton];
+      if (selector === '[data-i18n]') return [busyCheckButton];
+      return [];
+    },
+    documentElement: element('html'),
     addEventListener() {}, createElement: tagName => element(tagName), createTextNode: text => ({ textContent: text }) } });
 vm.runInContext(fs.readFileSync(path.join(__dirname, '../web/app.js'), 'utf8'), context);
 vm.runInContext(`
@@ -40,6 +65,11 @@ const run = code => vm.runInContext(code, context);
   run('pending.shift().resolve({message: "old"})');
   await run('oldRequest');
   assert.equal(run('rendered.length'), 0, 'cleared request must not restore results');
+  run(`$("message-input").value = "tab stale"; var tabPending = runCheck(); selectTab(tabs[1]);`);
+  assert.equal(run('$("btn-check").disabled'), false, 'leaving the single tab releases its busy state');
+  run('pending.shift().resolve({message: "tab stale"})');
+  await run('tabPending');
+  assert.equal(run('rendered.length'), 0, 'a response from a tab left mid-request must be discarded');
   run('$("message-input").value = "new"; var first = runCheck(); var second = runCheck();');
   run('pending.shift().reject(new Error("stale error"))');
   await run('first');
@@ -47,12 +77,23 @@ const run = code => vm.runInContext(code, context);
   run('pending.shift().resolve({message: "new"})');
   await run('second');
   assert.equal(run('rendered.join()'), 'new');
+  run('selectTab(tabs[1])');
+  assert.equal(run('rendered.join()'), 'new', 'leaving a completed request must preserve its result');
   run('$("batch-input").value = "old batch"; var batch = runBatch(); invalidateBatch(); pending.shift().resolve({results:[{message:"old batch"}]});');
   await run('batch');
   assert.equal(run('rendered.join()'), 'new', 'edited batch must discard old results');
   run('$("batch-input").value = Array(21).fill("x".repeat(10000)).join("\\n"); var oversizedBatch = runBatch();');
   await run('oversizedBatch');
   assert.equal(run('pending.length'), 0, 'oversized batches must not be sent');
+  run('$("batch-input").value = Array(11).fill("sample").join("\\n"); var progressBatch = runBatch();');
+  assert.match(run('$("batch-progress").textContent'), /0 of 11/);
+  run('pending.shift().resolve({results:Array(10).fill({message:"sample"})})');
+  await Promise.resolve();
+  assert.equal(run('pending.length'), 1, 'the next chunk starts only after the first completes');
+  assert.match(run('$("batch-progress").textContent'), /10 of 11/);
+  run('pending.shift().resolve({results:[{message:"sample"}]})');
+  await run('progressBatch');
+  assert.match(run('$("batch-progress").textContent'), /11 of 11/);
   run('renderHighlighted({message:"😀 BDO now", matches:[{type:"brand",start:2,end:5}]})');
   assert.equal(run('$("highlighted").childNodes[1].tagName'), 'mark');
   assert.equal(run('$("highlighted").childNodes[1].childNodes[0].textContent'), 'BDO');
@@ -89,11 +130,18 @@ const run = code => vm.runInContext(code, context);
   exampleChips[0].listeners.click();
   assert.notEqual(run('$("message-input").value'), firstScamExample,
     'repeated scam clicks should load a different example');
-  assert.match(run('$("example-status").textContent'), /scam example 2 of 6/);
+  assert.match(run('$("example-status").textContent'), /example 2 of 6/);
   exampleChips[1].listeners.click();
-  assert.match(run('$("example-status").textContent'), /safe example 1 of 6/);
+  assert.match(run('$("example-status").textContent'), /example 1 of 6/);
   assert.equal(run('demoChecks'), 3, 'each example click should trigger analysis');
   run('invalidateSingle()');
   assert.equal(run('$("highlighted").childNodes.length'), 0, 'editing invalidates stale highlights');
   assert.equal(run('$("signals").childNodes.length'), 0, 'editing clears stale signal details');
+  run(`$("history-status").textContent = "old language announcement";
+    $("copy-status").textContent = "Copied!"; setLanguage("taglish");`);
+  assert.equal(run('$("history-status").textContent'), '', 'language changes clear stale history announcements');
+  assert.equal(run('$("copy-status").textContent'), '', 'language changes clear stale copy status');
+  assert.equal(busyCheckButton.textContent, 'Sinusuri…', 'busy labels change language immediately');
+  run('setBusy(busyCheckButton, false, t("check.run"))');
+  assert.equal(busyCheckButton.textContent, 'I-check ang mensahe', 'busy buttons return to the translated idle label');
 })().catch(error => { console.error(error); process.exitCode = 1; });

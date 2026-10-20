@@ -51,6 +51,12 @@ uvicorn api.main:app --host 127.0.0.1 --port 8000
 
 Open `http://127.0.0.1:8000/`. Interactive API docs are at `/docs`.
 
+### Web UI
+
+The bundled interface is plain HTML, CSS, and JavaScript; it has no build step. It supports single-message checks, batches of up to 50 messages, and opt-in browser-local history. The header controls switch between English and Taglish and cycle through automatic, light, and dark themes; those preferences are saved in this browser. Leaving a view cancels its pending check, and editing an input clears the prior result. Batch checks are sent in groups of ten so the progress message can report completed messages; final results appear after all groups finish.
+
+Use **Copy summary** to copy the current result to the clipboard. Batch **Download CSV** creates a file in the browser and includes the submitted message text alongside its result, so store or share that file carefully. The optional service worker caches only the static interface shell for offline reload. It does not cache API responses, messages, or history; analysis still needs a network connection. See [docs/PRIVACY.md](docs/PRIVACY.md) for browser storage and deletion details.
+
 - `GET /health` and `GET /ready` provide liveness/readiness.
 - `GET /model-info` returns model version, thresholds, provenance, and data caveats.
 - `POST /predict` returns the label, score, calibration status, flags, threshold, and model version.
