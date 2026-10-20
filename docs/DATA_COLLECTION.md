@@ -4,12 +4,8 @@ This document defines how SMS data may enter the project. It applies to the
 synthetic files currently in `data/raw/` and, more importantly, to any real
 Philippine messages added later.
 
-> **Status:** the ignored `spam.csv` base file has unverified source/license
-> metadata; it appears to use the common English SMS Spam Collection layout.
-> The repository also includes **synthetic** Philippine template files. No representative
-> real Philippine traffic has been collected or evaluated. The
-> synthetic files exist to test the pipeline, not to estimate real-world
-> performance. See [MODEL_CARD.md](MODEL_CARD.md).
+> **Status:** no representative real Philippine messages have been collected. For scope and
+> limitations see [MODEL_CARD.md §4](MODEL_CARD.md#4-evaluation-and-the-synthetic-only-caveat).
 
 The UCI record lists the English SMS Spam Collection (5,574 historical
 messages) under CC BY 4.0. That is the supported public source for a new

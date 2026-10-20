@@ -186,3 +186,48 @@ unsolicited advertising as well as suspected fraud; it does not by itself show
 that a message is a scam or that a sender is malicious. User-facing warnings
 are decision support. Verify with the sender through independently obtained
 official contact details.
+
+## Appendix: training, evaluation, and artifact details
+
+Moved here from the top-level README so it lives in one place.
+
+The primary classifier is chosen by 5-fold group-aware cross-validated spam F1
+on the training split from class-balanced LogisticRegression (C in
+0.3/1/3/10/30) and LinearSVC (C in 0.03/0.1/0.3/1), then wrapped in sigmoid
+`CalibratedClassifierCV`. The decision threshold is 0.5 unless the
+validation-tuned threshold improves out-of-fold F1 in every fold and by at
+least 0.01 on average (`--threshold-policy cv-robust`, the default); use
+`--threshold-policy validation` to restore the old behaviour.
+
+Training validates schemas and labels, removes exact and normalized duplicates before splitting, keeps campaign/template groups together, tunes the decision threshold on validation data, and reports the final test metrics separately. The artifact contains the model, threshold, training/data provenance, and version metadata. The configured base file and five synthetic Philippine supplements are used by default when present; unknown provenance stays marked unknown.
+
+Training records per-file source metadata and label/language/category/provenance coverage in the artifact and a message-free `models/*.manifest.json` sidecar. The manifest includes input/retained row counts, duplicates, file hashes, class counts, split method/seed/fingerprint, and whether metadata was unverified. Small per-class splits are flagged so scores with limited support are not mistaken for stable estimates. See the dated [dataset inventory](DATASET_INVENTORY.md) for this workspace's audited counts and provenance limits.
+
+For real data with reliable `received_at` timestamps and campaign groups, chronological validation/test splits are available:
+
+```bash
+python -m src.train --split-by time
+```
+
+Time splits require valid dates for every row and fail if both classes cannot be represented. Use `--split-by group` for the default group-aware split. The random split option is diagnostic only and can leak related examples.
+
+Evaluation reports precision, recall, F1, false positives, sample counts, and coverage by language, category, and message length (1–70, 71–160, and 161+ Unicode code points). Wilson intervals are marginal binomial intervals; optional campaign-group bootstrap intervals resample whole group IDs and are withheld below ten groups. A group ID derived from a template is only a campaign proxy, not evidence of independent real campaigns. Reports label each split from its declared provenance and omit SMS content from errors.
+
+Use `python -m src.evaluate --stability-seeds 13 42 73 --json-out data/processed/stability.json` for repeated group-aware threshold stability checks. The final test groups are reserved first and excluded from these development-only refits; repeated validation metrics select their own thresholds and are not independent performance estimates. Preserve the seed list with the report. Synthetic diagnostics remain separate from real-world validation. Optional `--false-positive-cost` and `--false-negative-cost` training arguments must be supplied together; they configure an exploratory validation-only threshold choice and do not express an approved production policy.
+
+Scores are calibrated on training folds and the test ECE is reported, but a calibrated score is still not a probability guarantee on unseen traffic. Do not use synthetic or unknown-provenance results as a real-world accuracy claim.
+
+Run `python -m src.train --help` and `python -m src.evaluate --help` for all data, threshold, split, and output options.
+
+### Provenance and preprocessing compatibility
+
+CSV files may include `data_kind` with `synthetic`, `public`, `consented`, or `unknown` (the default); legacy `real` is accepted as consented data. This is a source declaration, not independent verification. Training records fitted-row counts by kind; `synthetic_training_data` is true when synthetic rows were used, false only when all fitted rows are declared public or consented, and null when their status is unknown. Tracked Philippine fixtures are explicitly synthetic.
+
+Feature version 2.2.0 adds selectable word, character, or combined TF-IDF
+representations; the default is now `combined`. A 2.1.0 word-only artifact is
+accepted only when its fitted pipeline confirms the unchanged word-vectorizer
+settings and input schema. Other incompatible feature contracts still require
+retraining. When `SMSD_MODEL_SHA256` is configured, the loader hashes and
+deserializes the same in-memory bytes; SHA-256 verifies byte identity only and
+does not authenticate an untrusted pickle. This change has not been shown to
+improve real-world accuracy.

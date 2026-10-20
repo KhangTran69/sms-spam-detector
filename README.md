@@ -1,201 +1,101 @@
 # Philippine SMS Spam and Scam Detector
 
-An assistive SMS classifier and web demo for Philippine English, Filipino, and Taglish. It combines TF-IDF text features with URL, phone, money, urgency, and brand signals. The project includes data validation, leakage-aware training/evaluation, a FastAPI service, a browser UI, CI, and container deployment files.
+An assistive SMS classifier, API, and web app for Philippine English, Filipino,
+and Taglish. It combines word and character TF-IDF features with URL, phone,
+money, urgency, and brand signals. The classifier is picked by cross-validation
+and calibrated, and the service is FastAPI with a no-build web UI.
 
-> **Evidence limit:** Philippine examples currently tracked here are synthetic. The public UCI SMS Spam Collection is English-heavy. This repository does not contain a representative, consented Philippine SMS dataset, so its scores are engineering checks—not evidence of real-world accuracy. Do not block, delete, report, or penalize anyone based only on a prediction.
+![Demo: checking a single message, a batch, and the Taglish dark theme](docs/images/demo.gif)
 
-The model is trained on a **spam vs. ham** label. Its spam class can include
-unsolicited promotions as well as suspected fraud; a positive result does not
-prove that a message or sender is a scam. Scores are sigmoid-calibrated on the training split (see `docs/MODEL_CARD.md`);
-calibration on English UCI data does not transfer automatically to Philippine traffic.
+> **Evidence limit:** every Philippine message in this repository is synthetic,
+> and the public UCI corpus is English. Scores below are engineering checks, not
+> real-world accuracy. The tool is assistive only: do not block, report, or
+> penalize anyone based on a prediction. Full limitations:
+> [docs/MODEL_CARD.md §4](docs/MODEL_CARD.md#4-evaluation-and-the-synthetic-only-caveat).
 
-## Setup
+## Quickstart
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -e ".[dev]"
+python -m venv .venv && source .venv/bin/activate
+pip install -r constraints/py3.12.txt -e ".[dev]"   # or py3.11 / py3.13
+
+# 1. Get the public UCI SMS Spam Collection (CC BY 4.0) and import it with attribution
+curl -LO https://archive.ics.uci.edu/static/public/228/sms+spam+collection.zip
+unzip sms+spam+collection.zip SMSSpamCollection
+python -m src.import_public_dataset --input SMSSpamCollection --format uci-tsv
+
+# 2. Train (UCI + tracked synthetic PH supplements; the synthetic PH holdout is evaluated separately)
+python -m src.train --data data/raw/imported/uci_sms_spam.csv
+
+# 3. Serve the API and web UI at http://127.0.0.1:8000 (interactive docs at /docs)
+smsd-serve            # or: uvicorn api.main:app --host 127.0.0.1 --port 8000
 ```
 
-Runtime dependencies are declared in `pyproject.toml`; the requirements files
-mirror those declarations for Docker and existing workflows. `pip install .`
-produces a working service: the web UI ships inside the `api` package, and the
-`smsd-serve` command starts it. Point it at a model with `SMSD_MODEL_PATH`, or
-place one at `./models/spam_detector_v1.pkl`. Training still needs a source
-checkout because the data files are not packaged.
+No data? `make demo` trains and smoke-tests a synthetic-only model. With Docker,
+train first, then run `docker compose up -d` (the model is mounted read-only; see
+[DEPLOYMENT.md](docs/DEPLOYMENT.md)).
 
-Reproducible pins per supported Python version live in `constraints/py3.11.txt`,
-`constraints/py3.12.txt`, and `constraints/py3.13.txt` (generated with `uv pip
-compile` for Linux; the command is in each file header). Install with
-`pip install -r constraints/py3.12.txt -e .`. The older root `constraints.txt`
-is one tester's macOS Python 3.13 `pip freeze`, kept for reference.
+## Results
 
-Python 3.11+ is required. The base SMS corpus is not committed. Use the documented UCI SMS Spam Collection import after reviewing its CC BY 4.0 terms, or provide another dataset only after independently verifying its source and usage terms. The importer writes an attributed normalized file; pass it explicitly with `python -m src.train --data data/raw/imported/uci_sms_spam.csv`. Accepted formats are Kaggle `v1`/`v2` and `label`/`message` CSVs, but schema compatibility does not establish a dataset's license or provenance.
+The data is UCI plus the tracked synthetic PH supplements, deduplicated and split
+by group. With seed 42 the internal test split has 810 messages, 131 of them spam.
+Measured on 2026-10-21 with `python -m src.train --data data/raw/imported/uci_sms_spam.csv`.
 
-The tracked Philippine supplements and holdout are synthetic templates for repeatable pipeline checks. See [data/raw/README.md](data/raw/README.md) and [docs/DATA_COLLECTION.md](docs/DATA_COLLECTION.md) before adding any real messages. Raw real messages, model artifacts, and feedback reports are excluded from Git.
+| Model | Threshold | Spam precision | Spam recall | Spam F1 | Accuracy | Calibration error (ECE) |
+|---|---|---|---|---|---|---|
+| **Current:** LinearSVC (C=1, chosen by 5-fold CV F1 0.947) + sigmoid calibration, word+char features | 0.50 | 0.945 | 0.924 | **0.934** | 0.979 | **0.014** |
+| MultinomialNB baseline (same features) | 0.50 | 0.906 | 0.809 | 0.855 | 0.956 | n/a |
+| Previous default: LogisticRegression, word features, validation-tuned threshold* | 0.63 | 0.936 | 0.800 | 0.863 | 0.955 | 0.083 |
 
-The documented public English source is the UCI SMS Spam Collection (5,574 historical messages, CC BY 4.0). The current ignored `spam.csv` has no recorded source/license metadata, so it remains `unknown` until its provenance is verified. Do not add mirrors as extra supplements: exact copies are removed and near-duplicates can distort evaluation. To normalize a separately downloaded UCI TSV while preserving attribution, run `python -m src.import_public_dataset --input /path/to/SMSSpamCollection --format uci-tsv`. The importer writes only to ignored `data/raw/` and never downloads the corpus. See [data/raw/README.md](data/raw/README.md) for limitations and attribution.
+\*Measured on the earlier data and split: 814 test messages, 145 spam.
 
-## Train and evaluate
+**Synthetic PH holdout (264 messages, 0 template families shared with training):**
+precision 0.969, recall 0.900, F1 0.933, with 4 false alarms (3 e-wallet receipts,
+1 OTP) and 14 missed scams. The holdout is synthetic, so these numbers check the
+pipeline and are not field accuracy.
 
-```bash
-python -m src.train
-python -m src.evaluate --json-out data/processed/evaluation.json
-```
+| | |
+|---|---|
+| ![Likely scam result](docs/images/02-likely-scam.png) | ![Looks safe result](docs/images/03-looks-safe.png) |
+| ![Batch check](docs/images/04-batch.png) | ![Taglish, dark theme](docs/images/05-dark-taglish.png) |
 
-To run a tracked, synthetic-only demo without the ignored base corpus, run
-`make demo`. It trains `models/demo_synthetic.pkl`, evaluates the internal
-synthetic split and tracked synthetic holdout, and smoke-tests `/analyze` with
-the candidate artifact. Generated files stay in ignored paths. These results check
-repeatability and pipeline behavior only; they are not real-world performance
-evidence. Override `DEMO_MODEL` and `DEMO_EVALUATION` to direct outputs outside
-the checkout.
+## API
 
-To compare text representations, run the same training command, data, seed,
-split, and threshold settings three times with `--text-features word`,
-`--text-features char`, and `--text-features combined`, saving each candidate
-to a different output path. Character n-grams may help with spacing and
-spelling variation, but their addition does not establish an improvement.
-Compare identical untouched test membership, report sample counts and
-confidence intervals, and keep the separate holdout out of model/threshold
-selection. The default representation is `combined` (word + character
-n-grams), promoted after it beat word-only on the UCI test split (F1 0.938 vs
-0.912 at 0.5). Synthetic evaluation is not a substitute for consented
-Philippine data.
-
-The primary classifier is chosen by 5-fold group-aware cross-validated spam F1
-on the training split from class-balanced LogisticRegression (C in
-0.3/1/3/10/30) and LinearSVC (C in 0.03/0.1/0.3/1), then wrapped in sigmoid
-`CalibratedClassifierCV`. The decision threshold is 0.5 unless the
-validation-tuned threshold improves out-of-fold F1 in every fold and by at
-least 0.01 on average (`--threshold-policy cv-robust`, the default); use
-`--threshold-policy validation` to restore the old behaviour.
-
-Training validates schemas and labels, removes exact and normalized duplicates before splitting, keeps campaign/template groups together, tunes the decision threshold on validation data, and reports the final test metrics separately. The artifact contains the model, threshold, training/data provenance, and version metadata. The configured base file and five synthetic Philippine supplements are used by default when present; unknown provenance stays marked unknown.
-
-Training records per-file source metadata and label/language/category/provenance coverage in the artifact and a message-free `models/*.manifest.json` sidecar. The manifest includes input/retained row counts, duplicates, file hashes, class counts, split method/seed/fingerprint, and whether metadata was unverified. Small per-class splits are flagged so scores with limited support are not mistaken for stable estimates. See the dated [dataset inventory](docs/DATASET_INVENTORY.md) for this workspace's audited counts and provenance limits.
-
-For real data with reliable `received_at` timestamps and campaign groups, chronological validation/test splits are available:
+| Endpoint | Purpose |
+|---|---|
+| `GET /health`, `GET /ready` | Liveness; readiness (loads and validates the model) |
+| `GET /model-info` | Version, threshold, risk bands, provenance, caveats |
+| `POST /predict` | Label, calibrated score, flags, threshold |
+| `POST /analyze`, `POST /analyze/batch` | Adds risk band and highlighted signals; batch takes up to 50 |
+| `POST /feedback` | Optional anonymous label correction, off by default; never accepts message text |
 
 ```bash
-python -m src.train --split-by time
-```
-
-Time splits require valid dates for every row and fail if both classes cannot be represented. Use `--split-by group` for the default group-aware split. The random split option is diagnostic only and can leak related examples.
-
-Evaluation reports precision, recall, F1, false positives, sample counts, and coverage by language, category, and message length (1–70, 71–160, and 161+ Unicode code points). Wilson intervals are marginal binomial intervals; optional campaign-group bootstrap intervals resample whole group IDs and are withheld below ten groups. A group ID derived from a template is only a campaign proxy, not evidence of independent real campaigns. Reports label each split from its declared provenance and omit SMS content from errors.
-
-Use `python -m src.evaluate --stability-seeds 13 42 73 --json-out data/processed/stability.json` for repeated group-aware threshold stability checks. The final test groups are reserved first and excluded from these development-only refits; repeated validation metrics select their own thresholds and are not independent performance estimates. Preserve the seed list with the report. Synthetic diagnostics remain separate from real-world validation. Optional `--false-positive-cost` and `--false-negative-cost` training arguments must be supplied together; they configure an exploratory validation-only threshold choice and do not express an approved production policy.
-
-Scores are calibrated on training folds and the test ECE is reported, but a calibrated score is still not a probability guarantee on unseen traffic. Do not use synthetic or unknown-provenance results as a real-world accuracy claim.
-
-Run `python -m src.train --help` and `python -m src.evaluate --help` for all data, threshold, split, and output options.
-
-## Run the API and web UI
-
-Train a model, then start the service:
-
-```bash
-uvicorn api.main:app --host 127.0.0.1 --port 8000
-```
-
-Open `http://127.0.0.1:8000/`. Interactive API docs are at `/docs`.
-
-### Web UI
-
-The bundled interface is plain HTML, CSS, and JavaScript; it has no build step. It supports single-message checks, batches of up to 50 messages, and opt-in browser-local history. The header controls switch between English and Taglish and toggle between light and dark themes; those preferences are saved in this browser. Leaving a view cancels its pending check, and editing an input clears the prior result. Batch checks are sent in groups of ten so the progress message can report completed messages; final results appear after all groups finish.
-
-Use **Copy summary** to copy the current result to the clipboard. Batch **Download CSV** creates a file in the browser and includes the submitted message text alongside its result, so store or share that file carefully. The optional service worker caches only the static interface shell for offline reload. It does not cache API responses, messages, or history; analysis still needs a network connection. See [docs/PRIVACY.md](docs/PRIVACY.md) for browser storage and deletion details.
-
-- `GET /health` and `GET /ready` provide liveness/readiness.
-- `GET /model-info` returns model version, thresholds, provenance, and data caveats.
-- `POST /predict` returns the label, score, calibration status, flags, threshold, and model version.
-- `POST /analyze` adds risk bands and signal highlights for the UI.
-- `POST /analyze/batch` accepts up to 50 messages.
-- `POST /feedback` accepts only a user-selected expected label, displayed label, broad category, and model version. It rejects message/text fields and is disabled by default.
-
-Example:
-
-```bash
-curl -X POST http://127.0.0.1:8000/predict \\
-  -H 'Content-Type: application/json' \\
+curl -X POST http://127.0.0.1:8000/predict -H 'Content-Type: application/json' \
   -d '{"message":"BDO: Your account is locked. Verify here: http://bit.ly/fakebdo"}'
 ```
 
-### Optional anonymous correction reports
-
-The web form appears only when the operator opts in:
+## Development
 
 ```bash
-SMSD_FEEDBACK_ENABLED=true uvicorn api.main:app --host 127.0.0.1 --port 8000
+pytest -q && ruff check . && ruff format --check . && mypy src api
 ```
 
-A submitted report stores the chosen correction, broad category, timestamp, and model version in `data/feedback/reports.jsonl`. It never sends or stores the SMS text, sender details, or IP address. Reports are unverified review signals; they are never automatically added to training. The queue is local, ignored by Git, and capped at 10 MiB. For Docker Compose, set `SMSD_FEEDBACK_ENABLED=true`; reports persist in the named `smsd_feedback` Docker volume. Do not expose this anonymous endpoint publicly without authentication or deployment-level abuse controls and a retention policy.
-
-Summarize an enabled local queue without exporting report IDs or timestamps:
-
-```bash
-python -m src.feedback --path data/feedback/reports.jsonl --output data/processed/feedback-summary.json
-```
-
-## Docker
-
-Train the model locally first, then:
-
-```bash
-docker compose build
-docker compose up -d
-curl http://127.0.0.1:8000/ready
-```
-
-The container runs as non-root, binds to loopback by default, and mounts the model read-only. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for production network, TLS, health, and rollback guidance.
-
-## Data collection and human review
-
-No real-data collection or participant study has been completed. Use the blank [consented message template](data/templates/consented_ph_sms_template.csv) only in an approved secure workspace. Obtain informed consent, redact names/numbers/OTPs/accounts before storage, have two reviewers label examples, and keep campaign, source, language, category, confidence, and date metadata. Keep a real holdout separate by campaign and time. Read [docs/HUMAN_REVIEW.md](docs/HUMAN_REVIEW.md) before organizing participant review.
-
-## Development checks
-
-```bash
-pytest -q
-ruff check .
-ruff format --check .
-mypy src api
-```
-
-GitHub Actions runs the project quality checks. `make help` lists common local commands.
+`make help` lists common commands. `python -m src.train --help` and
+`python -m src.evaluate --help` list every option.
 
 ## Documentation
 
-- [Data collection, labeling, and leakage prevention](docs/DATA_COLLECTION.md)
-- [Human review protocol](docs/HUMAN_REVIEW.md)
-- [Privacy and data handling](docs/PRIVACY.md)
-- [Model card and limitations](docs/MODEL_CARD.md)
-- [Retraining, versioning, and rollback](docs/RETRAINING.md)
-- [Deployment guide](docs/DEPLOYMENT.md)
-
-## Project layout
+[Model card and limitations](docs/MODEL_CARD.md) ·
+[Data collection and consented import](docs/DATA_COLLECTION.md) ·
+[Dataset inventory](docs/DATASET_INVENTORY.md) ·
+[Deployment](docs/DEPLOYMENT.md) · [Retraining](docs/RETRAINING.md) ·
+[Privacy](docs/PRIVACY.md) · [Human review](docs/HUMAN_REVIEW.md)
 
 ```text
-data/raw/        ignored source data plus tracked synthetic fixtures
-data/templates/  blank consented-data intake schema
-src/             validation, preprocessing, features, training, metrics, inference
-api/             FastAPI endpoints
-api/web/         bundled single-page UI (packaged with api)
-models/          ignored trained model artifacts
-docs/            data, review, model, privacy, retraining, deployment guidance
-tests/           data, model, API, preprocessing, and web-contract checks
+src/             data validation, features, model selection, training, metrics, inference
+api/             FastAPI app (main, routes, schemas) and api/web/ single-page UI
+data/raw/        tracked synthetic PH fixtures; real data and imports are git-ignored
+data/templates/  consented-collection template
+scripts/         synthetic data generation, curation, demo smoke test
+docs/            model card, data, deployment, privacy, retraining, review
 ```
-
-### Provenance and preprocessing compatibility
-
-CSV files may include `data_kind` with `synthetic`, `public`, `consented`, or `unknown` (the default); legacy `real` is accepted as consented data. This is a source declaration, not independent verification. Training records fitted-row counts by kind; `synthetic_training_data` is true when synthetic rows were used, false only when all fitted rows are declared public or consented, and null when their status is unknown. Tracked Philippine fixtures are explicitly synthetic.
-
-Feature version 2.2.0 adds selectable word, character, or combined TF-IDF
-representations; the default is now `combined`. A 2.1.0 word-only artifact is
-accepted only when its fitted pipeline confirms the unchanged word-vectorizer
-settings and input schema. Other incompatible feature contracts still require
-retraining. When `SMSD_MODEL_SHA256` is configured, the loader hashes and
-deserializes the same in-memory bytes; SHA-256 verifies byte identity only and
-does not authenticate an untrusted pickle. This change has not been shown to
-improve real-world accuracy.

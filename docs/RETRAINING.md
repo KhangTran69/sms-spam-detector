@@ -4,9 +4,8 @@ The model is only as current as its data and artifact. This runbook covers when
 to retrain, which gates a new artifact must pass, how to version and deploy it,
 what to monitor, and how to respond when something goes wrong.
 
-> Current evidence is synthetic/UCI only. Real-world performance has not been
-> measured; do not treat a green run as real-world validation. See
-> [MODEL_CARD.md](MODEL_CARD.md).
+> A green run is not real-world validation; see
+> [MODEL_CARD.md §4](MODEL_CARD.md#4-evaluation-and-the-synthetic-only-caveat).
 
 ## 1. Retraining cadence and triggers
 
