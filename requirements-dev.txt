@@ -1,4 +1,6 @@
-# Development and CI tooling. Install on top of requirements.txt:
+# Development and CI tooling mirrored in the `dev` optional dependency group
+# in pyproject.toml. Prefer `pip install -e ".[dev]"` for package installs.
+# Legacy requirements-file install remains supported:
 #   pip install -r requirements.txt -r requirements-dev.txt
 #
 # These tools are not needed to train, serve, or call the API.

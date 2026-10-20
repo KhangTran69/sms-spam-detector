@@ -1,11 +1,12 @@
-# Runtime + test dependencies for the Philippine SMS spam/scam detector.
+# Runtime dependencies mirrored in [project.dependencies] in pyproject.toml.
+# Prefer `pip install -e .` for package-aware installations.
 #
 # Bounded compatible ranges: the lower bound is the oldest release the code is
 # expected to work with, the upper bound blocks the next breaking major. This
 # project is developed and verified on Python 3.13; Python >= 3.11 is required
 # (see pyproject.toml and docs/DEPLOYMENT.md).
 #
-# Replicate the exact tester environment with:
+# Replicate the exact verified Python 3.13 environment with:
 #   pip install -r requirements.txt -c constraints.txt
 # (constraints.txt records `pip freeze` from the verified Python 3.13 venv.)
 

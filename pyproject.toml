@@ -8,9 +8,30 @@ version = "2.0.0"
 description = "TF-IDF + LogisticRegression SMS spam/scam classifier with a FastAPI service and a no-build web UI"
 readme = "README.md"
 requires-python = ">=3.11"
-# Dependencies are intentionally NOT duplicated here: requirements.txt is the
-# single maintained source of truth (bounded ranges; constraints.txt for exact
-# pins). Install the project's tooling with `pip install -r requirements.txt`.
+dependencies = [
+    "numpy>=1.24,<3",
+    "pandas>=2.0,<4",
+    "scikit-learn>=1.3,<2",
+    "joblib>=1.3,<2",
+    "fastapi>=0.100,<1",
+    "uvicorn[standard]>=0.23,<1",
+    "pydantic>=2.0,<3",
+    "matplotlib>=3.7,<4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.6,<1",
+    "mypy>=1.8,<2",
+    "pytest>=7.4,<10",
+    "httpx>=0.24,<1",
+    "pytest-cov>=4.1,<8",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["api*", "src*"]
+exclude = ["tests*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

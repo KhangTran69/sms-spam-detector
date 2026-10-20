@@ -14,11 +14,14 @@ verified on **Python 3.13**. CI runs on 3.11 and 3.12.
 python -m venv .venv
 source .venv/bin/activate           # Windows: .venv\Scripts\activate
 
-# Runtime dependencies (API, training, and evaluation)
-pip install -r requirements.txt
+# Runtime dependencies (API, training, and evaluation) in the checkout
+pip install -e .
 
 # Test and quality tools for development/CI
-pip install -r requirements-dev.txt
+pip install -e ".[dev]"
+
+# Existing requirements-file installs remain supported
+pip install -r requirements.txt -r requirements-dev.txt
 
 # Optional: replicate the exact tester environment (Python 3.13 pins)
 pip install -r requirements.txt -c constraints.txt
@@ -26,7 +29,17 @@ pip install -r requirements.txt -c constraints.txt
 
 `constraints.txt` is the tester's `pip freeze` (Python 3.13.3, macOS arm64). It
 is a reproduction aid, not a compatibility promise for other platforms; the
-bounded ranges in `requirements.txt` are the contract.
+bounded ranges in `pyproject.toml` are the package contract. Requirements files
+mirror runtime and development dependencies for Docker and existing workflows.
+The wheel currently contains Python packages, not the root data and web
+assets; run from a checkout or use Docker for a complete service deployment.
+
+For a reproducible no-corpus demo, `make demo` uses only tracked synthetic CSV
+fixtures, writes an ignored candidate at `models/demo_synthetic.pkl`, runs the
+internal split and synthetic holdout evaluation, and smoke-tests the API
+against that candidate. It does not start a server or replace the configured
+serving artifact. Do not interpret its scores as deployment performance
+evidence.
 
 ## 2. Train (artifact required before serving)
 
@@ -47,6 +60,11 @@ python -m src.evaluate              # held-out metrics, threshold sweep, synthet
   metadata + metrics), with a human-readable
   `models/spam_detector_v1.metadata.json` sidecar. `models/` is git-ignored —
   artifacts travel through a registry/volume, not Git.
+- `joblib.load()` can execute code from a malicious pickle. Load artifacts only
+  from a trusted build/release process; do not accept model uploads. Optionally
+  pin the expected model SHA-256 with `SMSD_MODEL_SHA256` (for example,
+  `shasum -a 256 models/spam_detector_v1.pkl`). The expected digest must come
+  from a trusted channel; this check is not a signature or provenance system.
 - The API resolves `SMSD_MODEL_PATH` at startup; when it is unset, code defaults
   to `models/spam_detector_v1.pkl`. Check the running instance with
   `GET /model-info` because a local file or candidate training run does not
@@ -131,11 +149,12 @@ These variables are read by the application. None is a secret.
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `SMSD_ENV` | `development` | Set to `production` to reject legacy bare-pipeline artifacts at readiness and inference. |
+| `SMSD_ENV` | `development` | Set to `production` to reject legacy bare-pipeline artifacts at readiness and inference and force anonymous feedback off. |
 | `SMSD_ALLOW_LEGACY_MODEL` | `false` | Explicit development-only override for a legacy artifact while `SMSD_ENV=production`; avoid using it for deployed traffic. |
 | `SMSD_MODEL_PATH` | `models/spam_detector_v1.pkl` (repo-relative, resolved from the project root; `/app/models/spam_detector_v1.pkl` in the container) | Path to the joblib model bundle to load. Must be readable by the runtime user; mount `models/` read-only. |
+| `SMSD_MODEL_SHA256` | unset | Optional 64-character expected SHA-256 for the exact model file, checked before deserialization. Use a trusted digest; see the pickle warning above. |
 | `SMSD_CORS_ORIGINS` | `http://127.0.0.1:8000,http://localhost:8000` | Comma-separated allowlist of browser origins. Wildcard `*` entries are ignored, and an empty/wildcard-only value falls back to the default local origins; credentials are disabled. Set your reverse-proxy origin (e.g. `https://sms.example.org`) if the UI is served from a different origin. |
-| `SMSD_FEEDBACK_ENABLED` | `false` | Enables the optional anonymous label-correction endpoint and UI. Keep disabled unless the operator has reviewed retention and abuse controls. |
+| `SMSD_FEEDBACK_ENABLED` | `false` | Enables optional anonymous label correction in non-production environments. Production mode always disables it; stale model-version reports are rejected. |
 | `SMSD_FEEDBACK_PATH` | `data/feedback/reports.jsonl` | Local JSONL queue containing selected labels, broad category, timestamp, and model version only; never SMS text. Compose stores it in the named `smsd_feedback` volume. |
 
 - There is **no** `PORT`, log-level, or threshold environment variable. Pass
@@ -143,8 +162,14 @@ These variables are read by the application. None is a secret.
   (`uvicorn api.main:app --host 0.0.0.0 --port 8000 --log-level info`). Thresholds
   come from the artifact (`GET /model-info`).
 - Request limits are constants: max message length 10,000 chars, batch 1–50
-  messages and 200,000 chars total, request body ≤ 1 MB. They are not
-  env-configurable.
+  messages and 200,000 chars total, request body ≤ 1 MB. The ASGI middleware
+  reads streamed bodies before JSON parsing and enforces the cap without
+  `Content-Length`; it keeps the capped chunks and briefly joins them before
+  dispatch, so concurrent requests can use several megabytes each. These
+  limits are not env-configurable. Set matching ingress limits and
+  request/read timeouts, concurrency limits, and rate limiting at the reverse
+  proxy or gateway before exposing the API publicly. The app does not currently
+  implement rate limiting or an operational metrics endpoint.
 - **Never put secrets in these variables or in Git.** No API keys are needed.
   TLS private keys belong in the reverse proxy's secret store, outside the
   repository and image.

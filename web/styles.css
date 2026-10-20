@@ -1,7 +1,5 @@
 /* PH SMS Scam Detector — web UI styles.
-   Theming: light values live on :root. Dark values apply either when the user
-   picks the dark theme ([data-theme="dark"]) or when the system prefers dark
-   and no explicit light choice was made. */
+   Light is the default; the theme button explicitly switches to dark. */
 :root {
   color-scheme: light;
   --bg: #f1f5f9;
@@ -60,37 +58,6 @@
   --green-ink: #86efac;
   --chip-bg: #2c3655;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.35);
-}
-
-/* Automatic dark when the system prefers it and the user has not chosen. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]):not([data-theme="dark"]) {
-    color-scheme: dark;
-    --bg: #0b1220;
-    --card: #1a2436;
-    --surface: #223047;
-    --surface-2: #1c2a40;
-    --ink: #e2e8f0;
-    --muted: #97a6bd;
-    --line: #34435e;
-    --primary: #818cf8;
-    --primary-dark: #a5b4fc;
-    --on-header-active: #dbe4ff;
-    --focus: #a5b4fc;
-    --red: #f87171;
-    --red-bg: #3f1d1d;
-    --red-ink: #fca5a5;
-    --red-line: #7f2d2d;
-    --amber: #fbbf24;
-    --amber-bg: #3a2e10;
-    --amber-ink: #fcd34d;
-    --amber-line: #7a5e1c;
-    --green: #4ade80;
-    --green-bg: #14361f;
-    --green-ink: #86efac;
-    --chip-bg: #2c3655;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.35);
-  }
 }
 
 * { box-sizing: border-box; }

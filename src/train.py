@@ -46,7 +46,7 @@ from src.data import (
 from src.data import (
     load_dataset as load_dataset_frame,
 )
-from src.features import FEATURE_VERSION, make_model
+from src.features import FEATURE_VERSION, TEXT_FEATURE_MODES, make_model
 from src.metrics import (
     binary_metrics,
     calibration_metrics,
@@ -144,6 +144,7 @@ def train(
     strict_data: bool = True,
     strict_supplement_paths: bool = False,
     model_version: str | None = None,
+    text_features: str = "word",
     write_metadata: bool = True,
     metadata_output: str | Path | None = None,
     verbose: bool = True,
@@ -177,14 +178,15 @@ def train(
         for warning in dataset.warnings:
             print(f"warning: {warning}")
 
-    baseline = make_model(MultinomialNB())
+    baseline = make_model(MultinomialNB(), text_features=text_features)
     primary = make_model(
         LogisticRegression(
             class_weight="balanced",
             max_iter=2000,
             solver="liblinear",
             random_state=random_state,
-        )
+        ),
+        text_features=text_features,
     )
     baseline.fit(_frame(train_set.messages), train_set.labels)
     primary.fit(_frame(train_set.messages), train_set.labels)
@@ -254,6 +256,7 @@ def train(
     artifact: dict[str, Any] = {
         "artifact_schema_version": ARTIFACT_SCHEMA_VERSION,
         "feature_version": FEATURE_VERSION,
+        "text_feature_mode": text_features,
         "model_version": version,
         "created_at": created_at,
         "python_version": platform.python_version(),
@@ -274,6 +277,7 @@ def train(
             "target_precision": target_precision,
             "min_recall": min_recall,
             "split_by": split_by,
+            "text_features": text_features,
             "strict_data": strict_data,
         },
         "data_sources": [record.as_dict() for record in dataset.records],
@@ -466,6 +470,12 @@ def _main(argv: list[str] | None = None) -> int:
     parser.add_argument("--no-metadata", action="store_true", help="Do not write the JSON metadata sidecar.")
     parser.add_argument("--model-version", default=None, help="Human-readable artifact version label.")
     parser.add_argument(
+        "--text-features",
+        choices=TEXT_FEATURE_MODES,
+        default="word",
+        help="TF-IDF representation to fit; use identical seed/splits to compare word, char, and combined.",
+    )
+    parser.add_argument(
         "--val-size", type=float, default=DEFAULT_VAL_SIZE, help="Validation fraction for threshold tuning."
     )
     parser.add_argument(
@@ -514,6 +524,7 @@ def _main(argv: list[str] | None = None) -> int:
             strict_data=not args.lenient_data,
             strict_supplement_paths=strict_supplement_paths,
             model_version=args.model_version,
+            text_features=args.text_features,
             write_metadata=not args.no_metadata,
             metadata_output=args.metadata_output,
         )

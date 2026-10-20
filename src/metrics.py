@@ -17,6 +17,21 @@ import numpy as np
 from sklearn.metrics import brier_score_loss, log_loss
 
 VALID_LABELS = ("ham", "spam")
+WILSON_Z_95 = 1.959963984540054
+
+
+def _wilson_interval(successes: int, trials: int, z: float = WILSON_Z_95) -> list[float] | None:
+    """Two-sided Wilson score interval for one binomial proportion."""
+    if trials <= 0:
+        return None
+    proportion = successes / trials
+    z2 = z * z
+    denominator = 1.0 + z2 / trials
+    center = (proportion + z2 / (2.0 * trials)) / denominator
+    radius = z * math.sqrt(proportion * (1.0 - proportion) / trials + z2 / (4.0 * trials**2)) / denominator
+    lower = 0.0 if successes == 0 else max(0.0, center - radius)
+    upper = 1.0 if successes == trials else min(1.0, center + radius)
+    return [lower, upper]
 
 
 def _positive_probabilities(probabilities: Iterable[float]) -> np.ndarray:
@@ -75,6 +90,12 @@ def binary_metrics(labels: Sequence[str], probabilities: Iterable[float], thresh
         "support": int(len(y)),
         "support_spam": int(np.sum(is_spam)),
         "support_ham": int(np.sum(~is_spam)),
+        "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": _wilson_interval(tp, tp + fp),
+            "recall": _wilson_interval(tp, tp + fn),
+            "false_positive_rate": _wilson_interval(fp, fp + tn),
+        },
     }
 
 

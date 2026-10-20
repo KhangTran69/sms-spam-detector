@@ -239,6 +239,9 @@ def test_message_signals_are_described_as_text_patterns(html, js, css):
     versioned_assets = re.findall(r"/static/(?:styles\.css|app\.js)\?v=([a-z0-9-]+)", html)
     assert versioned_assets and len(versioned_assets) == 2, "signal CSS/JS updates must bypass stale browser caches"
     assert versioned_assets[0] == versioned_assets[1], "CSS and JS cache-bust versions must match"
+    sw = (ROOT / "web" / "sw.js").read_text(encoding="utf-8")
+    sw_asset_versions = re.findall(r"/static/(?:styles\.css|app\.js)\?v=([a-z0-9-]+)", sw)
+    assert sw_asset_versions == versioned_assets, "service-worker shell must fetch the current UI asset versions"
     assert 'id="signals-guidance"' in html
     assert "do not show which features influenced the model’s verdict" in normalized
     assert "can appear in legitimate messages too" in normalized
@@ -333,12 +336,13 @@ def test_dark_mode_variables_and_toggle(css, js, html):
     assert 'data-i18n-aria-label="theme.aria"' in html
     assert 'id="offline-banner"' in html
     assert ':root[data-theme="dark"]' in css, "manual dark theme must define its own variables"
-    assert "prefers-color-scheme: dark" in css, "system dark preference must be honoured"
-    assert "prefers-color-scheme: light" in css or ":root:not([data-theme" in css
+    assert "prefers-color-scheme: dark" not in css, "theme must have only the explicit light/dark modes"
     assert "color-scheme: light" in css and "color-scheme: dark" in css
     assert "THEME_KEY" in js and "localStorage.setItem(THEME_KEY" in js, "theme choice must persist"
-    assert "readTheme" in js and "applyTheme" in js and "cycleTheme" in js
-    for state in ("auto", "light", "dark"):
+    assert 'const THEME_STATES = ["light", "dark"]' in js
+    assert "readTheme" in js and "applyTheme" in js and "toggleTheme" in js
+    assert "cycleTheme" not in js and '"theme.auto"' not in js
+    for state in ("light", "dark"):
         assert f'"{state}"' in js
     # Both themes must define the core palette variables (WCAG baseline).
     for variable in (

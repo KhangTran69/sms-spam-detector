@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -102,6 +103,8 @@ def test_artifact_contains_required_metadata(trained_artifact):
     assert artifact["label_map"] == {"ham": "ham", "spam": "spam"}
     assert artifact["classes"] == ["ham", "spam"]
     assert artifact["training_config"]["random_state"] == 7
+    assert artifact["text_feature_mode"] == "word"
+    assert artifact["training_config"]["text_features"] == "word"
     assert artifact["data_sources"][0]["sha256"]
     assert "model_version" in artifact
     assert "metrics" in artifact
@@ -219,6 +222,27 @@ def test_corrupt_artifact_fails_safely(tmp_path):
     path.write_text("this is not a joblib artifact", encoding="utf-8")
     with pytest.raises(ModelArtifactError, match="Could not read|corrupt"):
         load_model(path)
+
+
+def test_model_hash_verification_accepts_matching_digest(trained_artifact, monkeypatch):
+    _, model_path = trained_artifact
+    digest = hashlib.sha256(model_path.read_bytes()).hexdigest()
+    monkeypatch.setenv("SMSD_MODEL_SHA256", digest)
+    assert load_model(model_path).path == model_path
+
+
+def test_model_hash_verification_rejects_mismatch(trained_artifact, monkeypatch):
+    _, model_path = trained_artifact
+    monkeypatch.setenv("SMSD_MODEL_SHA256", "0" * 64)
+    with pytest.raises(ModelArtifactError, match="SHA-256 mismatch"):
+        load_model(model_path)
+
+
+def test_model_hash_verification_rejects_malformed_digest(trained_artifact, monkeypatch):
+    _, model_path = trained_artifact
+    monkeypatch.setenv("SMSD_MODEL_SHA256", "not-a-digest")
+    with pytest.raises(ModelArtifactError, match="64-character hexadecimal"):
+        load_model(model_path)
 
 
 def test_newer_schema_fails_with_actionable_error(trained_artifact, tmp_path):

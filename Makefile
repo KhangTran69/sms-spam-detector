@@ -8,6 +8,7 @@
 #   make typecheck      mypy on src/ + api/
 #   make train          train and save models/spam_detector_v1.pkl
 #   make evaluate       held-out evaluation + threshold sweep + PH holdout
+#   make demo           train/evaluate using tracked synthetic fixtures only
 #   make serve          run the FastAPI service with reload
 #   make docker-build   build the container image
 #   make docker-run     run the image with ./models mounted read-only
@@ -19,13 +20,16 @@ UVICORN ?= .venv/bin/uvicorn
 IMAGE ?= philippine-sms-spam-detector:local
 PORT ?= 8000
 
-.PHONY: install dev-install test lint format typecheck train evaluate serve docker-build docker-run clean
+.PHONY: install dev-install package-install test lint format typecheck train evaluate demo serve docker-build docker-run clean
 
 install:
 	$(PIP) install -r requirements.txt
 
 dev-install:
 	$(PIP) install -r requirements.txt -r requirements-dev.txt
+
+package-install:
+	$(PIP) install -e ".[dev]"
 
 test:
 	$(PYTHON) -m pytest -q
@@ -45,6 +49,19 @@ train:
 
 evaluate:
 	$(PYTHON) -m src.evaluate
+
+demo:
+	$(PYTHON) -m src.train --data data/raw/ph_supplement.csv \
+		--supplement data/raw/ph_supplement_2.csv data/raw/ph_supplement_3.csv \
+		data/raw/ph_supplement_4.csv data/raw/ph_supplement_5.csv \
+		--holdout data/raw/ph_holdout.csv --output models/demo_synthetic.pkl \
+		--model-version synthetic-demo-word --text-features word
+	$(PYTHON) -m src.evaluate --data data/raw/ph_supplement.csv \
+		--supplement data/raw/ph_supplement_2.csv data/raw/ph_supplement_3.csv \
+		data/raw/ph_supplement_4.csv data/raw/ph_supplement_5.csv \
+		--holdout data/raw/ph_holdout.csv --model models/demo_synthetic.pkl \
+		--plot none --json-out data/processed/demo-synthetic.json
+	$(PYTHON) -c 'from fastapi.testclient import TestClient; import api.main as a; from src.predict import load_model; b=load_model("models/demo_synthetic.pkl"); a._model=b; a.get_model=lambda: b; c=TestClient(a.app); r=c.post("/analyze", json={"message":"Claim your free prize now!"}); assert r.status_code == 200, r.status_code; print({"api_smoke":"passed", "model_version": b.version, "synthetic_training_data": b.metadata.get("synthetic_training_data"), "feature_mode": b.metadata.get("text_feature_mode")})'
 
 serve:
 	$(UVICORN) api.main:app --host 127.0.0.1 --port $(PORT) --reload

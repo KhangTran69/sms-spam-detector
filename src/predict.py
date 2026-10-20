@@ -10,6 +10,7 @@ an old deployment cannot crash silently.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import sys
@@ -174,6 +175,21 @@ def load_model(path: str | Path | None = None) -> ModelBundle:
         )
     if artifact_path.is_dir():
         raise ModelArtifactError(f"Model path {artifact_path} is a directory; pass the .pkl bundle file.")
+    expected_sha256 = os.environ.get("SMSD_MODEL_SHA256", "").strip().lower()
+    if expected_sha256:
+        if len(expected_sha256) != 64 or any(character not in "0123456789abcdef" for character in expected_sha256):
+            raise ModelArtifactError("SMSD_MODEL_SHA256 must be a 64-character hexadecimal SHA-256 digest.")
+        digest = hashlib.sha256()
+        try:
+            with artifact_path.open("rb") as model_file:
+                for block in iter(lambda: model_file.read(1024 * 1024), b""):
+                    digest.update(block)
+        except OSError as exc:
+            raise ModelArtifactError(
+                f"Could not verify model artifact {artifact_path} ({type(exc).__name__})."
+            ) from exc
+        if digest.hexdigest() != expected_sha256:
+            raise ModelArtifactError(f"Model artifact SHA-256 mismatch for {artifact_path}.")
     try:
         artifact = joblib.load(artifact_path)
     except Exception as exc:  # joblib/pickle can raise many exception types

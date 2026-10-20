@@ -239,6 +239,20 @@ def test_feedback_is_disabled_by_default(client, monkeypatch):
     assert "disabled" in response.json()["error"]["message"]
 
 
+def test_feedback_stays_disabled_in_production_even_if_flag_is_set(client, monkeypatch):
+    monkeypatch.setattr(api_main, "SMSD_ENV", "production")
+    monkeypatch.setattr(api_main, "FEEDBACK_ENABLED", True)
+    response = client.post(
+        "/feedback",
+        json={
+            "model_version": MODEL_VERSION,
+            "predicted_label": "spam",
+            "expected_label": "ham",
+        },
+    )
+    assert response.status_code == 404
+
+
 def test_feedback_persists_only_explicit_non_message_metadata(client, tmp_path, monkeypatch):
     report_path = tmp_path / "feedback" / "reports.jsonl"
     monkeypatch.setattr(api_main, "FEEDBACK_ENABLED", True)
@@ -288,6 +302,34 @@ def test_feedback_rejects_message_content_and_correct_predictions(client, tmp_pa
     assert "private SMS" not in with_text.text
     assert same_label.status_code == 422
     assert not (tmp_path / "feedback.jsonl").exists()
+
+
+def test_feedback_rejects_stale_model_version(client, tmp_path, monkeypatch):
+    monkeypatch.setattr(api_main, "FEEDBACK_ENABLED", True)
+    report_path = tmp_path / "feedback.jsonl"
+    monkeypatch.setattr(api_main, "FEEDBACK_PATH", report_path)
+    response = client.post(
+        "/feedback",
+        json={
+            "model_version": "old-model-version",
+            "predicted_label": "spam",
+            "expected_label": "ham",
+            "category": "otp",
+        },
+    )
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "conflict"
+    assert not report_path.exists()
+
+
+def test_streamed_request_without_content_length_is_limited(client):
+    chunks = iter([b'{"message":"', b"x" * api_main.MAX_REQUEST_BYTES, b'"}'])
+    response = client.post("/analyze", content=chunks, headers={"content-type": "application/json"})
+    assert response.status_code == 413
+    assert "content-length" not in response.request.headers
+    assert response.json()["error"]["code"] == "payload_too_large"
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert "x" * 100 not in response.text
 
 
 # ---------------------------------------------------------------------------

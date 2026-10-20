@@ -38,8 +38,11 @@ busyCheckButton.id = 'btn-check';
 busyCheckButton.dataset.idleLabel = 'Check message';
 busyCheckButton.dataset.i18n = 'check.run';
 busyCheckButton.setAttribute('aria-busy', 'true');
+const storedValues = new Map();
 const context = vm.createContext({ console, AbortController, tabs, panels, busyCheckButton,
-  localStorage: { getItem: () => null, setItem() {}, removeItem() {} }, window: { matchMedia: () => ({matches: false}) },
+  localStorage: { getItem: key => storedValues.get(key) || null,
+    setItem(key, value) { storedValues.set(key, String(value)); }, removeItem: key => storedValues.delete(key) },
+  window: { matchMedia: () => ({matches: false}) },
   document: { getElementById(id) { if (!elements.has(id)) elements.set(id, element()); return elements.get(id); },
     querySelectorAll(selector) {
       if (selector === '.example-chip') return exampleChips;
@@ -130,10 +133,32 @@ const run = code => vm.runInContext(code, context);
   exampleChips[0].listeners.click();
   assert.notEqual(run('$("message-input").value'), firstScamExample,
     'repeated scam clicks should load a different example');
-  assert.match(run('$("example-status").textContent'), /example 2 of 6/);
+  assert.equal(run('EXAMPLES.scam.length'), 20, 'the scam example set should contain 20 messages');
+  assert.equal(run('new Set(EXAMPLES.scam).size'), 20, 'scam examples should not be duplicated');
+  assert.match(run('$("example-status").textContent'), /example 2 of 20/);
+  for (let index = 0; index < 18; index += 1) exampleChips[0].listeners.click();
+  assert.match(run('$("example-status").textContent'), /example 20 of 20/);
+  exampleChips[0].listeners.click();
+  assert.match(run('$("example-status").textContent'), /example 1 of 20/, 'scam examples should wrap around');
   exampleChips[1].listeners.click();
-  assert.match(run('$("example-status").textContent'), /example 1 of 6/);
-  assert.equal(run('demoChecks'), 3, 'each example click should trigger analysis');
+  assert.equal(run('EXAMPLES.safe.length'), 20, 'the safe example set should contain 20 messages');
+  assert.equal(run('new Set(EXAMPLES.safe).size'), 20, 'safe examples should not be duplicated');
+  assert.match(run('$("example-status").textContent'), /example 1 of 20/);
+  assert.equal(run('demoChecks'), 22, 'each example click should trigger analysis');
+  run('currentTheme = "light"; toggleTheme()');
+  assert.equal(run('currentTheme'), 'dark');
+  assert.equal(run('document.documentElement.getAttribute("data-theme")'), 'dark');
+  assert.equal(run('localStorage.getItem(THEME_KEY)'), 'dark', 'dark preference should persist');
+  assert.equal(run('$("btn-theme").textContent'), '☀️');
+  assert.equal(run('$("btn-theme").getAttribute("aria-label")'), 'Switch to light mode');
+  run('toggleTheme()');
+  assert.equal(run('currentTheme'), 'light');
+  assert.equal(run('document.documentElement.getAttribute("data-theme")'), 'light');
+  assert.equal(run('localStorage.getItem(THEME_KEY)'), 'light', 'light preference should persist');
+  assert.equal(run('$("btn-theme").textContent'), '🌙');
+  assert.equal(run('$("btn-theme").getAttribute("aria-label")'), 'Switch to dark mode');
+  storedValues.set('smsd_theme_v1', 'auto');
+  assert.equal(run('readTheme()'), 'light', 'legacy auto setting should resolve to the two-mode default');
   run('invalidateSingle()');
   assert.equal(run('$("highlighted").childNodes.length'), 0, 'editing invalidates stale highlights');
   assert.equal(run('$("signals").childNodes.length'), 0, 'editing clears stale signal details');

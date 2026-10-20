@@ -10,11 +10,11 @@
  */
 "use strict";
 
-const CACHE_NAME = "smsd-shell-v3";
+const CACHE_NAME = "smsd-shell-v5";
 const SHELL_ASSETS = [
   "/",
-  "/static/styles.css?v=ui3-20261020",
-  "/static/app.js?v=ui3-20261020",
+  "/static/styles.css?v=ui5-theme-toggle-20261020",
+  "/static/app.js?v=ui5-theme-toggle-20261020",
   "/manifest.webmanifest",
 ];
 const NEVER_CACHE_PATHS = ["/analyze", "/analyze/batch", "/predict", "/feedback", "/model-info", "/health", "/ready"];

@@ -9,13 +9,14 @@ import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.pipeline import Pipeline
+from sklearn.pipeline import FeatureUnion, Pipeline
 from sklearn.preprocessing import MinMaxScaler
 
 # Bump when clean_text/extract_features semantics change; stored in the model
 # artifact so an old artifact can be rejected or flagged rather than silently
 # mis-fed.
-FEATURE_VERSION = "2.1.0"
+FEATURE_VERSION = "2.2.0"
+TEXT_FEATURE_MODES = ("word", "char", "combined")
 
 FEATURE_COLUMNS = [
     "has_url",
@@ -28,8 +29,33 @@ FEATURE_COLUMNS = [
 ]
 
 
-def make_feature_transformer() -> ColumnTransformer:
-    """Combine unigram/bigram TF-IDF with scaled indicator features.
+def _text_vectorizer(mode: str) -> TfidfVectorizer | FeatureUnion:
+    if mode == "word":
+        return TfidfVectorizer(
+            ngram_range=(1, 2), min_df=1, max_features=100_000, sublinear_tf=True, lowercase=True, dtype=np.float32
+        )
+    if mode == "char":
+        return TfidfVectorizer(
+            analyzer="char_wb",
+            ngram_range=(3, 5),
+            min_df=1,
+            max_features=100_000,
+            sublinear_tf=True,
+            lowercase=True,
+            dtype=np.float32,
+        )
+    if mode == "combined":
+        return FeatureUnion(
+            [
+                ("word", _text_vectorizer("word")),
+                ("char", _text_vectorizer("char")),
+            ]
+        )
+    raise ValueError(f"text feature mode must be one of {TEXT_FEATURE_MODES}, got {mode!r}")
+
+
+def make_feature_transformer(text_features: str = "word") -> ColumnTransformer:
+    """Combine the selected TF-IDF representation with scaled indicator features.
 
     ``min_df=1`` and a fixed ``max_features`` capacity keep training
     deterministic; unseen tokens at inference are ignored by the fitted
@@ -39,14 +65,7 @@ def make_feature_transformer() -> ColumnTransformer:
         [
             (
                 "text",
-                TfidfVectorizer(
-                    ngram_range=(1, 2),
-                    min_df=1,
-                    max_features=100_000,
-                    sublinear_tf=True,
-                    lowercase=True,
-                    dtype=np.float32,
-                ),
+                _text_vectorizer(text_features),
                 "cleaned_text",
             ),
             # MultinomialNB requires non-negative inputs, so scale indicators into [0, 1].
@@ -71,9 +90,9 @@ def messages_to_frame(messages: Iterable[str]) -> pd.DataFrame:
     return frame
 
 
-def make_model(classifier: Any) -> Pipeline:
+def make_model(classifier: Any, *, text_features: str = "word") -> Pipeline:
     """Build the fitted pipeline used by both the baseline and primary model."""
-    return Pipeline([("features", make_feature_transformer()), ("classifier", classifier)])
+    return Pipeline([("features", make_feature_transformer(text_features)), ("classifier", classifier)])
 
 
 def pipeline_feature_signature(pipeline: Pipeline) -> dict[str, Any]:

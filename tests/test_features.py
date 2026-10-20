@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 from sklearn.naive_bayes import MultinomialNB
 
 from src.features import (
@@ -69,9 +70,36 @@ def test_make_model_end_to_end_and_signature():
     assert signature["feature_version"] == FEATURE_VERSION
 
 
+@pytest.mark.parametrize("mode", ["word", "char", "combined"])
+def test_model_supports_selected_text_feature_mode(mode):
+    labels = ["spam", "spam", "ham", "ham"]
+    model = make_model(MultinomialNB(), text_features=mode)
+    model.fit(messages_to_frame(MESSAGES), labels)
+    predictions = model.predict(messages_to_frame(["P5O,OOO B D O 🤑", "See you at lunch"]))
+    assert len(predictions) == 2
+    assert set(predictions) <= {"ham", "spam"}
+
+
 def test_unseen_tokens_are_ignored_at_inference():
     labels = ["spam", "spam", "ham", "ham"]
     model = make_model(MultinomialNB())
     model.fit(messages_to_frame(MESSAGES), labels)
     prediction = model.predict(messages_to_frame(["completely unseen words zzz"]))
     assert prediction[0] in {"ham", "spam"}
+
+
+@pytest.mark.parametrize("mode", ["word", "char", "combined"])
+def test_text_feature_modes_handle_adversarial_unicode_messages(mode):
+    examples = [
+        "Nag-claim ng P5O,OOO!!! 🤑",
+        "B D O verify at bіt.ly/x agad",  # Cyrillic i lookalike
+        "J&TT Expres: parcel??! 🎁🎁",
+        "ＢＰＩ OTP: huwag i-share код",
+        "https://bit.ly/example",
+    ]
+    frame = messages_to_frame(examples)
+    transformed = make_feature_transformer(mode).fit_transform(frame)
+    assert transformed.shape[0] == len(examples)
+    assert transformed.shape[1] > len(FEATURE_COLUMNS)
+    values = transformed.data if hasattr(transformed, "tocsr") else transformed
+    assert np.isfinite(values).all()

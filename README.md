@@ -13,8 +13,15 @@ prove that a message or sender is a scam. Scores are uncalibrated model scores.
 ```bash
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -r requirements.txt -r requirements-dev.txt
+pip install -e ".[dev]"
 ```
+
+Runtime dependencies are declared in `pyproject.toml`; the requirements files
+mirror those declarations for Docker and existing workflows. `pip install .`
+resolves package dependencies, but the built wheel does not include the root
+data and web assets. Run the application from a source checkout or use the
+documented Docker image. `constraints.txt` captures one Python 3.13 environment
+and is not a cross-platform lock file.
 
 Python 3.11+ is required. The base SMS corpus is not committed. Use the documented UCI SMS Spam Collection import after reviewing its CC BY 4.0 terms, or provide another dataset only after independently verifying its source and usage terms. The importer writes an attributed normalized file; pass it explicitly with `python -m src.train --data data/raw/imported/uci_sms_spam.csv`. Accepted formats are Kaggle `v1`/`v2` and `label`/`message` CSVs, but schema compatibility does not establish a dataset's license or provenance.
 
@@ -28,6 +35,24 @@ The documented public English source is the UCI SMS Spam Collection (5,574 histo
 python -m src.train
 python -m src.evaluate --json-out data/processed/evaluation.json
 ```
+
+To run a tracked, synthetic-only demo without the ignored base corpus, run
+`make demo`. It trains `models/demo_synthetic.pkl`, evaluates the internal
+synthetic split and tracked synthetic holdout, and smoke-tests `/analyze` with
+the candidate artifact. Generated files stay in ignored paths. These results check
+repeatability and pipeline behavior only; they are not real-world performance
+evidence.
+
+To compare text representations, run the same training command, data, seed,
+split, and threshold settings three times with `--text-features word`,
+`--text-features char`, and `--text-features combined`, saving each candidate
+to a different output path. Character n-grams may help with spacing and
+spelling variation, but their addition does not establish an improvement.
+Compare identical untouched test membership, report sample counts and
+confidence intervals, and keep the separate holdout out of model/threshold
+selection. The default and serving representation remains word-only until an
+operator reviews and deliberately promotes a candidate. Synthetic evaluation
+is not a substitute for consented Philippine data.
 
 Training validates schemas and labels, removes exact and normalized duplicates before splitting, keeps campaign/template groups together, tunes the decision threshold on validation data, and reports the final test metrics separately. The artifact contains the model, threshold, training/data provenance, and version metadata. The configured base file and five synthetic Philippine supplements are used by default when present; unknown provenance stays marked unknown.
 
@@ -57,7 +82,7 @@ Open `http://127.0.0.1:8000/`. Interactive API docs are at `/docs`.
 
 ### Web UI
 
-The bundled interface is plain HTML, CSS, and JavaScript; it has no build step. It supports single-message checks, batches of up to 50 messages, and opt-in browser-local history. The header controls switch between English and Taglish and cycle through automatic, light, and dark themes; those preferences are saved in this browser. Leaving a view cancels its pending check, and editing an input clears the prior result. Batch checks are sent in groups of ten so the progress message can report completed messages; final results appear after all groups finish.
+The bundled interface is plain HTML, CSS, and JavaScript; it has no build step. It supports single-message checks, batches of up to 50 messages, and opt-in browser-local history. The header controls switch between English and Taglish and toggle between light and dark themes; those preferences are saved in this browser. Leaving a view cancels its pending check, and editing an input clears the prior result. Batch checks are sent in groups of ten so the progress message can report completed messages; final results appear after all groups finish.
 
 Use **Copy summary** to copy the current result to the clipboard. Batch **Download CSV** creates a file in the browser and includes the submitted message text alongside its result, so store or share that file carefully. The optional service worker caches only the static interface shell for offline reload. It does not cache API responses, messages, or history; analysis still needs a network connection. See [docs/PRIVACY.md](docs/PRIVACY.md) for browser storage and deletion details.
 
@@ -145,4 +170,7 @@ tests/           data, model, API, preprocessing, and web-contract checks
 
 CSV files may include `data_kind` with `synthetic`, `public`, `consented`, or `unknown` (the default); legacy `real` is accepted as consented data. This is a source declaration, not independent verification. Training records fitted-row counts by kind; `synthetic_training_data` is true when synthetic rows were used, false only when all fitted rows are declared public or consented, and null when their status is unknown. Tracked Philippine fixtures are explicitly synthetic.
 
-Feature version 2.1.0 recognizes `hxxp(s)` links and bracketed-dot domains and avoids matching partial domain suffixes. Retrain older artifacts before serving them; the loader rejects mismatched feature versions. These changes require evaluation and do not imply improved real-world accuracy.
+Feature version 2.2.0 adds selectable word, character, or combined TF-IDF
+representations; the default remains word-only. The loader rejects incompatible
+older versioned artifacts, so retrain a candidate before using this code with a
+bundled model. This change has not been shown to improve real-world accuracy.

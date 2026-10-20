@@ -118,6 +118,45 @@ category supports are only one example, and confidence intervals would be
 uninformative at that scale. The machine-readable evaluation JSON and model
 artifacts are ignored outputs; rerun these commands to reproduce them.
 
+## Text feature mode comparison (2026-10-20)
+
+Word-only, character-only, and combined TF-IDF candidates were trained on the
+same 539-row tracked synthetic input (15 normalized duplicates removed), with
+the same seed 42 and group split. Each candidate selected its own threshold on
+the same validation set; all three then reported on the fixed 77-row internal
+test split (24 ham, 53 spam). All input and evaluation rows were synthetic.
+
+| Mode | Validation threshold | Test precision | Test recall | Test F1 | FP / FN |
+|---|---:|---:|---:|---:|---:|
+| Word | 0.61 | 0.8929 | 0.9434 | 0.9174 | 6 / 3 |
+| Character | 0.64 | 0.8929 | 0.9434 | 0.9174 | 6 / 3 |
+| Combined | 0.64 | 0.9091 | 0.9434 | 0.9259 | 5 / 3 |
+
+The precision intervals overlap broadly (Wilson marginal 95% intervals:
+word/character 0.785–0.950, combined 0.804–0.961). This one small synthetic
+split does not establish a meaningful difference or justify changing the
+serving model; word-only remains the default. These intervals treat outcomes
+as binomial trials and do not adjust for campaign clustering, and the report
+does not include a confidence interval for F1. Repeated group-aware evaluation
+across seeds, threshold stability, and a product-approved cost-based operating
+point remain open work. The separate 46-row synthetic holdout was diagnostic
+only and was not used to select features or thresholds.
+
+Reproduce from the repository root by training to separate ignored artifact
+paths with the same command and changing only `--text-features` and
+`--output`:
+
+```bash
+python -m src.train --data data/raw/ph_supplement.csv \
+  --supplement data/raw/ph_supplement_2.csv data/raw/ph_supplement_3.csv \
+  data/raw/ph_supplement_4.csv data/raw/ph_supplement_5.csv \
+  --holdout data/raw/ph_holdout.csv --seed 42 \
+  --output models/feature-word.pkl --text-features word
+```
+
+The `char` and `combined` variants use the same command with distinct output
+paths. All artifacts are candidates; none replaces the serving artifact.
+
 ```bash
 python -m src.train --output models/spam_detector_candidate_2026-10-20.pkl \
   --model-version candidate-2026-10-20 --holdout data/raw/ph_holdout.csv

@@ -54,6 +54,9 @@ MAX_REQUEST_BYTES = 1_000_000  # 1 MB cap on the raw JSON body
 FEEDBACK_ENABLED = os.environ.get("SMSD_FEEDBACK_ENABLED", "").strip().lower() in {"1", "true", "yes"}
 SMSD_ENV = os.environ.get("SMSD_ENV", "development").strip().lower()
 ALLOW_LEGACY_MODEL = os.environ.get("SMSD_ALLOW_LEGACY_MODEL", "").strip().lower() in {"1", "true", "yes"}
+if SMSD_ENV == "production":
+    # Anonymous correction intake has no authentication or abuse controls.
+    FEEDBACK_ENABLED = False
 _feedback_path = os.environ.get("SMSD_FEEDBACK_PATH", "").strip()
 FEEDBACK_PATH = Path(_feedback_path) if _feedback_path else ROOT / "data" / "feedback" / "reports.jsonl"
 MAX_FEEDBACK_BYTES = 10 * 1024 * 1024
@@ -68,6 +71,7 @@ SECURITY_HEADERS = {
 
 _HTTP_ERROR_CODES = {
     400: "bad_request",
+    409: "conflict",
     401: "unauthorized",
     403: "forbidden",
     404: "not_found",
@@ -80,6 +84,80 @@ _HTTP_ERROR_CODES = {
 }
 
 logger = logging.getLogger("api.main")
+
+
+class RequestBodyLimitMiddleware:
+    """Bound body consumption even when Content-Length is absent or inaccurate."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        async def secure_send(message):
+            if message["type"] == "http.response.start":
+                headers = list(message.get("headers", []))
+                present = {key.lower() for key, _ in headers}
+                for name, value in SECURITY_HEADERS.items():
+                    key = name.lower().encode("latin-1")
+                    if key not in present:
+                        headers.append((key, value.encode("latin-1")))
+                message = {**message, "headers": headers}
+            await send(message)
+
+        content_length = next(
+            (value.decode("latin-1") for key, value in scope.get("headers", []) if key.lower() == b"content-length"),
+            None,
+        )
+        if content_length:
+            try:
+                if int(content_length) > MAX_REQUEST_BYTES:
+                    await _error_response(
+                        413,
+                        "payload_too_large",
+                        f"Request body is too large; the limit is {MAX_REQUEST_BYTES} bytes.",
+                    )(scope, receive, secure_send)
+                    return
+            except ValueError:
+                pass
+
+        # Read and cap the body before calling FastAPI. Otherwise its JSON
+        # parser can turn a receive-side size exception into a generic 400.
+        chunks: list[bytes] = []
+        consumed = 0
+        while True:
+            message = await receive()
+            if message["type"] == "http.disconnect":
+                return
+            if message["type"] != "http.request":
+                continue
+            chunk = message.get("body", b"")
+            consumed += len(chunk)
+            if consumed > MAX_REQUEST_BYTES:
+                await _error_response(
+                    413,
+                    "payload_too_large",
+                    f"Request body is too large; the limit is {MAX_REQUEST_BYTES} bytes.",
+                )(scope, receive, secure_send)
+                return
+            chunks.append(chunk)
+            if not message.get("more_body", False):
+                break
+
+        body = b"".join(chunks)
+        delivered = False
+
+        async def replay_body():
+            nonlocal delivered
+            if not delivered:
+                delivered = True
+                return {"type": "http.request", "body": body, "more_body": False}
+            return await receive()
+
+        await self.app(scope, replay_body, secure_send)
 
 
 def cors_origins(raw: str | None = None) -> list[str]:
@@ -387,6 +465,9 @@ async def security_and_size_middleware(request: Request, call_next):
     return response
 
 
+app.add_middleware(RequestBodyLimitMiddleware)
+
+
 # ---------------------------------------------------------------------------
 # Exception handlers (stable error schema)
 # ---------------------------------------------------------------------------
@@ -525,12 +606,18 @@ def analyze_batch_endpoint(request: BatchRequest) -> BatchResponse:
     summary="Submit anonymous label feedback (message text is not accepted)",
 )
 def submit_feedback(request: FeedbackRequest) -> FeedbackResponse:
-    if not FEEDBACK_ENABLED:
+    if SMSD_ENV == "production" or not FEEDBACK_ENABLED:
         raise StarletteHTTPException(status_code=404, detail="Anonymous feedback is disabled by the operator.")
     model = get_model()
+    current_version = _model_version(model)
+    if request.model_version != current_version:
+        raise StarletteHTTPException(
+            status_code=409,
+            detail="Feedback model_version must match the currently served model.",
+        )
     report = {
         "model_version": request.model_version,
-        "server_model_version": _model_version(model),
+        "server_model_version": current_version,
         "predicted_label": request.predicted_label,
         "expected_label": request.expected_label,
         "category": request.category,

@@ -46,10 +46,9 @@ const I18N = {
     "skip": "Skip to main content",
     "nav.views": "Views",
     "lang.aria": "Switch language between English and Taglish",
-    "theme.aria": "Switch color theme",
-    "theme.auto": "Theme: auto",
-    "theme.light": "Theme: light",
-    "theme.dark": "Theme: dark",
+    "theme.aria": "Switch between light and dark mode",
+    "theme.light": "Switch to light mode",
+    "theme.dark": "Switch to dark mode",
     "offline.banner": "You appear to be offline. The page still works, but new checks need a connection.",
     "tab.check": "Check a message",
     "tab.batch": "Batch check",
@@ -189,10 +188,9 @@ const I18N = {
     "skip": "Laktawan ang pangunahing nilalaman",
     "nav.views": "Mga view",
     "lang.aria": "Palitan ang wika: English o Taglish",
-    "theme.aria": "Palitan ang tema ng kulay",
-    "theme.auto": "Tema: auto",
-    "theme.light": "Tema: maliwanag",
-    "theme.dark": "Tema: madilim",
+    "theme.aria": "Magpalit sa pagitan ng maliwanag at madilim na mode",
+    "theme.light": "Lumipat sa maliwanag na mode",
+    "theme.dark": "Lumipat sa madilim na mode",
     "offline.banner": "Mukhang offline ka. Gumagana pa rin ang pahina, pero kailangan ng connection ang mga bagong check.",
     "tab.check": "Tingnan ang mensahe",
     "tab.batch": "Maramihang check",
@@ -412,38 +410,35 @@ function setLanguage(nextLang) {
   if (lastBatchResults) renderBatch(lastBatchResults);
 }
 
-/* ---------- Theme (auto → light → dark, persisted) ---------- */
-const THEME_STATES = ["auto", "light", "dark"];
-const THEME_ICONS = { auto: "🌓", light: "☀️", dark: "🌙" };
+/* ---------- Theme (light ↔ dark, persisted) ---------- */
+const THEME_STATES = ["light", "dark"];
+const THEME_ICONS = { light: "🌙", dark: "☀️" };
 
 function readTheme() {
   try {
     const saved = localStorage.getItem(THEME_KEY);
-    return THEME_STATES.includes(saved) ? saved : "auto";
+    return saved === "dark" ? "dark" : "light";
   } catch {
-    return "auto";
+    return "light";
   }
 }
 
 function applyTheme(theme) {
-  if (theme === "auto") {
-    document.documentElement.removeAttribute("data-theme");
-  } else {
-    document.documentElement.setAttribute("data-theme", theme);
-  }
+  document.documentElement.setAttribute("data-theme", theme);
 }
 
 function updateThemeButton() {
   const button = $("btn-theme");
   button.textContent = THEME_ICONS[currentTheme];
-  button.setAttribute("aria-label", t(`theme.${currentTheme}`));
-  button.title = t(`theme.${currentTheme}`);
+  const nextTheme = currentTheme === "dark" ? "light" : "dark";
+  button.setAttribute("aria-label", t(`theme.${nextTheme}`));
+  button.title = t(`theme.${nextTheme}`);
 }
 
-let currentTheme = "auto";
+let currentTheme = "light";
 
-function cycleTheme() {
-  currentTheme = THEME_STATES[(THEME_STATES.indexOf(currentTheme) + 1) % THEME_STATES.length];
+function toggleTheme() {
+  currentTheme = currentTheme === "dark" ? "light" : "dark";
   try {
     localStorage.setItem(THEME_KEY, currentTheme);
   } catch {
@@ -499,11 +494,25 @@ const BRANDS = {
 const EXAMPLES = {
   scam: [
     "BDO ALERT: Your account access will be suspended today. Confirm your details at bdo-verify.example to keep it active.",
-    "Nanalo ka ng ₱50,000! I-claim agad sa prize-claim.example bago mag-expire ang promo.",
-    "Delivery notice: May kulang na ₱35 fee. Bayaran ngayon sa parcel-pay.example para ma-release ang package.",
+    "Nanalo ka ng [AMOUNT]! I-claim agad sa prize-claim.example bago mag-expire ang promo.",
+    "Delivery notice: May kulang na [AMOUNT] fee. Bayaran ngayon sa parcel-pay.example para ma-release ang package.",
     "GCash security check: May unusual activity. I-verify ang wallet mo sa gcash-review.example ngayon.",
-    "Work from home! Earn ₱8,000 kada araw. Send your ID and registration fee today to reserve your slot.",
+    "Work from home! Earn [AMOUNT] kada araw. Send [ID] and a registration fee today to reserve your slot.",
     "SIM registration failed. I-update ang details mo sa sim-update.example within 2 hours para hindi ma-disable ang number.",
+    "Maya: May pending reward ka. Confirm your wallet at maya-bonus.example before midnight.",
+    "Pre-approved loan offer! Pay a [AMOUNT] processing fee at mabilis-loan.example to release funds today.",
+    "Guaranteed daily investment returns daw! Register at kita-now.example habang may slots pa.",
+    "May ayuda ka raw na naghihintay. Submit your account details at ayuda-claim.example ngayong araw.",
+    "Final warning: Your online account will close tonight. Restore access at secure-login.example.",
+    "GCash payment failed. Re-enter your MPIN at gcash-fix.example para ma-refund ang [AMOUNT].",
+    "Customs notice: Pay the missing parcel tax at release-package.example or your delivery will be returned.",
+    "Your [AMOUNT] refund is ready. Add your card number at refund-center.example to receive it.",
+    "Lucky winner ka! Send [CODE] to prize-desk.example to claim your mystery gift.",
+    "Hiring urgent: No experience needed. Deposit [AMOUNT] at work-slot.example to secure the job.",
+    "May suspicious charge daw sa account mo. Verify agad sa account-check.example para ma-block ito.",
+    "UnionBank notice: Your profile needs updating. Continue at ub-profile.example within 30 minutes.",
+    "Your e-wallet will be deactivated. I-confirm ang PIN mo sa wallet-restore.example ngayon.",
+    "Subscription payment declined. Update billing details at renew-now.example to avoid losing access.",
   ],
   safe: [
     "Your one-time code is [CODE]. Never share it with anyone, even someone claiming to be from your bank.",
@@ -512,6 +521,20 @@ const EXAMPLES = {
     "Meralco reminder: Your bill is ready. Please check the amount and due date in the official app.",
     "Reminder: Parent meeting is on Friday at 3 PM in the school library. Salamat po!",
     "Uy, kita tayo after class? I can bring the notes from yesterday. Message me when you're nearby.",
+    "BPI: A purchase was approved for [AMOUNT]. Review recent activity in the official app if needed.",
+    "GCash: You received [AMOUNT]. Open the app directly to review your balance and transaction history.",
+    "Maya: Your cash-in is complete. Please check the transaction in your Maya app.",
+    "J&T Express: Your parcel is out for delivery. No extra payment is needed for this shipment.",
+    "Maynilad: Your latest bill is available. Check the due date through the official customer portal.",
+    "Class is moved to Room 204 tomorrow. Pakisabi na rin sa group. Salamat!",
+    "Team reminder: Our weekly check-in starts at 10 AM. Please bring your project updates.",
+    "Your salary has been credited to your payroll account. Check your bank's official app for details.",
+    "Nasa sakayan na ako. Dadaan ako sa tindahan, may kailangan ka ba?",
+    "Doctor appointment reminder: Your visit is scheduled for Thursday afternoon. Call the clinic using its saved contact if you need to reschedule.",
+    "Your subscription renewal was successful. Manage your plan in the service's official app.",
+    "Card payment approved for [AMOUNT]. If this wasn't you, contact your bank using the number on your card.",
+    "Your package was delivered to the pickup counter. Bring your claim slip when you collect it.",
+    "This week's member promo is available in the official store app. No need to reply to this message.",
   ],
 };
 const EXAMPLE_INDEX = { scam: -1, safe: -1 };
@@ -1590,7 +1613,7 @@ document.addEventListener("DOMContentLoaded", () => {
   applyStaticI18n();
   $("btn-lang").textContent = lang === "taglish" ? "EN" : "Taglish";
   $("btn-lang").addEventListener("click", () => setLanguage(lang === "taglish" ? "en" : "taglish"));
-  $("btn-theme").addEventListener("click", cycleTheme);
+  $("btn-theme").addEventListener("click", toggleTheme);
   updateThemeButton();
   initTabs();
   initHistory();
