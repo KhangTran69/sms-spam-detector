@@ -25,7 +25,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install runtime dependencies
-        run: python -m pip install -r requirements.txt
+        run: python -m pip install -r requirements.txt -c constraints/py3.12.txt
       - name: Train an explicitly synthetic fixture artifact
         run: |
           python -m src.train \
@@ -138,7 +138,7 @@ jobs:
           python-version: "3.12"
           cache: pip
       - name: Install runtime dependencies
-        run: python -m pip install -r requirements.txt
+        run: python -m pip install -r requirements.txt -c constraints/py3.12.txt
       - name: Restore cached UCI archive
         id: uci-cache
         uses: actions/cache@v4
@@ -191,7 +191,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt -r requirements-dev.txt
+          pip install -r requirements.txt -r requirements-dev.txt -c "constraints/py${{ matrix.python-version }}.txt"
 
       - name: Lint (ruff)
         run: ruff check .
