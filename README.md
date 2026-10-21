@@ -64,6 +64,22 @@ the data needed for an independently reproducible evaluation.
 | `POST /analyze`, `POST /analyze/batch` | Adds risk band, highlighted signals, model version, and both risk thresholds per result; batch takes up to 50 |
 | `POST /feedback` | Optional anonymous label correction, off by default; never accepts message text |
 
+## Web UI
+
+The browser UI supports single-message checks, batch checks, and **Compare
+messages**. Comparison sends two messages together through the existing
+`POST /analyze/batch` endpoint, displays both independent model results and
+their detected text patterns, and summarizes signal types present in both or
+only one. It shows a percentage-point score difference only when both results
+have the same model version, the same known calibration state, and valid scores;
+otherwise it says they cannot be compared directly. A lower score is not a
+safety guarantee. Comparison inputs and results are not added to history.
+
+Fictional OTP, delivery, and bank/e-wallet comparison pairs are examples in the
+UI only. They use placeholders and reserved `.example` domains and are not
+training or evaluation data. The existing history feature remains opt-in and
+browser-local.
+
 ```bash
 curl -X POST http://127.0.0.1:8000/predict -H 'Content-Type: application/json' \
   -d '{"message":"BDO: Your account is locked. Verify here: http://bit.ly/fakebdo"}'

@@ -27,21 +27,34 @@ async function waitForServer(base, process) {
 }
 
 function analysis(message) {
+  const modelMismatch = message.includes('[different-model]');
+  const matches = [];
+  const brandStart = message.indexOf('BDO.example');
+  if (brandStart >= 0) {
+    const start = Array.from(message.slice(0, brandStart)).length;
+    matches.push({ type: 'url', start, end: start + Array.from('BDO.example').length });
+    matches.push({ type: 'brand', start, end: start + 3 });
+  }
+  const urgency = message.toLowerCase().indexOf('today');
+  if (urgency >= 0) {
+    const start = Array.from(message.slice(0, urgency)).length;
+    matches.push({ type: 'urgency', start, end: start + 5 });
+  }
   return {
     message,
-    prediction: 'spam',
-    spam_probability: 0.82,
-    probability: 0.82,
-    probability_calibrated: true,
-    decision_threshold: 0.6,
-    suspicious_threshold: 0.4,
+    prediction: modelMismatch ? 'ham' : 'spam',
+    spam_probability: modelMismatch ? 0.15 : /official app|never share|out for delivery/i.test(message) ? 0.15 : 0.82,
+    probability: modelMismatch ? 0.15 : 0.82,
+    probability_calibrated: !modelMismatch,
+    decision_threshold: modelMismatch ? 0.55 : 0.6,
+    suspicious_threshold: modelMismatch ? 0.3 : 0.4,
     margin: 0.22,
     confidence: 'high',
-    risk_band: 'likely_scam',
+    risk_band: modelMismatch || /official app|never share|out for delivery/i.test(message) ? 'looks_safe' : 'likely_scam',
     flags: [],
-    matches: [],
+    matches,
     brands: [],
-    model_version: 'browser-fixture-v1',
+    model_version: modelMismatch ? 'browser-fixture-v2' : 'browser-fixture-v1',
   };
 }
 
@@ -68,6 +81,7 @@ async function main() {
     page.on('pageerror', (error) => console.error('browser page error:', error.message));
     let releaseModelInfo;
     let delayNextAnalysis = false;
+    let delayNextBatch = false;
     await page.route('**/model-info', async (route) => {
       await new Promise((resolve) => { releaseModelInfo = resolve; });
       await route.fulfill({ json: {
@@ -82,12 +96,18 @@ async function main() {
     });
     await page.route('**/analyze/batch', async (route) => {
       const { messages } = route.request().postDataJSON();
-      await route.fulfill({ json: {
-        count: messages.length,
-        results: messages.map(analysis),
-        model_version: 'browser-fixture-v1',
-        decision_threshold: 0.6,
-      } });
+      if (delayNextBatch) {
+        delayNextBatch = false;
+        await new Promise((resolve) => setTimeout(resolve, 700));
+      }
+      try {
+        await route.fulfill({ json: {
+          count: messages.length,
+          results: messages.map(analysis),
+          model_version: 'browser-fixture-v1',
+          decision_threshold: 0.6,
+        } });
+      } catch { /* request may have been aborted after input editing or tab switch */ }
     });
     await page.route('**/analyze', async (route) => {
       const { message } = route.request().postDataJSON();
@@ -117,6 +137,9 @@ async function main() {
     }
     if (!(await page.locator('#model-thresholds').textContent()).includes('60%')) {
       throw new Error('late model-info response overwrote the result thresholds');
+    }
+    if (!(await page.locator('#model-note').textContent()).includes('unavailable')) {
+      throw new Error('provenance from a different model version was attached to the existing result');
     }
     const resultBands = await page.locator('#risk-meter').evaluate((meter) => ({
       likely: meter.style.getPropertyValue('--scam'),
@@ -183,6 +206,77 @@ async function main() {
     await page.locator('#btn-clear-history').click();
     if (await page.locator('#history-list li').count()) throw new Error('clear history did not delete saved entries');
 
+    await page.locator('#tab-compare').click();
+    await page.locator('#btn-compare-run').click();
+    if (!(await page.locator('#compare-error').textContent()).includes('Enter both messages')) {
+      throw new Error('empty comparison did not provide a clear validation message');
+    }
+    await page.locator('#compare-message-a').fill('😀 BDO.example says act today. <img src=x onerror=alert(1)>');
+    await page.locator('#compare-message-b').fill('Your OTP is [CODE]. Never share it; use the official app.');
+    if ((await page.locator('#compare-count-a').textContent()) !== '58 / 10000') throw new Error('Unicode code-point counter is incorrect');
+    delayNextBatch = true;
+    await page.locator('#btn-compare-run').click();
+    if (!(await page.locator('#btn-compare-run').isDisabled())) throw new Error('comparison button was not disabled during submission');
+    await page.waitForTimeout(100);
+    await page.locator('#compare-message-b').fill('Edited while request was running.');
+    if (await page.locator('#compare-results').isVisible()) throw new Error('editing left stale comparison results visible');
+    await page.waitForTimeout(750);
+    if (await page.locator('#compare-results').isVisible()) throw new Error('stale comparison response restored edited results');
+
+    await page.locator('[data-compare-example="delivery"]').click();
+    const exampleA = await page.locator('#compare-message-a').inputValue();
+    const exampleB = await page.locator('#compare-message-b').inputValue();
+    if (!exampleA.includes('official courier app') || !exampleB.includes('parcel-release.example')) {
+      throw new Error('fictional delivery comparison pair did not load');
+    }
+    delayNextBatch = true;
+    await page.locator('#btn-compare-run').click();
+    await page.waitForTimeout(100);
+    await page.locator('#tab-check').click();
+    await page.waitForTimeout(750);
+    if (await page.locator('#compare-results').isVisible()) throw new Error('tab switch allowed a stale partial comparison');
+    await page.locator('#tab-compare').click();
+    await page.locator('[data-compare-example="account"]').click();
+    await page.locator('#btn-compare-run').click();
+    await page.locator('#compare-result-cards').waitFor({ state: 'visible' });
+    if (await page.locator('#compare-result-cards article').count() !== 2) throw new Error('comparison did not render both result cards');
+    if (!(await page.locator('#compare-summary').textContent()).includes('percentage points')) throw new Error('compatible scores did not show a difference');
+    if (await page.locator('#compare-result-cards img').count()) throw new Error('untrusted SMS markup created an image element');
+    if ((await page.locator('.compare-provenance').allTextContents()).some((text) => text.includes('Synthetic browser fixture only'))) {
+      throw new Error('comparison borrowed provenance from a different model version');
+    }
+    const mobileColumns = await page.locator('#compare-result-cards').evaluate((item) => getComputedStyle(item).gridTemplateColumns.split(' ').length);
+    if (mobileColumns !== 1) throw new Error(`comparison cards do not stack at 360px: ${mobileColumns} columns`);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    const desktopColumns = await page.locator('#compare-result-cards').evaluate((item) => getComputedStyle(item).gridTemplateColumns.split(' ').length);
+    if (desktopColumns !== 2) throw new Error(`comparison cards are not side-by-side at desktop width: ${desktopColumns} columns`);
+    await page.setViewportSize({ width: 360, height: 800 });
+    if (await page.locator('#history-list li').count()) throw new Error('comparison was unexpectedly saved to history');
+    await page.locator('#btn-lang').click();
+    if (!(await page.locator('#compare-results-heading').textContent()).includes('paghahambing')) throw new Error('comparison title did not switch to Taglish');
+    await page.locator('#btn-lang').click();
+    await page.locator('#btn-compare-clear').click();
+    if (await page.locator('#compare-message-a').inputValue() || await page.locator('#compare-message-b').inputValue()) throw new Error('clear-all did not clear both fields');
+    if (await page.locator('#compare-results').isVisible()) throw new Error('clear-all left a stale comparison');
+    await page.locator('#compare-message-a').fill('x'.repeat(10001));
+    await page.locator('#compare-message-b').fill('valid');
+    await page.locator('#btn-compare-run').click();
+    if (!(await page.locator('#compare-error').textContent()).includes('limit is 10,000')) throw new Error('oversized comparison was not rejected');
+    await page.locator('#btn-compare-clear').click();
+
+    // Model-version/calibration mismatch must suppress percentage-point arithmetic.
+    await page.locator('#compare-message-a').fill('😀 BDO.example alert <img src=x onerror=alert(1)>');
+    await page.locator('#compare-message-b').fill('[different-model] old fixture');
+    await page.locator('#btn-compare-run').click();
+    await page.locator('#compare-result-cards').waitFor({ state: 'visible' });
+    if (!(await page.locator('#compare-summary').textContent()).includes('cannot be compared directly')) {
+      throw new Error('incompatible model scores were compared directly');
+    }
+    await page.locator('#btn-compare-copy').click();
+    await page.waitForFunction(() => Boolean(document.querySelector('#compare-copy-status').textContent));
+    if (!await page.locator('#compare-copy-status').textContent()) throw new Error('explicit copy action did not report status');
+    await page.locator('#btn-compare-clear').click();
+
     await page.locator('#tab-batch').click();
     await page.locator('#batch-input').fill('=SUM(1,1) "quoted"\nOrdinary fixture message');
     await page.locator('#btn-batch').click();
@@ -234,6 +328,9 @@ async function main() {
     await offlinePage.reload({ waitUntil: 'domcontentloaded' });
     if (!(await offlinePage.locator('.brand').isVisible())) {
       throw new Error('offline reload did not render the cached shell');
+    }
+    if (!(await offlinePage.locator('#tab-compare').isVisible())) {
+      throw new Error('offline cached shell does not include the comparison release');
     }
     await pwaContext.close();
     console.log('browser-smoke: offline reload passed');

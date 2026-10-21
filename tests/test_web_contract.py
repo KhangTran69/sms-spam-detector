@@ -130,7 +130,7 @@ def test_all_dom_ids_used_by_app_js_exist_in_index_html(js, html):
 def test_index_html_has_accessible_tabs(html):
     assert 'role="tablist"' in html
     tabs = re.findall(r"<button\b[^>]*\brole=\"tab\"[^>]*>", html)
-    assert len(tabs) == 3, tabs
+    assert len(tabs) == 4, tabs
     for tab in tabs:
         assert "aria-selected=" in tab
         assert "aria-controls=" in tab
@@ -140,7 +140,7 @@ def test_index_html_has_accessible_tabs(html):
     assert controls and controls <= ids
     labelled_by = set(re.findall(r'aria-labelledby="([^"]+)"', html))
     assert labelled_by and labelled_by <= ids
-    assert html.count('role="tabpanel"') == 3
+    assert html.count('role="tabpanel"') == 4
 
 
 def test_index_html_has_live_regions_meter_and_labels(html):
@@ -158,6 +158,7 @@ def test_index_html_has_live_regions_meter_and_labels(html):
     assert {"message-input", "batch-input", "history-optin"} <= labels
     assert labels <= ids
     assert "<textarea" in html and 'id="message-input"' in html
+    assert {"compare-message-a", "compare-message-b"} <= labels
 
 
 def test_index_html_has_skip_link_table_semantics_and_button_types(html, css):
@@ -219,12 +220,12 @@ def test_uncalibrated_scores_are_not_presented_as_probability(js, html):
     assert "Likely spam" in js
     assert "Spam or unwanted advertising" in js
     assert "calibration status follows the loaded model" in html
-    assert 'displayedCalibration ? t("meter.aria.calibrated") : t("meter.aria")' in js
-    assert 'analysis && analysis.probability_calibrated === true ? t("meter.aria.calibrated") : t("meter.aria")' in js
+    assert 'displayedCalibration === true ? t("meter.aria.calibrated")' in js
+    assert 'displayedCalibration === false ? t("meter.aria")' in js
     assert "probability_calibrated" in js
     assert "} scam probability" not in js
     assert 't("batch.col.scoreDescription")' in js
-    assert "probability_calibrated: analysis.probability_calibrated === true" in js
+    assert 'typeof analysis.probability_calibrated === "boolean" ? analysis.probability_calibrated : null' in js
     assert "displayedCalibration" in js
 
 
@@ -238,9 +239,31 @@ def test_service_worker_installs_complete_static_shell_and_never_caches_api():
     assert "await cache.put(request" not in sw, "runtime responses must not mutate an installed release"
     for path in ("/analyze", "/analyze/batch", "/predict", "/feedback", "/model-info"):
         assert f'"{path}"' in sw
-    assert "smsd-shell-v8" in sw
-    assert '"/static/styles.css?v=ui8-release-shell-20261021"' in sw
-    assert '"/static/app.js?v=ui8-release-shell-20261021"' in sw
+    assert "smsd-shell-v9" in sw
+    assert '"/static/styles.css?v=ui9-comparison-20261021"' in sw
+    assert '"/static/app.js?v=ui9-comparison-20261021"' in sw
+
+
+def test_compare_tab_reuses_batch_endpoint_and_resets_stale_state(js, html):
+    for element_id in (
+        "compare-message-a",
+        "compare-message-b",
+        "compare-count-a",
+        "compare-count-b",
+        "btn-compare-swap",
+        "btn-compare-clear",
+        "btn-compare-run",
+        "compare-results",
+        "compare-signal-differences",
+        "btn-compare-copy",
+    ):
+        assert f'id="{element_id}"' in html
+    assert 'analyzeBatch: "/analyze/batch"' in js
+    assert "new AbortController()" in js
+    assert "compareScoreInterpretation" in js
+    assert "currentComparison = null" in js
+    assert "innerHTML" not in js
+    assert len(re.findall(r'data-compare-example="(otp|delivery|account)"', html)) == 3
 
 
 def test_app_js_handles_network_and_api_error_states(js):

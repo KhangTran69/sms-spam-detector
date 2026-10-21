@@ -3,11 +3,11 @@
  */
 "use strict";
 
-const CACHE_NAME = "smsd-shell-v8";
+const CACHE_NAME = "smsd-shell-v9";
 const SHELL_ASSETS = [
   "/",
-  "/static/styles.css?v=ui8-release-shell-20261021",
-  "/static/app.js?v=ui8-release-shell-20261021",
+  "/static/styles.css?v=ui9-comparison-20261021",
+  "/static/app.js?v=ui9-comparison-20261021",
   "/manifest.webmanifest",
 ];
 const SHELL_REQUESTS = new Set(SHELL_ASSETS.map((asset) => {

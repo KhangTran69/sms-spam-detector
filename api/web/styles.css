@@ -502,6 +502,7 @@ mark.sig {
 
 .mini-meter { position: relative; width: 72px; height: 8px; border-radius: 999px; background: var(--line); overflow: hidden; }
 .mini-meter > div { height: 100%; border-radius: 999px; background: var(--green); transition: width 0.4s; }
+.mini-meter-unavailable { background: var(--surface-2); }
 .risk-cell { display: flex; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; color: var(--muted); }
 
 /* Skeleton rows shown while a batch request is in flight. */
@@ -577,6 +578,32 @@ mark.sig {
 
 .empty { color: var(--muted); text-align: center; padding: 28px 0 16px; }
 
+/* ---------- Side-by-side message comparison ---------- */
+.panel-title { margin: 0 0 6px; font-size: 20px; }
+.compare-inputs, .compare-result-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.compare-input, .compare-result-card { min-width: 0; }
+.compare-input textarea { min-height: 120px; }
+.compare-input .char-count { display: block; text-align: right; margin-top: 4px; }
+.compare-examples { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 12px 0 20px; }
+.compare-results > h2 { color: var(--muted); font-size: 16px; margin: 0 0 12px; }
+.compare-result-card h3 { margin: 0 0 10px; font-size: 17px; }
+.compare-result-card h4 { margin: 18px 0 8px; font-size: 14px; }
+.compare-verdict { font-weight: 700; }
+.compare-verdict.spam { color: var(--red-ink); }
+.compare-verdict.suspicious { color: var(--amber-ink); }
+.compare-verdict.safe { color: var(--green-ink); }
+.compare-verdict.unknown { color: var(--muted); }
+.compare-metadata { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; margin: 12px 0; }
+.compare-metadata dt { color: var(--muted); }
+.compare-metadata dd { margin: 0; text-align: right; overflow-wrap: anywhere; font-weight: 600; }
+.compare-provenance { overflow-wrap: anywhere; }
+.compare-highlighted { font-size: 14px; padding: 12px; }
+.compare-signals { font-size: 13px; }
+.compare-summary { font-weight: 700; }
+.compare-differences ul { padding-left: 22px; }
+.compare-inputs textarea, .compare-result-card, .compare-differences { overflow-wrap: anywhere; }
+.meter.meter-no-thresholds { background: var(--surface-2); }
+
 .hint { color: var(--muted); font-size: 12.5px; margin: 6px 0 0; }
 .input-card .hint { margin-bottom: 0; }
 
@@ -589,6 +616,10 @@ mark.sig {
 
 @media (max-width: 640px) {
   .summary { grid-template-columns: 1fr; }
+  .compare-inputs, .compare-result-cards { grid-template-columns: minmax(0, 1fr); }
+  .compare-metadata { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .compare-metadata dd { text-align: left; margin-bottom: 8px; }
+  .compare-results .btn, .compare-input-card .btn { min-height: 44px; }
   .verdict-title { font-size: 18px; }
   .header-inner { justify-content: center; text-align: center; }
   .header-controls { margin-left: 0; }

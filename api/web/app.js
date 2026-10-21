@@ -53,7 +53,9 @@ const I18N = {
     "offline.banner": "You appear to be offline. The page still works, but new checks need a connection.",
     "tab.check": "Check a message",
     "tab.batch": "Batch check",
+    "tab.compare": "Compare messages",
     "tab.history": "History",
+    "value.unavailable": "Unavailable",
     "model.info": "Model information",
     "model.loading": "Loading…",
     "model.versionPrefix": "Model version: ",
@@ -61,6 +63,7 @@ const I18N = {
     "model.thresholds.line": "Decision threshold {threshold} · risk bands: likely spam ≥ {scam}, suspicious ≥ {suspicious}.",
     "model.fallbackSuffix": " Using built-in fallback thresholds until model information is available.",
     "model.legacyWarning": "This is a legacy model with missing training metadata. Treat results as a demo only.",
+    "model.provenance.unavailable": "Model provenance is unavailable for this result.",
     "check.label": "Paste the SMS you want to check",
     "check.placeholder": "e.g. Bank notice: Your account review is due. Visit bank-help.example to read more.",
     "check.help": "At most 10,000 characters. Messages are analysed in memory and are never stored on the server.",
@@ -86,13 +89,16 @@ const I18N = {
     "band.likely_scam": "Likely spam",
     "band.suspicious": "Suspicious",
     "band.looks_safe": "Looks safe",
+    "band.unavailable": "Unavailable",
     "verdict.score.uncalibrated": "uncalibrated spam model score",
     "verdict.score.calibrated": "calibrated spam score",
+    "verdict.score.unavailable": "score interpretation unavailable",
     "verdict.modelVerdict": "model verdict",
     "verdict.decisionThreshold": "decision threshold",
     "meter.title": "Spam score",
     "meter.aria": "Uncalibrated spam model score",
     "meter.aria.calibrated": "Calibrated spam score",
+    "meter.aria.unavailable": "Spam model score; interpretation unavailable",
     "copy.summary": "Copy summary",
     "copy.done": "Copied!",
     "copy.fail": "Could not copy automatically; please copy manually.",
@@ -106,6 +112,48 @@ const I18N = {
     "summary.threshold": "Decision threshold",
     "summary.suspiciousThreshold": "Suspicious band threshold",
     "signals.title": "Message signals",
+    "compare.title": "Compare two messages",
+    "compare.help": "Compare each message's detector result and detected text patterns. These patterns do not explain why the model chose a verdict.",
+    "compare.messageA": "Message A",
+    "compare.messageB": "Message B",
+    "compare.inputHelp": "Up to 10,000 characters. Text is sent to this detector's API for analysis and is not saved as comparison history.",
+    "compare.swap": "Swap messages",
+    "compare.clear": "Clear all",
+    "compare.run": "Compare messages",
+    "compare.busy": "Comparing…",
+    "compare.empty": "Enter two messages and choose Compare messages to see results.",
+    "compare.error.empty": "Enter both messages before comparing.",
+    "compare.error.tooLong": "Message {n} has {count} characters; the limit is 10,000.",
+    "compare.error.failed": "Could not complete both analyses. Please try again; no partial comparison is shown.",
+    "compare.progress": "Analyzing both messages…",
+    "compare.examplesLabel": "Fictional comparison examples",
+    "compare.examples": "Fictional comparison examples:",
+    "compare.exampleOtp": "OTP notices",
+    "compare.exampleDelivery": "Delivery notices",
+    "compare.exampleAccount": "Bank / e-wallet alerts",
+    "compare.exampleNote": "Fictional UI examples only; they are not training or evaluation data.",
+    "compare.exampleLoaded": "Loaded fictional {name} comparison pair.",
+    "compare.resultsTitle": "Comparison results",
+    "compare.resultFor": "Result for {name}",
+    "compare.score": "Spam score",
+    "compare.interpretation": "Score interpretation",
+    "compare.modelVersion": "Model version",
+    "compare.thresholds": "Decision / suspicious thresholds",
+    "compare.provenance": "Model provenance",
+    "compare.verdict": "Verdict",
+    "compare.scoreDifference": "Score difference (Message A − Message B)",
+    "compare.scoreDifferenceValue": "{points} percentage points",
+    "compare.scoreNotComparable": "Scores cannot be compared directly because model version, score interpretation, or score data differ or are unavailable.",
+    "compare.differencesTitle": "Detected text differences",
+    "compare.differencesHelp": "These are patterns found in the text. They do not explain the model's decision.",
+    "compare.common": "Detected in both",
+    "compare.onlyA": "Detected only in Message A",
+    "compare.onlyB": "Detected only in Message B",
+    "compare.none": "No supported text patterns were detected in either message.",
+    "compare.safetyNote": "A lower spam score does not guarantee that a message is safe. Verify requests through an official app or contact method.",
+    "compare.copy": "Copy comparison summary",
+    "compare.copyDone": "Comparison summary copied.",
+    "compare.copyFail": "Could not copy automatically; please copy manually.",
     "signals.guidance": "These highlights mark text patterns the detector recognizes. They do not show which features influenced the model’s verdict. Links, numbers, amounts, urgency, and brand names can appear in legitimate messages too.",
     "signals.group": "Message text with detected text patterns",
     "signals.empty": "No supported text patterns were detected. That alone does not mean the message is safe.",
@@ -201,7 +249,9 @@ const I18N = {
     "offline.banner": "Mukhang offline ka. Gumagana pa rin ang pahina, pero kailangan ng connection ang mga bagong check.",
     "tab.check": "Tingnan ang mensahe",
     "tab.batch": "Maramihang check",
+    "tab.compare": "Ikumpara ang mga mensahe",
     "tab.history": "History",
+    "value.unavailable": "Hindi available",
     "model.info": "Impormasyon ng modelo",
     "model.loading": "Naglo-load…",
     "model.versionPrefix": "Bersyon ng modelo: ",
@@ -209,6 +259,7 @@ const I18N = {
     "model.thresholds.line": "Decision threshold {threshold} · risk bands: malamang spam ≥ {scam}, kahina-hinala ≥ {suspicious}.",
     "model.fallbackSuffix": " Ginagamit muna ang built-in na fallback thresholds hanggang makuha ang impormasyon ng modelo.",
     "model.legacyWarning": "Lumang modelo ito na walang kumpletong training metadata. Demo lamang ang resulta.",
+    "model.provenance.unavailable": "Hindi available ang pinagmulan ng modelo para sa resultang ito.",
     "check.label": "I-paste ang SMS na gusto mong i-check",
     "check.placeholder": "Hal. May notice sa account mo. Tingnan sa bank-help.example kung kailangan ng action.",
     "check.help": "Hanggang 10,000 karakter. Sinusuri sa memory ang mga mensahe at hindi kailanman iniimbak sa server.",
@@ -234,13 +285,16 @@ const I18N = {
     "band.likely_scam": "Malamang spam",
     "band.suspicious": "Kahina-hinala",
     "band.looks_safe": "Mukhang ligtas",
+    "band.unavailable": "Hindi available",
     "verdict.score.uncalibrated": "uncalibrated na spam model score",
     "verdict.score.calibrated": "calibrated na spam score",
+    "verdict.score.unavailable": "hindi available ang interpretasyon ng score",
     "verdict.modelVerdict": "hatol ng modelo",
     "verdict.decisionThreshold": "decision threshold",
     "meter.title": "Spam score",
     "meter.aria": "Uncalibrated na spam model score",
     "meter.aria.calibrated": "Calibrated na spam score",
+    "meter.aria.unavailable": "Spam model score; hindi available ang interpretasyon",
     "copy.summary": "Kopyahin ang buod",
     "copy.done": "Nakopya na!",
     "copy.fail": "Hindi awtomatikong nakopya; kopyahin nang manual.",
@@ -254,6 +308,48 @@ const I18N = {
     "summary.threshold": "Threshold ng desisyon",
     "summary.suspiciousThreshold": "Threshold ng suspicious band",
     "signals.title": "Mga signal sa mensahe",
+    "compare.title": "Ikumpara ang dalawang mensahe",
+    "compare.help": "Ihambing ang resulta ng detector at mga natukoy na pattern sa bawat mensahe. Hindi ipinapaliwanag ng mga pattern na ito kung bakit iyon ang hatol ng modelo.",
+    "compare.messageA": "Mensahe A",
+    "compare.messageB": "Mensahe B",
+    "compare.inputHelp": "Hanggang 10,000 karakter. Ipinapadala ang text sa API ng detector para suriin at hindi ise-save bilang comparison history.",
+    "compare.swap": "Pagpalitin ang mga mensahe",
+    "compare.clear": "Burahin lahat",
+    "compare.run": "Ikumpara ang mga mensahe",
+    "compare.busy": "Ikinukumpara…",
+    "compare.empty": "Maglagay ng dalawang mensahe at pindutin ang Ikumpara ang mga mensahe para makita ang resulta.",
+    "compare.error.empty": "Ilagay ang dalawang mensahe bago ikumpara.",
+    "compare.error.tooLong": "May {count} karakter ang Mensahe {n}; 10,000 ang limit.",
+    "compare.error.failed": "Hindi nakumpleto ang pagsusuri sa dalawang mensahe. Subukan ulit; walang bahagyang resulta ang ipapakita.",
+    "compare.progress": "Sinusuri ang dalawang mensahe…",
+    "compare.examplesLabel": "Mga gawa-gawang halimbawa ng paghahambing",
+    "compare.examples": "Mga gawa-gawang halimbawa:",
+    "compare.exampleOtp": "Mga OTP notice",
+    "compare.exampleDelivery": "Mga delivery notice",
+    "compare.exampleAccount": "Mga alerto ng bangko / e-wallet",
+    "compare.exampleNote": "Mga gawa-gawang halimbawa lang sa UI; hindi ito training o evaluation data.",
+    "compare.exampleLoaded": "Na-load ang gawa-gawang pares tungkol sa {name}.",
+    "compare.resultsTitle": "Mga resulta ng paghahambing",
+    "compare.resultFor": "Resulta para sa {name}",
+    "compare.score": "Spam score",
+    "compare.interpretation": "Interpretasyon ng score",
+    "compare.modelVersion": "Bersyon ng modelo",
+    "compare.thresholds": "Decision / suspicious thresholds",
+    "compare.provenance": "Pinagmulan ng modelo",
+    "compare.verdict": "Hatol",
+    "compare.scoreDifference": "Pagkakaiba ng score (Mensahe A − Mensahe B)",
+    "compare.scoreDifferenceValue": "{points} percentage point",
+    "compare.scoreNotComparable": "Hindi direktang maihahambing ang mga score dahil magkaiba o hindi available ang bersyon ng modelo, interpretasyon ng score, o score data.",
+    "compare.differencesTitle": "Mga natukoy na pagkakaiba sa text",
+    "compare.differencesHelp": "Mga pattern ito na nakita sa text. Hindi nito ipinapaliwanag ang pasya ng modelo.",
+    "compare.common": "Natukoy sa pareho",
+    "compare.onlyA": "Natukoy lang sa Mensahe A",
+    "compare.onlyB": "Natukoy lang sa Mensahe B",
+    "compare.none": "Walang kilalang pattern sa text na natukoy sa alinmang mensahe.",
+    "compare.safetyNote": "Hindi garantiya ng kaligtasan ang mas mababang spam score. Beripikahin ang mga kahilingan sa opisyal na app o contact method.",
+    "compare.copy": "Kopyahin ang buod ng paghahambing",
+    "compare.copyDone": "Nakopya ang buod ng paghahambing.",
+    "compare.copyFail": "Hindi awtomatikong nakopya; kopyahin nang manual.",
     "signals.guidance": "Inilalagyan ng highlight ang mga pattern sa text na kilala ng detector. Hindi ito pinapakita kung aling features ang naka-impluwensya sa hatol ng modelo. Ang mga link, numero, halaga, salitang may pagmamadali, at brand ay maaari ring lumabas sa lehitimong mensahe.",
     "signals.group": "Text ng mensahe kasama ang mga natuklasang pattern",
     "signals.empty": "Walang natuklasang kilalang pattern sa text. Iyon lamang ay hindi nangangahulugang ligtas ang mensahe.",
@@ -387,6 +483,7 @@ function resetIdleLabels() {
       "btn-check": ["check.run", "check.busy"],
       "btn-batch": ["batch.run", "batch.busy"],
       "btn-feedback": ["feedback.submit", "feedback.busy"],
+      "btn-compare-run": ["compare.run", "compare.busy"],
     }[button.id];
     if (button.getAttribute("aria-busy") === "true" && labels) {
       button.dataset.idleLabel = t(labels[0]);
@@ -408,7 +505,7 @@ function setLanguage(nextLang) {
   resetIdleLabels();
   $("btn-lang").textContent = lang === "taglish" ? "EN" : "Taglish";
   updateThemeButton();
-  renderModelInfo();
+  renderActiveModelInfo();
   renderHistory();
   updateHistoryBadge();
   updateCharCount();
@@ -421,6 +518,7 @@ function setLanguage(nextLang) {
   if (batchAbortController && batchProgress) updateBatchProgress(batchProgress.done, batchProgress.total);
   if (window.currentAnalysis) renderAnalysis(window.currentAnalysis, { save: false });
   if (lastBatchResults) renderBatch(lastBatchResults);
+  if (currentComparison) renderComparison(currentComparison.results);
 }
 
 /* ---------- Theme (light ↔ dark, persisted) ---------- */
@@ -555,6 +653,8 @@ const EXAMPLE_INDEX = { scam: -1, safe: -1 };
 const $ = (id) => document.getElementById(id);
 
 let modelInfo = normalizeModelInfo(FALLBACK_MODEL_INFO);
+let modelInfoLoaded = false;
+let modelInfoError = null;
 let historyEnabled = false;
 let lastBatchResults = null;
 
@@ -564,8 +664,13 @@ function numberOr(value, fallback) {
   return Number.isFinite(number) ? number : fallback;
 }
 
+function validFraction(value) {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1 ? value : null;
+}
+
 function pct(value) {
-  return `${Math.round(numberOr(value, 0) * 100)}%`;
+  const fraction = validFraction(value);
+  return fraction === null ? t("value.unavailable") : `${Math.round(fraction * 100)}%`;
 }
 
 function prefersReducedMotion() {
@@ -583,25 +688,26 @@ function nextExample(kind) {
 function normalizeModelInfo(info) {
   const safe = info && typeof info === "object" ? info : {};
   const bands = safe.bands && typeof safe.bands === "object" ? safe.bands : {};
-  const dataNote = typeof safe.data_note === "string" && safe.data_note.trim()
-    ? safe.data_note.trim()
-    : SYNTHETIC_DATA_NOTE;
+  const decisionThreshold = validFraction(safe.decision_threshold);
+  const likelyThreshold = validFraction(bands.likely_scam) ?? decisionThreshold;
+  const suspiciousThreshold = validFraction(bands.suspicious) ?? validFraction(safe.suspicious_threshold);
+  const normalizedBands = likelyThreshold !== null && suspiciousThreshold !== null
+    && suspiciousThreshold < likelyThreshold
+    ? { likely_scam: likelyThreshold, suspicious: suspiciousThreshold, looks_safe: 0 }
+    : null;
   return {
     raw: safe,
     model_version: typeof safe.model_version === "string" && safe.model_version
       ? safe.model_version
-      : FALLBACK_MODEL_INFO.model_version,
-    decision_threshold: numberOr(safe.decision_threshold, FALLBACK_MODEL_INFO.decision_threshold),
-    suspicious_threshold: numberOr(safe.suspicious_threshold, FALLBACK_MODEL_INFO.suspicious_threshold),
-    bands: {
-      likely_scam: numberOr(bands.likely_scam, numberOr(safe.decision_threshold, FALLBACK_BANDS.likely_scam)),
-      suspicious: numberOr(bands.suspicious, numberOr(safe.suspicious_threshold, FALLBACK_BANDS.suspicious)),
-      looks_safe: numberOr(bands.looks_safe, FALLBACK_BANDS.looks_safe),
-    },
-    data_note: dataNote,
+      : null,
+    decision_threshold: decisionThreshold,
+    suspicious_threshold: suspiciousThreshold,
+    bands: normalizedBands,
+    data_note: typeof safe.data_note === "string" && safe.data_note.trim() ? safe.data_note.trim() : null,
     legacy_artifact: safe.legacy_artifact === true,
     feedback_enabled: safe.feedback_enabled === true,
-    probability_calibrated: safe.probability_calibrated === true,
+    probability_calibrated: typeof safe.probability_calibrated === "boolean" ? safe.probability_calibrated : null,
+    warnings: Array.isArray(safe.warnings) ? safe.warnings.filter((item) => typeof item === "string") : [],
   };
 }
 
@@ -716,6 +822,7 @@ function selectTab(tab) {
   // cancels it so a late response cannot replace a result after navigation.
   if (name !== "check" && singleAbortController) invalidateSingle();
   if (name !== "batch" && batchAbortController) invalidateBatch();
+  if (name !== "compare" && compareAbortController) invalidateComparison();
   for (const candidate of tabElements()) {
     const selected = candidate === tab;
     candidate.classList.toggle("active", selected);
@@ -727,6 +834,12 @@ function selectTab(tab) {
     panel.classList.toggle("active", active);
     panel.hidden = !active;
   }
+  renderModelInfo(name === "check" ? window.currentAnalysis : null);
+}
+
+function renderActiveModelInfo() {
+  const activeTab = tabElements().find((tab) => tab.getAttribute("aria-selected") === "true");
+  renderModelInfo(activeTab && activeTab.dataset.tab === "check" ? window.currentAnalysis || null : null);
 }
 
 function switchTab(name) {
@@ -755,41 +868,66 @@ function initTabs() {
 }
 
 /* ---------- Model information ---------- */
-function renderModelInfo() {
-  const analysis = window.currentAnalysis;
-  const modelVersion = analysis && typeof analysis.model_version === "string"
-    ? analysis.model_version
-    : modelInfo.model_version;
+function resultMatchesLoadedModel(analysis) {
+  return Boolean(modelInfoLoaded && analysis && typeof analysis.model_version === "string"
+    && analysis.model_version && analysis.model_version !== "unknown"
+    && analysis.model_version === modelInfo.model_version);
+}
+
+function renderModelInfo(analysis = null) {
+  const resultContext = Boolean(analysis && typeof analysis === "object");
+  const matchedInfo = resultContext && resultMatchesLoadedModel(analysis);
+  const modelVersion = resultContext
+    ? (typeof analysis.model_version === "string" && analysis.model_version ? analysis.model_version : t("value.unavailable"))
+    : (modelInfoLoaded && modelInfo.model_version ? modelInfo.model_version : t("value.unavailable"));
   const bands = bandsForAnalysis(analysis);
   $("model-version").textContent = `${t("model.versionPrefix")}${modelVersion}`;
-  $("model-note").textContent = modelInfo.data_note;
+  $("model-note").textContent = resultContext
+    ? (matchedInfo && modelInfo.data_note ? modelInfo.data_note : t("model.provenance.unavailable"))
+    : (modelInfoLoaded && modelInfo.data_note ? modelInfo.data_note : t("model.provenance.unavailable"));
   const warning = $("model-warning");
-  if (modelInfo.legacy_artifact) {
+  if (resultContext && matchedInfo && modelInfo.warnings.length) {
+    warning.textContent = modelInfo.warnings.join(" ");
+    warning.classList.remove("hidden");
+  } else if (resultContext && matchedInfo && modelInfo.legacy_artifact) {
     warning.textContent = t("model.legacyWarning");
     warning.classList.remove("hidden");
-  } else if (warning.textContent === t("model.legacyWarning")) {
+  } else if (modelInfoError && (!resultContext || !matchedInfo)) {
+    warning.textContent = `${describeError(modelInfoError)}${t("model.fallbackSuffix")}`;
+    warning.classList.remove("hidden");
+  } else if (resultContext || (!modelInfoError && !modelInfo.legacy_artifact)) {
     warning.textContent = "";
     warning.classList.add("hidden");
+  } else if (!resultContext && modelInfo.legacy_artifact) {
+    warning.textContent = t("model.legacyWarning");
+    warning.classList.remove("hidden");
   }
-  $("model-thresholds").textContent = t("model.thresholds.line", {
-    threshold: pct(analysis ? bands.likely_scam : modelInfo.decision_threshold),
-    scam: pct(bands.likely_scam),
-    suspicious: pct(bands.suspicious),
-  });
-  const displayedCalibration = analysis && typeof analysis.probability_calibrated === "boolean"
-    ? analysis.probability_calibrated
-    : modelInfo.probability_calibrated;
+  $("model-thresholds").textContent = bands
+    ? t("model.thresholds.line", {
+      threshold: pct(resultContext ? validFraction(analysis.decision_threshold)
+        ?? (matchedInfo ? validFraction(modelInfo.decision_threshold) : null) : validFraction(modelInfo.decision_threshold)),
+      scam: pct(bands.likely_scam),
+      suspicious: pct(bands.suspicious),
+    })
+    : `${t("model.thresholds.loading")} ${t("value.unavailable")}`;
+  const displayedCalibration = resultContext
+    ? (typeof analysis.probability_calibrated === "boolean" ? analysis.probability_calibrated : null)
+    : (modelInfoLoaded ? modelInfo.probability_calibrated : null);
   $("risk-meter").setAttribute(
     "aria-label",
-    displayedCalibration ? t("meter.aria.calibrated") : t("meter.aria"),
+    displayedCalibration === true ? t("meter.aria.calibrated")
+      : displayedCalibration === false ? t("meter.aria") : t("meter.aria.unavailable"),
   );
 }
 
 function bandsForAnalysis(analysis) {
   if (!analysis || typeof analysis !== "object") return modelInfo.bands;
-  const likely = numberOr(analysis.decision_threshold, modelInfo.bands.likely_scam);
-  const suspicious = numberOr(analysis.suspicious_threshold, modelInfo.bands.suspicious);
-  if (suspicious < 0 || suspicious >= likely || likely > 1) return modelInfo.bands;
+  const useLoaded = resultMatchesLoadedModel(analysis);
+  const likely = validFraction(analysis.decision_threshold)
+    ?? (useLoaded ? validFraction(modelInfo.bands.likely_scam) : null);
+  const suspicious = validFraction(analysis.suspicious_threshold)
+    ?? (useLoaded ? validFraction(modelInfo.bands.suspicious) : null);
+  if (likely === null || suspicious === null || suspicious >= likely) return null;
   return { likely_scam: likely, suspicious, looks_safe: 0 };
 }
 
@@ -798,22 +936,26 @@ async function loadModelInfo() {
   try {
     const info = await requestJson(API.modelInfo);
     modelInfo = normalizeModelInfo(info);
+    modelInfoLoaded = true;
+    modelInfoError = null;
     warning.textContent = "";
     warning.classList.add("hidden");
   } catch (failure) {
     if (failure && failure.aborted) return;
     modelInfo = normalizeModelInfo(FALLBACK_MODEL_INFO);
-    warning.textContent = `${describeError(failure)}${t("model.fallbackSuffix")}`;
-    warning.classList.remove("hidden");
+    modelInfoLoaded = false;
+    modelInfoError = failure;
     if (failure && failure.offline) showOfflineBanner();
   }
-  renderModelInfo();
+  renderActiveModelInfo();
+  if (currentComparison) renderComparison(currentComparison.results);
 }
 
 /* ---------- Banding ---------- */
 function bandFromProbability(probability, analysis = null) {
-  const value = numberOr(probability, 0);
+  const value = validFraction(probability);
   const bands = bandsForAnalysis(analysis);
+  if (value === null || !bands) return "unavailable";
   if (value >= bands.likely_scam) return "likely_scam";
   if (value >= bands.suspicious) return "suspicious";
   return "looks_safe";
@@ -824,17 +966,16 @@ function bandOf(analysis) {
   if (analysis && typeof analysis.risk_band === "string" && BAND_VIEW[analysis.risk_band]) {
     return analysis.risk_band;
   }
-  return bandFromProbability(analysis ? analysis.spam_probability : 0, analysis);
+  return bandFromProbability(analysis ? analysis.spam_probability : null, analysis);
 }
 
 function bandView(band) {
-  return BAND_VIEW[band] || BAND_VIEW.looks_safe;
+  return BAND_VIEW[band] || { css: "unknown", icon: "ℹ️", key: "band.unavailable" };
 }
 
 function scoreLabel(analysis) {
-  return analysis && analysis.probability_calibrated === true
-    ? t("verdict.score.calibrated")
-    : t("verdict.score.uncalibrated");
+  if (!analysis || typeof analysis.probability_calibrated !== "boolean") return t("verdict.score.unavailable");
+  return analysis.probability_calibrated ? t("verdict.score.calibrated") : t("verdict.score.uncalibrated");
 }
 
 /* ---------- Single-check rendering ---------- */
@@ -844,34 +985,39 @@ function renderVerdict(analysis) {
   $("verdict-card").className = `card verdict ${view.css}`;
   $("verdict-icon").textContent = view.icon;
   $("verdict-title").textContent = bandTitle(band);
-  const decisionThreshold = numberOr(analysis.decision_threshold, modelInfo.decision_threshold);
+  const decisionThreshold = validFraction(analysis.decision_threshold)
+    ?? (resultMatchesLoadedModel(analysis) ? validFraction(modelInfo.decision_threshold) : null);
   $("verdict-sub").textContent =
-    `${pct(analysis.spam_probability)} ${scoreLabel(analysis)} · ${t("verdict.modelVerdict")}: ${analysis.prediction} · ` +
+    `${pct(analysis.spam_probability)} ${scoreLabel(analysis)} · ${t("verdict.modelVerdict")}: ${analysis.prediction || t("value.unavailable")} · ` +
     `${t("verdict.decisionThreshold")} ${pct(decisionThreshold)}`;
 }
 
 function renderMeter(analysis) {
-  const probability = numberOr(analysis.spam_probability, 0);
-  const value = Math.round(probability * 100);
+  const probability = validFraction(analysis.spam_probability);
+  const value = probability === null ? null : Math.round(probability * 100);
   const band = bandOf(analysis);
   const meter = $("risk-meter");
   const bands = bandsForAnalysis(analysis);
-  meter.style.setProperty("--suspect", `${Math.round(bands.suspicious * 100)}%`);
-  meter.style.setProperty("--scam", `${Math.round(bands.likely_scam * 100)}%`);
-  meter.setAttribute("aria-valuenow", String(value));
-  meter.setAttribute(
-    "aria-label",
-    analysis && analysis.probability_calibrated === true ? t("meter.aria.calibrated") : t("meter.aria"),
-  );
-  meter.setAttribute("aria-valuetext", `${value}% ${scoreLabel(analysis)} — ${bandTitle(band)}`);
-  $("meter-marker").style.left = `${value}%`;
+  meter.classList.toggle("meter-no-thresholds", !bands || value === null);
+  if (bands) {
+    meter.style.setProperty("--suspect", `${Math.round(bands.suspicious * 100)}%`);
+    meter.style.setProperty("--scam", `${Math.round(bands.likely_scam * 100)}%`);
+  }
+  if (value === null) meter.removeAttribute("aria-valuenow");
+  else meter.setAttribute("aria-valuenow", String(value));
+  const calibration = analysis && typeof analysis.probability_calibrated === "boolean"
+    ? analysis.probability_calibrated : null;
+  meter.setAttribute("aria-label", calibration === true ? t("meter.aria.calibrated")
+    : calibration === false ? t("meter.aria") : t("meter.aria.unavailable"));
+  meter.setAttribute("aria-valuetext", value === null ? t("value.unavailable")
+    : `${value}% ${scoreLabel(analysis)} — ${bandTitle(band)}`);
+  $("meter-marker").style.left = value === null ? "0%" : `${value}%`;
   const output = $("meter-value");
-  output.textContent = `${value}%`;
-  output.style.color = { spam: "var(--red)", suspicious: "var(--amber)", safe: "var(--green)" }[bandView(band).css];
+  output.textContent = value === null ? t("value.unavailable") : `${value}%`;
+  output.style.color = { spam: "var(--red)", suspicious: "var(--amber)", safe: "var(--green)" }[bandView(band).css] || "var(--muted)";
 }
 
-function renderHighlighted(analysis) {
-  const container = $("highlighted");
+function renderHighlighted(analysis, container = $("highlighted"), idPrefix = "signal") {
   const message = typeof analysis.message === "string" ? analysis.message : "";
   const characters = Array.from(message); // API offsets count Unicode code points.
   container.replaceChildren();
@@ -891,7 +1037,7 @@ function renderHighlighted(analysis) {
     const types = [...new Set(active.map((match) => match.type))];
     const mark = document.createElement("mark");
     mark.className = `sig ${types.map((type) => `sig-${type}`).join(" ")}`;
-    mark.setAttribute("aria-describedby", active.map((match) => `signal-${match.id}`).join(" "));
+    mark.setAttribute("aria-describedby", active.map((match) => `${idPrefix}-${match.id}`).join(" "));
     // Keep the visual highlight free of numeric prefixes; the accessible
     // description still links it to the matching signal detail row.
     mark.append(document.createTextNode(text));
@@ -919,8 +1065,7 @@ function signalMatches(analysis, characters) {
     .map((match, index) => ({ ...match, id: index + 1 }));
 }
 
-function renderSignals(analysis) {
-  const container = $("signals");
+function renderSignals(analysis, container = $("signals"), idPrefix = "signal") {
   container.replaceChildren();
   const message = typeof analysis.message === "string" ? analysis.message : "";
   const matches = signalMatches(analysis, Array.from(message));
@@ -933,7 +1078,7 @@ function renderSignals(analysis) {
   }
   for (const match of matches) {
     const item = document.createElement("li");
-    item.id = `signal-${match.id}`;
+    item.id = `${idPrefix}-${match.id}`;
     item.className = `signal-item signal-item-${match.type}`;
     const reference = document.createElement("span");
     reference.className = "signal-reference";
@@ -995,9 +1140,11 @@ function renderTips(analysis) {
 }
 
 function buildSummaryText(analysis) {
+  const modelVersion = typeof analysis.model_version === "string" && analysis.model_version
+    ? analysis.model_version : t("value.unavailable");
   const lines = [
     t("summary.header"),
-    `${t("summary.verdict")}: ${bandTitle(bandOf(analysis))} (${analysis.prediction})`,
+    `${t("summary.verdict")}: ${bandTitle(bandOf(analysis))} (${analysis.prediction || t("value.unavailable")})`,
     `${t("summary.score")}: ${pct(analysis.spam_probability)} (${scoreLabel(analysis)})`,
     `${t("summary.threshold")}: ${pct(analysis.decision_threshold)}`,
     `${t("summary.suspiciousThreshold")}: ${pct(analysis.suspicious_threshold)}`,
@@ -1006,7 +1153,7 @@ function buildSummaryText(analysis) {
   ];
   lines.push(`${t("summary.tips")}:`);
   for (const tip of buildTips(analysis)) lines.push(`- ${tip}`);
-  lines.push(`${t("summary.model")}: ${analysis.model_version || modelInfo.model_version}`);
+  lines.push(`${t("summary.model")}: ${modelVersion}`);
   lines.push(t("footer.synthetic"));
   return lines.join("\n");
 }
@@ -1049,12 +1196,13 @@ function renderAnalysis(analysis, { save = true } = {}) {
   renderTips(analysis);
   $("copy-status").textContent = "";
   window.currentAnalysis = analysis;
-  renderModelInfo();
+  renderModelInfo(analysis);
   const feedbackForm = $("feedback-form");
-  feedbackForm.classList.toggle("hidden", !modelInfo.feedback_enabled);
+  const feedbackEnabled = resultMatchesLoadedModel(analysis) && modelInfo.feedback_enabled;
+  feedbackForm.classList.toggle("hidden", !feedbackEnabled);
   $("feedback-status").textContent = "";
   setBusy($("btn-feedback"), false, t("feedback.submit"));
-  if (modelInfo.feedback_enabled) {
+  if (feedbackEnabled) {
     $("feedback-label").value = analysis.prediction === "spam" ? "ham" : "spam";
   }
   if (save) addHistory(analysis);
@@ -1066,7 +1214,7 @@ async function submitFeedback(event) {
   const button = $("btn-feedback");
   const analysis = window.currentAnalysis;
   const expectedLabel = $("feedback-label").value;
-  if (!analysis || !modelInfo.feedback_enabled) return;
+  if (!analysis || !resultMatchesLoadedModel(analysis) || !modelInfo.feedback_enabled) return;
   if (expectedLabel === analysis.prediction) {
     status.textContent = t("feedback.chooseDifferent");
     return;
@@ -1153,20 +1301,20 @@ function addHistory(analysis, source = "single", { render = true } = {}) {
   const duplicate = newest &&
     newest.message === analysis.message &&
     newest.source === source &&
-      newest.model_version === String(analysis.model_version || modelInfo.model_version) &&
-      newest.probability_calibrated === (analysis.probability_calibrated === true) &&
+      newest.model_version === (typeof analysis.model_version === "string" ? analysis.model_version : null) &&
+      newest.probability_calibrated === (typeof analysis.probability_calibrated === "boolean" ? analysis.probability_calibrated : null) &&
     Math.abs(numberOr(newest.spam_probability, -1) - numberOr(analysis.spam_probability, -2)) < 0.005;
   if (!duplicate) {
     entries.unshift({
       t: Date.now(),
       message: analysis.message,
       prediction: analysis.prediction,
-      spam_probability: numberOr(analysis.spam_probability, 0),
-      probability_calibrated: analysis.probability_calibrated === true,
-      model_version: String(analysis.model_version || modelInfo.model_version),
+      spam_probability: validFraction(analysis.spam_probability),
+      probability_calibrated: typeof analysis.probability_calibrated === "boolean" ? analysis.probability_calibrated : null,
+      model_version: typeof analysis.model_version === "string" ? analysis.model_version : null,
       risk_band: bandOf(analysis),
-      decision_threshold: numberOr(analysis.decision_threshold, modelInfo.decision_threshold),
-      suspicious_threshold: numberOr(analysis.suspicious_threshold, modelInfo.suspicious_threshold),
+      decision_threshold: validFraction(analysis.decision_threshold),
+      suspicious_threshold: validFraction(analysis.suspicious_threshold),
       flags: Array.isArray(analysis.flags) ? analysis.flags : [],
       source,
     });
@@ -1202,8 +1350,11 @@ function miniMeter(probability, band = bandFromProbability(probability)) {
   const wrap = document.createElement("div");
   wrap.className = "mini-meter";
   const fill = document.createElement("div");
-  fill.style.width = `${Math.round(numberOr(probability, 0) * 100)}%`;
-  fill.style.background = { spam: "var(--red)", suspicious: "var(--amber)", safe: "var(--green)" }[bandView(band).css];
+  const score = validFraction(probability);
+  fill.style.width = score === null ? "0%" : `${Math.round(score * 100)}%`;
+  fill.style.background = score === null ? "var(--muted)"
+    : ({ spam: "var(--red)", suspicious: "var(--amber)", safe: "var(--green)" }[bandView(band).css] || "var(--muted)");
+  if (score === null) wrap.classList.add("mini-meter-unavailable");
   wrap.append(fill);
   return wrap;
 }
@@ -1310,6 +1461,11 @@ function invalidateSingle() {
   $("result").classList.add("hidden");
   $("highlighted").replaceChildren();
   $("signals").replaceChildren();
+  $("tips").replaceChildren();
+  $("copy-status").textContent = "";
+  $("feedback-status").textContent = "";
+  $("feedback-form").classList.add("hidden");
+  renderModelInfo(null);
   hideBanner($("error-banner"));
   setBusy($("btn-check"), false, t("check.run"));
 }
@@ -1548,6 +1704,297 @@ function renderBatch(results) {
   $("stat-safe").textContent = String(stats.looks_safe);
 }
 
+/* ---------- Message comparison (UI-only examples; never saved to history) ---------- */
+const COMPARE_EXAMPLES = {
+  otp: [
+    "Your one-time code is [CODE]. Never share it. Open the official app if you did not request it.",
+    "Your [CODE] OTP expires in 5 minutes. Confirm it now at verify-account.example to prevent a block.",
+  ],
+  delivery: [
+    "Your parcel is out for delivery today. Check the official courier app; no extra payment is due.",
+    "May parcel ka! Pay [AMOUNT] at parcel-release.example today or ibabalik ang delivery.",
+  ],
+  account: [
+    "Your e-wallet transfer of [AMOUNT] is complete. Review it in the official app; never share your PIN.",
+    "Wallet alert: account access will stop today. I-confirm ang PIN mo sa wallet-check.example para ma-restore.",
+  ],
+};
+const COMPARE_EXAMPLE_NAMES = { otp: "OTP", delivery: "delivery", account: "bank / e-wallet" };
+let compareRevision = 0;
+let compareAbortController = null;
+let currentComparison = null;
+
+function updateCompareCount(side) {
+  const value = $(side === "a" ? "compare-message-a" : "compare-message-b").value;
+  $(`compare-count-${side}`).textContent = `${Array.from(value).length} / ${MAX_MESSAGE_LENGTH}`;
+}
+
+function invalidateComparison({ preserveError = false } = {}) {
+  compareRevision += 1;
+  if (compareAbortController) {
+    compareAbortController.abort();
+    compareAbortController = null;
+  }
+  currentComparison = null;
+  $("compare-results").classList.add("hidden");
+  $("compare-empty").classList.remove("hidden");
+  $("compare-summary").textContent = "";
+  $("compare-result-cards").replaceChildren();
+  $("compare-signal-differences").replaceChildren();
+  $("compare-copy-status").textContent = "";
+  $("compare-progress").classList.add("hidden");
+  $("compare-example-note").textContent = t("compare.exampleNote");
+  if (!preserveError) hideBanner($("compare-error"));
+  setBusy($("btn-compare-run"), false, t("compare.run"));
+}
+
+function comparisonScoreText(result) {
+  const score = validFraction(result && result.spam_probability);
+  return score === null ? t("value.unavailable") : pct(score);
+}
+
+function modelContextText(result) {
+  return typeof result.model_version === "string" && result.model_version
+    ? result.model_version : t("value.unavailable");
+}
+
+function renderComparisonCard(result, name, index) {
+  const card = document.createElement("article");
+  card.className = "card compare-result-card";
+  const heading = document.createElement("h3");
+  heading.textContent = t("compare.resultFor", { name });
+  const verdict = document.createElement("p");
+  verdict.className = `compare-verdict ${bandView(bandOf(result)).css}`;
+  verdict.textContent = `${t("compare.verdict")}: ${bandTitle(bandOf(result))} (${result.prediction || t("value.unavailable")})`;
+  const details = document.createElement("dl");
+  details.className = "compare-metadata";
+  const rows = [
+    [t("compare.score"), comparisonScoreText(result)],
+    [t("compare.interpretation"), scoreLabel(result)],
+    [t("compare.modelVersion"), modelContextText(result)],
+    [t("compare.thresholds"), `${pct(validFraction(result.decision_threshold))} / ${pct(validFraction(result.suspicious_threshold))}`],
+  ];
+  for (const [labelText, valueText] of rows) {
+    const term = document.createElement("dt");
+    term.textContent = labelText;
+    const definition = document.createElement("dd");
+    definition.textContent = valueText;
+    details.append(term, definition);
+  }
+  const provenance = document.createElement("p");
+  provenance.className = "muted compare-provenance";
+  provenance.textContent = resultMatchesLoadedModel(result)
+    ? `${t("compare.provenance")}: ${modelInfo.data_note}${modelInfo.warnings.length ? ` ${modelInfo.warnings.join(" ")}` : ""}`
+    : `${t("compare.provenance")}: ${t("model.provenance.unavailable")}`;
+  const signalHeading = document.createElement("h4");
+  signalHeading.textContent = t("signals.title");
+  const highlighted = document.createElement("div");
+  highlighted.className = "highlighted compare-highlighted";
+  highlighted.setAttribute("role", "group");
+  highlighted.setAttribute("aria-label", t("signals.group"));
+  renderHighlighted(result, highlighted, `compare-${index}-signal`);
+  const signalList = document.createElement("ul");
+  signalList.className = "signals compare-signals";
+  renderSignals(result, signalList, `compare-${index}-signal`);
+  const tipsHeading = document.createElement("h4");
+  tipsHeading.textContent = t("tips.title");
+  const tips = document.createElement("ul");
+  tips.className = `tips${bandOf(result) !== "looks_safe" ? " warn" : ""}`;
+  for (const text of buildTips(result)) {
+    const item = document.createElement("li");
+    item.textContent = text;
+    tips.append(item);
+  }
+  card.append(heading, verdict, details, provenance, signalHeading, highlighted, signalList, tipsHeading, tips);
+  return card;
+}
+
+function compareScoreInterpretation(left, right) {
+  const leftScore = validFraction(left && left.spam_probability);
+  const rightScore = validFraction(right && right.spam_probability);
+  return Boolean(leftScore !== null && rightScore !== null
+    && typeof left.model_version === "string" && left.model_version
+    && left.model_version !== "unknown"
+    && left.model_version === right.model_version
+    && typeof left.probability_calibrated === "boolean"
+    && left.probability_calibrated === right.probability_calibrated);
+}
+
+function detectedSignalTypes(result) {
+  return new Set(signalMatches(result).map((match) => match.type));
+}
+
+function renderSignalDifferences(left, right, list = $("compare-signal-differences")) {
+  list.replaceChildren();
+  const typesA = detectedSignalTypes(left);
+  const typesB = detectedSignalTypes(right);
+  const common = [...typesA].filter((type) => typesB.has(type));
+  const onlyA = [...typesA].filter((type) => !typesB.has(type));
+  const onlyB = [...typesB].filter((type) => !typesA.has(type));
+  const entries = [
+    [t("compare.common"), common],
+    [t("compare.onlyA"), onlyA],
+    [t("compare.onlyB"), onlyB],
+  ].filter(([, types]) => types.length);
+  if (!entries.length) {
+    const empty = document.createElement("li");
+    empty.textContent = t("compare.none");
+    list.append(empty);
+    return { common, onlyA, onlyB };
+  }
+  for (const [label, types] of entries) {
+    const item = document.createElement("li");
+    const strong = document.createElement("strong");
+    strong.textContent = `${label}: `;
+    const names = document.createElement("span");
+    names.textContent = types.map((type) => t(SIGNALS[type].labelKey)).join(", ");
+    item.append(strong, names);
+    list.append(item);
+  }
+  return { common, onlyA, onlyB };
+}
+
+function comparisonSummaryText(comparison) {
+  const [left, right] = comparison.results;
+  const lines = [t("compare.resultsTitle")];
+  for (const [name, result] of [["A", left], ["B", right]]) {
+    lines.push(`${t("compare.resultFor", { name: `Message ${name}` })}: ${bandTitle(bandOf(result))} (${result.prediction || t("value.unavailable")})`);
+    lines.push(`${t("compare.score")}: ${comparisonScoreText(result)}`);
+    lines.push(`${t("compare.interpretation")}: ${scoreLabel(result)}`);
+    lines.push(`${t("compare.modelVersion")}: ${modelContextText(result)}`);
+    lines.push(`${t("compare.thresholds")}: ${pct(validFraction(result.decision_threshold))} / ${pct(validFraction(result.suspicious_threshold))}`);
+    const provenance = resultMatchesLoadedModel(result) && modelInfo.data_note
+      ? `${modelInfo.data_note}${modelInfo.warnings.length ? ` ${modelInfo.warnings.join(" ")}` : ""}`
+      : t("model.provenance.unavailable");
+    lines.push(`${t("compare.provenance")}: ${provenance}`);
+  }
+  lines.push(compareScoreInterpretation(left, right)
+    ? `${t("compare.scoreDifference")}: ${t("compare.scoreDifferenceValue", { points: ((left.spam_probability - right.spam_probability) * 100).toFixed(1) })}`
+    : t("compare.scoreNotComparable"));
+  const differences = renderSignalDifferences(left, right, document.createElement("ul"));
+  for (const [key, values] of [["compare.common", differences.common], ["compare.onlyA", differences.onlyA], ["compare.onlyB", differences.onlyB]]) {
+    lines.push(`${t(key)}: ${values.length ? values.map((type) => t(SIGNALS[type].labelKey)).join(", ") : t("signals.noneSummary")}`);
+  }
+  lines.push(t("compare.differencesHelp"), t("compare.safetyNote"), t("footer.synthetic"));
+  return lines.join("\n");
+}
+
+function renderComparison(results) {
+  const [left, right] = results;
+  currentComparison = { results };
+  $("compare-result-cards").replaceChildren(
+    renderComparisonCard(left, "Message A", 0),
+    renderComparisonCard(right, "Message B", 1),
+  );
+  renderSignalDifferences(left, right);
+  const comparable = compareScoreInterpretation(left, right);
+  $("compare-summary").textContent = comparable
+    ? `${t("compare.scoreDifference")}: ${t("compare.scoreDifferenceValue", { points: ((left.spam_probability - right.spam_probability) * 100).toFixed(1) })}`
+    : t("compare.scoreNotComparable");
+  $("compare-results").classList.remove("hidden");
+  $("compare-empty").classList.add("hidden");
+}
+
+async function runComparison() {
+  invalidateComparison();
+  const revision = compareRevision;
+  const leftInput = $("compare-message-a");
+  const rightInput = $("compare-message-b");
+  const messages = [leftInput.value.trim(), rightInput.value.trim()];
+  const banner = $("compare-error");
+  if (messages.some((message) => !message)) {
+    showBanner(banner, t("compare.error.empty"));
+    (messages[0] ? rightInput : leftInput).focus();
+    return;
+  }
+  const oversized = messages.findIndex((message) => Array.from(message).length > MAX_MESSAGE_LENGTH);
+  if (oversized !== -1) {
+    showBanner(banner, t("compare.error.tooLong", { n: oversized ? "B" : "A", count: Array.from(messages[oversized]).length }));
+    return;
+  }
+  const controller = new AbortController();
+  compareAbortController = controller;
+  setBusy($("btn-compare-run"), true, t("compare.busy"));
+  $("compare-empty").classList.add("hidden");
+  $("compare-progress").textContent = t("compare.progress");
+  $("compare-progress").classList.remove("hidden");
+  try {
+    const data = await postJson(API.analyzeBatch, { messages }, { signal: controller.signal });
+    if (revision !== compareRevision) return;
+    if (!data || !Array.isArray(data.results) || data.results.length !== 2
+      || data.results.some((result, index) => !result || result.message !== messages[index])) {
+      throw new Error(t("compare.error.failed"));
+    }
+    renderComparison(data.results);
+  } catch (failure) {
+    if (failure && failure.offline) showOfflineBanner();
+    if (revision === compareRevision && !(failure && failure.aborted)) {
+      showBanner(banner, failure && failure.message === t("compare.error.failed")
+        ? t("compare.error.failed") : describeError(failure));
+      $("compare-empty").classList.remove("hidden");
+    }
+  } finally {
+    if (revision === compareRevision) {
+      compareAbortController = null;
+      $("compare-progress").classList.add("hidden");
+      setBusy($("btn-compare-run"), false, t("compare.run"));
+    }
+  }
+}
+
+async function copyComparisonSummary() {
+  if (!currentComparison) return;
+  const status = $("compare-copy-status");
+  try {
+    await navigator.clipboard.writeText(comparisonSummaryText(currentComparison));
+    status.textContent = t("compare.copyDone");
+  } catch {
+    status.textContent = t("compare.copyFail");
+  }
+}
+
+function initComparison() {
+  for (const side of ["a", "b"]) {
+    $(`compare-message-${side}`).addEventListener("input", () => {
+      invalidateComparison();
+      updateCompareCount(side);
+    });
+    updateCompareCount(side);
+  }
+  $("btn-compare-run").addEventListener("click", runComparison);
+  $("btn-compare-swap").addEventListener("click", () => {
+    invalidateComparison();
+    const left = $("compare-message-a");
+    const right = $("compare-message-b");
+    [left.value, right.value] = [right.value, left.value];
+    updateCompareCount("a");
+    updateCompareCount("b");
+  });
+  $("btn-compare-clear").addEventListener("click", () => {
+    invalidateComparison();
+    $("compare-message-a").value = "";
+    $("compare-message-b").value = "";
+    updateCompareCount("a");
+    updateCompareCount("b");
+    $("compare-message-a").focus();
+  });
+  $("btn-compare-copy").addEventListener("click", copyComparisonSummary);
+  for (const button of document.querySelectorAll("[data-compare-example]")) {
+    button.addEventListener("click", () => {
+      const pair = COMPARE_EXAMPLES[button.dataset.compareExample];
+      if (!pair) return;
+      invalidateComparison();
+      $("compare-message-a").value = pair[0];
+      $("compare-message-b").value = pair[1];
+      updateCompareCount("a");
+      updateCompareCount("b");
+      $("compare-example-note").textContent = t("compare.exampleLoaded", {
+        name: COMPARE_EXAMPLE_NAMES[button.dataset.compareExample],
+      });
+    });
+  }
+}
+
 /* ---------- CSV export (client-side only; nothing is uploaded) ---------- */
 function csvCell(value) {
   let text = value === null || value === undefined ? "" : String(value);
@@ -1695,6 +2142,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initOfflineDetection();
   renderModelInfo();
   loadModelInfo();
+  initComparison();
   initServiceWorker();
 });
 

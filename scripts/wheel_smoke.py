@@ -27,6 +27,8 @@ assert Path(os.environ["SMSD_SOURCE_ROOT"]).resolve() not in Path(api.__file__).
 for asset in ("index.html", "styles.css", "app.js", "sw.js", "manifest.webmanifest", "icon.svg"):
     assert (main.WEB_DIR / asset).is_file(), asset
 html = (main.WEB_DIR / "index.html").read_text()
+assert 'id="tab-compare"' in html and 'id="panel-compare"' in html
+assert "async function runComparison()" in (main.WEB_DIR / "app.js").read_text()
 for asset in re.findall(r'(?:src|href)="(/static/[^"?#]+)', html):
     assert (main.WEB_DIR / Path(asset).name).is_file(), asset
 

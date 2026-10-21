@@ -156,6 +156,13 @@ serving model path. Static assets support GET and HEAD; successful responses
 use `Cache-Control: no-cache`, and unknown names and traversal attempts return
 404. CI also runs a Chromium behavior suite at a 360px viewport.
 
+The **Compare messages** tab is part of the bundled static UI. It submits two
+messages together through `POST /analyze/batch`; comparison inputs are not saved
+in history. After updating static UI assets, update the asset query identifiers
+in `api/web/index.html` and `api/web/sw.js` and increment the service-worker
+cache name together. The install step waits for all shell downloads and removes
+only a failed candidate cache, preserving the previous release.
+
 The service worker installs a versioned shell into a new release cache and
 waits for every asset write to finish before it activates. If any download
 fails, it deletes only the incomplete candidate cache and leaves the previous

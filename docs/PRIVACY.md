@@ -8,6 +8,12 @@ accounts, so privacy is a first-class design constraint.
 
 - The message is sent to the API, transformed **in memory** into features, and
   classified. The response returns the verdict and derived signals.
+- The **Compare messages** view sends both entered messages together through
+  `POST /analyze/batch` to the same detector API. The pair is analyzed in
+  memory and is not written to browser history, localStorage, or server storage.
+  Comparison summary copying is explicit and copies model context and derived
+  results, not the original SMS bodies. Do not enter messages unless you are
+  comfortable sending them to the operator of this detector.
 - **No server-side message persistence.** The application does not write message
   text to a database, file, cache, feedback queue, or analytics system. A
   separate, operator-enabled feedback action stores only the user's selected

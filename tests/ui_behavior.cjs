@@ -24,12 +24,12 @@ const exampleChips = ['scam', 'safe'].map(kind => {
   chip.dataset.example = kind;
   return chip;
 });
-const tabs = ['check', 'batch', 'history'].map(name => {
+const tabs = ['check', 'batch', 'compare', 'history'].map(name => {
   const tab = element('button');
   tab.dataset.tab = name;
   return tab;
 });
-const panels = ['check', 'batch', 'history'].map(name => {
+const panels = ['check', 'batch', 'compare', 'history'].map(name => {
   const panel = element('section');
   panel.id = `panel-${name}`;
   return panel;
@@ -47,6 +47,7 @@ const context = vm.createContext({ console, AbortController, tabs, panels, busyC
   document: { getElementById(id) { if (!elements.has(id)) elements.set(id, element()); return elements.get(id); },
     querySelectorAll(selector) {
       if (selector === '.example-chip') return exampleChips;
+      if (selector === '[data-compare-example]') return [];
       if (selector === '[role="tab"]') return tabs;
       if (selector === '.panel') return panels;
       if (selector === 'button[data-idle-label]') return [busyCheckButton];
@@ -162,10 +163,10 @@ assert.match(run('t("examples.status", {kind: t("examples.scamKind"), index: 1, 
   run('lang = "taglish"; renderMeter({spam_probability:0.35,probability_calibrated:false,prediction:"ham",risk_band:"looks_safe"})');
   assert.equal(run('$("risk-meter").getAttribute("aria-label")'), 'Uncalibrated na spam model score');
 
-  run('window.currentAnalysis = {probability_calibrated:true}; modelInfo.probability_calibrated = false; lang = "en"; renderModelInfo()');
+  run('window.currentAnalysis = {probability_calibrated:true}; modelInfo.probability_calibrated = false; lang = "en"; renderModelInfo(window.currentAnalysis)');
   assert.equal(run('$("risk-meter").getAttribute("aria-label")'), 'Calibrated spam score',
     'late metadata rendering must not overwrite the displayed result interpretation');
-  run('modelInfo.model_version = "late-model"; modelInfo.decision_threshold = 0.9; modelInfo.suspicious_threshold = 0.8; modelInfo.bands = {likely_scam:0.9,suspicious:0.8,looks_safe:0}; window.currentAnalysis = {model_version:"result-model", decision_threshold:0.65, suspicious_threshold:0.35, probability_calibrated:true, spam_probability:0.7, prediction:"spam", risk_band:"likely_scam"}; renderModelInfo(); renderMeter(window.currentAnalysis)');
+  run('modelInfo.model_version = "late-model"; modelInfo.decision_threshold = 0.9; modelInfo.suspicious_threshold = 0.8; modelInfo.bands = {likely_scam:0.9,suspicious:0.8,looks_safe:0}; window.currentAnalysis = {model_version:"result-model", decision_threshold:0.65, suspicious_threshold:0.35, probability_calibrated:true, spam_probability:0.7, prediction:"spam", risk_band:"likely_scam"}; renderModelInfo(window.currentAnalysis); renderMeter(window.currentAnalysis)');
   assert.match(run('$("model-version").textContent'), /result-model/);
   assert.match(run('$("model-thresholds").textContent'), /65%/);
   assert.match(run('$("model-thresholds").textContent'), /35%/);
@@ -176,7 +177,7 @@ assert.match(run('t("examples.status", {kind: t("examples.scamKind"), index: 1, 
   assert.equal(run('savedEntry.probability_calibrated'), true, 'history must preserve score calibration state');
   assert.equal(run('savedEntry.model_version'), 'm1', 'history must preserve model version');
   assert.match(run('scoreLabel(savedEntry)'), /calibrated spam score/);
-  run('lang = "taglish"; renderModelInfo()');
+  run('lang = "taglish"; renderModelInfo(window.currentAnalysis)');
   assert.equal(run('$("risk-meter").getAttribute("aria-label")'), 'Calibrated na spam score',
     'language changes must preserve the displayed result calibration state');
   run('lang = "en"; currentTheme = "light"; toggleTheme()');
@@ -193,6 +194,54 @@ assert.match(run('t("examples.status", {kind: t("examples.scamKind"), index: 1, 
   assert.equal(run('$("btn-theme").getAttribute("aria-label")'), 'Switch to dark mode');
   storedValues.set('smsd_theme_v1', 'auto');
   assert.equal(run('readTheme()'), 'light', 'legacy auto setting should resolve to the two-mode default');
+  assert.equal(run('pct(null)'), 'Unavailable', 'missing result thresholds and scores must not display 0%');
+  assert.equal(run('scoreLabel({})'), 'score interpretation unavailable', 'legacy entries without calibration metadata remain explicit');
+  run('modelInfoLoaded = true; modelInfo.model_version = "current"; window.currentAnalysis = {model_version:"old", spam_probability:0.8, probability_calibrated:true}; renderModelInfo(window.currentAnalysis)');
+  assert.match(run('$ ("model-note").textContent'), /provenance is unavailable/);
+  assert.equal(run('bandsForAnalysis(window.currentAnalysis)'), null, 'a different model must not lend thresholds to a historical result');
+
+  run(`modelInfoLoaded = true; modelInfo.model_version = "compare-v1"; modelInfo.decision_threshold = 0.6;
+    modelInfo.suspicious_threshold = 0.4; modelInfo.bands = {likely_scam:0.6,suspicious:0.4,looks_safe:0};
+    modelInfo.data_note = "Matching model provenance."; modelInfo.warnings = [];
+    initComparison();
+    const left = {message:"😀 <img src=x>", prediction:"spam", spam_probability:0.8, probability_calibrated:true,
+      decision_threshold:0.6, suspicious_threshold:0.4, model_version:"compare-v1", risk_band:"likely_scam",
+      matches:[{type:"brand",start:3,end:7}], flags:[], brands:[]};
+    const right = {message:"Safe fixture", prediction:"ham", spam_probability:0.2, probability_calibrated:true,
+      decision_threshold:0.6, suspicious_threshold:0.4, model_version:"compare-v1", risk_band:"looks_safe",
+      matches:[], flags:[], brands:[]};
+    $("compare-message-a").value=left.message; $("compare-message-b").value=right.message;
+    var comparePromise = runComparison();`);
+  assert.equal(run('pending.length'), 1, 'comparison submits both messages through one batch request');
+  run('pending.shift().resolve({results:[left,right]})');
+  await run('comparePromise');
+  assert.equal(run('$ ("compare-result-cards").childNodes.length'), 2, 'both cards render only after complete response');
+  assert.match(run('$ ("compare-summary").textContent'), /60.0 percentage points/);
+  assert.equal(run('compareScoreInterpretation(left,{...right,probability_calibrated:false})'), false,
+    'different calibration states cannot be compared directly');
+  assert.equal(run('$ ("compare-signal-differences").childNodes.length'), 1, 'detected signal differences render');
+  assert.equal(run('$ ("compare-result-cards").childNodes[0].childNodes[5].childNodes.map(n => n.textContent).join("")'), '😀 <img src=x>',
+    'comparison message content remains intact when safely highlighted');
+  assert.equal(run('$ ("compare-result-cards").childNodes[0].childNodes[5].childNodes.some(n => n.tagName === "img")'), false,
+    'untrusted message markup is never parsed as an element');
+  run('renderComparison([left,{...right,model_version:"other-model"}])');
+  assert.match(run('$ ("compare-summary").textContent'), /cannot be compared directly/);
+  assert.equal(run('compareScoreInterpretation({...left,model_version:"unknown"},{...right,model_version:"unknown"})'), false,
+    'unknown model versions are not considered compatible');
+  run('lang = "taglish"; renderComparison([left,right])');
+  assert.match(run('$ ("compare-summary").textContent'), /Pagkakaiba ng score/);
+  run('lang = "en"; $("compare-message-a").value = "stale"; var pendingCompare = runComparison(); selectTab(tabs[0]); pending.shift().resolve({results:[left,right]});');
+  await run('pendingCompare');
+  assert.equal(run('$ ("compare-results").classList.contains("hidden")'), true, 'clearing while pending suppresses a stale comparison');
+  assert.equal(run('compareAbortController'), null, 'tab switching aborts the pending comparison');
+  run('selectTab(tabs[2]); $("compare-message-a").value="A"; $("compare-message-b").value="B"; var partialCompare = runComparison(); pending.shift().resolve({results:[left]});');
+  await run('partialCompare');
+  assert.equal(run('$ ("compare-results").classList.contains("hidden")'), true, 'incomplete response is never shown as a complete comparison');
+  assert.match(run('$ ("compare-error").textContent'), /no partial comparison/);
+  run('$ ("compare-message-a").value="A"; $("compare-message-b").value="B"; initComparison(); $("btn-compare-swap").listeners.click();');
+  assert.equal(run('$ ("compare-message-a").value'), 'B', 'swap exchanges the two inputs');
+  run('$ ("btn-compare-clear").listeners.click()');
+  assert.equal(run('$ ("compare-message-a").value + $("compare-message-b").value'), '', 'clear-all empties both inputs');
   run('invalidateSingle()');
   assert.equal(run('$("highlighted").childNodes.length'), 0, 'editing invalidates stale highlights');
   assert.equal(run('$("signals").childNodes.length'), 0, 'editing clears stale signal details');

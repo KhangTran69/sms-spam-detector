@@ -8,7 +8,7 @@
   <title>PH SMS Scam Detector</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>" />
   <link rel="manifest" href="/manifest.webmanifest" />
-  <link rel="stylesheet" href="/static/styles.css?v=ui8-release-shell-20261021" />
+  <link rel="stylesheet" href="/static/styles.css?v=ui9-comparison-20261021" />
   <script>
     // Apply the saved theme before first paint to avoid a flash of the wrong theme.
     (function () {
@@ -43,6 +43,8 @@
           aria-selected="true" aria-controls="panel-check" tabindex="0"><span data-i18n="tab.check">Check a message</span></button>
         <button type="button" class="tab" id="tab-batch" data-tab="batch" role="tab"
           aria-selected="false" aria-controls="panel-batch" tabindex="-1"><span data-i18n="tab.batch">Batch check</span></button>
+        <button type="button" class="tab" id="tab-compare" data-tab="compare" role="tab"
+          aria-selected="false" aria-controls="panel-compare" tabindex="-1"><span data-i18n="tab.compare">Compare messages</span></button>
         <button type="button" class="tab" id="tab-history" data-tab="history" role="tab"
           aria-selected="false" aria-controls="panel-history" tabindex="-1">
           <span data-i18n="tab.history">History</span> <span id="history-count" class="badge hidden">0</span>
@@ -205,6 +207,60 @@
       </div>
     </section>
 
+    <!-- ============ Message comparison ============ -->
+    <section id="panel-compare" class="panel" role="tabpanel" aria-labelledby="tab-compare" tabindex="0" hidden>
+      <div class="card input-card">
+        <h1 class="panel-title" data-i18n="compare.title">Compare two messages</h1>
+        <p class="muted" data-i18n="compare.help">Compare each message's detector result and detected text patterns. These patterns do not explain why the model chose a verdict.</p>
+        <div class="compare-inputs">
+          <div class="compare-input">
+            <label for="compare-message-a" data-i18n="compare.messageA">Message A</label>
+            <textarea id="compare-message-a" rows="5" aria-describedby="compare-count-a compare-help-a"></textarea>
+            <p id="compare-help-a" class="hint" data-i18n="compare.inputHelp">Up to 10,000 characters. Text is sent to this detector's API for analysis.</p>
+            <span id="compare-count-a" class="char-count">0 / 10000</span>
+          </div>
+          <div class="compare-input">
+            <label for="compare-message-b" data-i18n="compare.messageB">Message B</label>
+            <textarea id="compare-message-b" rows="5" aria-describedby="compare-count-b compare-help-b"></textarea>
+            <p id="compare-help-b" class="hint" data-i18n="compare.inputHelp">Up to 10,000 characters. Text is sent to this detector's API for analysis.</p>
+            <span id="compare-count-b" class="char-count">0 / 10000</span>
+          </div>
+        </div>
+        <div class="input-row">
+          <div class="buttons">
+            <button type="button" id="btn-compare-swap" class="btn ghost" data-i18n="compare.swap">Swap messages</button>
+            <button type="button" id="btn-compare-clear" class="btn ghost danger" data-i18n="compare.clear">Clear all</button>
+          </div>
+          <button type="button" id="btn-compare-run" class="btn primary" data-i18n="compare.run">Compare messages</button>
+        </div>
+        <div id="compare-error" class="error hidden" role="alert" aria-live="assertive"></div>
+        <p id="compare-progress" class="compare-progress hidden" role="status" aria-live="polite" aria-atomic="true"></p>
+      </div>
+
+      <div class="compare-examples" aria-label="Fictional comparison examples" data-i18n-aria-label="compare.examplesLabel">
+        <span class="examples-label" data-i18n="compare.examples">Fictional comparison examples:</span>
+        <button type="button" class="example-chip" data-compare-example="otp" data-i18n="compare.exampleOtp">OTP notices</button>
+        <button type="button" class="example-chip" data-compare-example="delivery" data-i18n="compare.exampleDelivery">Delivery notices</button>
+        <button type="button" class="example-chip" data-compare-example="account" data-i18n="compare.exampleAccount">Bank / e-wallet alerts</button>
+        <span id="compare-example-note" class="hint" data-i18n="compare.exampleNote">Fictional UI examples only; they are not training or evaluation data.</span>
+      </div>
+
+      <section id="compare-results" class="compare-results hidden" aria-labelledby="compare-results-heading">
+        <h2 id="compare-results-heading" data-i18n="compare.resultsTitle">Comparison results</h2>
+        <p id="compare-summary" class="card compare-summary" role="status" aria-live="polite"></p>
+        <div id="compare-result-cards" class="compare-result-cards"></div>
+        <div class="card compare-differences">
+          <h2 data-i18n="compare.differencesTitle">Detected text differences</h2>
+          <p class="muted" data-i18n="compare.differencesHelp">These are patterns found in the text. They do not explain the model's decision.</p>
+          <ul id="compare-signal-differences"></ul>
+          <p class="muted" data-i18n="compare.safetyNote">A lower spam score does not guarantee that a message is safe. Verify requests through an official app or contact method.</p>
+        </div>
+        <button type="button" id="btn-compare-copy" class="btn ghost" data-i18n="compare.copy">Copy comparison summary</button>
+        <span id="compare-copy-status" class="hint" role="status" aria-live="polite"></span>
+      </section>
+      <p id="compare-empty" class="empty" data-i18n="compare.empty">Enter two messages and choose Compare messages to see results.</p>
+    </section>
+
     <!-- ============ History (browser-only, opt-in) ============ -->
     <section id="panel-history" class="panel" role="tabpanel" aria-labelledby="tab-history" tabindex="0" hidden>
       <div class="card">
@@ -232,6 +288,6 @@
     <p data-i18n="footer.synthetic">Checks using synthetic Philippine data are not proof of real-world accuracy.</p>
   </footer>
 
-  <script src="/static/app.js?v=ui8-release-shell-20261021"></script>
+  <script src="/static/app.js?v=ui9-comparison-20261021"></script>
 </body>
 </html>
