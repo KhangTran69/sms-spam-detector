@@ -78,6 +78,13 @@ pytest -q && ruff check . && ruff format --check . && mypy src api
 `make help` lists common commands. `python -m src.train --help` and
 `python -m src.evaluate --help` list every option.
 
+Release checks build and install the wheel in a temporary environment outside
+the checkout with `python scripts/wheel_smoke.py`. The UI behavior suite uses a
+development-only Playwright dependency: run `npm ci`, install Chromium with
+`npx playwright install chromium`, then run `npm run test:browser`. It uses a
+temporary server and synthetic browser responses; it does not add training data
+or exercise the serving model.
+
 ## Adding consented Philippine messages
 
 No consented Philippine messages are currently included. Use the blank

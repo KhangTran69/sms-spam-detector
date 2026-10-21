@@ -1526,7 +1526,9 @@ function renderBatch(results) {
 
 /* ---------- CSV export (client-side only; nothing is uploaded) ---------- */
 function csvCell(value) {
-  const text = value === null || value === undefined ? "" : String(value);
+  let text = value === null || value === undefined ? "" : String(value);
+  // Keep spreadsheet programs from evaluating SMS content as a formula.
+  if (/^[\s\uFEFF]*[=+\-@]/.test(text)) text = `'${text}`;
   return `"${text.replace(/"/g, '""')}"`;
 }
 

@@ -5,27 +5,38 @@ const assert = require('node:assert/strict');
 
 const source = fs.readFileSync(path.join(__dirname, '../api/web/sw.js'), 'utf8');
 
-function createWorker({ failAsset = null, networkFails = true } = {}) {
+function createWorker({ failAsset = null, delayAsset = null, networkFails = true } = {}) {
   const handlers = {};
-  const cacheData = new Map();
+  const shellCaches = new Map([
+    ['smsd-shell-v6', new Map()],
+    ['smsd-shell-v7', new Map([['/', new Response('previous complete release')]])],
+  ]);
   const deleted = [];
   let skippedWaiting = false;
+  let finishDelayedAsset;
   const cacheKey = (request) => {
     const url = new URL(typeof request === 'string' ? request : request.url, 'http://detector.test');
     return `${url.pathname}${url.search}`;
   };
-  const cache = {
-    async add(asset) {
-      if (asset === failAsset) throw new Error('fixture network failure');
-      cacheData.set(cacheKey(asset), new Response(`cached:${asset}`));
-    },
-    async put(request, response) { cacheData.set(cacheKey(request), response); },
-  };
   const caches = {
-    async open() { return cache; },
-    async delete(name) { deleted.push(name); return true; },
-    async keys() { return ['smsd-shell-v6', 'smsd-shell-v7']; },
-    async match(request) { return cacheData.get(cacheKey(request)) || null; },
+    async open(name) {
+      if (!shellCaches.has(name)) shellCaches.set(name, new Map());
+      const cacheData = shellCaches.get(name);
+      return {
+        async add(asset) {
+          if (asset === failAsset) throw new Error('fixture network failure');
+          if (asset === delayAsset) await new Promise((resolve) => { finishDelayedAsset = resolve; });
+          cacheData.set(cacheKey(asset), new Response(`cached:${asset}`));
+        },
+        async put(request, response) { cacheData.set(cacheKey(request), response); },
+      };
+    },
+    async delete(name) { deleted.push(name); return shellCaches.delete(name); },
+    async keys() { return [...shellCaches.keys()]; },
+    async match(request, options) {
+      assert.equal(options.cacheName, 'smsd-shell-v8');
+      return shellCaches.get(options.cacheName)?.get(cacheKey(request)) || null;
+    },
   };
   const self = {
     location: { origin: 'http://detector.test' },
@@ -44,15 +55,26 @@ function createWorker({ failAsset = null, networkFails = true } = {}) {
     },
   });
   vm.runInContext(source, context);
-  return { handlers, caches, cacheData, deleted, get skippedWaiting() { return skippedWaiting; } };
+  return {
+    handlers, caches, shellCaches, deleted,
+    get cacheData() { return shellCaches.get('smsd-shell-v8'); },
+    finishDelayedAsset() { finishDelayedAsset(); },
+    get skippedWaiting() { return skippedWaiting; },
+  };
 }
 
 (async () => {
-  const interrupted = createWorker({ failAsset: '/manifest.webmanifest' });
+  const interrupted = createWorker({ failAsset: '/manifest.webmanifest', delayAsset: '/' });
   let install;
   interrupted.handlers.install({ waitUntil(promise) { install = promise; } });
-  await assert.rejects(install, /fixture network failure/);
-  assert.deepEqual(interrupted.deleted, ['smsd-shell-v7']);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(interrupted.deleted, [], 'failed install waits for in-flight cache writes to settle');
+  interrupted.finishDelayedAsset();
+  await assert.rejects(install, /static shell asset could not be cached/);
+  assert.deepEqual(interrupted.deleted, ['smsd-shell-v8']);
+  assert.equal(interrupted.shellCaches.has('smsd-shell-v8'), false, 'failed candidate cache is removed');
+  assert.equal(await (await interrupted.shellCaches.get('smsd-shell-v7').get('/').text()), 'previous complete release',
+    'failed update leaves the previous complete release intact');
   assert.equal(interrupted.skippedWaiting, false, 'partial shell must not activate');
 
   const worker = createWorker();
@@ -60,6 +82,11 @@ function createWorker({ failAsset = null, networkFails = true } = {}) {
   worker.handlers.install({ waitUntil(promise) { activation = promise; } });
   await activation;
   assert.equal(worker.skippedWaiting, true, 'complete shell activates');
+  let cleanup;
+  worker.handlers.activate({ waitUntil(promise) { cleanup = promise; } });
+  await cleanup;
+  assert.deepEqual(worker.deleted, ['smsd-shell-v6', 'smsd-shell-v7'], 'old releases are removed only after new install completed');
+  assert.equal(worker.shellCaches.has('smsd-shell-v8'), true, 'new complete release is active after upgrade');
 
   let apiIntercepted = false;
   worker.handlers.fetch({
@@ -76,18 +103,27 @@ function createWorker({ failAsset = null, networkFails = true } = {}) {
 
   let cachedResponse;
   worker.handlers.fetch({
-    request: { method: 'GET', url: 'http://detector.test/static/app.js?v=ui7-spam-score-20261021' },
+    request: { method: 'GET', url: 'http://detector.test/static/app.js?v=ui8-release-shell-20261021' },
     respondWith(promise) { cachedResponse = promise; },
   });
   const response = await cachedResponse;
-  assert.equal(await response.text(), 'cached:/static/app.js?v=ui7-spam-score-20261021');
+  assert.equal(await response.text(), 'cached:/static/app.js?v=ui8-release-shell-20261021');
+  assert.equal(worker.cacheData.get('/static/app.js?v=ui8-release-shell-20261021').status, 200,
+    'network responses must not overwrite immutable release assets');
 
   let uncachedResponse;
   worker.handlers.fetch({
     request: { method: 'GET', url: 'http://detector.test/static/styles.css?v=unknown' },
     respondWith(promise) { uncachedResponse = promise; },
   });
-  const unavailable = await uncachedResponse;
+  assert.equal(uncachedResponse, undefined, 'unknown asset versions bypass the worker');
+  worker.cacheData.delete('/static/styles.css?v=ui8-release-shell-20261021');
+  let unavailableResponse;
+  worker.handlers.fetch({
+    request: { method: 'GET', url: 'http://detector.test/static/styles.css?v=ui8-release-shell-20261021' },
+    respondWith(promise) { unavailableResponse = promise; },
+  });
+  const unavailable = await unavailableResponse;
   assert.equal(unavailable.status, 503);
   assert.match(unavailable.headers.get('content-type'), /text\/plain/);
 })().catch((error) => { console.error(error); process.exitCode = 1; });

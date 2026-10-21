@@ -141,6 +141,34 @@ unreadable. Unknown static asset names return 404. Reinstall the package or run
 from a complete checkout. A 200 from `/health` alone proves only that the
 process is alive; verify the UI routes and `/ready` separately.
 
+The wheel smoke check builds the package, installs it into a clean temporary
+environment, changes outside the checkout, and verifies that Python imports
+and UI assets come from the installed wheel. It checks missing-model readiness,
+then injects a small in-memory synthetic classifier to exercise readiness and
+analysis. Run it with `python scripts/wheel_smoke.py`; it never writes into the
+serving model path. Static assets support GET and HEAD; successful responses
+use `Cache-Control: no-cache`, and unknown names and traversal attempts return
+404. CI also runs a Chromium behavior suite at a 360px viewport.
+
+The service worker installs a versioned shell into a new release cache and
+waits for every asset write to finish before it activates. If any download
+fails, it deletes only the incomplete candidate cache and leaves the previous
+worker and shell available. Once active, it serves exact release URLs from its
+own cache; it does not write network responses into that cache, avoiding
+mixed-version HTML, CSS, and JavaScript. A missing cached shell file can be
+fetched online but is not cached at runtime; if offline, the worker returns a
+small no-store 503 response. Only a subsequent successful worker installation
+replaces the shell. API routes and message-bearing requests are never cached.
+
+Threshold evaluation diagnostics distinguish absent metadata, malformed or
+contradictory policy metadata, changed validation candidates, artifact-threshold
+mismatches, and a correctly retained default under `cv-robust`. A matching data
+hash alone is not enough to call the recorded policy consistent.
+
+To run the automated browser suite locally, use `npm ci`,
+`npx playwright install chromium`, and `npm run test:browser`. It verifies
+interaction and offline shell behavior with synthetic fixtures only.
+
 Smoke test:
 
 ```bash

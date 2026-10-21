@@ -89,44 +89,138 @@ def _score_interpretation(bundle: ModelBundle) -> str:
 
 
 def _threshold_diagnostic(bundle: ModelBundle, recomputed_threshold: float) -> dict[str, Any]:
-    """Classify a validation threshold difference using saved policy metadata."""
-    selection = bundle.metadata.get("threshold_selection", {})
-    decision = selection.get("decision", {}) if isinstance(selection, dict) else {}
-    policy = decision.get("policy") if isinstance(decision, dict) else None
-    adopted = decision.get("adopted") if isinstance(decision, dict) else None
-    decided_threshold = _metadata_threshold(decision.get("threshold")) if isinstance(decision, dict) else None
-    candidate = _metadata_threshold(decision.get("candidate_threshold")) if isinstance(decision, dict) else None
+    """Validate saved selection and adoption metadata against current validation."""
+    selection = bundle.metadata.get("threshold_selection")
+    decision = selection.get("decision") if isinstance(selection, dict) else None
     config = bundle.metadata.get("training_config")
+    policy = decision.get("policy") if isinstance(decision, dict) else None
     configured_policy = config.get("threshold_policy") if isinstance(config, dict) else None
-    matches = abs(recomputed_threshold - bundle.threshold) <= 1e-9
-    if not isinstance(selection, dict) or not isinstance(decision, dict):
-        status = "policy_metadata_unavailable_or_unrecognized" if matches else "policy_metadata_malformed"
-    elif policy == "validation" and (configured_policy in (None, "validation")):
-        status = "validation_policy_mismatch" if not matches else "matches_validation"
-    elif candidate is None or decided_threshold is None:
+    configured_precision = _metadata_number(config.get("target_precision")) if isinstance(config, dict) else None
+    configured_recall = _metadata_number(config.get("min_recall")) if isinstance(config, dict) else None
+    configured_fp_cost = _metadata_number(config.get("false_positive_cost")) if isinstance(config, dict) else None
+    configured_fn_cost = _metadata_number(config.get("false_negative_cost")) if isinstance(config, dict) else None
+    selection_strategy = selection.get("strategy") if isinstance(selection, dict) else None
+    selected_precision = _metadata_number(selection.get("target_precision")) if isinstance(selection, dict) else None
+    selected_recall = _metadata_number(selection.get("min_recall")) if isinstance(selection, dict) else None
+    candidate = _metadata_threshold(decision.get("candidate_threshold")) if isinstance(decision, dict) else None
+    selected_candidate = _metadata_threshold(selection.get("threshold")) if isinstance(selection, dict) else None
+    decided_threshold = _metadata_threshold(decision.get("threshold")) if isinstance(decision, dict) else None
+    status = "matches_validation"
+
+    if selection is None:
+        status = "policy_metadata_absent"
+    elif not isinstance(selection, dict):
         status = "policy_metadata_malformed"
-    elif configured_policy is not None and configured_policy != policy:
-        status = "validation_policy_mismatch"
-    elif abs(candidate - recomputed_threshold) > 1e-9:
-        status = "validation_candidate_mismatch"
-    elif matches:
-        status = "matches_validation"
+    elif "decision" not in selection:
+        status = "policy_metadata_absent"
+    elif not isinstance(decision, dict):
+        status = "policy_metadata_malformed"
+    elif not isinstance(config, dict):
+        status = "policy_metadata_malformed" if config is not None else "policy_metadata_absent"
+    elif "threshold_policy" not in config:
+        status = "policy_metadata_absent"
     elif (
-        policy == "cv-robust"
-        and adopted is False
-        and configured_policy in (None, "cv-robust")
-        and abs(decided_threshold - bundle.threshold) <= 1e-9
+        not isinstance(configured_policy, str)
+        or not isinstance(policy, str)
+        or configured_policy not in {"validation", "cv-robust"}
+        or policy not in {"validation", "cv-robust"}
     ):
-        status = "default_intentionally_retained"
+        status = "policy_metadata_malformed"
+    elif configured_policy != policy:
+        status = "validation_policy_mismatch"
+    elif (
+        candidate is None
+        or selected_candidate is None
+        or decided_threshold is None
+        or not isinstance(decision.get("adopted"), bool)
+    ):
+        status = "policy_metadata_malformed"
+    elif abs(selected_candidate - candidate) > 1e-9:
+        status = "policy_metadata_inconsistent"
+    elif abs(candidate - recomputed_threshold) > 1e-9:
+        status = "validation_candidate_drift"
+    elif (
+        configured_precision is None
+        or configured_recall is None
+        or selected_precision is None
+        or selected_recall is None
+    ):
+        status = "policy_metadata_absent"
+    elif not (0 <= configured_precision <= 1 and 0 <= configured_recall <= 1):
+        status = "policy_metadata_malformed"
+    elif abs(configured_precision - selected_precision) > 1e-9 or abs(configured_recall - selected_recall) > 1e-9:
+        status = "policy_metadata_inconsistent"
+    elif (
+        (("false_positive_cost" in config) != ("false_negative_cost" in config))
+        or (config.get("false_positive_cost") is not None and configured_fp_cost is None)
+        or (config.get("false_negative_cost") is not None and configured_fn_cost is None)
+        or (
+            configured_fp_cost is not None
+            and (configured_fp_cost <= 0 or configured_fn_cost is None or configured_fn_cost <= 0)
+        )
+        or (configured_fn_cost is not None and configured_fp_cost is None)
+    ):
+        status = "policy_metadata_malformed"
+    elif (
+        configured_fp_cost is not None
+        and selection_strategy != "minimum_validation_weighted_error_cost"
+        or configured_fp_cost is None
+        and selection_strategy == "minimum_validation_weighted_error_cost"
+    ):
+        status = "policy_metadata_inconsistent"
+    elif policy == "validation":
+        if decision["adopted"] is not True or abs(decided_threshold - candidate) > 1e-9:
+            status = "adoption_metadata_inconsistent"
+        elif abs(float(bundle.threshold) - decided_threshold) > 1e-9:
+            status = "artifact_threshold_mismatch"
     else:
-        status = "policy_metadata_unavailable_or_unrecognized"
+        status = _cv_robust_threshold_status(bundle.threshold, candidate, decided_threshold, decision)
+
     return {
         "artifact_threshold": float(bundle.threshold),
         "recomputed_validation_candidate": float(recomputed_threshold),
+        "selected_validation_candidate": selected_candidate,
         "recorded_candidate_threshold": candidate,
         "policy": str(policy) if policy is not None else None,
+        "settings_consistent": status
+        not in {"policy_metadata_absent", "policy_metadata_malformed", "policy_metadata_inconsistent"},
         "status": status,
     }
+
+
+def _cv_robust_threshold_status(
+    artifact_threshold: float,
+    candidate: float,
+    decided_threshold: float,
+    decision: dict[str, Any],
+) -> str:
+    """Check that saved fold statistics imply the recorded cv-robust decision."""
+    gains = decision.get("fold_f1_gains")
+    default_threshold = _metadata_threshold(decision.get("default_threshold"))
+    min_required_gain = _metadata_number(decision.get("min_required_mean_gain"))
+    recorded_mean_gain = _metadata_number(decision.get("mean_f1_gain"))
+    if not isinstance(gains, list) or not gains or default_threshold is None or min_required_gain is None:
+        return "policy_metadata_absent"
+    parsed_gains = [_metadata_number(value) for value in gains]
+    if any(value is None or not -1 <= value <= 1 for value in parsed_gains):
+        return "policy_metadata_malformed"
+    valid_gains = [value for value in parsed_gains if value is not None]
+    if not 0 <= min_required_gain <= 1 or recorded_mean_gain is None or not -1 <= recorded_mean_gain <= 1:
+        return "policy_metadata_malformed"
+
+    mean_gain = sum(valid_gains) / len(valid_gains)
+    if abs(mean_gain - recorded_mean_gain) > 0.001:
+        return "policy_metadata_inconsistent"
+    expected_adoption = (
+        abs(candidate - default_threshold) > 1e-9 and min(valid_gains) > 0 and recorded_mean_gain >= min_required_gain
+    )
+    adopted = decision["adopted"]
+    expected_threshold = candidate if expected_adoption else default_threshold
+    if adopted is not expected_adoption or abs(decided_threshold - expected_threshold) > 1e-9:
+        return "adoption_metadata_inconsistent"
+    if abs(artifact_threshold - decided_threshold) > 1e-9:
+        return "artifact_threshold_mismatch"
+    return "matches_validation" if adopted else "default_intentionally_retained"
 
 
 def _metadata_threshold(value: Any) -> float | None:
@@ -138,6 +232,16 @@ def _metadata_threshold(value: Any) -> float | None:
     except (TypeError, ValueError, OverflowError):
         return None
     return threshold if math.isfinite(threshold) and 0 <= threshold <= 1 else None
+
+
+def _metadata_number(value: Any) -> float | None:
+    if isinstance(value, bool):
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return number if math.isfinite(number) else None
 
 
 # Diagnostic examples from the project brief. They are deliberately excluded
@@ -163,7 +267,8 @@ def _format_metrics(label: str, metrics: dict[str, Any]) -> str:
 
 
 def _split_from_artifact(bundle: ModelBundle, dataset: Dataset, overrides: dict[str, Any]) -> Any:
-    config = bundle.metadata.get("training_config", {})
+    config = bundle.metadata.get("training_config")
+    config = config if isinstance(config, dict) else {}
     val_size = overrides.get("val_size") or config.get("val_size", DEFAULT_VAL_SIZE)
     test_size = overrides.get("test_size") or config.get("test_size", DEFAULT_TEST_SIZE)
     seed_value = overrides.get("seed") if overrides.get("seed") is not None else config.get("random_state")
@@ -328,7 +433,8 @@ def evaluate(
             warnings.append(
                 f"Small class support in {split_name} split: {small}; precision/recall estimates may be unstable."
             )
-    artifact_split = bundle.metadata.get("split", {})
+    artifact_split = bundle.metadata.get("split")
+    artifact_split = artifact_split if isinstance(artifact_split, dict) else {}
     if artifact_split.get("group_fingerprint"):
         current_fingerprint = (
             split.group_fingerprint(dataset.groups)
@@ -343,32 +449,59 @@ def evaluate(
 
     val_probabilities = _probabilities(bundle, val_set)
     test_probabilities = _probabilities(bundle, test_set)
-    config = bundle.metadata.get("training_config", {})
+    config = bundle.metadata.get("training_config")
+    config = config if isinstance(config, dict) else {}
+    target_precision = _metadata_number(config.get("target_precision"))
+    min_recall = _metadata_number(config.get("min_recall"))
+    false_positive_cost = _metadata_number(config.get("false_positive_cost"))
+    false_negative_cost = _metadata_number(config.get("false_negative_cost"))
+    settings_malformed = (
+        ("target_precision" in config and (target_precision is None or not 0 <= target_precision <= 1))
+        or ("min_recall" in config and (min_recall is None or not 0 <= min_recall <= 1))
+        or (("false_positive_cost" in config) != ("false_negative_cost" in config))
+        or (config.get("false_positive_cost") is not None and false_positive_cost is None)
+        or (config.get("false_negative_cost") is not None and false_negative_cost is None)
+        or (
+            false_positive_cost is not None
+            and (false_positive_cost <= 0 or false_negative_cost is None or false_negative_cost <= 0)
+        )
+        or (false_negative_cost is not None and false_positive_cost is None)
+    )
+    target_precision = target_precision if target_precision is not None and 0 <= target_precision <= 1 else 0.98
+    min_recall = min_recall if min_recall is not None and 0 <= min_recall <= 1 else 0.0
+    if settings_malformed:
+        false_positive_cost = false_negative_cost = None
     recomputed = select_threshold(
         val_set.labels,
         val_probabilities,
-        target_precision=float(config.get("target_precision", 0.98)),
-        min_recall=float(config.get("min_recall", 0.0)),
-        false_positive_cost=config.get("false_positive_cost"),
-        false_negative_cost=config.get("false_negative_cost"),
+        target_precision=target_precision,
+        min_recall=min_recall,
+        false_positive_cost=false_positive_cost,
+        false_negative_cost=false_negative_cost,
     )
+    if settings_malformed:
+        warnings.append(
+            "Recorded threshold-selection settings are malformed; safe defaults were used for this diagnostic."
+        )
     threshold_diagnostic = _threshold_diagnostic(bundle, recomputed.threshold)
     if threshold_diagnostic["status"] in {
         "validation_policy_mismatch",
-        "validation_candidate_mismatch",
+        "policy_metadata_inconsistent",
+        "adoption_metadata_inconsistent",
+        "artifact_threshold_mismatch",
         "policy_metadata_malformed",
     }:
         warnings.append(
-            "Recorded threshold policy metadata is inconsistent with the current validation candidate; "
-            "inspect policy metadata separately from dataset hashes and split fingerprints."
+            "Recorded threshold policy metadata is incomplete or inconsistent; inspect it separately from dataset hashes and split fingerprints."
         )
-    elif (
-        threshold_diagnostic["status"] == "policy_metadata_unavailable_or_unrecognized"
-        and abs(recomputed.threshold - threshold) > 1e-9
-    ):
+    elif threshold_diagnostic["status"] == "validation_candidate_drift":
+        warnings.append(
+            "The saved validation candidate differs from the candidate recomputed on this validation split; see dataset hashes and split fingerprints for evidence of changed inputs."
+        )
+    elif threshold_diagnostic["status"] == "policy_metadata_absent" and abs(recomputed.threshold - threshold) > 1e-9:
         warnings.append(
             "Artifact threshold differs from the candidate recomputed on the current validation split, "
-            "but saved threshold-policy metadata is unavailable; see split and data hash diagnostics separately."
+            "but threshold-policy metadata is absent; see split and data hash diagnostics separately."
         )
 
     test_metrics = binary_metrics(test_set.labels, test_probabilities, threshold)

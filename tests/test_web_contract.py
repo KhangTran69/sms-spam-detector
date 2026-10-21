@@ -231,13 +231,16 @@ def test_uncalibrated_scores_are_not_presented_as_probability(js, html):
 def test_service_worker_installs_complete_static_shell_and_never_caches_api():
     sw = (ROOT / "api" / "web" / "sw.js").read_text(encoding="utf-8")
     assert '"/manifest.webmanifest"' in sw
-    assert "await Promise.all(SHELL_ASSETS.map((asset) => cache.add(asset)))" in sw
+    assert "await Promise.allSettled(SHELL_ASSETS.map((asset) => cache.add(asset)))" in sw
     assert "await caches.delete(CACHE_NAME)" in sw
-    assert "const SHELL_PATHS" in sw, "only exact shell paths should be intercepted"
-    assert "if (!SHELL_PATHS.has(url.pathname)) return" in sw
+    assert "const SHELL_REQUESTS" in sw, "only exact release URLs should be intercepted"
+    assert "if (!SHELL_REQUESTS.has(`${url.pathname}${url.search}`)) return" in sw
+    assert "await cache.put(request" not in sw, "runtime responses must not mutate an installed release"
     for path in ("/analyze", "/analyze/batch", "/predict", "/feedback", "/model-info"):
         assert f'"{path}"' in sw
-    assert "smsd-shell-v7" in sw
+    assert "smsd-shell-v8" in sw
+    assert '"/static/styles.css?v=ui8-release-shell-20261021"' in sw
+    assert '"/static/app.js?v=ui8-release-shell-20261021"' in sw
 
 
 def test_app_js_handles_network_and_api_error_states(js):

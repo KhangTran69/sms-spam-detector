@@ -3,21 +3,29 @@
  */
 "use strict";
 
-const CACHE_NAME = "smsd-shell-v7";
+const CACHE_NAME = "smsd-shell-v8";
 const SHELL_ASSETS = [
   "/",
-  "/static/styles.css?v=ui7-spam-score-20261021",
-  "/static/app.js?v=ui7-spam-score-20261021",
+  "/static/styles.css?v=ui8-release-shell-20261021",
+  "/static/app.js?v=ui8-release-shell-20261021",
   "/manifest.webmanifest",
 ];
-const SHELL_PATHS = new Set(["/", "/static/styles.css", "/static/app.js", "/manifest.webmanifest"]);
+const SHELL_REQUESTS = new Set(SHELL_ASSETS.map((asset) => {
+  const url = new URL(asset, self.location.origin);
+  return `${url.pathname}${url.search}`;
+}));
 const NEVER_CACHE_PATHS = ["/analyze", "/analyze/batch", "/predict", "/feedback", "/model-info", "/health", "/ready"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
     try {
       const cache = await caches.open(CACHE_NAME);
-      await Promise.all(SHELL_ASSETS.map((asset) => cache.add(asset)));
+      // Wait for every write to settle before deleting a failed candidate cache.
+      // Promise.all rejects early while other add() calls can still be running.
+      const results = await Promise.allSettled(SHELL_ASSETS.map((asset) => cache.add(asset)));
+      if (results.some((result) => result.status === "rejected")) {
+        throw new Error("A static shell asset could not be cached.");
+      }
       await self.skipWaiting();
     } catch (error) {
       // Do not activate a partial shell; retain the previously active worker.
@@ -42,21 +50,16 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
   if (NEVER_CACHE_PATHS.some((path) => url.pathname === path || url.pathname.startsWith(`${path}/`))) return;
-  if (!SHELL_PATHS.has(url.pathname)) return;
+  if (!SHELL_REQUESTS.has(`${url.pathname}${url.search}`)) return;
 
-  // Network-first delivers matched HTML/CSS/JS versions together; a complete
-  // installed shell remains available when offline or an update is interrupted.
+  // Serve the immutable release installed by this worker. Do not cache runtime
+  // network responses: an online release change must not mix files in this shell.
   event.respondWith((async () => {
+    const cached = await caches.match(request, { cacheName: CACHE_NAME });
+    if (cached) return cached;
     try {
-      const response = await fetch(request);
-      if (response && response.ok) {
-        const cache = await caches.open(CACHE_NAME);
-        await cache.put(request, response.clone());
-      }
-      return response;
+      return await fetch(request);
     } catch {
-      const cached = await caches.match(request);
-      if (cached) return cached;
       return new Response("Offline and this app asset is not cached.", {
         status: 503,
         headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },

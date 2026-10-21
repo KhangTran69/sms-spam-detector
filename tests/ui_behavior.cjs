@@ -66,6 +66,13 @@ vm.runInContext(`
 const run = code => vm.runInContext(code, context);
 assert.equal(run('EXAMPLES.scam.length'), 20, 'the scam example set must contain 20 examples');
 assert.equal(run('EXAMPLES.safe.length'), 20, 'the safe example set must contain 20 examples');
+assert.equal(run('new Set(EXAMPLES.scam).size'), 20, 'scam examples must be distinct');
+assert.equal(run('new Set(EXAMPLES.safe).size'), 20, 'safe examples must be distinct');
+assert.equal(run('EXAMPLES.safe.length'), 20, 'safe examples should cycle independently');
+assert.equal(run(`csvCell(${JSON.stringify('a, b "quoted"')})`), '"a, b ""quoted"""', 'CSV must escape quotes and delimiters');
+assert.equal(run('csvCell("=SUM(1,1)")'), '"\'=SUM(1,1)"', 'formula-like text must be exported as text');
+assert.equal(run('csvCell("  @SUM(1,1)")'), '"\'  @SUM(1,1)"', 'leading whitespace must not bypass formula protection');
+assert.equal(run(`csvCell(${JSON.stringify('\uFEFF=1+1')})`), '"\'\uFEFF=1+1"', 'Unicode BOM must not bypass formula protection');
 assert.match(run('t("examples.status", {kind: t("examples.scamKind"), index: 1, total: 20})'), /Loaded fictional scam message 1 of 20/);
 (async () => {
   run('$("message-input").value = "old"; var oldRequest = runCheck(); invalidateSingle();');

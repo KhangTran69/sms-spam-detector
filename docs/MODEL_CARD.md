@@ -99,8 +99,13 @@ The API includes that flag alongside `decision_threshold`, `margin`, `confidence
 and `risk_band`; the UI reads it from the loaded artifact. Evaluation reports
 use the same metadata for score terminology, and expose a `threshold_diagnostic`
 that distinguishes a deliberately retained 0.5 threshold under the `cv-robust`
-policy from an unexplained mismatch. Data-hash and split-fingerprint warnings
-remain separate evidence of input drift.
+policy from an unexplained mismatch. The diagnostic also checks the recorded
+validation candidate, adopted threshold, adoption boolean, configured policy,
+and (for `cv-robust`) fold gains against the declared adoption rule. It reports
+missing metadata separately from malformed metadata, candidate drift, and an
+artifact-threshold mismatch. Data-hash and split-fingerprint warnings remain
+separate evidence of input drift; equal hashes alone do not validate a
+contradictory threshold record.
 
 - Raising the threshold **increases precision** (fewer false alarms) and
   **decreases recall** (more missed scams). Lowering it does the opposite.

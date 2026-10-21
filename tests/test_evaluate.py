@@ -83,8 +83,21 @@ def test_threshold_diagnostic_recognizes_intentionally_retained_cv_default() -> 
         threshold=0.5,
         metadata={
             "threshold_selection": {
-                "decision": {"policy": "cv-robust", "candidate_threshold": 0.4, "threshold": 0.5, "adopted": False}
-            }
+                "threshold": 0.4,
+                "target_precision": 0.98,
+                "min_recall": 0.0,
+                "decision": {
+                    "policy": "cv-robust",
+                    "candidate_threshold": 0.4,
+                    "threshold": 0.5,
+                    "default_threshold": 0.5,
+                    "fold_f1_gains": [-0.01, 0.02],
+                    "mean_f1_gain": 0.005,
+                    "min_required_mean_gain": 0.02,
+                    "adopted": False,
+                },
+            },
+            "training_config": {"threshold_policy": "cv-robust", "target_precision": 0.98, "min_recall": 0.0},
         },
     )
 
@@ -95,7 +108,23 @@ def test_threshold_diagnostic_recognizes_intentionally_retained_cv_default() -> 
 
 
 def test_threshold_diagnostic_does_not_blame_data_for_policy_mismatch() -> None:
-    bundle = _bundle(threshold=0.5, metadata={"threshold_selection": {"decision": {"policy": "validation"}}})
+    bundle = _bundle(
+        threshold=0.5,
+        metadata={
+            "threshold_selection": {
+                "threshold": 0.4,
+                "target_precision": 0.98,
+                "min_recall": 0.0,
+                "decision": {
+                    "policy": "cv-robust",
+                    "candidate_threshold": 0.4,
+                    "threshold": 0.5,
+                    "adopted": False,
+                },
+            },
+            "training_config": {"threshold_policy": "validation", "target_precision": 0.98, "min_recall": 0.0},
+        },
+    )
 
     diagnostic = _threshold_diagnostic(bundle, 0.4)
 
@@ -107,15 +136,27 @@ def test_threshold_diagnostic_requires_recorded_candidate_to_match_validation() 
         threshold=0.5,
         metadata={
             "threshold_selection": {
-                "decision": {"policy": "cv-robust", "candidate_threshold": 0.35, "threshold": 0.5, "adopted": False}
+                "threshold": 0.35,
+                "target_precision": 0.98,
+                "min_recall": 0.0,
+                "decision": {
+                    "policy": "cv-robust",
+                    "candidate_threshold": 0.35,
+                    "threshold": 0.5,
+                    "default_threshold": 0.5,
+                    "fold_f1_gains": [-0.01, 0.02],
+                    "mean_f1_gain": 0.005,
+                    "min_required_mean_gain": 0.02,
+                    "adopted": False,
+                },
             },
-            "training_config": {"threshold_policy": "cv-robust"},
+            "training_config": {"threshold_policy": "cv-robust", "target_precision": 0.98, "min_recall": 0.0},
         },
     )
 
     diagnostic = _threshold_diagnostic(bundle, 0.4)
 
-    assert diagnostic["status"] == "validation_candidate_mismatch"
+    assert diagnostic["status"] == "validation_candidate_drift"
 
 
 def test_threshold_diagnostic_handles_malformed_optional_metadata() -> None:
@@ -123,8 +164,12 @@ def test_threshold_diagnostic_handles_malformed_optional_metadata() -> None:
         threshold=0.5,
         metadata={
             "threshold_selection": {
-                "decision": {"policy": "cv-robust", "candidate_threshold": "broken", "threshold": None}
-            }
+                "threshold": "broken",
+                "target_precision": 0.98,
+                "min_recall": 0.0,
+                "decision": {"policy": "cv-robust", "candidate_threshold": "broken", "threshold": None},
+            },
+            "training_config": {"threshold_policy": "cv-robust", "target_precision": 0.98, "min_recall": 0.0},
         },
     )
 
@@ -138,7 +183,8 @@ def test_threshold_diagnostic_does_not_assume_retained_default_without_matching_
         threshold=0.5,
         metadata={
             "threshold_selection": {
-                "decision": {"policy": "cv-robust", "candidate_threshold": 0.4, "threshold": 0.5, "adopted": False}
+                "threshold": 0.4,
+                "decision": {"policy": "cv-robust", "candidate_threshold": 0.4, "threshold": 0.5, "adopted": False},
             },
             "training_config": {"threshold_policy": "validation"},
         },
@@ -152,13 +198,98 @@ def test_threshold_diagnostic_checks_configured_policy_matches_decision() -> Non
         threshold=0.5,
         metadata={
             "threshold_selection": {
-                "decision": {"policy": "cv-robust", "candidate_threshold": 0.4, "threshold": 0.5, "adopted": False}
+                "threshold": 0.4,
+                "decision": {"policy": "cv-robust", "candidate_threshold": 0.4, "threshold": 0.5, "adopted": False},
             },
             "training_config": {"threshold_policy": "validation"},
         },
     )
 
     assert _threshold_diagnostic(bundle, 0.4)["status"] == "validation_policy_mismatch"
+
+
+def test_validation_threshold_requires_candidate_and_adoption_metadata() -> None:
+    metadata = {
+        "threshold_selection": {
+            "threshold": 0.4,
+            "target_precision": 0.98,
+            "min_recall": 0.0,
+            "decision": {"policy": "validation", "candidate_threshold": 0.4, "threshold": 0.4, "adopted": True},
+        },
+        "training_config": {"threshold_policy": "validation", "target_precision": 0.98, "min_recall": 0.0},
+    }
+    assert _threshold_diagnostic(_bundle(threshold=0.4, metadata=metadata), 0.4)["status"] == "matches_validation"
+
+    malformed = {
+        **metadata,
+        "threshold_selection": {
+            **metadata["threshold_selection"],
+            "decision": {**metadata["threshold_selection"]["decision"], "adopted": False},
+        },
+    }
+    assert (
+        _threshold_diagnostic(_bundle(threshold=0.4, metadata=malformed), 0.4)["status"]
+        == "adoption_metadata_inconsistent"
+    )
+
+
+def test_threshold_diagnostic_checks_validation_settings_match_training_config() -> None:
+    metadata = {
+        "threshold_selection": {
+            "threshold": 0.4,
+            "target_precision": 0.95,
+            "min_recall": 0.0,
+            "decision": {"policy": "validation", "candidate_threshold": 0.4, "threshold": 0.4, "adopted": True},
+        },
+        "training_config": {"threshold_policy": "validation", "target_precision": 0.98, "min_recall": 0.0},
+    }
+
+    assert (
+        _threshold_diagnostic(_bundle(threshold=0.4, metadata=metadata), 0.4)["status"]
+        == "policy_metadata_inconsistent"
+    )
+
+
+def test_threshold_diagnostic_checks_error_cost_policy_strategy() -> None:
+    metadata = {
+        "threshold_selection": {
+            "threshold": 0.4,
+            "target_precision": 0.98,
+            "min_recall": 0.0,
+            "strategy": "max_f0.5_subject_to_precision_recall",
+            "decision": {"policy": "validation", "candidate_threshold": 0.4, "threshold": 0.4, "adopted": True},
+        },
+        "training_config": {
+            "threshold_policy": "validation",
+            "target_precision": 0.98,
+            "min_recall": 0.0,
+            "false_positive_cost": 2.0,
+            "false_negative_cost": 1.0,
+        },
+    }
+
+    assert (
+        _threshold_diagnostic(_bundle(threshold=0.4, metadata=metadata), 0.4)["status"]
+        == "policy_metadata_inconsistent"
+    )
+
+
+def test_threshold_diagnostic_distinguishes_absent_metadata() -> None:
+    bundle = _bundle(threshold=0.5, metadata={})
+
+    assert _threshold_diagnostic(bundle, 0.4)["status"] == "policy_metadata_absent"
+
+
+def test_threshold_diagnostic_handles_unhashable_policy_metadata() -> None:
+    bundle = _bundle(
+        threshold=0.5,
+        metadata={
+            "threshold_selection": {"decision": {"policy": ["validation"]}},
+            "training_config": {"threshold_policy": ["validation"]},
+        },
+    )
+
+    assert _threshold_diagnostic(bundle, 0.4)["status"] == "policy_metadata_malformed"
 
 
 def test_evaluation_score_description_uses_artifact_calibration_metadata() -> None:
