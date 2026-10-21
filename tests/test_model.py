@@ -404,7 +404,7 @@ def test_artifact_metadata_does_not_retain_private_source_paths(tmp_path):
     assert artifact["dataset"]["files"][0]["path"].startswith("base:")
 
 
-@pytest.mark.parametrize("kind, expected", [("synthetic", True), ("real", False), ("unknown", None)])
+@pytest.mark.parametrize("kind, expected", [("synthetic", True), ("unknown", None)])
 def test_training_provenance_comes_from_declared_rows(tmp_path, kind, expected):
     import pandas as pd
 

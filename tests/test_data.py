@@ -197,6 +197,22 @@ def test_missing_source_provenance_is_not_inferred_from_private_filename(tmp_pat
     assert "donor_name_private_corpus.csv" not in str(dataset.records[0].as_dict())
 
 
+def test_consent_rows_cannot_bypass_the_approved_intake_schema(tmp_path):
+    path = write_csv(
+        tmp_path / "consented.csv",
+        [
+            ("ham", "Fictional safe message one", "consented", "batch_a", "school_work", "en", "campaign_a"),
+            ("spam", "Fictional scam message two", "consented", "batch_a", "phishing", "en", "campaign_b"),
+        ],
+        columns=("label", "message", "data_kind", "source", "category", "language", "group"),
+    )
+
+    with pytest.raises(DatasetError, match="approved consented intake schema") as raised:
+        load_dataset(path, require_both_classes=False, min_class_count=0)
+
+    assert "Fictional safe message" not in str(raised.value)
+
+
 def test_time_split_keeps_campaigns_disjoint_and_respects_date_order(tmp_path):
     rows = []
     for period in range(6):
@@ -509,6 +525,31 @@ def test_holdout_leakage_report_does_not_echo_private_group_identifiers(tmp_path
 
     assert report["template_family_overlap"] == 1
     assert "participant-alice-private" not in str(report)
+
+
+def test_split_manifest_fingerprint_does_not_encode_campaign_identifiers(tmp_path):
+    dataset = load_dataset(
+        write_csv(
+            tmp_path / "private-groups.csv",
+            [
+                ("ham", "safe example one", "participant-alice-private"),
+                ("spam", "scam example one", "participant-bob-private"),
+                ("ham", "safe example two", "participant-carol-private"),
+                ("spam", "scam example two", "participant-dan-private"),
+                ("ham", "safe example three", "participant-erin-private"),
+                ("spam", "scam example three", "participant-frank-private"),
+            ],
+            columns=("label", "message", "group"),
+        ),
+        require_both_classes=False,
+        min_class_count=0,
+    )
+    split = grouped_splits(dataset, val_size=0.2, test_size=0.2, seed=3)
+
+    serialized = str(split.as_dict(dataset.groups))
+
+    for identifier in dataset.groups:
+        assert identifier not in serialized
 
 
 def test_repo_holdout_has_no_exact_leakage():

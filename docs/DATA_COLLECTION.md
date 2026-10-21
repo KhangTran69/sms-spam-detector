@@ -100,6 +100,24 @@ inside the checkout, use an ignored `data/raw/` path and verify it with
 `git check-ignore -v <path>` and `git status --ignored --short` before any
 commit. Never pass real data to public CI.
 
+For an approved batch, run the importer with the same purpose and a protected
+output directory:
+
+```bash
+python -m src.import_consented \
+  --input /secure/workspace/consented_batch.csv \
+  --purpose training \
+  --output-dir /secure/workspace/approved
+```
+
+The importer repeats the same validation against one in-memory snapshot of the
+input and writes that validated frame. It refuses a batch with any finding;
+review disagreements must be adjudicated before import. It prints only an
+opaque output filename, counts, and the input hash. Use `--purpose evaluation`
+for a frozen evaluation batch. Evaluation consent must cover that use and the
+batch must contain both labels. Do not add an evaluation batch as a training
+supplement.
+
 After preflight, use the checked CSV only from its protected location and write
 all outputs to a protected candidate directory. For a training batch, pass the
 approved base and consented supplement explicitly and keep the candidate
@@ -335,22 +353,21 @@ report once on the held-out synthetic set and (when it exists) the real holdout.
    and known sampling bias. Do not publish performance numbers from synthetic
    data without the synthetic-only caveat.
 
-### Importing consented real messages
+### Importing consented messages
 
-1. Copy `data/templates/consented_ph_sms_template.csv` and fill one row per
-   message inside the approved secure workspace. Required on every row: `label`,
-   `message` (redacted), `group` (campaign or donor), `consent_id`,
-   `consent_recorded_at`, `redaction_reviewed_by`, and `labeler`. Fill
-   `second_labeler`/`second_label` when you double-label.
-2. Replace names, numbers, OTPs, accounts, and emails with `[NAME]`, `[PHONE]`,
-   `[CODE]`, `[ACCOUNT]`, and `[EMAIL]`.
-3. Run `python -m src.import_consented --input batch.csv` (or `--role holdout`).
-   The importer rejects the whole file if it finds a PH mobile number, an email, or a
-   6+ digit code. It drops double-labeled rows where the labelers disagree, writes
-   `data_kind=consented` rows under the git-ignored `data/raw/consented/`, and
-   prints counts only, never message text.
-4. Train with `python -m src.train --supplement data/raw/consented/batch.csv`
-   or evaluate with `--holdout data/raw/consented/holdout_batch.csv`.
+Use the exact columns in `data/templates/consented_ph_sms_template.csv`. Set
+`data_kind=consented`; provide consent verification, active status, purpose
+scope, a retention deadline, two independent labels, and an adjudicated label.
+For a disagreement, use a third reviewer who is not either original reviewer.
+Use opaque pseudonyms for consent records, reviewers, and campaign groups.
+Never put message excerpts in identifiers or free-text metadata.
+
+Run `src.consented_data` to review aggregate validation findings, then run
+`src.import_consented` with the same `--purpose` to validate and write the
+approved batch. The importer does not silently discard disagreement rows. See
+the commands above; both tools share the same rules and never return message
+values. After import, train only with a `training` batch. Keep an `evaluation`
+batch frozen, campaign-separated, and out of threshold selection.
 
 ### Regenerating synthetic data
 

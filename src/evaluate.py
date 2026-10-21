@@ -270,7 +270,11 @@ def evaluate(
             )
     artifact_split = bundle.metadata.get("split", {})
     if artifact_split.get("group_fingerprint"):
-        current_fingerprint = split.group_fingerprint(dataset.groups)
+        current_fingerprint = (
+            split.group_fingerprint(dataset.groups)
+            if artifact_split.get("group_fingerprint_version") == "row-membership-v1"
+            else split.legacy_group_fingerprint(dataset.groups)
+        )
         if current_fingerprint != artifact_split["group_fingerprint"]:
             warnings.append(
                 "The reproduced split fingerprint differs from the artifact's training split; "

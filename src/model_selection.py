@@ -59,21 +59,43 @@ def candidate_classifiers(seed: int) -> list[tuple[str, Any]]:
 
 
 def cv_splits(
-    labels: Sequence[str], groups: Sequence[Any] | None, *, n_splits: int, seed: int
+    labels: Sequence[str],
+    groups: Sequence[Any] | None,
+    *,
+    n_splits: int,
+    seed: int,
+    require_group_isolation: bool = False,
 ) -> list[tuple[np.ndarray, np.ndarray]]:
-    """Group-aware stratified folds when groups allow it, else stratified folds."""
+    """Build stratified folds, requiring disjoint groups when requested."""
     y = np.asarray(labels)
+    if len(y) < 2:
+        raise ValueError("Cross-validation needs at least two labeled examples.")
+    if groups is not None and len(groups) != len(y):
+        raise ValueError("groups must contain one identifier per labeled example.")
     minority = int(min(np.sum(y == "spam"), np.sum(y == "ham")))
     folds = max(2, min(n_splits, minority))
     index = np.zeros(len(y))
-    if groups is not None and len(set(groups)) >= folds:
-        try:
-            splitter = StratifiedGroupKFold(n_splits=folds, shuffle=True, random_state=seed)
-            splits = list(splitter.split(index, y, groups=np.asarray(groups)))
-            if all(len(set(y[test])) == 2 and len(set(y[train])) == 2 for train, test in splits):
-                return splits
-        except ValueError:
-            pass
+    if groups is not None:
+        unique_groups = len(set(groups))
+        folds = min(folds, unique_groups)
+        if folds < 2:
+            if require_group_isolation:
+                raise ValueError("Group-isolated cross-validation needs at least two distinct campaign groups.")
+        else:
+            try:
+                splitter = StratifiedGroupKFold(n_splits=folds, shuffle=True, random_state=seed)
+                splits = list(splitter.split(index, y, groups=np.asarray(groups)))
+                if all(len(set(y[test])) == 2 and len(set(y[train])) == 2 for train, test in splits):
+                    return splits
+            except ValueError:
+                pass
+        if require_group_isolation:
+            raise ValueError(
+                "Unable to create group-disjoint stratified folds containing both labels in every fold. "
+                "Add campaign groups with better class coverage before model selection or calibration."
+            )
+    elif require_group_isolation:
+        raise ValueError("Campaign group identifiers are required for isolated cross-validation.")
     return list(StratifiedKFold(n_splits=folds, shuffle=True, random_state=seed).split(index, y))
 
 
@@ -112,7 +134,9 @@ def select_classifier(
     y = np.asarray(labels)
     candidates = candidate_classifiers(seed)
     scores: dict[str, list[float]] = {name: [] for name, _ in candidates}
-    for train_idx, test_idx in cv_splits(labels, groups, n_splits=n_splits, seed=seed):
+    for train_idx, test_idx in cv_splits(
+        labels, groups, n_splits=n_splits, seed=seed, require_group_isolation=groups is not None
+    ):
         transformer = make_feature_transformer(text_features)
         x_train = transformer.fit_transform(frame.iloc[train_idx])
         x_test = transformer.transform(frame.iloc[test_idx])
@@ -140,17 +164,35 @@ def select_classifier(
     )
 
 
-def calibrated_model(estimator: Any, *, text_features: str, seed: int, labels: Sequence[str]) -> Pipeline:
-    """Wrap ``estimator`` in sigmoid calibration inside the standard pipeline."""
-    y = np.asarray(labels)
-    minority = int(min(np.sum(y == "spam"), np.sum(y == "ham")))
-    folds = max(2, min(DEFAULT_CV_FOLDS, minority))
-    calibrator = CalibratedClassifierCV(
-        clone(estimator),
-        method=CALIBRATION_METHOD,
-        cv=StratifiedKFold(n_splits=folds, shuffle=True, random_state=seed),
+def calibrated_model(
+    estimator: Any,
+    *,
+    text_features: str,
+    seed: int,
+    labels: Sequence[str],
+    groups: Sequence[Any] | None = None,
+) -> Pipeline:
+    """Calibrate the full feature/classifier pipeline on isolated group folds.
+
+    Keeping feature extraction inside ``CalibratedClassifierCV`` matters: if
+    TF-IDF vocabulary is fitted before its internal split, held-out campaign
+    text influences the calibration fold even when the classifier split is
+    group-disjoint.
+    """
+    folds = cv_splits(
+        labels,
+        groups,
+        n_splits=DEFAULT_CV_FOLDS,
+        seed=seed,
+        require_group_isolation=groups is not None,
     )
-    return make_model(calibrator, text_features=text_features)
+    calibrator = CalibratedClassifierCV(
+        make_model(clone(estimator), text_features=text_features),
+        method=CALIBRATION_METHOD,
+        cv=folds,
+        ensemble=False,
+    )
+    return Pipeline([("classifier", calibrator)])
 
 
 def out_of_fold_probabilities(
@@ -166,8 +208,17 @@ def out_of_fold_probabilities(
     """Return per-fold (labels, calibrated spam probabilities) on held-out rows."""
     y = np.asarray(labels)
     results: list[tuple[np.ndarray, np.ndarray]] = []
-    for train_idx, test_idx in cv_splits(labels, groups, n_splits=n_splits, seed=seed + 1):
-        model = calibrated_model(estimator, text_features=text_features, seed=seed, labels=y[train_idx])
+    for train_idx, test_idx in cv_splits(
+        labels, groups, n_splits=n_splits, seed=seed + 1, require_group_isolation=groups is not None
+    ):
+        train_groups = [groups[index] for index in train_idx] if groups is not None else None
+        model = calibrated_model(
+            estimator,
+            text_features=text_features,
+            seed=seed,
+            labels=y[train_idx],
+            groups=train_groups,
+        )
         model.fit(frame.iloc[train_idx], y[train_idx])
         spam_column = list(model.classes_).index("spam")
         results.append((y[test_idx], model.predict_proba(frame.iloc[test_idx])[:, spam_column]))

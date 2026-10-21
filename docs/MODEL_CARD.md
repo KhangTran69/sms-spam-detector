@@ -6,8 +6,8 @@ maintainers. Last reviewed: 2026-10-21.
 
 ## 1. What this model is
 
-A text classifier that returns `spam` or `ham` for a single SMS message, plus an
-calibrated spam score, signal flags, and highlighted spans (URLs, phone numbers,
+A text classifier that returns `spam` or `ham` for a single SMS message, plus a
+spam score, signal flags, and highlighted spans (URLs, phone numbers,
 money amounts, urgency words, brand names). It is a TF-IDF (word 1–2 grams +
 character 3–5 grams) + indicator-feature pipeline. The primary classifier is
 picked by cross-validated spam F1 from class-balanced `LogisticRegression` and
@@ -43,7 +43,7 @@ The classifier target is **spam versus ham**. A spam label can include unwanted 
 | `data/raw/spam.csv` | Operator-supplied English-style base file; its source/license are unknown until verified | Merged into training when present | No (git-ignored) |
 | Verified UCI SMS Spam Collection | Public historical English SMS corpus, 5,574 rows, CC BY 4.0; importer does not download it | Supported import; not added by this change | No |
 | `data/raw/ph_supplement.csv`, `_2.csv`, `_3.csv`, `_4.csv`, `_5.csv` | **Synthetic**, developer-authored Philippine scam and legitimate examples. `_2` was deduped and capped at 2 rows per template family (311 → 141). `_5` adds 129 generated rows from 20 families (`scripts/generate_synthetic_ph.py`) | 513 rows merged into training: ham 237, spam 276 | Yes (synthetic text only) |
-| `data/raw/ph_holdout.csv` | **Synthetic** holdout: 264 rows (ham 124, spam 140), 23 generated families with brands, phrasings and link shapes not used in training, plus the 46 earlier hand-written rows | Evaluation only, never training. 0 template-family overlap; max character-5-gram Jaccard similarity to any training row is 0.53 | Yes |
+| `data/raw/ph_holdout.csv` | **Synthetic** holdout: 264 rows (ham 124, spam 140), 23 generated families plus 46 earlier hand-written rows | Evaluation only, never training. Current exact/normalized message and group overlap checks report zero; style overlap remains possible | Yes |
 | Real Philippine messages | **none collected yet.** `src/import_consented.py` and `data/templates/consented_ph_sms_template.csv` are ready, but no consented data exists | — | — |
 
 > **All Philippine data in this repository is still synthetic.** Rebalancing,
@@ -65,23 +65,23 @@ The classifier target is **spam versus ham**. A spam label can include unwanted 
 
 ## 4. Evaluation and the synthetic-only caveat
 
-- Current metrics come from: (a) a held-out split of the English base corpus +
-  synthetic supplement, (b) a synthetic Philippine holdout, and (c) a
-  synthetic-only benchmark reported separately. The trainer uses grouped splits
-  so a template family cannot cross train/validation/test boundaries, and it
-  flags holdout template-family overlap as an optimistic-score warning.
-- **Caveat:** templates were written by the same people who chose the patterns;
-  near-perfect synthetic-holdout results are a pipeline sanity check, not
-  evidence of real-world accuracy. Real users' wording, sender IDs, and scam
-  evolution will differ.
-- The evaluation reports a threshold sweep, precision/recall, false positives on
-  legitimate OTP/bank messages, source/category breakdown, and calibration
-  diagnostics. The current workspace's measured numbers and caveats are in the
-  dated dataset inventory; they are not representative real-world metrics.
+No representative Philippine performance estimate is available. The tracked
+Philippine messages were written by project authors; a synthetic holdout can
+check code paths and known patterns, but does not establish performance on
+recipient messages or future scam campaigns. The local base CSV has unknown
+provenance, and no benchmark report tied to the current local data hashes is
+included in a clean checkout. See the [dataset inventory](DATASET_INVENTORY.md)
+for the workspace snapshot and why earlier metrics are not presented as current.
+
+When run, evaluation reports threshold-selected internal test metrics, false
+positives on legitimate categories, language/category/message-length coverage,
+and uncertainty. These describe only the input data and split recorded in that
+run. A synthetic holdout is reported separately. Do not use it to select
+features, calibrate the model, or tune a threshold.
 
 ### Metrics source
 
-The dated, machine-specific workspace evaluation and its limitations are recorded in [DATASET_INVENTORY.md](DATASET_INVENTORY.md). It is a synthetic diagnostic comparison, not a representative Philippine evaluation. The model artifact metadata is the authoritative record for the deployed model version and its training run. No real Philippine traffic has been evaluated.
+The local workspace snapshot and evaluation limits are recorded in [DATASET_INVENTORY.md](DATASET_INVENTORY.md). Model artifacts are ignored local files; their metadata is authoritative only for the exact artifact that was loaded. No real Philippine traffic has been evaluated.
 
 ## 5. Thresholds, precision, and confidence
 
@@ -90,9 +90,10 @@ spam score reaches the threshold) and a
 `suspicious_threshold` for the UI warning band; both are chosen on a validation
 split with a precision-first objective (protect legitimate OTP/bank messages) and
 are exposed by `GET /model-info`. `POST /analyze` returns a legacy field named
-`spam_probability`; in current artifacts it is a sigmoid-calibrated score
-(`probability_calibrated: true`), alongside `decision_threshold`, `margin`, `confidence`, and
-`risk_band`.
+`spam_probability`; new artifacts record whether the score is sigmoid-calibrated
+in `probability_calibrated`. Legacy artifacts may return an uncalibrated score.
+The API includes that flag alongside `decision_threshold`, `margin`, `confidence`,
+and `risk_band`; the UI reads it from the loaded artifact.
 
 - Raising the threshold **increases precision** (fewer false alarms) and
   **decreases recall** (more missed scams). Lowering it does the opposite.
@@ -100,12 +101,14 @@ are exposed by `GET /model-info`. `POST /analyze` returns a legacy field named
   best single F1. For "don't scare people with false alarms", move it up; for
   "catch as much as possible, review later", move it down.
 - `probability` in `/predict` is a legacy field name for the score of the
-  **returned class**. Calibration is fitted on training folds only; on the
-  UCI test split ECE fell from 0.083 (uncalibrated LogisticRegression) to
-  0.016.
-- **Do not treat scores as calibrated guarantees.** Calibration was measured on
-  English UCI data and synthetic Philippine examples, not real Philippine traffic. Prefer qualitative bands (likely scam / suspicious / looks safe) in
-  user-facing copy, over precise percentages.
+  **returned class**. For new artifacts, the full feature and classifier
+  pipeline is calibrated inside group-isolated training folds. The final test
+  split is excluded from feature selection, calibration, and threshold choice.
+- **Do not treat scores as calibrated guarantees.** No representative Philippine
+  calibration or reliability study is available. Prefer qualitative bands
+  (likely scam / suspicious / looks safe) in user-facing copy over precise
+  percentages, and consult each artifact's evaluation report before describing
+  its score.
 - A model that changes threshold but not weights is still the same artifact
   version for audit purposes; record which operating point a deployment uses.
 
@@ -191,10 +194,12 @@ official contact details.
 
 Moved here from the top-level README so it lives in one place.
 
-The primary classifier is chosen by 5-fold group-aware cross-validated spam F1
-on the training split from class-balanced LogisticRegression (C in
+The primary classifier is chosen by up to 5-fold group-aware cross-validated
+spam F1 on the training split from class-balanced LogisticRegression (C in
 0.3/1/3/10/30) and LinearSVC (C in 0.03/0.1/0.3/1), then wrapped in sigmoid
-`CalibratedClassifierCV`. The decision threshold is 0.5 unless the
+`CalibratedClassifierCV`. Feature extraction is fitted inside each calibration
+fold, and training fails if group-isolated folds cannot keep both labels in
+every fold. The decision threshold is 0.5 unless the
 validation-tuned threshold improves out-of-fold F1 in every fold and by at
 least 0.01 on average (`--threshold-policy cv-robust`, the default); use
 `--threshold-policy validation` to restore the old behaviour.
@@ -215,7 +220,11 @@ Evaluation reports precision, recall, F1, false positives, sample counts, and co
 
 Use `python -m src.evaluate --stability-seeds 13 42 73 --json-out data/processed/stability.json` for repeated group-aware threshold stability checks. The final test groups are reserved first and excluded from these development-only refits; repeated validation metrics select their own thresholds and are not independent performance estimates. Preserve the seed list with the report. Synthetic diagnostics remain separate from real-world validation. Optional `--false-positive-cost` and `--false-negative-cost` training arguments must be supplied together; they configure an exploratory validation-only threshold choice and do not express an approved production policy.
 
-Scores are calibrated on training folds and the test ECE is reported, but a calibrated score is still not a probability guarantee on unseen traffic. Do not use synthetic or unknown-provenance results as a real-world accuracy claim.
+New artifacts calibrate the full feature and classifier pipeline on group-
+isolated training folds and report test calibration diagnostics. Calibration is
+not a probability guarantee on unseen traffic. Legacy artifacts may be
+uncalibrated; consult the loaded artifact's `probability_calibrated` flag. Do
+not use synthetic or unknown-provenance results as a real-world accuracy claim.
 
 Run `python -m src.train --help` and `python -m src.evaluate --help` for all data, threshold, split, and output options.
 

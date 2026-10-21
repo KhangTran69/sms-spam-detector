@@ -1,201 +1,50 @@
-# Dataset inventory (workspace audit, 2026-10-20)
+# Dataset inventory (local workspace audit, 2026-10-21)
 
-This is a message-free, machine-specific snapshot of the developer workspace.
-The ignored base file and model artifact are not distributed with the repo, so
-their counts can differ or be absent elsewhere. Counts describe CSV rows after
-the loader's exact and normalized-message deduplication where stated. No
-external dataset was downloaded; one synthetic legitimate supplement was added.
+This is a message-free count and provenance snapshot from one developer
+workspace. The base CSV and model artifacts are ignored by Git and are not
+distributed. Counts are computed after exact and normalized duplicate removal.
+No real Philippine messages or new public dataset were added in this audit.
 
-| Source | Role / rows | Labels | Provenance and rights | Coverage / confidence |
-|---|---:|---|---|---|
-| `data/raw/spam.csv` (ignored local file) | Base input 5,574; 5,159 retained, 415 exact/normalized duplicates removed | ham 4,517; spam 642 | Declared `unknown`; source, license, collection dates, and dataset identity not verified | English-style schema, but language and categories are unknown; low provenance confidence |
-| `ph_supplement.csv` (tracked) | Training supplement: 128 retained | ham 70; spam 58 | Marked synthetic; file-level license terms are not stated in this repository | Filipino/Taglish intent is not encoded consistently; language/category largely unknown; high confidence it is synthetic, low metadata coverage |
-| `ph_supplement_2.csv` (tracked) | 141 rows after curation (2026-10-21: 15 duplicates removed, template families capped at 2 rows; was 311) | ham 41; spam 100 | Marked synthetic; file-level license terms are not stated in this repository | Scam/legitimate categories are present, language mostly unknown; high synthetic confidence |
-| `ph_supplement_3.csv` (tracked) | Training supplement: 52 retained | ham 36; spam 16 | Marked synthetic; file-level license terms are not stated in this repository | Language: English 42, Taglish 10; includes bank, delivery, OTP, bill, promo, school and scam categories with small counts; high synthetic confidence |
-| `ph_supplement_4.csv` (tracked) | Training supplement: 42 retained; four ambiguous/descriptive rows revised in this audit | spam 42 | Explicitly synthetic, developer-authored; no separate dataset license is declared | English 14, Taglish 14, Filipino 14; bank, delivery, prize, job, loan, investment, and impersonation scams. Fourteen groups, three wording variants each; reserved `example.com` domains and bracketed placeholders only. |
-| `ph_supplement_5.csv` (tracked) | 150 rows: the original 21 hand-written ham rows plus 129 generated rows from 20 families (2026-10-21) | ham 90; spam 60 | Explicitly synthetic, developer-authored; no separate dataset license is declared | English 7, Taglish 7, Filipino 7; OTP, bank alert, delivery, bill, promotion, school/work, and personal conversation. Seven groups, three variants each. Uses reserved URLs/placeholders in both safe and scam training contexts. |
-| Combined training input | 5,698 retained after exact and normalized global deduplication | ham 4,685; spam 1,013 | Mix of 5,159 unknown and 539 synthetic rows | Language: 5,583 unknown, 63 English, 31 Taglish, 21 Filipino. Category is unknown for 5,267 rows; the rest are synthetic categories with small supports. |
-| `data/raw/ph_holdout.csv` (tracked) | Separate diagnostic holdout: 264 rows (46 original + 218 generated from 23 holdout-only families, 2026-10-21) | ham 124; spam 140 | Synthetic only; not a real-world test set | English 29, Taglish 17; categories are represented by only a few examples each. No exact message or group overlap with the current training input was found; campaign independence is not established. |
-| Validation and internal test splits | Derived from the combined training input; sizes depend on split configuration and groups | Both classes required by split validation | Inherit source provenance above | Group-aware split prevents a known group from crossing splits. It cannot make unknown provenance representative or establish Philippine performance. Threshold is selected using validation only. |
-| Diagnostic examples in `src/evaluate.py` | 3 hand-authored strings; not data rows and excluded from metrics | N/A | Synthetic, developer-authored diagnostic prompts; no real donor source | Not a benchmark. Reports now include only example IDs and uncalibrated scores, never their text. |
-| Public UCI SMS Spam Collection | Not currently added to this workspace by this change; 5,574 rows in the official record | ham/spam after normalization | UCI record states CC BY 4.0; importer requires an operator-provided source file and preserves attribution | Historical English SMS from a different collection context; not Philippine coverage. See the official [UCI record](https://archive.ics.uci.edu/dataset/228/sms%2Bspam%2Bcollection). |
+| Source | Role / rows | Labels | Provenance and limitations |
+|---|---:|---|---|
+| `data/raw/spam.csv` (ignored local file) | 5,574 input; 5,159 retained; 415 duplicates removed | ham 4,517; spam 642 | Source, license, date, and identity unknown. SHA-256: `ec218ffbb1dae2f3a4fca95e92cfe2cd38960c3219759a978f795636355784d8`. |
+| `ph_supplement.csv` | 128 | ham 70; spam 58 | Synthetic; source/category/language metadata is mostly unknown. SHA-256: `e2551477919b8def8f87cb8c03f47630b399b26e132f99ddb60974fa43146d00`. |
+| `ph_supplement_2.csv` | 141 | ham 41; spam 100 | Synthetic and curated; small coverage. SHA-256: `fc421a56d05211bc74422f5fe00936de3401eec5ccbf7ecaccaf60a55804324e`. |
+| `ph_supplement_3.csv` | 52 | ham 36; spam 16 | Synthetic; English and Taglish labels/categories, small support. SHA-256: `638d4992e5cccf9168dfaea85e01fb0bf78361182fa8014bf051488e873dffd2`. |
+| `ph_supplement_4.csv` | 42 | spam 42 | Synthetic; English, Taglish, and Filipino scam templates with reserved example domains/placeholders. SHA-256: `1695232f09c55ae852dda75eeee019c525dbdf3eef32dd316ff5f47cb5b1dd91`. |
+| `ph_supplement_5.csv` | 150 | ham 90; spam 60 | Synthetic; legitimate and scam categories, with repeated template families grouped. SHA-256: `a58a8352670b96385d1ae6ec9e78d7e8d1fb7678ddca96c222b76a61a74690d7`. |
+| Combined training input | 5,672 retained | ham 4,754; spam 918 | 5,159 unknown-provenance and 513 synthetic rows. Languages: unknown 5,428; English 132; Taglish 76; Filipino (`tl`) 36. Category is unknown for 5,287 rows; remaining categories have small supports. |
+| `data/raw/ph_holdout.csv` | 264 | ham 124; spam 140 | Synthetic diagnostic only. All 264 rows marked synthetic; languages: English 149, Taglish 91, Filipino (`tl`) 24. SHA-256: `ec5ff937c0e2b55e160fa45cb5639b8afd9b1d86c481c230dd3213608a16ac51`. Current exact/normalized message and derived/explicit group overlap checks against training are zero. |
+| Public UCI SMS Spam Collection | Not present in this workspace | — | UCI lists the historical English corpus under CC BY 4.0. It is not Philippine data; importing it requires the operator to obtain the source and preserve attribution. See the official [UCI record](https://archive.ics.uci.edu/dataset/228/sms%2Bspam%2Bcollection). |
 
-The repository has no top-level data-specific license grant for its synthetic
-CSV files. Their content is explicitly synthetic, but redistribution rights
-should not be inferred from that label; clarify project licensing before
-reusing them outside this repository. The local `spam.csv` must remain
-`unknown` unless its actual source and terms are verified. A familiar schema or
-matching row count is not proof that it is UCI data.
+The project does not state a separate license for its synthetic CSV content.
+Do not infer redistribution rights from the synthetic label. The local
+`spam.csv` remains `unknown`; matching the UCI row count or schema does not
+prove it came from UCI.
 
-## Synthetic supplement audit and comparison
+## Evaluation and reproducibility
 
-Review of supplement 4 found one ambiguous bank alert and three rows phrased
-more like descriptions than recipient-facing texts. Those four rows were
-rewritten as fictional SMS-style messages. Its 42 rows still all use a reserved
-`example.com` URL (39 use placeholders), so supplement 5 adds six legitimate
-rows with that reserved domain and 12 with placeholders. Exact/normalized
-duplicate checks found no duplicate within either new file. A simple character
-similarity scan found no cross-group pair at or above 0.76; the deliberate
-English/Filipino/Taglish variants remain together in their explicit family
-groups. This is a mechanical check, not a Filipino language quality review.
+The repository has no committed benchmark report tied to the current local
+input hashes and current split membership. Older numeric comparisons in
+workspace notes used earlier dataset versions and ignored artifacts; those
+figures are historical diagnostics, not current results, and have been removed
+from the README. The `models/` files are local ignored artifacts, so a clean
+checkout cannot independently verify their metrics. The running local API at
+`127.0.0.1:8000` reports `spam_detector_v1`, a legacy artifact with an
+uncalibrated score and unavailable training provenance. It is not evidence of
+current source performance.
 
-Reproducible comparison, run on 2026-10-20 with the local `spam.csv`, Python
-environment in `.venv`, seed 42, group-aware split, and the same fixed
-`ph_holdout.csv` (SHA-256
-`036e6dcb6dd62767ce3b0c20c5650a5d716a54d24e323372550ce6071b399844`):
+Training removes exact and normalized duplicates before splitting. The default
+split keeps known groups together; threshold selection uses validation only,
+and the final internal test split is separate. Model selection and calibration
+must also use group-isolated folds. Synthetic checks are not independent field
+validation. Use `python -m src.evaluate --json-out <protected-report-path>` to
+produce a machine-readable evaluation for a specific model and input set.
+Keep the report with its source hashes, model version, split fingerprint,
+settings, and sample counts in a restricted location when private data is used.
 
-| Training rows | Validation-selected threshold | Holdout P / R / F1 | FP / FN | Holdout counts |
-|---|---:|---:|---:|---|
-| Baseline: supplements 1–3 (5,635 rows) | 0.51 | 0.909 / 1.000 / 0.952 | 2 / 0 | 46 (26 ham, 20 spam) |
-| Expanded: supplements 1–5 (5,698 rows) | 0.75 | 1.000 / 1.000 / 1.000 | 0 / 0 | 46 (26 ham, 20 spam) |
-
-The apparent difference above comes from different validation-selected
-thresholds, not demonstrated score separation: at the shared 0.51 threshold
-both artifacts have P 0.909, R 1.000, F1 0.952, FP 2, FN 0; at 0.75 both
-have P/R/F1 1.000 and no errors. At 0.51 the two false positives are the same
-English legitimate examples: delivery (1/4) and a legitimate link (1/1).
-At 0.75 there are no false positives among 26 legitimate messages. The
-validation-selected expanded threshold yields English P/R/F1 1.000/1.000/1.000
-(n=29; 21 ham, 8 spam) and Taglish 1.000/1.000/1.000 (n=17; 5 ham, 12 spam);
-at the shared 0.51 threshold both models have English 0.800/1.000/0.889 and
-Taglish 1.000/1.000/1.000. Filipino is absent from this holdout. Legitimate
-category supports at threshold 0.75 are OTP 4, bank alert 4, delivery 4,
-bills 3, promotion 3, personal Taglish 5, appointment 1, school 1, and link 1;
-all have 0 false positives. Scam category supports range from 1 to 4 and are
-too small for stable category-level performance claims. No exact/normalized
-message or group overlap with training was found. This is a synthetic diagnostic
-comparison only; at shared thresholds, the additions show no measured change.
-
-Commands used to create the training artifacts outside the repository (neither
-replaces the serving model):
-
-```bash
-./.venv/bin/python -m src.train --supplement data/raw/ph_supplement.csv data/raw/ph_supplement_2.csv data/raw/ph_supplement_3.csv --output /tmp/sms-detector-baseline.pkl --holdout none
-./.venv/bin/python -m src.train --output /tmp/sms-detector-expanded.pkl --holdout none
-```
-
-The artifacts were loaded with `src.predict.load_model`; spam scores were
-calculated on the fixed holdout and `src.metrics.binary_metrics` was applied at
-each stored validation threshold and shared thresholds 0.51 and 0.75. No
-threshold was selected from holdout results.
-
-## Evaluation interpretation
-
-The newly added supplements are included in training only; they do not change the
-separate synthetic holdout. Version 5 adds 21 legitimate rows, and its final
-loader count is one lower than the arithmetical total because normalized duplicate
-removal also removed one case/Unicode/whitespace variant from the unknown local
-base data. Exact and normalized holdout overlap checks both report zero. The
-UCI corpus has a verified public license but is historical and not
-Philippine-specific. The synthetic holdout checks code paths and known patterns
-only. The current sources do not support a real-world Philippine precision,
-recall, false-positive rate, or accuracy claim. Small per-category counts are
-descriptive checks, not stable estimates. A future consented evaluation needs
-masked, independently labeled messages with enough legitimate OTP, bank-alert,
-delivery, bill, promotion, and everyday-message examples, plus scam campaigns
-held out by campaign and time. Keep that final set untouched until release
-evaluation.
-
-## Candidate training run (2026-10-20)
-
-The local candidate `candidate-2026-10-20` was trained to the ignored artifact
-`models/spam_detector_candidate_2026-10-20.pkl` from the current 5,698-row
-combined input (4,685 ham, 1,013 spam after global deduplication). It records
-source SHA-256 hashes, feature version, Python/scikit-learn versions, split
-fingerprint, training timestamp, and validation-selected threshold in its
-artifact and ignored sidecars. The base `spam.csv` provenance remains unknown;
-this candidate is not suitable evidence for Philippine performance and was
-not promoted to the serving model.
-
-Re-evaluating that exact artifact produced internal test precision 0.958,
-recall 0.779, F1 0.859 (n=814; 669 ham, 145 spam) at its validation-selected
-0.75 threshold. At 0.50, test precision was 0.950, recall 0.924, F1 0.937,
-with 7 false positives and 11 false negatives. On the separate synthetic
-Philippine holdout it scored 1.000 precision/recall/F1 (n=46), with zero
-false positives among 26 synthetic legitimate messages and zero group overlap.
-These are reproducible diagnostics, not real-world performance claims. Some
-category supports are only one example, and confidence intervals would be
-uninformative at that scale. The machine-readable evaluation JSON and model
-artifacts are ignored outputs; rerun these commands to reproduce them.
-
-## Text feature mode comparison (2026-10-20)
-
-Word-only, character-only, and combined TF-IDF candidates were trained on the
-same 539-row tracked synthetic input (15 normalized duplicates removed), with
-the same seed 42 and group split. Each candidate selected its own threshold on
-the same validation set; all three then reported on the fixed 77-row internal
-test split (24 ham, 53 spam). All input and evaluation rows were synthetic.
-
-| Mode | Validation threshold | Test precision | Test recall | Test F1 | FP / FN |
-|---|---:|---:|---:|---:|---:|
-| Word | 0.61 | 0.8929 | 0.9434 | 0.9174 | 6 / 3 |
-| Character | 0.64 | 0.8929 | 0.9434 | 0.9174 | 6 / 3 |
-| Combined | 0.64 | 0.9091 | 0.9434 | 0.9259 | 5 / 3 |
-
-The precision intervals overlap broadly (Wilson marginal 95% intervals:
-word/character 0.785–0.950, combined 0.804–0.961). This one small synthetic
-split does not establish a meaningful difference or justify changing the
-serving model; word-only remains the default. These intervals treat outcomes
-as binomial trials and do not adjust for campaign clustering, and the report
-does not include a confidence interval for F1. Repeated group-aware evaluation
-across seeds, threshold stability, and a product-approved cost-based operating
-point remain open work. The separate 46-row synthetic holdout was diagnostic
-only and was not used to select features or thresholds.
-
-Reproduce from the repository root by training to separate ignored artifact
-paths with the same command and changing only `--text-features` and
-`--output`:
-
-```bash
-python -m src.train --data data/raw/ph_supplement.csv \
-  --supplement data/raw/ph_supplement_2.csv data/raw/ph_supplement_3.csv \
-  data/raw/ph_supplement_4.csv data/raw/ph_supplement_5.csv \
-  --holdout data/raw/ph_holdout.csv --seed 42 \
-  --output models/feature-word.pkl --text-features word
-```
-
-The `char` and `combined` variants use the same command with distinct output
-paths. All artifacts are candidates; none replaces the serving artifact.
-
-## Repeated development split check (2026-10-21)
-
-The new command
-`python -m src.evaluate --model models/spam_detector_candidate_2026-10-20.pkl --stability-seeds 13 42 73 --plot none --json-out /tmp/sms-detector-stability-20261021.json`
-was run with the local `spam.csv` and all five tracked synthetic supplements.
-It first preserved the artifact's seed-42 test groups, then refit three
-word-only candidates using group-aware development train/validation splits.
-The validation thresholds were 0.45, 0.38, and 0.50 (range 0.12); each
-validation fold had 489 rows and its own threshold-selection metrics. These
-validation outcomes are not independent performance estimates.
-
-The untouched 814-row internal test split at the artifact threshold 0.75
-reported precision 0.958, recall 0.779, F1 0.859, 5 false positives, and 32
-false negatives. Its 757 group IDs produced percentile bootstrap 95% intervals
-of 0.912–0.991 for precision, 0.690–0.855 for recall, 0.795–0.908 for F1, and
-0.001–0.014 for false-positive rate. These are group-resampling intervals over
-the supplied group IDs, not Wilson's marginal binomial intervals. The local
-base data are unverified and most groups are derived template families, so the
-intervals must not be interpreted as real campaign-level uncertainty.
-
-The test split's language breakdown included 794 unknown-language rows
-(precision 0.962, recall 0.761, F1 0.850; 4 FP), 11 English (0.833/1.000/0.909;
-1 FP), 5 Taglish (1.000/1.000/1.000; 0 FP), and 4 Filipino (`tl`;
-1.000/1.000/1.000; 0 FP). Category support was very small: explicit
-legitimate categories contained 1–6 rows apiece, so category results are only
-descriptive. By Unicode code-point length, the 1–70 row group had n=439,
-P/R/F1 1.000/0.700/0.824 (0 FP); 71–160 had n=336, 0.962/0.791/0.868
-(4 FP); and 161+ had n=39, 0.800/0.667/0.727 (1 FP). The separate 46-row
-Philippine holdout remained synthetic-only and scored P/R/F1 1.000 with no
-errors; it is not independent real-world validation.
-
-This dated report is reproducible only with the same ignored local base file,
-candidate artifact, supplements, dependency versions, and seed list. The JSON
-report contains no message text and was written outside the repository. No data
-or model artifact was added or promoted by this evaluation.
-
-```bash
-python -m src.train --output models/spam_detector_candidate_2026-10-20.pkl \
-  --model-version candidate-2026-10-20 --holdout data/raw/ph_holdout.csv
-python -m src.evaluate --model models/spam_detector_candidate_2026-10-20.pkl \
-  --json-out data/processed/candidate-2026-10-20.json
-```
+No real-world Philippine performance claim is currently supported. Establishing
+one requires consented, de-identified Philippine messages with independently
+reviewed labels, adequate legitimate OTP/bank/delivery/bill/everyday examples,
+scam campaigns held out by campaign and time, and an untouched evaluation set.
+Keep that set out of model selection, calibration, and threshold tuning.

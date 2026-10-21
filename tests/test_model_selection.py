@@ -39,11 +39,30 @@ def test_select_classifier_reports_every_candidate():
 def test_calibrated_model_outputs_probabilities():
     frame, labels, groups = _data()
     result = select_classifier(frame, labels, groups, text_features="word", seed=3, n_splits=3)
-    model = calibrated_model(result.estimator, text_features="word", seed=3, labels=labels)
+    model = calibrated_model(result.estimator, text_features="word", seed=3, labels=labels, groups=groups)
+    calibrator = model.named_steps["classifier"]
+    calibration_folds = calibrator.cv
+    assert calibrator.ensemble is False
+    assert "features" in calibrator.estimator.named_steps
+    assert all(
+        not ({groups[i] for i in train} & {groups[i] for i in held_out}) for train, held_out in calibration_folds
+    )
     model.fit(frame, labels)
     probabilities = model.predict_proba(frame)
     assert np.allclose(probabilities.sum(axis=1), 1.0)
     assert list(model.classes_) == ["ham", "spam"]
+
+
+def test_grouped_cross_validation_fails_instead_of_leaking_when_campaign_support_is_insufficient():
+    labels = ["ham"] * 4 + ["spam"] * 4
+    groups = ["ham_campaign"] * 4 + ["spam_campaign"] * 4
+
+    try:
+        cv_splits(labels, groups, n_splits=2, seed=5, require_group_isolation=True)
+    except ValueError as error:
+        assert "group-disjoint stratified folds" in str(error)
+    else:
+        raise AssertionError("expected grouped CV to fail when every campaign contains only one label")
 
 
 def test_robust_threshold_requires_gain_in_every_fold():

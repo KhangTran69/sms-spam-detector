@@ -102,9 +102,17 @@ def pipeline_feature_signature(pipeline: Pipeline) -> dict[str, Any]:
     an actionable message instead of a confusing scikit-learn error.
     """
     try:
-        transformer = pipeline.named_steps["features"]
-    except (AttributeError, KeyError) as exc:
-        raise ValueError("pipeline is missing the 'features' step") from exc
+        transformer = pipeline.named_steps.get("features")
+    except AttributeError as exc:
+        raise ValueError("pipeline has no named steps") from exc
+    if transformer is None:
+        # Calibrated models keep the feature pipeline inside each calibration
+        # fold so held-out groups cannot influence the TF-IDF vocabulary.
+        classifier = pipeline.named_steps.get("classifier")
+        estimator = getattr(classifier, "estimator", None)
+        if isinstance(estimator, Pipeline):
+            return pipeline_feature_signature(estimator)
+        raise ValueError("pipeline is missing the 'features' step")
     text_column = None
     numeric_columns: list[str] = []
     for name, _, columns in transformer.transformers:

@@ -191,8 +191,30 @@ def _load_one(
         if "data_kind" in metadata_columns
         else "unknown"
     )
+    if "data_kind" in metadata_columns:
+        working["data_kind"] = working["data_kind"].replace({"real": "consented"})
     if not working["data_kind"].isin(["synthetic", "public", "consented", "real", "unknown"]).all():
         raise DatasetError(f"{source_label}: data_kind must be synthetic, public, consented, real, or unknown.")
+    consented_mask = working["data_kind"].eq("consented")
+    if consented_mask.any():
+        from src.consented_data import validate_batch
+
+        consented_rows = df.loc[consented_mask].reset_index(drop=True).copy()
+        consented_rows["data_kind"] = "consented"
+        try:
+            consent_report = validate_batch(
+                consented_rows,
+                purpose="evaluation" if role == "holdout" else "training",
+            )
+        except ValueError:
+            raise DatasetError(
+                f"{source_label}: consented rows must use the approved consented intake schema."
+            ) from None
+        if not consent_report.valid:
+            rules = sorted({finding.rule for finding in consent_report.findings})
+            raise DatasetError(
+                f"{source_label}: consented rows failed consent/privacy checks; correct these rule codes: {rules}."
+            )
     for column in ("source", "category", "language"):
         invalid = ~working[column].astype(str).str.fullmatch(METADATA_TOKEN_RE)
         if invalid.any():

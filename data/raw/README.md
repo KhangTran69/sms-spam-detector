@@ -11,7 +11,7 @@ the synthetic, shareable Philippine files listed below and this README.
 | `ph_supplement_2.csv` | synthetic templates | Larger categorized set (prize, bank phishing, delivery, loan, job, romance, load, investment, impersonation, legitimate). |
 | `ph_supplement_3.csv` | synthetic templates | Additional labeled scam and legitimate patterns with source/category metadata. |
 | `ph_supplement_4.csv` | synthetic scam templates | 42 new fictional scam-only variations across seven categories, three languages, and 14 campaign-family groups. Uses reserved `example.com` URLs and bracketed placeholders; automatically included in default training. |
-| `ph_supplement_5.csv` | synthetic legitimate templates | 21 fictional legitimate examples across OTP, bank, delivery, bill, promotion, school/work, and personal-message categories; three language variants per group. Automatically included in default training. |
+| `ph_supplement_5.csv` | synthetic mixed templates | 150 fictional rows: 21 hand-written legitimate examples plus 129 generated examples from 20 families. Automatically included in default training. |
 | `ph_holdout.csv` | synthetic benchmark | Disjoint-by-message holdout with `category`, `language`, `source`, and `labeling_confidence` metadata. Used only for evaluation, never training. |
 | `spam.csv` (not tracked) | unknown until verified | Operator-supplied base file. Its current provenance is unverified; do not assume it is the UCI corpus. |
 
@@ -26,12 +26,13 @@ group. Variants stay together during grouped splitting. The messages are
 developer-authored synthetic training material, not collected SMS and not an
 independent evaluation set. They do not change `ph_holdout.csv`.
 
-The fifth supplement adds 21 messages (all labeled `ham`) as fictional,
-developer-authored legitimate examples. It covers seven categories in English,
-Filipino, and Taglish, with three variants per explicit campaign family. Some
-legitimate rows use the reserved `example.com` domain and placeholders, so
-those tokens no longer occur only in scam training rows. These examples do not
-represent the natural distribution of Philippine messages.
+The fifth supplement contains 21 hand-written, developer-authored legitimate
+examples plus 129 generated examples from 20 campaign families. The 21 hand-
+written messages cover OTP, bank, delivery, bill, promotion, school/work, and
+personal categories in English, Filipino, and Taglish. The full file remains
+synthetic and does not represent the natural distribution of Philippine
+messages. The current local counts and hashes are in
+[`docs/DATASET_INVENTORY.md`](../../docs/DATASET_INVENTORY.md).
 
 ## Labeled CSV schema
 
@@ -53,7 +54,7 @@ Optional metadata columns (used by evaluation breakdowns when present):
 | `language` | `en`, `tl`, `taglish` | Do not infer personally identifying dialect details. |
 | `labeling_confidence` | `high`, `medium`, `low` | Human labeler confidence. |
 | `received_at` | ISO-8601 timestamp | Required for `--split-by time`; collect only the date precision needed. |
-| `group` / `template_family` / `campaign` | `gma-prize-2026a` | Explicit leakage-prevention group. If absent, a masked template key is derived automatically. |
+| `group` / `template_family` / `campaign` | `campaign_opaque_a1` | Explicit leakage-prevention group. For consented data, use an opaque pseudonym. If absent, a masked template key is derived automatically. |
 | `data_kind` | `synthetic`, `public`, `consented`, `unknown` | Declared provenance class; declaration is not independent verification. Legacy `real` is accepted as an alias for consented data. |
 | `dataset_id`, `dataset_version`, `license`, `collection_period` | UCI metadata | Source-level attribution; these must be consistent within the file. |
 
@@ -110,8 +111,10 @@ Exact duplicates and duplicates after Unicode NFKC normalization, case-folding,
 and whitespace collapsing are removed **before** splitting (first occurrence
 kept) with a warning. Conflicting labels are rejected after normalization.
 Punctuation and semantic variants are not normalized. The holdout is checked
-for exact and normalized overlap. The training/validation/test split is group-aware by
-template family, so related examples do not cross split boundaries.
+for exact and normalized overlap. The training/validation/test split is group-
+aware by template family, so related examples do not cross split boundaries.
+Classifier selection and probability calibration also use group-isolated folds;
+training fails if groups cannot support those folds without leakage.
 
 ## Privacy rules for real data
 
@@ -122,8 +125,9 @@ template family, so related examples do not cross split boundaries.
   (normally it is not).
 - Never commit raw personal SMS, sender numbers, or account data. Keep them
   outside Git (or in an approved, access-controlled store).
-- Prefer hashed `message_id` + redacted text for error review; see
-  `src.preprocess.redact_message`.
+- Keep error review to row numbers, labels, model scores, and categorical
+  metadata. Do not include message text or donor/campaign identifiers in
+  evaluation reports or logs.
 - Do not put real holdout messages into logs, notebooks, issues, or model
   metadata.
 

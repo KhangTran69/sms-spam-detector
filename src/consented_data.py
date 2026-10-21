@@ -9,6 +9,7 @@ operator must still verify the separate consent register and human review.
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import re
 import sys
@@ -19,7 +20,7 @@ from typing import Any
 
 import pandas as pd
 
-from src.data import LABEL_ALIASES
+from src.dataset_schema import LABEL_ALIASES
 from src.preprocess import MONEY_RE, PHONE_RE, URL_RE
 
 REQUIRED_COLUMNS = (
@@ -246,6 +247,9 @@ def validate_batch(
 
     # Deduplicate identical row/rule reports without including offending values.
     unique_findings = tuple(sorted(set(findings), key=lambda item: (item.row, item.rule)))
+    if purpose == "evaluation" and set(label_counts) != {"ham", "spam"}:
+        unique_findings = (*unique_findings, Finding(0, "evaluation_batch_requires_both_labels"))
+        unique_findings = tuple(sorted(set(unique_findings), key=lambda item: (item.row, item.rule)))
     return BatchReport(
         rows=len(frame),
         labels=label_counts,
@@ -264,10 +268,20 @@ def validate_csv(
 ) -> BatchReport:
     """Read and validate a local CSV; pandas parse errors are sanitized."""
     try:
-        frame = pd.read_csv(path, dtype=str, keep_default_na=False, encoding="utf-8-sig")
+        _, frame = _read_intake_csv(path)
     except (OSError, UnicodeError, pd.errors.ParserError, pd.errors.EmptyDataError) as exc:
         raise ValueError(f"Could not read intake CSV ({type(exc).__name__}).") from None
     return validate_batch(frame, today=today, purpose=purpose)
+
+
+def _read_intake_csv(path: str | Path) -> tuple[bytes, pd.DataFrame]:
+    """Read one stable byte snapshot for validation, hashing, and import."""
+    try:
+        content = Path(path).read_bytes()
+        frame = pd.read_csv(io.BytesIO(content), dtype=str, keep_default_na=False, encoding="utf-8-sig")
+        return content, frame
+    except (OSError, UnicodeError, pd.errors.ParserError, pd.errors.EmptyDataError) as exc:
+        raise ValueError(f"Could not read intake CSV ({type(exc).__name__}).") from None
 
 
 def main(argv: list[str] | None = None) -> int:

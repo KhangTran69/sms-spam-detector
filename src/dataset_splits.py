@@ -75,6 +75,15 @@ class Split:
         return {name: len(indices) for name, indices in self.splits.items()}
 
     def group_fingerprint(self, groups: Sequence[str]) -> str:
+        # Fingerprint split membership by row positions, never by donor,
+        # campaign, or template identifiers. Source hashes bind the underlying
+        # data version; this fingerprint records only which rows went where.
+        _ = groups
+        payload = {name: sorted(indices) for name, indices in self.splits.items()}
+        return hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()
+
+    def legacy_group_fingerprint(self, groups: Sequence[str]) -> str:
+        """Reproduce the pre-privacy fingerprint for old artifact comparison."""
         payload = {name: sorted({groups[index] for index in indices}) for name, indices in self.splits.items()}
         return hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()
 
@@ -90,6 +99,7 @@ class Split:
         }
         if groups is not None:
             payload["group_fingerprint"] = self.group_fingerprint(groups)
+            payload["group_fingerprint_version"] = "row-membership-v1"
             payload["group_sizes"] = {
                 name: len({groups[index] for index in indices}) for name, indices in self.splits.items()
             }
@@ -256,19 +266,23 @@ def grouped_splits(
             "Add a 'group'/'template_family' column or use --split-by random for a clearly-labelled fallback."
         )
     preferred = int(round(1.0 / min(val_size, test_size)))
-    candidates = [value for value in (preferred, 10, 8, 7, 6, 5, 4, 3) if value >= 3]
+    candidates = [value for value in (preferred, 10, 8, 7, 6, 5, 4, 3) if 3 <= value <= len(unique_groups)]
     seen: set[int] = set()
     for n_splits in candidates:
         if n_splits in seen:
             continue
         seen.add(n_splits)
-        if n_splits > len(unique_groups):
-            continue
-        fold_splits = list(
-            StratifiedGroupKFold(n_splits=n_splits, shuffle=True, random_state=seed).split(
-                np.zeros(len(labels)), labels, groups=groups
+        try:
+            fold_splits = list(
+                StratifiedGroupKFold(n_splits=n_splits, shuffle=True, random_state=seed).split(
+                    np.zeros(len(labels)), labels, groups=groups
+                )
             )
-        )
+        except ValueError:
+            # sklearn cannot stratify when a class has fewer members than
+            # folds; try fewer folds and ultimately emit the documented
+            # labelled random-split fallback.
+            continue
         if len(fold_splits) < 3:
             continue
         val_idx = sorted(int(index) for index in fold_splits[0][1])

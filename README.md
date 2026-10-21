@@ -35,24 +35,18 @@ No data? `make demo` trains and smoke-tests a synthetic-only model. With Docker,
 train first, then run `docker compose up -d` (the model is mounted read-only; see
 [DEPLOYMENT.md](docs/DEPLOYMENT.md)).
 
-## Results
+## Evaluation status
 
-The data is UCI plus the tracked synthetic PH supplements, deduplicated and split
-by group. With seed 42 the internal test split has 810 messages, 131 of them spam.
-Measured on 2026-10-21 with `python -m src.train --data data/raw/imported/uci_sms_spam.csv`.
-
-| Model | Threshold | Spam precision | Spam recall | Spam F1 | Accuracy | Calibration error (ECE) |
-|---|---|---|---|---|---|---|
-| **Current:** LinearSVC (C=1, chosen by 5-fold CV F1 0.947) + sigmoid calibration, word+char features | 0.50 | 0.945 | 0.924 | **0.934** | 0.979 | **0.014** |
-| MultinomialNB baseline (same features) | 0.50 | 0.906 | 0.809 | 0.855 | 0.956 | n/a |
-| Previous default: LogisticRegression, word features, validation-tuned threshold* | 0.63 | 0.936 | 0.800 | 0.863 | 0.955 | 0.083 |
-
-\*Measured on the earlier data and split: 814 test messages, 145 spam.
-
-**Synthetic PH holdout (264 messages, 0 template families shared with training):**
-precision 0.969, recall 0.900, F1 0.933, with 4 false alarms (3 e-wallet receipts,
-1 OTP) and 14 missed scams. The holdout is synthetic, so these numbers check the
-pipeline and are not field accuracy.
+This repository does not currently contain a reproducible, versioned benchmark
+run. The local base CSV and model artifacts are ignored by Git, the base
+dataset's provenance is unknown, and the imported UCI file referenced in older
+run notes is not present in this workspace. Earlier performance numbers could
+not be matched to a current artifact and fixed evaluation membership, so they
+are not presented as current results. The tracked Philippine training and
+holdout messages are synthetic diagnostics only; they do not establish
+real-world Philippine reliability. See the
+[dataset inventory](docs/DATASET_INVENTORY.md) for current workspace counts and
+the data needed for an independently reproducible evaluation.
 
 | | |
 |---|---|
@@ -65,7 +59,7 @@ pipeline and are not field accuracy.
 |---|---|
 | `GET /health`, `GET /ready` | Liveness; readiness (loads and validates the model) |
 | `GET /model-info` | Version, threshold, risk bands, provenance, caveats |
-| `POST /predict` | Label, calibrated score, flags, threshold |
+| `POST /predict` | Label, score with a `probability_calibrated` indicator, flags, threshold |
 | `POST /analyze`, `POST /analyze/batch` | Adds risk band and highlighted signals; batch takes up to 50 |
 | `POST /feedback` | Optional anonymous label correction, off by default; never accepts message text |
 
@@ -95,11 +89,16 @@ consent is withdrawn. Run the local-only preflight before using a batch:
 
 ```bash
 python -m src.consented_data /secure/workspace/consented_batch.csv --purpose training
+python -m src.import_consented \
+  --input /secure/workspace/consented_batch.csv \
+  --purpose training \
+  --output-dir /secure/workspace/approved
 ```
 
-The preflight reports aggregate counts and row/rule codes only; it cannot prove
-consent or detect every identifier. Keep a campaign-separated evaluation batch
-out of training and threshold selection. See
+The importer rechecks the same schema and rules against the exact input it
+writes. Both commands report aggregate counts and row/rule codes only; they
+cannot prove consent or detect every identifier. Keep a campaign-separated
+evaluation batch out of training and threshold selection. See
 [docs/DATA_COLLECTION.md](docs/DATA_COLLECTION.md) for the full workflow and
 privacy limits.
 

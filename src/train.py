@@ -199,7 +199,11 @@ def train(
         train_frame, train_set.labels, train_set.groups, text_features=text_features, seed=random_state
     )
     primary = calibrated_model(
-        selection.estimator, text_features=text_features, seed=random_state, labels=train_set.labels
+        selection.estimator,
+        text_features=text_features,
+        seed=random_state,
+        labels=train_set.labels,
+        groups=train_set.groups,
     )
     baseline.fit(train_frame, train_set.labels)
     primary.fit(train_frame, train_set.labels)
@@ -300,7 +304,7 @@ def train(
         "suspicious_threshold": suspicious_threshold,
         "threshold_selection": {**choice.as_dict(), "decision": jsonable(threshold_decision)},
         "model_selection": selection.as_dict(),
-        "calibration_method": "sigmoid CalibratedClassifierCV (5-fold, training split only)",
+        "calibration_method": "sigmoid CalibratedClassifierCV (group-aware folds, training split only)",
         "training_config": {
             "data_role": "base",
             "supplement_count": len(_supplement_paths_used(supplement_path)),
@@ -326,6 +330,7 @@ def train(
                 "split_method": split.method,
                 "split_seed": split.seed,
                 "split_fingerprint": split.group_fingerprint(dataset.groups),
+                "split_fingerprint_version": "row-membership-v1",
             },
         ),
         "split": split.as_dict(dataset.groups),
