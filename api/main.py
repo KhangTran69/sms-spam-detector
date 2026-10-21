@@ -29,7 +29,6 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
-from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from src.predict import (
@@ -385,7 +384,25 @@ submit_feedback = _routes.submit_feedback
 _append_feedback_report = _routes._append_feedback_report
 
 
-app.mount("/static", StaticFiles(directory=WEB_DIR, check_dir=False), name="static")
+_STATIC_ASSETS = {"app.js", "styles.css", "icon.svg"}
+
+
+@app.get("/static/{asset_name}", include_in_schema=False)
+def static_asset(asset_name: str):
+    """Serve the small, known UI bundle with consistent safe failure behavior."""
+    if asset_name not in _STATIC_ASSETS:
+        return _error_response(404, "not_found", "The requested resource was not found.")
+    try:
+        body = (WEB_DIR / asset_name).read_bytes()
+    except OSError:
+        logger.error("Bundled UI asset unavailable (%s)", asset_name)
+        return _error_response(
+            503,
+            "ui_unavailable",
+            "The bundled web interface is unavailable. Reinstall the project or run it from a complete checkout.",
+        )
+    media_type = {"app.js": "text/javascript", "styles.css": "text/css", "icon.svg": "image/svg+xml"}[asset_name]
+    return Response(body, media_type=media_type, headers={"Cache-Control": "no-cache"})
 
 
 def _ui_asset_response(

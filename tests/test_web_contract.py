@@ -214,7 +214,9 @@ def test_feedback_is_operator_opt_in_and_never_sends_message_text(api_source, js
 
 def test_uncalibrated_scores_are_not_presented_as_probability(js, html):
     assert "uncalibrated model score" in js
-    assert "Uncalibrated model score" in html
+    assert "calibration status follows the loaded model" in html
+    assert 'modelInfo.probability_calibrated ? t("meter.aria.calibrated") : t("meter.aria")' in js
+    assert 'analysis && analysis.probability_calibrated === true ? t("meter.aria.calibrated") : t("meter.aria")' in js
     assert "probability_calibrated" in js
     assert "} scam probability" not in js
 

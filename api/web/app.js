@@ -34,6 +34,7 @@ const FALLBACK_MODEL_INFO = {
   suspicious_threshold: 0.4,
   bands: { ...FALLBACK_BANDS },
   data_note: SYNTHETIC_DATA_NOTE,
+  probability_calibrated: false,
 };
 
 /* ---------- Lightweight i18n (English / Taglish) ----------
@@ -91,6 +92,7 @@ const I18N = {
     "verdict.decisionThreshold": "decision threshold",
     "meter.title": "Estimated scam score",
     "meter.aria": "Uncalibrated model score",
+    "meter.aria.calibrated": "Estimated scam probability",
     "copy.summary": "Copy summary",
     "copy.done": "Copied!",
     "copy.fail": "Could not copy automatically; please copy manually.",
@@ -235,6 +237,7 @@ const I18N = {
     "verdict.decisionThreshold": "decision threshold",
     "meter.title": "Tinatayang scam score",
     "meter.aria": "Model score (hindi pa-calibrate)",
+    "meter.aria.calibrated": "Tinatayang posibilidad ng scam",
     "copy.summary": "Kopyahin ang buod",
     "copy.done": "Nakopya na!",
     "copy.fail": "Hindi awtomatikong nakopya; kopyahin nang manual.",
@@ -762,6 +765,10 @@ function renderModelInfo() {
     scam: pct(modelInfo.bands.likely_scam),
     suspicious: pct(modelInfo.bands.suspicious),
   });
+  $("risk-meter").setAttribute(
+    "aria-label",
+    modelInfo.probability_calibrated ? t("meter.aria.calibrated") : t("meter.aria"),
+  );
 }
 
 async function loadModelInfo() {
@@ -828,6 +835,10 @@ function renderMeter(analysis) {
   meter.style.setProperty("--suspect", `${Math.round(modelInfo.bands.suspicious * 100)}%`);
   meter.style.setProperty("--scam", `${Math.round(modelInfo.bands.likely_scam * 100)}%`);
   meter.setAttribute("aria-valuenow", String(value));
+  meter.setAttribute(
+    "aria-label",
+    analysis && analysis.probability_calibrated === true ? t("meter.aria.calibrated") : t("meter.aria"),
+  );
   meter.setAttribute("aria-valuetext", `${value}% ${scoreLabel(analysis)} — ${bandTitle(band)}`);
   $("meter-marker").style.left = `${value}%`;
   const output = $("meter-value");

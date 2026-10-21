@@ -96,7 +96,9 @@ python -m src.import_consented \
 ```
 
 The importer rechecks the same schema and rules against the exact input it
-writes. Both commands report aggregate counts and row/rule codes only; they
+writes. Header matching is case-insensitive and treats spaces as underscores;
+label aliases such as `legitimate`/`legit` and `scam` normalize to `ham` and
+`spam`. Both commands report aggregate counts and row/rule codes only; they
 cannot prove consent or detect every identifier. Keep a campaign-separated
 evaluation batch out of training and threshold selection. See
 [docs/DATA_COLLECTION.md](docs/DATA_COLLECTION.md) for the full workflow and

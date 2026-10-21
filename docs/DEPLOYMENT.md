@@ -135,9 +135,10 @@ identity is unclear, leave it running and use a free port such as 8001. Do not
 use a broad `pkill uvicorn` command. The detector does not log SMS contents;
 retain only message-free status codes and route names when diagnosing failures.
 
-The home page, manifest, and service worker return a sanitized `ui_unavailable`
-503 if their bundled entry file is missing or unreadable. Reinstall the package
-or run from a complete checkout. A 200 from `/health` alone proves only that the
+The home page, manifest, service worker, and allowlisted static bundle assets
+return a sanitized `ui_unavailable` 503 if a bundled file is missing or
+unreadable. Unknown static asset names return 404. Reinstall the package or run
+from a complete checkout. A 200 from `/health` alone proves only that the
 process is alive; verify the UI routes and `/ready` separately.
 
 Smoke test:

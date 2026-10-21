@@ -18,7 +18,7 @@ from typing import Any
 
 import pandas as pd
 
-from src.consented_data import _read_intake_csv, validate_batch
+from src.consented_data import _read_intake_csv, normalize_intake_columns, validate_batch
 from src.data import LABEL_ALIASES, ROOT, DatasetError
 
 TEMPLATE = ROOT / "data" / "templates" / "consented_ph_sms_template.csv"
@@ -68,10 +68,10 @@ def import_consented(
         findings = [{"row": item.row, "rule": item.rule} for item in report.findings]
         raise DatasetError(f"Consent intake rejected; correct the listed row/rule findings: {json.dumps(findings)}")
 
-    labels = frame["label"].astype(str).str.strip().str.lower().map(LABEL_ALIASES)
+    normalized = normalize_intake_columns(frame)
+    labels = normalized["label"].astype(str).str.strip().str.lower().map(LABEL_ALIASES)
     if labels.isna().any():  # Defensive: validate_batch has already checked labels.
         raise DatasetError("Consent intake contains invalid labels.")
-    normalized = frame.copy()
     normalized["label"] = labels.astype(str)
     normalized["data_kind"] = "consented"
 

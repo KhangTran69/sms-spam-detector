@@ -75,6 +75,26 @@ def test_importer_uses_shared_schema_and_outputs_loader_compatible_file(tmp_path
     assert rows[0]["message"] not in str(result)
 
 
+def test_preflight_normalized_headers_and_label_aliases_import_end_to_end(tmp_path) -> None:
+    rows = _valid_rows()
+    rows[0]["label"] = rows[0]["reviewer_a_label"] = rows[0]["reviewer_b_label"] = "Legitimate"
+    rows[0]["adjudicated_label"] = "legitimate"
+    rows[1]["label"] = rows[1]["reviewer_a_label"] = rows[1]["reviewer_b_label"] = "scam"
+    rows[1]["adjudicated_label"] = "scam"
+    source, output = _fixture(tmp_path, rows)
+    frame = pd.read_csv(source)
+    frame.columns = [column.replace("_", " ").title() for column in frame.columns]
+    frame.to_csv(source, index=False)
+
+    assert preflight_main([str(source), "--purpose", "training"]) == 0
+    result = import_consented(source, purpose="training", output_dir=output, today=date(2026, 10, 21))
+    imported = output / result["output"]
+    dataset = load_dataset(imported, require_both_classes=True, min_class_count=0)
+
+    assert dataset.class_counts == {"ham": 1, "spam": 1}
+    assert set(pd.read_csv(imported)["label"]) == {"ham", "spam"}
+
+
 def test_documented_cli_workflow_accepts_fictional_fixture(tmp_path, capsys) -> None:
     source, output = _fixture(tmp_path, _valid_rows())
 

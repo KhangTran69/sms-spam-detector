@@ -80,6 +80,41 @@ def _coverage_counts(frame: Any, column: str) -> dict[str, int]:
     return {str(key): int(value) for key, value in sorted(counts.items())}
 
 
+def _score_interpretation(bundle: ModelBundle) -> str:
+    """Describe scores using the loaded artifact's declared calibration state."""
+    if bool(bundle.metadata.get("probability_calibrated", False)):
+        return "calibrated spam probability estimate; calibration does not establish Philippine representativeness"
+    return "uncalibrated model score; not a probability"
+
+
+def _threshold_diagnostic(bundle: ModelBundle, recomputed_threshold: float) -> dict[str, Any]:
+    """Classify a validation threshold difference using saved policy metadata."""
+    selection = bundle.metadata.get("threshold_selection", {})
+    decision = selection.get("decision", {}) if isinstance(selection, dict) else {}
+    policy = decision.get("policy") if isinstance(decision, dict) else None
+    adopted = decision.get("adopted") if isinstance(decision, dict) else None
+    decided_threshold = decision.get("threshold") if isinstance(decision, dict) else None
+    if abs(recomputed_threshold - bundle.threshold) <= 1e-9:
+        status = "matches_validation"
+    elif (
+        policy == "cv-robust"
+        and adopted is False
+        and decided_threshold is not None
+        and abs(float(decided_threshold) - bundle.threshold) <= 1e-9
+    ):
+        status = "default_intentionally_retained"
+    elif policy == "validation":
+        status = "validation_policy_mismatch"
+    else:
+        status = "policy_metadata_unavailable_or_unrecognized"
+    return {
+        "artifact_threshold": float(bundle.threshold),
+        "recomputed_validation_candidate": float(recomputed_threshold),
+        "policy": str(policy) if policy is not None else None,
+        "status": status,
+    }
+
+
 # Diagnostic examples from the project brief. They are deliberately excluded
 # from every data file (tests assert this) so predictions show generalized
 # behavior. They are not a benchmark.
@@ -292,10 +327,19 @@ def evaluate(
         false_positive_cost=config.get("false_positive_cost"),
         false_negative_cost=config.get("false_negative_cost"),
     )
-    if abs(recomputed.threshold - threshold) > 1e-9:
+    threshold_diagnostic = _threshold_diagnostic(bundle, recomputed.threshold)
+    if threshold_diagnostic["status"] == "validation_policy_mismatch":
         warnings.append(
-            f"Artifact threshold {threshold:.2f} differs from the threshold recomputed on the current "
-            f"validation split ({recomputed.threshold:.2f}); data may have changed."
+            "Artifact threshold differs from the candidate recomputed on validation despite a recorded "
+            "validation-only threshold policy; inspect threshold-selection metadata."
+        )
+    elif (
+        threshold_diagnostic["status"] == "policy_metadata_unavailable_or_unrecognized"
+        and abs(recomputed.threshold - threshold) > 1e-9
+    ):
+        warnings.append(
+            "Artifact threshold differs from the candidate recomputed on the current validation split, "
+            "but saved threshold-policy metadata is unavailable; see split and data hash diagnostics separately."
         )
 
     test_metrics = binary_metrics(test_set.labels, test_probabilities, threshold)
@@ -312,6 +356,8 @@ def evaluate(
         "banner": _provenance_banner(test_set),
         "model": bundle.model_info(),
         "threshold": threshold,
+        "threshold_diagnostic": threshold_diagnostic,
+        "score_interpretation": _score_interpretation(bundle),
         "dataset": dataset.summary(),
         "split": split.as_dict(dataset.groups),
         "split_summary": {
@@ -427,7 +473,12 @@ def evaluate(
             "legitimate_flagged_total": flagged_legit,
             "by_category": by_category,
             "leakage": leakage,
-            "errors": _errors(holdout, holdout_probabilities, threshold),
+            "errors": _errors(
+                holdout,
+                holdout_probabilities,
+                threshold,
+                probability_calibrated=bool(bundle.metadata.get("probability_calibrated", False)),
+            ),
         }
 
     results = jsonable(results)
@@ -436,7 +487,7 @@ def evaluate(
         {
             "example_id": index + 1,
             "prediction": "spam" if probability >= threshold else "ham",
-            "uncalibrated_spam_score": round(float(probability), 4),
+            "spam_score": round(float(probability), 4),
         }
         for index, probability in enumerate(diagnostic_probabilities)
     ]
@@ -455,7 +506,13 @@ def evaluate(
     return results
 
 
-def _errors(dataset: Dataset, probabilities: list[float], threshold: float) -> list[dict[str, Any]]:
+def _errors(
+    dataset: Dataset,
+    probabilities: list[float],
+    threshold: float,
+    *,
+    probability_calibrated: bool = False,
+) -> list[dict[str, Any]]:
     predictions = ["spam" if probability >= threshold else "ham" for probability in probabilities]
     errors: list[dict[str, Any]] = []
     for index, (label, prediction) in enumerate(zip(dataset.labels, predictions)):
@@ -466,7 +523,8 @@ def _errors(dataset: Dataset, probabilities: list[float], threshold: float) -> l
                 "index": index,
                 "label": label,
                 "prediction": prediction,
-                "uncalibrated_spam_score": round(float(probabilities[index]), 4),
+                "spam_score": round(float(probabilities[index]), 4),
+                "probability_calibrated": probability_calibrated,
                 "category": str(dataset.frame.iloc[index].get("category", "unknown")),
                 "language": str(dataset.frame.iloc[index].get("language", "unknown")),
             }
@@ -515,7 +573,9 @@ def _plot(
             label="test reliability",
         )
     axes[1, 0].set_title(f"Calibration (test) ECE={calibration['expected_calibration_error']:.3f}")
-    axes[1, 0].set_xlabel("mean uncalibrated spam score")
+    axes[1, 0].set_xlabel(
+        f"mean {'calibrated estimate' if results['model'].get('probability_calibrated') else 'model score'}"
+    )
     axes[1, 0].set_ylabel("observed spam rate")
     axes[1, 0].set_xlim(0, 1)
     axes[1, 0].set_ylim(0, 1)
@@ -546,6 +606,8 @@ def _print_report(results: dict[str, Any], threshold: float, holdout: Dataset | 
     print(f"\n=== {results['banner']} ===")
     print(results["model"]["data_note"])
     print(f"model_version={results['model']['model_version']} threshold={threshold:.2f}")
+    print(f"Score interpretation: {results['score_interpretation']}")
+    print(f"Threshold diagnostic: {results['threshold_diagnostic']}")
     split_summary = results["split_summary"]
     print("\n=== Split ===")
     for name in ("train", "val", "test"):
@@ -597,7 +659,7 @@ def _print_report(results: dict[str, Any], threshold: float, holdout: Dataset | 
             for error in holdout_results["errors"]:
                 print(
                     f"  [{error['label']} -> {error['prediction']} "
-                    f"score={error['uncalibrated_spam_score']:.3f}] "
+                    f"score={error['spam_score']:.3f}] "
                     f"category={error['category']} language={error['language']}"
                 )
     else:
@@ -605,10 +667,7 @@ def _print_report(results: dict[str, Any], threshold: float, holdout: Dataset | 
 
     print("\n=== Diagnostic examples from the project brief (not a benchmark) ===")
     for entry in results["diagnostic_examples"]:
-        print(
-            f"example {entry['example_id']}: {entry['prediction']:>4} "
-            f"(uncalibrated score={entry['uncalibrated_spam_score']:.3f})"
-        )
+        print(f"example {entry['example_id']}: {entry['prediction']:>4} (spam score={entry['spam_score']:.3f})")
 
     for warning in results["warnings"]:
         print(f"warning: {warning}")

@@ -6,6 +6,7 @@ function element(tagName = 'div') {
   const classes = new Set();
   let ownText = '';
   return { tagName, dataset: {}, value: '', disabled: false, childNodes: [], listeners: {}, attributes: {},
+    style: { setProperty() {}, left: '', color: '' },
     get textContent() { return this.childNodes.length ? this.childNodes.map(child => child.textContent).join('') : ownText; },
     set textContent(value) { ownText = String(value); this.childNodes = []; },
     addEventListener(type, handler) { this.listeners[type] = handler; },
@@ -148,7 +149,13 @@ assert.match(run('t("examples.status", {kind: t("examples.scamKind"), index: 1, 
   assert.equal(run('new Set(EXAMPLES.safe).size'), 20, 'safe examples should not be duplicated');
   assert.match(run('$("example-status").textContent'), /safe message 1 of 20/);
   assert.equal(run('demoChecks'), 22, 'each example click should trigger analysis');
-  run('currentTheme = "light"; toggleTheme()');
+  run('lang = "en"; renderMeter({spam_probability:0.35,probability_calibrated:true,prediction:"ham",risk_band:"looks_safe"})');
+  assert.equal(run('$("risk-meter").getAttribute("aria-label")'), 'Estimated scam probability');
+  assert.match(run('$("risk-meter").getAttribute("aria-valuetext")'), /estimated scam probability/);
+  run('lang = "taglish"; renderMeter({spam_probability:0.35,probability_calibrated:false,prediction:"ham",risk_band:"looks_safe"})');
+  assert.equal(run('$("risk-meter").getAttribute("aria-label")'), 'Model score (hindi pa-calibrate)');
+  assert.match(run('$("risk-meter").getAttribute("aria-valuetext")'), /model score \(hindi pa-calibrate\)/);
+  run('lang = "en"; currentTheme = "light"; toggleTheme()');
   assert.equal(run('currentTheme'), 'dark');
   assert.equal(run('document.documentElement.getAttribute("data-theme")'), 'dark');
   assert.equal(run('localStorage.getItem(THEME_KEY)'), 'dark', 'dark preference should persist');

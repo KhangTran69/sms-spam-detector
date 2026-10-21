@@ -104,9 +104,20 @@ jobs:
           assert info["model_version"] == "ci-synthetic-smoke"
           assert info["feature_version"] != "unknown"
           assert post("/predict", {"message": "CI fixture message"})["prediction"] in {"ham", "spam"}
+          assert post("/analyze", {"message": "CI fixture message"})["prediction"] in {"ham", "spam"}
           assert len(post("/analyze/batch", {"messages": ["fixture one", "fixture two"]})["results"]) == 2
           with urllib.request.urlopen(f"{base}/", timeout=2) as response:
-              assert b"SMS" in response.read()
+              assert response.status == 200 and b"SMS" in response.read()
+          for path, expected in {
+              "/static/styles.css": b"text/css",
+              "/static/app.js": b"javascript",
+              "/static/icon.svg": b"svg",
+              "/manifest.webmanifest": b"application/manifest+json",
+              "/sw.js": b"javascript",
+          }.items():
+              with urllib.request.urlopen(f"{base}{path}", timeout=2) as response:
+                  assert response.status == 200
+                  assert expected in response.headers.get("Content-Type", "").encode().lower()
 
           secret = "DO_NOT_ECHO_CI_MESSAGE"
           request = urllib.request.Request(

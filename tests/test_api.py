@@ -725,6 +725,54 @@ def test_index_and_static_files_are_served(client):
     assert_error_schema(missing_script, 404, "not_found")
 
 
+def test_missing_static_directory_returns_safe_error_and_api_stays_healthy(client, monkeypatch, tmp_path):
+    monkeypatch.setattr(api_main, "WEB_DIR", tmp_path / "missing-static")
+
+    asset = client.get("/static/app.js")
+    assert asset.status_code == 503
+    assert_error_schema(asset, 503, "ui_unavailable")
+    assert str(tmp_path) not in asset.text
+    assert client.get("/health").status_code == 200
+    assert client.post("/predict", json={"message": "fictional test message"}).status_code == 200
+
+
+def test_removed_static_asset_after_startup_returns_safe_error(client, monkeypatch, tmp_path):
+    web_dir = tmp_path / "web"
+    web_dir.mkdir()
+    script = web_dir / "app.js"
+    script.write_text("/* fictional fixture asset */", encoding="utf-8")
+    monkeypatch.setattr(api_main, "WEB_DIR", web_dir)
+    assert client.get("/static/app.js").status_code == 200
+
+    script.unlink()
+    response = client.get("/static/app.js")
+
+    assert response.status_code == 503
+    assert_error_schema(response, 503, "ui_unavailable")
+    assert str(tmp_path) not in response.text
+
+
+def test_unreadable_static_asset_returns_safe_error(client, monkeypatch, tmp_path):
+    web_dir = tmp_path / "web"
+    web_dir.mkdir()
+    script = web_dir / "styles.css"
+    script.write_text("/* fictional fixture asset */", encoding="utf-8")
+    monkeypatch.setattr(api_main, "WEB_DIR", web_dir)
+    original_read_bytes = Path.read_bytes
+
+    def read_bytes(path):
+        if path == script:
+            raise PermissionError("private filesystem detail")
+        return original_read_bytes(path)
+
+    monkeypatch.setattr(Path, "read_bytes", read_bytes)
+    response = client.get("/static/styles.css")
+
+    assert response.status_code == 503
+    assert_error_schema(response, 503, "ui_unavailable")
+    assert "private filesystem detail" not in response.text
+
+
 @pytest.mark.parametrize("path", ["/", "/manifest.webmanifest", "/sw.js"])
 def test_missing_ui_entry_asset_returns_clear_service_error(client, monkeypatch, tmp_path, path):
     monkeypatch.setattr(api_main, "WEB_DIR", tmp_path / "missing-web-package")

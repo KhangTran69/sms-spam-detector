@@ -112,6 +112,21 @@ def _valid_iso_date(value: Any) -> date | None:
             return None
 
 
+def normalize_intake_columns(frame: pd.DataFrame) -> pd.DataFrame:
+    """Return a copy with intake headers canonicalized to the schema names.
+
+    Preflight and import must interpret column headers identically. Reject
+    collisions (for example, ``Label`` alongside `` label ``) instead of
+    silently choosing one of the values.
+    """
+    names = [str(column).strip().lower().replace(" ", "_") for column in frame.columns]
+    if len(set(names)) != len(names):
+        raise ValueError("The intake CSV has duplicate columns after normalization.")
+    normalized = frame.copy()
+    normalized.columns = names
+    return normalized
+
+
 def _content_findings(message: str, row_number: int) -> list[Finding]:
     findings: list[Finding] = []
     if PHONE_RE.search(message):
@@ -142,10 +157,8 @@ def validate_batch(
     if purpose not in {None, "training", "evaluation"}:
         raise ValueError("purpose must be training or evaluation")
     today = today or datetime.now(UTC).date()
-    normalized_names = [str(column).strip().lower().replace(" ", "_") for column in frame.columns]
-    if len(set(normalized_names)) != len(normalized_names):
-        raise ValueError("The intake CSV has duplicate columns after normalization.")
-    normalized = dict(zip(normalized_names, frame.columns, strict=True))
+    canonical_frame = normalize_intake_columns(frame)
+    normalized = dict(zip(canonical_frame.columns, frame.columns, strict=True))
     missing = sorted(set(REQUIRED_COLUMNS) - set(normalized))
     if missing:
         # Column names are schema, not message content.

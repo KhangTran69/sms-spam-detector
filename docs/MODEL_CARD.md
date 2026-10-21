@@ -93,7 +93,11 @@ are exposed by `GET /model-info`. `POST /analyze` returns a legacy field named
 `spam_probability`; new artifacts record whether the score is sigmoid-calibrated
 in `probability_calibrated`. Legacy artifacts may return an uncalibrated score.
 The API includes that flag alongside `decision_threshold`, `margin`, `confidence`,
-and `risk_band`; the UI reads it from the loaded artifact.
+and `risk_band`; the UI reads it from the loaded artifact. Evaluation reports
+use the same metadata for score terminology, and expose a `threshold_diagnostic`
+that distinguishes a deliberately retained 0.5 threshold under the `cv-robust`
+policy from an unexplained mismatch. Data-hash and split-fingerprint warnings
+remain separate evidence of input drift.
 
 - Raising the threshold **increases precision** (fewer false alarms) and
   **decreases recall** (more missed scams). Lowering it does the opposite.
