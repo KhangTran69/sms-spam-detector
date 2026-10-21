@@ -61,6 +61,16 @@ The language and two-state light/dark theme preferences are also stored in brows
 **Copy summary** writes the displayed result, including the message text, to the user's clipboard only after the user clicks the button. **Download CSV** generates a file locally in the browser and includes batch message text; the file is outside the app's control after download. Users should review it before sharing and delete it when no longer needed.
 CSV fields are quoted and embedded quotation marks escaped. Message cells that could be interpreted as spreadsheet formulas (including values with leading whitespace/control characters followed by `=`, `+`, `-`, or `@`) are prefixed as text before export. This is a convenience safeguard; review downloaded files before opening them in spreadsheet software.
 
+The optional **Message Safety Checklist** asks only categorical questions and
+offers selectable next-step situations (multiple situations can be selected).
+Answers exist only in page memory, are
+not attached to result objects, and are never sent to the API, feedback,
+history, localStorage, analytics, or service-worker caches. They are discarded
+when the result view is cleared or replaced. Batch row details and comparison
+cards keep separate in-memory answers for each result. Its separate copy button
+copies generated recommendations only; it excludes both the SMS and the
+answers. Guidance is not model evidence and does not change the score.
+
 If the deployed UI does not show the opt-in toggle (older revision), assume
 history is being stored in the browser and clear it; see the UI's history panel.
 

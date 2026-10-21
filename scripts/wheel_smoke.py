@@ -28,7 +28,11 @@ for asset in ("index.html", "styles.css", "app.js", "sw.js", "manifest.webmanife
     assert (main.WEB_DIR / asset).is_file(), asset
 html = (main.WEB_DIR / "index.html").read_text()
 assert 'id="tab-compare"' in html and 'id="panel-compare"' in html
-assert "async function runComparison()" in (main.WEB_DIR / "app.js").read_text()
+app_js = (main.WEB_DIR / "app.js").read_text()
+assert "async function runComparison()" in app_js
+assert "function renderSafetyGuidance" in app_js
+assert "const safetyGuidanceState = new WeakMap()" in app_js
+assert 'id="safety-guidance"' in html
 for asset in re.findall(r'(?:src|href)="(/static/[^"?#]+)', html):
     assert (main.WEB_DIR / Path(asset).name).is_file(), asset
 

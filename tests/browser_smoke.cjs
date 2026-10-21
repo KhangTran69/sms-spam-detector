@@ -28,6 +28,7 @@ async function waitForServer(base, process) {
 
 function analysis(message) {
   const modelMismatch = message.includes('[different-model]');
+  const lowScoreSensitive = message.includes('[low-score-sensitive]');
   const matches = [];
   const brandStart = message.indexOf('BDO.example');
   if (brandStart >= 0) {
@@ -42,15 +43,15 @@ function analysis(message) {
   }
   return {
     message,
-    prediction: modelMismatch ? 'ham' : 'spam',
-    spam_probability: modelMismatch ? 0.15 : /official app|never share|out for delivery/i.test(message) ? 0.15 : 0.82,
-    probability: modelMismatch ? 0.15 : 0.82,
+    prediction: modelMismatch || lowScoreSensitive ? 'ham' : 'spam',
+    spam_probability: modelMismatch ? 0.15 : lowScoreSensitive || /official app|never share|out for delivery/i.test(message) ? 0.08 : 0.82,
+    probability: modelMismatch || lowScoreSensitive ? 0.08 : 0.82,
     probability_calibrated: !modelMismatch,
     decision_threshold: modelMismatch ? 0.55 : 0.6,
     suspicious_threshold: modelMismatch ? 0.3 : 0.4,
     margin: 0.22,
     confidence: 'high',
-    risk_band: modelMismatch || /official app|never share|out for delivery/i.test(message) ? 'looks_safe' : 'likely_scam',
+    risk_band: modelMismatch || lowScoreSensitive || /official app|never share|out for delivery/i.test(message) ? 'looks_safe' : 'likely_scam',
     flags: [],
     matches,
     brands: [],
@@ -82,6 +83,8 @@ async function main() {
     let releaseModelInfo;
     let delayNextAnalysis = false;
     let delayNextBatch = false;
+    const analysisRequestBodies = [];
+    const batchRequestBodies = [];
     await page.route('**/model-info', async (route) => {
       await new Promise((resolve) => { releaseModelInfo = resolve; });
       await route.fulfill({ json: {
@@ -95,7 +98,9 @@ async function main() {
       } });
     });
     await page.route('**/analyze/batch', async (route) => {
-      const { messages } = route.request().postDataJSON();
+      const requestBody = route.request().postDataJSON();
+      batchRequestBodies.push(requestBody);
+      const { messages } = requestBody;
       if (delayNextBatch) {
         delayNextBatch = false;
         await new Promise((resolve) => setTimeout(resolve, 700));
@@ -110,7 +115,9 @@ async function main() {
       } catch { /* request may have been aborted after input editing or tab switch */ }
     });
     await page.route('**/analyze', async (route) => {
-      const { message } = route.request().postDataJSON();
+      const requestBody = route.request().postDataJSON();
+      analysisRequestBodies.push(requestBody);
+      const { message } = requestBody;
       if (delayNextAnalysis) {
         delayNextAnalysis = false;
         await new Promise((resolve) => setTimeout(resolve, 700));
@@ -165,6 +172,77 @@ async function main() {
     await page.waitForTimeout(750);
     if (await page.locator('#highlighted').textContent() !== latestScam) throw new Error('slow stale response replaced the latest example result');
 
+    await page.locator('#message-input').fill('[low-score-sensitive] Please share your OTP [CODE].');
+    await page.locator('#btn-check').click();
+    await page.locator('#result').waitFor({ state: 'visible' });
+    if ((await page.locator('#meter-value').textContent()) !== '8%') throw new Error('low-score safety fixture did not stay low-scoring');
+    if (Object.keys(analysisRequestBodies.at(-1)).join(',') !== 'message') {
+      throw new Error('analysis request included fields beyond the SMS message');
+    }
+    const guide = page.locator('#safety-guidance details');
+    await guide.locator('summary').focus();
+    await page.keyboard.press('Enter');
+    if (!(await guide.evaluate((item) => item.open))) throw new Error('keyboard could not open optional safety guidance');
+    if (await guide.locator('fieldset').count() !== 6) throw new Error('checklist questions are not grouped in semantic fieldsets');
+    await guide.locator('input[data-guidance-field="sensitive"][value="yes"]').check();
+    if (!(await guide.locator('.guidance-advice').textContent()).includes('asks for a secret code or password')) {
+      throw new Error('low spam score overrode the user-selected credential warning');
+    }
+    if (!(await guide.locator('.sr-only[role="status"]').textContent()).includes('guidance updated')) {
+      throw new Error('screen readers were not given a concise guidance update');
+    }
+    await guide.locator('input[data-guidance-field="payment"][value="yes"]').check();
+    await guide.locator('input[data-guidance-field="expected"][value="no"]').check();
+    await guide.locator('input[data-guidance-field="verified"][value="unsure"]').check();
+    if (!(await guide.locator('.guidance-advice').textContent()).includes('You were not expecting it')) {
+      throw new Error('unexpected-message context did not update recommendations');
+    }
+    for (const [action, phrase] of [
+      ['notInteracted', 'Pause before acting'],
+      ['openedLink', 'Opening a link alone does not prove'],
+      ['sharedSensitive', 'Act promptly'],
+      ['sentMoney', 'recovery is not guaranteed'],
+    ]) {
+      await guide.locator(`input[data-guidance-field="action"][value="${action}"]`).check();
+      if (!(await guide.locator('.guidance-advice').textContent()).includes(phrase)) {
+        throw new Error(`safety guidance did not cover scenario ${action}`);
+      }
+    }
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await guide.locator('.guidance-copy-row button').click();
+    await page.waitForFunction(() => document.querySelector('#safety-guidance .guidance-copy-row [role="status"]').textContent.includes('Guidance copied'));
+    const copiedGuidance = await page.evaluate(() => navigator.clipboard.readText());
+    if (copiedGuidance.includes('[low-score-sensitive]') || /\byes\b|\bno\b|not sure/i.test(copiedGuidance)) {
+      throw new Error('copied guidance included SMS text or raw checklist answers');
+    }
+    if (await page.evaluate(() => Object.keys(localStorage).some((key) => /guidance|checklist/i.test(key)))) {
+      throw new Error('checklist answers were persisted in localStorage');
+    }
+    await page.locator('#btn-lang').click();
+    if (!(await guide.locator('summary').textContent()).includes('Checklist ng kaligtasan')) throw new Error('safety checklist title did not translate to Taglish');
+    if (!(await guide.locator('.guidance-advice').textContent()).includes('Kontakin agad')) throw new Error('Taglish next-step guidance did not render');
+    await page.locator('#btn-lang').click();
+    if (!(await guide.locator('input[data-guidance-field="sensitive"][value="yes"]').isChecked())) {
+      throw new Error('language change discarded answers for the displayed result');
+    }
+    await page.locator('#btn-theme').click();
+    const darkGuidanceContrast = await guide.locator('summary').evaluate((item) => {
+      const rgb = (value) => value.match(/\d+(\.\d+)?/g).slice(0, 3).map(Number);
+      const luminance = (color) => {
+        const channels = rgb(color).map((channel) => channel / 255).map((channel) =>
+          channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4);
+        return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+      };
+      const foreground = luminance(getComputedStyle(item).color);
+      const background = luminance(getComputedStyle(item.parentElement).backgroundColor);
+      return (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05);
+    });
+    if (darkGuidanceContrast < 4.5) throw new Error(`safety guidance summary contrast is too low in dark mode: ${darkGuidanceContrast}`);
+    await page.locator('#btn-theme').click();
+    if (!(await guide.locator('input[data-guidance-field="sensitive"][value="yes"]').isChecked())) {
+      throw new Error('theme change discarded the displayed result’s checklist answers');
+    }
+
     await page.locator('#btn-lang').click();
     if ((await page.locator('#risk-meter').getAttribute('aria-label')) !== 'Calibrated na spam score') {
       throw new Error('language change lost the displayed score calibration state');
@@ -184,6 +262,7 @@ async function main() {
 
     await page.locator('#message-input').fill('Old result should clear after editing.');
     if (await page.locator('#result').isVisible()) throw new Error('editing left a stale result visible');
+    if (await page.locator('#safety-guidance details').count()) throw new Error('editing left stale checklist answers visible');
     await page.locator('#btn-clear').click();
     if (await page.locator('#message-input').inputValue()) throw new Error('clear button left old input');
     if (await page.locator('#result').isVisible()) throw new Error('clear button left a stale result visible');
@@ -247,9 +326,29 @@ async function main() {
     }
     const mobileColumns = await page.locator('#compare-result-cards').evaluate((item) => getComputedStyle(item).gridTemplateColumns.split(' ').length);
     if (mobileColumns !== 1) throw new Error(`comparison cards do not stack at 360px: ${mobileColumns} columns`);
+    const compareCards = page.locator('#compare-result-cards article');
+    await compareCards.nth(0).locator('.safety-guidance summary').click();
+    await compareCards.nth(1).locator('.safety-guidance summary').click();
+    await compareCards.nth(0).locator('input[data-guidance-field="sensitive"][value="yes"]').check();
+    const leftGuidance = await compareCards.nth(0).locator('.guidance-advice').textContent();
+    const rightGuidance = await compareCards.nth(1).locator('.guidance-advice').textContent();
+    if (!leftGuidance.includes('asks for a secret code or password') || rightGuidance.includes('asks for a secret code or password')) {
+      throw new Error('comparison cards shared checklist answers instead of keeping independent state');
+    }
+    if (Object.keys(batchRequestBodies.at(-1)).join(',') !== 'messages') {
+      throw new Error('batch/comparison request included checklist answers');
+    }
     await page.setViewportSize({ width: 1280, height: 900 });
     const desktopColumns = await page.locator('#compare-result-cards').evaluate((item) => getComputedStyle(item).gridTemplateColumns.split(' ').length);
     if (desktopColumns !== 2) throw new Error(`comparison cards are not side-by-side at desktop width: ${desktopColumns} columns`);
+    const beforeSwapA = await page.locator('#compare-message-a').inputValue();
+    const beforeSwapB = await page.locator('#compare-message-b').inputValue();
+    await page.locator('#btn-compare-swap').click();
+    if (await page.locator('#compare-results').isVisible()) throw new Error('swapping comparison messages kept stale guidance/results');
+    if (await page.locator('#compare-message-a').inputValue() !== beforeSwapB
+      || await page.locator('#compare-message-b').inputValue() !== beforeSwapA) {
+      throw new Error('comparison swap did not exchange message inputs');
+    }
     await page.setViewportSize({ width: 360, height: 800 });
     if (await page.locator('#history-list li').count()) throw new Error('comparison was unexpectedly saved to history');
     await page.locator('#btn-lang').click();
@@ -297,8 +396,20 @@ async function main() {
     if (!csv.includes('60%') || !csv.includes('40%') || !csv.includes('browser-fixture-v1')) {
       throw new Error('CSV omitted the result-specific thresholds or model version');
     }
+    await page.locator('#batch-tbody tr').first().click();
+    await page.locator('#result').waitFor({ state: 'visible' });
+    const batchDetailGuide = page.locator('#safety-guidance details');
+    if (!(await batchDetailGuide.count())) throw new Error('batch row details did not reuse the safety guidance component');
+    await batchDetailGuide.locator('summary').click();
+    if (await batchDetailGuide.locator('input[data-guidance-field="sensitive"][value="yes"]').isChecked()) {
+      throw new Error('batch detail inherited answers from a different result');
+    }
+    const savedHistory = await page.evaluate(() => JSON.parse(localStorage.getItem('smsd_history_v1') || '[]'));
+    if (savedHistory.some((entry) => Object.keys(entry).some((key) => /guidance|checklist|answer/i.test(key)))) {
+      throw new Error('checklist data was stored in opt-in history');
+    }
 
-    const touchSizes = await page.locator('.btn, .tab, .example-chip, #history-optin').evaluateAll((items) =>
+    const touchSizes = await page.locator('.btn, .tab, .example-chip, #history-optin, .guidance-option, .safety-guidance > summary').evaluateAll((items) =>
       items.filter((item) => item.getClientRects().length).map((item) => {
         const rect = item.getBoundingClientRect();
         return { name: item.id || item.textContent.trim(), width: rect.width, height: rect.height };

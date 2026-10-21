@@ -80,6 +80,14 @@ UI only. They use placeholders and reserved `.example` domains and are not
 training or evaluation data. The existing history feature remains opt-in and
 browser-local.
 
+Analysis results also offer an optional **Message Safety Checklist** with
+practical next steps for unexpected requests, credential sharing, opened links,
+or sent payments. Its categorical answers stay in page memory; they do not
+change the model score, enter history, or go to the API. The feature appears in
+single-message results, batch row details, and each comparison result card.
+Copying guidance is explicit and copies recommendations only, without SMS text
+or checklist answers.
+
 ```bash
 curl -X POST http://127.0.0.1:8000/predict -H 'Content-Type: application/json' \
   -d '{"message":"BDO: Your account is locked. Verify here: http://bit.ly/fakebdo"}'

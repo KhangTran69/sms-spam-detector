@@ -239,9 +239,27 @@ def test_service_worker_installs_complete_static_shell_and_never_caches_api():
     assert "await cache.put(request" not in sw, "runtime responses must not mutate an installed release"
     for path in ("/analyze", "/analyze/batch", "/predict", "/feedback", "/model-info"):
         assert f'"{path}"' in sw
-    assert "smsd-shell-v9" in sw
-    assert '"/static/styles.css?v=ui9-comparison-20261021"' in sw
-    assert '"/static/app.js?v=ui9-comparison-20261021"' in sw
+    assert "smsd-shell-v10" in sw
+    assert '"/static/styles.css?v=ui10-safety-guidance-20261021"' in sw
+    assert '"/static/app.js?v=ui10-safety-guidance-20261021"' in sw
+
+
+def test_safety_guidance_is_optional_and_memory_only(js, html, css):
+    for field in ("expected", "sensitive", "payment", "verifiedQuestion"):
+        assert f'"guidance.{field}"' in js
+    assert '"guidance.verified"' in js
+    assert '"guidance.action.sharedSensitive"' in js
+    assert '"guidance.action.sentMoney"' in js
+    assert "const safetyGuidanceState = new WeakMap()" in js
+    assert 'renderSafetyGuidance($("safety-guidance"), analysis)' in js
+    assert "renderSafetyGuidance(guidance, result" in js
+    assert "dataset.guidanceField" in js
+    assert '"guidance.intro"' in js
+    assert 'id="safety-guidance"' in html
+    assert "<details" not in html, "the result remains available before expanding optional guidance"
+    assert "guidance-option" in css and "min-height: 44px" in css
+    assert '"guidance.title"' in js and '"guidance.copyDone"' in js
+    assert 'guidanceRecommendations(state).join("\\n")' in js
 
 
 def test_compare_tab_reuses_batch_endpoint_and_resets_stale_state(js, html):

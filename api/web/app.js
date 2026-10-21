@@ -182,6 +182,33 @@ const I18N = {
     "tips.urgency": "Pressure to act right now is a classic scam tactic — slow down and double-check first.",
     "tips.otp": "Never share OTPs, PINs, or passwords — banks and e-wallets will never ask for them.",
     "tips.safeSpoof": "Even safe-looking senders can be spoofed; confirm money or account changes through the official channel.",
+    "guidance.title": "Message Safety Checklist (optional)",
+    "guidance.intro": "Guidance based on your answers. It is separate from the model assessment and text patterns, and it does not change the score. Classification cannot establish who sent a message or guarantee it is safe.",
+    "guidance.questions": "About this message",
+    "guidance.expected": "Were you expecting this message?",
+    "guidance.sensitive": "Does it ask you to share an OTP, password, PIN, or recovery code?",
+    "guidance.payment": "Does it ask you to pay a fee, transfer money, or install an app?",
+    "guidance.verifiedQuestion": "Have you independently verified the request through an official channel?",
+    "guidance.yes": "Yes",
+    "guidance.no": "No",
+    "guidance.unsure": "Not sure",
+    "guidance.nextHeading": "What should I do next?",
+    "guidance.action.notInteracted": "I have not interacted with it",
+    "guidance.action.openedLink": "I opened a link",
+    "guidance.action.sharedSensitive": "I shared sensitive information",
+    "guidance.action.sentMoney": "I sent money",
+    "guidance.default": "Pause before acting. Do not reply, tap SMS links, or call numbers from an unexpected text. Verify requests in an official app you open yourself or through a contact method you already trust. For a delivery, check its tracking in the courier’s or retailer’s official app. Never share an OTP, PIN, password, or recovery code.",
+    "guidance.unexpected": "You were not expecting it. Do not reply, use its links or numbers, or provide information. Check independently through the official app or a contact method you already trust.",
+    "guidance.sensitiveRequest": "It asks for a secret code or password. Do not share it, even if the message looks familiar. A spam score cannot verify the sender or make this request safe.",
+    "guidance.paymentRequest": "Do not pay, transfer money, or install an app because of this text. First confirm the request through an official channel you access independently.",
+    "guidance.verified": "You say you verified the request independently. This does not authenticate the SMS sender. Continue only in that official app or channel, and never share codes or passwords by SMS.",
+    "guidance.openedLink": "Close the page and do not enter or submit information. Opening a link alone does not prove your device or account was compromised. If you downloaded an app, do not open it; remove it and review your device security settings.",
+    "guidance.sharedSensitive": "Act promptly: contact the relevant bank, e-wallet, or service through its official app or a contact method you already trust. Change affected credentials in the official app and ask the provider to secure the account. Never share another code during follow-up.",
+    "guidance.sentMoney": "Contact your bank, e-wallet, or payment provider promptly through its official app or a trusted contact method. Keep transaction receipts and related messages for your records. Report through the provider’s official process; a refund or recovery is not guaranteed.",
+    "guidance.copy": "Copy next-step guidance",
+    "guidance.copyDone": "Guidance copied. Message text and your answers were not copied.",
+    "guidance.copyFail": "Could not copy guidance automatically; please copy it manually.",
+    "guidance.updated": "Next-step guidance updated based on your answers.",
     "feedback.title": "Help improve the detector",
     "feedback.help": "Optional anonymous report. It sends your selected correction, category, and model version only—never the SMS text. The operator must enable feedback collection.",
     "feedback.label": "What do you think the message is?",
@@ -378,6 +405,33 @@ const I18N = {
     "tips.urgency": "Ang pagpilit na kumilos ngayon na ay klasikong tactic ng scam — huminahon muna at i-double-check.",
     "tips.otp": "Huwag kailanman ibabahagi ang OTP, PIN, o password — hindi ito hihingin ng bangko o e-wallet.",
     "tips.safeSpoof": "Kahit mukhang lehitimong nagpadala ay maaaring peke; kumpirmahin ang pera o account changes sa opisyal na channel.",
+    "guidance.title": "Checklist ng kaligtasan sa mensahe (opsyonal)",
+    "guidance.intro": "Gabay ito batay sa mga sagot mo. Hiwalay ito sa assessment ng modelo at mga pattern sa text, at hindi nito binabago ang score. Hindi matutukoy ng classification kung sino ang nagpadala o magagarantiya na ligtas ang mensahe.",
+    "guidance.questions": "Tungkol sa mensaheng ito",
+    "guidance.expected": "Inaasahan mo ba ang mensaheng ito?",
+    "guidance.sensitive": "Pinapabahagi ba nito ang OTP, password, PIN, o recovery code mo?",
+    "guidance.payment": "Pinagbabayad ka ba ng fee, pinaglilipat ng pera, o pinapakabit ng app?",
+    "guidance.verifiedQuestion": "Na-verify mo ba nang hiwalay ang request sa opisyal na channel?",
+    "guidance.yes": "Oo",
+    "guidance.no": "Hindi",
+    "guidance.unsure": "Hindi sigurado",
+    "guidance.nextHeading": "Ano ang susunod kong gagawin?",
+    "guidance.action.notInteracted": "Wala pa akong ginawa rito",
+    "guidance.action.openedLink": "Nagbukas ako ng link",
+    "guidance.action.sharedSensitive": "Nagbahagi ako ng sensitibong impormasyon",
+    "guidance.action.sentMoney": "Nagpadala ako ng pera",
+    "guidance.default": "Mag-pause muna bago kumilos. Huwag mag-reply, mag-tap ng SMS link, o tumawag sa numerong nasa hindi inaasahang text. I-verify ang request sa opisyal na app na ikaw mismo ang magbubukas o sa trusted contact method. Para sa delivery, i-check ang tracking sa official app ng courier o retailer. Huwag kailanman ibahagi ang OTP, PIN, password, o recovery code.",
+    "guidance.unexpected": "Hindi mo ito inaasahan. Huwag mag-reply, gumamit ng link o numero rito, o magbigay ng impormasyon. Mag-check nang hiwalay sa opisyal na app o trusted contact method.",
+    "guidance.sensitiveRequest": "Humihingi ito ng secret code o password. Huwag itong ibahagi kahit mukhang pamilyar ang mensahe. Hindi nave-verify ng spam score kung sino ang sender o kung ligtas ang request.",
+    "guidance.paymentRequest": "Huwag magbayad, mag-transfer ng pera, o mag-install ng app dahil lang sa text na ito. Kumpirmahin muna sa opisyal na channel na ikaw mismo ang bubukas.",
+    "guidance.verified": "Sinabi mong na-verify mo nang hiwalay ang request. Hindi nito ina-authenticate ang SMS sender. Magpatuloy lang sa opisyal na app o channel at huwag magbahagi ng code o password sa SMS.",
+    "guidance.openedLink": "Isara ang page at huwag maglagay o magsumite ng impormasyon. Hindi ibig sabihin na na-compromise ang device o account dahil lang nagbukas ka ng link. Kung may na-download na app, huwag itong buksan; alisin ito at tingnan ang security settings ng device.",
+    "guidance.sharedSensitive": "Kumilos agad: kontakin ang bangko, e-wallet, o serbisyo sa opisyal na app o trusted contact method. Palitan ang apektadong credentials sa opisyal na app at hilinging i-secure ang account. Huwag magbahagi ng panibagong code sa follow-up.",
+    "guidance.sentMoney": "Kontakin agad ang bangko, e-wallet, o payment provider sa opisyal na app o trusted contact method. Itago ang transaction receipt at kaugnay na mensahe bilang record. Mag-report sa opisyal na proseso ng provider; walang garantiya ng refund o recovery.",
+    "guidance.copy": "Kopyahin ang gabay sa susunod na hakbang",
+    "guidance.copyDone": "Nakopya ang gabay. Hindi kinopya ang text ng mensahe at mga sagot mo.",
+    "guidance.copyFail": "Hindi awtomatikong nakopya ang gabay; kopyahin ito nang manual.",
+    "guidance.updated": "Na-update ang susunod na gabay batay sa mga sagot mo.",
     "feedback.title": "Tulungang pabutihin ang detector",
     "feedback.help": "Opsyonal at anonymous na report. Ipapadala lang ang napili mong correction, category, at bersyon ng modelo — hindi kailanman ang text ng SMS. Kailangang i-enable ng operator ang feedback collection.",
     "feedback.label": "Ano sa palagay mo ang mensahe?",
@@ -1139,6 +1193,201 @@ function renderTips(analysis) {
   }
 }
 
+/* Optional user-provided context is page-memory only. A WeakMap ties answers
+   to the exact result object so each batch/comparison result stays independent;
+   no answer becomes part of an API payload, history record, or export. */
+const safetyGuidanceState = new WeakMap();
+let safetyGuidanceId = 0;
+
+function guidanceStateFor(analysis) {
+  let state = safetyGuidanceState.get(analysis);
+  if (!state) {
+    state = { expected: null, sensitive: null, payment: null, verified: null, actions: [], open: false };
+    safetyGuidanceState.set(analysis, state);
+  }
+  return state;
+}
+
+function guidanceRecommendations(state) {
+  const recommendations = [];
+  const add = (key) => {
+    const text = t(key);
+    if (!recommendations.includes(text)) recommendations.push(text);
+  };
+  const selectedActions = Array.isArray(state.actions) ? state.actions : [];
+  add("guidance.default");
+  if (selectedActions.includes("openedLink")) add("guidance.openedLink");
+  if (selectedActions.includes("sharedSensitive")) add("guidance.sharedSensitive");
+  if (selectedActions.includes("sentMoney")) add("guidance.sentMoney");
+  if (state.expected === "no") add("guidance.unexpected");
+  if (state.sensitive === "yes") add("guidance.sensitiveRequest");
+  if (state.payment === "yes") add("guidance.paymentRequest");
+  if (state.verified === "yes") add("guidance.verified");
+  return recommendations;
+}
+
+function renderGuidanceAdvice(advice, state) {
+  advice.replaceChildren();
+  for (const recommendation of guidanceRecommendations(state)) {
+    const item = document.createElement("li");
+    item.textContent = recommendation;
+    advice.append(item);
+  }
+}
+
+function guidanceQuestion(fieldset, questionKey, stateKey, name, state) {
+  const legend = document.createElement("legend");
+  legend.textContent = t(questionKey);
+  fieldset.append(legend);
+  for (const value of ["yes", "no", "unsure"]) {
+    const label = document.createElement("label");
+    label.className = "guidance-option";
+    const input = document.createElement("input");
+    input.type = "radio";
+    input.name = name;
+    input.value = value;
+    input.dataset.guidanceField = stateKey;
+    input.dataset.guidanceValue = value;
+    input.checked = state[stateKey] === value;
+    label.append(input, document.createTextNode(t(`guidance.${value}`)));
+    fieldset.append(label);
+  }
+}
+
+function renderSafetyGuidance(container, analysis, idPrefix = "single") {
+  const state = guidanceStateFor(analysis);
+  const details = document.createElement("details");
+  details.className = "card safety-guidance";
+  details.setAttribute("aria-live", "off");
+  details.open = state.open;
+  const summary = document.createElement("summary");
+  summary.textContent = t("guidance.title");
+  details.append(summary);
+
+  const intro = document.createElement("p");
+  intro.className = "muted guidance-intro";
+  intro.textContent = t("guidance.intro");
+  details.append(intro);
+
+  const questions = document.createElement("fieldset");
+  questions.className = "guidance-group guidance-questions";
+  const questionsLegend = document.createElement("legend");
+  questionsLegend.textContent = t("guidance.questions");
+  questions.append(questionsLegend);
+  const id = `${idPrefix}-${++safetyGuidanceId}`;
+  for (const [questionKey, stateKey] of [
+    ["guidance.expected", "expected"],
+    ["guidance.sensitive", "sensitive"],
+    ["guidance.payment", "payment"],
+    ["guidance.verifiedQuestion", "verified"],
+  ]) {
+    const fieldset = document.createElement("fieldset");
+    fieldset.className = "guidance-question";
+    guidanceQuestion(fieldset, questionKey, stateKey, `${id}-${stateKey}`, state);
+    questions.append(fieldset);
+  }
+  details.append(questions);
+
+  const nextSteps = document.createElement("fieldset");
+  nextSteps.className = "guidance-group guidance-actions";
+  const nextLegend = document.createElement("legend");
+  nextLegend.textContent = t("guidance.nextHeading");
+  nextSteps.append(nextLegend);
+  const actionInputs = [];
+  for (const [value, key] of [
+    ["notInteracted", "guidance.action.notInteracted"],
+    ["openedLink", "guidance.action.openedLink"],
+    ["sharedSensitive", "guidance.action.sharedSensitive"],
+    ["sentMoney", "guidance.action.sentMoney"],
+  ]) {
+    const label = document.createElement("label");
+    label.className = "guidance-option guidance-action-option";
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.name = `${id}-action`;
+    input.value = value;
+    input.dataset.guidanceField = "action";
+    input.dataset.guidanceValue = value;
+    input.checked = state.actions.includes(value);
+    actionInputs.push(input);
+    label.append(input, document.createTextNode(t(key)));
+    nextSteps.append(label);
+  }
+  details.append(nextSteps);
+
+  const advice = document.createElement("ul");
+  advice.className = "tips guidance-advice";
+  renderGuidanceAdvice(advice, state);
+  details.append(advice);
+  const announcement = document.createElement("p");
+  announcement.className = "sr-only";
+  announcement.setAttribute("role", "status");
+  announcement.setAttribute("aria-live", "polite");
+  announcement.setAttribute("aria-atomic", "true");
+  details.append(announcement);
+
+  const actions = document.createElement("div");
+  actions.className = "guidance-copy-row";
+  const copy = document.createElement("button");
+  copy.type = "button";
+  copy.className = "btn ghost small";
+  copy.textContent = t("guidance.copy");
+  const copyStatus = document.createElement("span");
+  copyStatus.className = "hint";
+  copyStatus.setAttribute("role", "status");
+  copyStatus.setAttribute("aria-live", "polite");
+  copy.addEventListener("click", async () => {
+    let copied = false;
+    try {
+      await navigator.clipboard.writeText(guidanceRecommendations(state).join("\n"));
+      copied = true;
+    } catch {
+      try {
+        const helper = document.createElement("textarea");
+        helper.value = guidanceRecommendations(state).join("\n");
+        helper.setAttribute("readonly", "");
+        helper.style.position = "fixed";
+        helper.style.left = "-9999px";
+        document.body.append(helper);
+        helper.select();
+        copied = document.execCommand("copy");
+        helper.remove();
+      } catch {
+        copied = false;
+      }
+    }
+    copyStatus.textContent = copied ? t("guidance.copyDone") : t("guidance.copyFail");
+  });
+  actions.append(copy, copyStatus);
+  details.append(actions);
+
+  details.addEventListener("toggle", () => { state.open = details.open; });
+  details.addEventListener("change", (event) => {
+    const target = event.target;
+    if (!target || !target.dataset || !target.dataset.guidanceField) return;
+    if (target.dataset.guidanceField === "action") {
+      const selected = new Set(state.actions);
+      if (target.dataset.guidanceValue === "notInteracted") {
+        state.actions = target.checked ? ["notInteracted"] : [];
+      } else {
+        selected.delete("notInteracted");
+        if (target.checked) selected.add(target.dataset.guidanceValue);
+        else selected.delete(target.dataset.guidanceValue);
+        state.actions = [...selected];
+      }
+      for (const control of actionInputs) {
+        control.checked = state.actions.includes(control.dataset.guidanceValue);
+      }
+    } else {
+      state[target.dataset.guidanceField] = target.dataset.guidanceValue;
+    }
+    renderGuidanceAdvice(advice, state);
+    announcement.textContent = t("guidance.updated");
+    copyStatus.textContent = "";
+  });
+  container.replaceChildren(details);
+}
+
 function buildSummaryText(analysis) {
   const modelVersion = typeof analysis.model_version === "string" && analysis.model_version
     ? analysis.model_version : t("value.unavailable");
@@ -1194,6 +1443,7 @@ function renderAnalysis(analysis, { save = true } = {}) {
   renderHighlighted(analysis);
   renderSignals(analysis);
   renderTips(analysis);
+  renderSafetyGuidance($("safety-guidance"), analysis);
   $("copy-status").textContent = "";
   window.currentAnalysis = analysis;
   renderModelInfo(analysis);
@@ -1457,11 +1707,15 @@ function invalidateSingle() {
     singleAbortController.abort();
     singleAbortController = null;
   }
+  if (window.currentAnalysis && typeof window.currentAnalysis === "object") {
+    safetyGuidanceState.delete(window.currentAnalysis);
+  }
   window.currentAnalysis = null;
   $("result").classList.add("hidden");
   $("highlighted").replaceChildren();
   $("signals").replaceChildren();
   $("tips").replaceChildren();
+  $("safety-guidance").replaceChildren();
   $("copy-status").textContent = "";
   $("feedback-status").textContent = "";
   $("feedback-form").classList.add("hidden");
@@ -1637,6 +1891,7 @@ async function runBatch() {
 
 function openBatchResult(analysis) {
   invalidateSingle();
+  safetyGuidanceState.delete(analysis);
   $("message-input").value = analysis.message;
   updateCharCount();
   switchTab("check");
@@ -1805,7 +2060,10 @@ function renderComparisonCard(result, name, index) {
     item.textContent = text;
     tips.append(item);
   }
-  card.append(heading, verdict, details, provenance, signalHeading, highlighted, signalList, tipsHeading, tips);
+  const guidance = document.createElement("div");
+  guidance.className = "compare-guidance";
+  renderSafetyGuidance(guidance, result, `compare-${index}`);
+  card.append(heading, verdict, details, provenance, signalHeading, highlighted, signalList, tipsHeading, tips, guidance);
   return card;
 }
 

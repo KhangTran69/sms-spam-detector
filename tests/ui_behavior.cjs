@@ -40,7 +40,10 @@ busyCheckButton.dataset.idleLabel = 'Check message';
 busyCheckButton.dataset.i18n = 'check.run';
 busyCheckButton.setAttribute('aria-busy', 'true');
 const storedValues = new Map();
-const context = vm.createContext({ console, AbortController, tabs, panels, busyCheckButton,
+const requests = [];
+let copiedClipboard = '';
+const context = vm.createContext({ console, AbortController, tabs, panels, busyCheckButton, requests,
+  navigator: { clipboard: { async writeText(value) { copiedClipboard = value; } } },
   localStorage: { getItem: key => storedValues.get(key) || null,
     setItem(key, value) { storedValues.set(key, String(value)); }, removeItem: key => storedValues.delete(key) },
   window: { matchMedia: () => ({matches: false}) },
@@ -60,7 +63,7 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, '../api/web/app.js'), 'utf8
 vm.runInContext(`
   var pending = [];
   var rendered = [];
-  postJson = () => new Promise((resolve, reject) => pending.push({resolve, reject}));
+  postJson = (path, body) => { requests.push({path, body}); return new Promise((resolve, reject) => pending.push({resolve, reject})); };
   renderAnalysis = analysis => rendered.push(analysis.message);
   renderBatch = rows => rendered.push(rows[0].message);
 `, context);
@@ -76,6 +79,72 @@ assert.equal(run('csvCell("  @SUM(1,1)")'), '"\'  @SUM(1,1)"', 'leading whitespa
 assert.equal(run(`csvCell(${JSON.stringify('\uFEFF=1+1')})`), '"\'\uFEFF=1+1"', 'Unicode BOM must not bypass formula protection');
 assert.match(run('t("examples.status", {kind: t("examples.scamKind"), index: 1, total: 20})'), /Loaded fictional scam message 1 of 20/);
 (async () => {
+  run(`lang = "en";
+    var lowScoreResult = {message:"private SMS fixture", spam_probability:0.05, risk_band:"looks_safe"};
+    var guidanceMount = document.createElement("div");
+    renderSafetyGuidance(guidanceMount, lowScoreResult, "unit");
+    var guidanceRoot = guidanceMount.childNodes[0];`);
+  const guidanceRoot = run('guidanceRoot');
+  const descendants = (node) => (node.childNodes || []).flatMap(child => [child, ...descendants(child)]);
+  const guidanceNodes = descendants(guidanceRoot);
+  assert.equal(guidanceNodes.filter(node => node.tagName === 'fieldset').length, 6,
+    'the four questions and next-step choice use semantic fieldsets');
+  assert.equal(guidanceNodes.filter(node => node.tagName === 'input').length, 16,
+    'each categorical question and next-step action has radio controls');
+  for (const field of ['expected', 'sensitive', 'payment', 'verified']) {
+    const choices = guidanceNodes.filter(node => node.tagName === 'input' && node.type === 'radio' && node.dataset.guidanceField === field);
+    assert.deepEqual(choices.map(node => node.value), ['yes', 'no', 'unsure'],
+      `${field} should offer Yes, No, and Not sure`);
+    for (const answer of ['yes', 'no', 'unsure']) {
+      const choice = choices.find(node => node.value === answer);
+      guidanceRoot.listeners.change({target: choice});
+      assert.equal(run(`guidanceStateFor(lowScoreResult).${field}`), answer,
+        `${field} should retain the ${answer} answer in memory`);
+    }
+  }
+  const secretYes = guidanceNodes.find(node => node.tagName === 'input' && node.dataset.guidanceField === 'sensitive' && node.value === 'yes');
+  guidanceRoot.listeners.change({target: secretYes});
+  assert.match(run('guidanceRecommendations(guidanceStateFor(lowScoreResult)).join(" ")'), /asks for a secret code or password/,
+    'sensitive-information guidance remains strong for a low spam score');
+  assert.match(run('guidanceRecommendations(guidanceStateFor(lowScoreResult)).join(" ")'), /cannot verify the sender/,
+    'guidance does not treat a safe band as sender verification');
+  const advice = guidanceNodes.find(node => node.className && node.className.includes('guidance-advice'));
+  assert.match(advice.textContent, /asks for a secret code or password/);
+  const selectGuidanceAction = (value) => {
+    const control = guidanceNodes.find(node => node.tagName === 'input' && node.dataset.guidanceField === 'action' && node.value === value);
+    control.checked = true;
+    guidanceRoot.listeners.change({target: control});
+  };
+  selectGuidanceAction('openedLink');
+  assert.match(run('guidanceRecommendations(guidanceStateFor(lowScoreResult)).join(" ")'), /Opening a link alone does not prove/);
+  selectGuidanceAction('sharedSensitive');
+  assert.match(run('guidanceRecommendations(guidanceStateFor(lowScoreResult)).join(" ")'), /Act promptly/);
+  selectGuidanceAction('sentMoney');
+  assert.match(run('guidanceRecommendations(guidanceStateFor(lowScoreResult)).join(" ")'), /recovery is not guaranteed/);
+  assert.equal(run('guidanceStateFor(lowScoreResult).actions.length'), 3, 'multiple user actions can be represented together');
+  selectGuidanceAction('notInteracted');
+  assert.deepEqual(Array.from(run('guidanceStateFor(lowScoreResult).actions')), ['notInteracted'],
+    'not-interacted is mutually exclusive with reported actions');
+  run('guidanceStateFor(lowScoreResult).expected = "no"; guidanceStateFor(lowScoreResult).verified = "unsure"');
+  assert.match(run('guidanceRecommendations(guidanceStateFor(lowScoreResult)).join(" ")'), /You were not expecting it/,
+    'unexpected and uncertain context produces cautious advice');
+  run('lang = "taglish"');
+  assert.match(run('guidanceRecommendations(guidanceStateFor(lowScoreResult)).join(" ")'), /Hindi mo ito inaasahan/,
+    'guidance is available in Taglish');
+  run('var independentGuidance = {message:"second result"}; guidanceStateFor(independentGuidance)');
+  assert.equal(run('guidanceStateFor(independentGuidance).expected'), null,
+    'one result does not inherit another result’s answers');
+  run('lang = "en"; renderSafetyGuidance(guidanceMount, lowScoreResult, "unit")');
+  assert.equal(descendants(run('guidanceMount.childNodes[0]')).find(node => node.tagName === 'input' && node.dataset.guidanceField === 'sensitive' && node.value === 'yes').checked, true,
+    'rerendering in a new language keeps the same result’s in-memory answers');
+  const copyButton = descendants(run('guidanceMount.childNodes[0]')).find(node => node.tagName === 'button');
+  await copyButton.listeners.click();
+  assert.doesNotMatch(copiedClipboard, /private SMS fixture|\byes\b|\bno\b|not sure/i,
+    'copying guidance excludes message text and literal answer values');
+  const copyStatus = descendants(run('guidanceMount.childNodes[0]')).find(node => node.tagName === 'span');
+  assert.match(copyStatus.textContent, /Message text and your answers were not copied/);
+  assert.deepEqual([...storedValues.keys()], [], 'guidance does not write preferences or answers to localStorage');
+
   run('$("message-input").value = "old"; var oldRequest = runCheck(); invalidateSingle();');
   run('pending.shift().resolve({message: "old"})');
   await run('oldRequest');
@@ -92,6 +161,8 @@ assert.match(run('t("examples.status", {kind: t("examples.scamKind"), index: 1, 
   run('pending.shift().resolve({message: "new"})');
   await run('second');
   assert.equal(run('rendered.join()'), 'new');
+  assert.equal(JSON.stringify(requests.at(-1)), JSON.stringify({path: '/analyze', body: {message: 'new'}}),
+    'analysis requests contain only the message field, never checklist context');
   run('selectTab(tabs[1])');
   assert.equal(run('rendered.join()'), 'new', 'leaving a completed request must preserve its result');
   run('$("batch-input").value = "old batch"; var batch = runBatch(); invalidateBatch(); pending.shift().resolve({results:[{message:"old batch"}]});');
