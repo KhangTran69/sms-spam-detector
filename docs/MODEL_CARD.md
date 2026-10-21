@@ -17,7 +17,7 @@ points a reader at likely scam patterns.
 
 ## 2. Intended use
 
-The classifier target is **spam versus ham**. A spam label can include unwanted advertising as well as suspected fraud; it does not independently establish that a message is a scam. The UI uses scam-oriented safety language as a cautious aid, not as a fraud finding.
+The classifier target is **spam versus ham**. A spam label can include unwanted advertising as well as suspected fraud; it does not independently establish that a message is a scam. The UI describes the result as a spam assessment and detected text patterns, not as a fraud finding or an explanation of which features caused the model's decision.
 
 - **In scope:** helping a person decide whether an SMS looks like a scam; a
   warning UI; a triage aid for a human reviewer; research/teaching on SMS
@@ -90,8 +90,11 @@ spam score reaches the threshold) and a
 `suspicious_threshold` for the UI warning band; both are chosen on a validation
 split with a precision-first objective (protect legitimate OTP/bank messages) and
 are exposed by `GET /model-info`. `POST /analyze` returns a legacy field named
-`spam_probability`; new artifacts record whether the score is sigmoid-calibrated
-in `probability_calibrated`. Legacy artifacts may return an uncalibrated score.
+`spam_probability`; new artifacts record whether the spam-versus-ham score is
+sigmoid-calibrated in `probability_calibrated`. The field name is retained for
+API compatibility. Calibration concerns the spam/ham training labels and is
+not a calibrated probability that a message is fraudulent. Legacy artifacts
+may return an uncalibrated score.
 The API includes that flag alongside `decision_threshold`, `margin`, `confidence`,
 and `risk_band`; the UI reads it from the loaded artifact. Evaluation reports
 use the same metadata for score terminology, and expose a `threshold_diagnostic`
@@ -108,11 +111,12 @@ remain separate evidence of input drift.
   **returned class**. For new artifacts, the full feature and classifier
   pipeline is calibrated inside group-isolated training folds. The final test
   split is excluded from feature selection, calibration, and threshold choice.
-- **Do not treat scores as calibrated guarantees.** No representative Philippine
-  calibration or reliability study is available. Prefer qualitative bands
-  (likely scam / suspicious / looks safe) in user-facing copy over precise
-  percentages, and consult each artifact's evaluation report before describing
-  its score.
+- A calibrated score is calibrated only with respect to the spam/ham labels and
+  procedure recorded by that artifact. It does not establish fraud probability,
+  reliable performance on Philippine recipients, or a guarantee about a
+  particular message. The UI exposes the artifact's calibration state in score
+  wording and accessibility labels; detected signals are text patterns, not
+  explanations of the model's decision.
 - A model that changes threshold but not weights is still the same artifact
   version for audit purposes; record which operating point a deployment uses.
 
@@ -225,10 +229,11 @@ Evaluation reports precision, recall, F1, false positives, sample counts, and co
 Use `python -m src.evaluate --stability-seeds 13 42 73 --json-out data/processed/stability.json` for repeated group-aware threshold stability checks. The final test groups are reserved first and excluded from these development-only refits; repeated validation metrics select their own thresholds and are not independent performance estimates. Preserve the seed list with the report. Synthetic diagnostics remain separate from real-world validation. Optional `--false-positive-cost` and `--false-negative-cost` training arguments must be supplied together; they configure an exploratory validation-only threshold choice and do not express an approved production policy.
 
 New artifacts calibrate the full feature and classifier pipeline on group-
-isolated training folds and report test calibration diagnostics. Calibration is
-not a probability guarantee on unseen traffic. Legacy artifacts may be
-uncalibrated; consult the loaded artifact's `probability_calibrated` flag. Do
-not use synthetic or unknown-provenance results as a real-world accuracy claim.
+isolated training folds and report test calibration diagnostics. Calibration
+does not yield a probability of fraud or guarantee reliability on unseen
+traffic. Legacy artifacts may be uncalibrated; consult the loaded artifact's
+`probability_calibrated` flag. Do not use synthetic or unknown-provenance
+results as a real-world accuracy claim.
 
 Run `python -m src.train --help` and `python -m src.evaluate --help` for all data, threshold, split, and output options.
 

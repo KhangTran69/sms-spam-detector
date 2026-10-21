@@ -387,8 +387,8 @@ _append_feedback_report = _routes._append_feedback_report
 _STATIC_ASSETS = {"app.js", "styles.css", "icon.svg"}
 
 
-@app.get("/static/{asset_name}", include_in_schema=False)
-def static_asset(asset_name: str):
+@app.api_route("/static/{asset_name}", methods=["GET", "HEAD"], include_in_schema=False)
+def static_asset(asset_name: str, request: Request):
     """Serve the small, known UI bundle with consistent safe failure behavior."""
     if asset_name not in _STATIC_ASSETS:
         return _error_response(404, "not_found", "The requested resource was not found.")
@@ -402,7 +402,8 @@ def static_asset(asset_name: str):
             "The bundled web interface is unavailable. Reinstall the project or run it from a complete checkout.",
         )
     media_type = {"app.js": "text/javascript", "styles.css": "text/css", "icon.svg": "image/svg+xml"}[asset_name]
-    return Response(body, media_type=media_type, headers={"Cache-Control": "no-cache"})
+    headers = {"Cache-Control": "no-cache", "Content-Length": str(len(body))}
+    return Response(b"" if request.method == "HEAD" else body, media_type=media_type, headers=headers)
 
 
 def _ui_asset_response(

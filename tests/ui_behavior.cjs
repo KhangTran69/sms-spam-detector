@@ -150,11 +150,21 @@ assert.match(run('t("examples.status", {kind: t("examples.scamKind"), index: 1, 
   assert.match(run('$("example-status").textContent'), /safe message 1 of 20/);
   assert.equal(run('demoChecks'), 22, 'each example click should trigger analysis');
   run('lang = "en"; renderMeter({spam_probability:0.35,probability_calibrated:true,prediction:"ham",risk_band:"looks_safe"})');
-  assert.equal(run('$("risk-meter").getAttribute("aria-label")'), 'Estimated scam probability');
-  assert.match(run('$("risk-meter").getAttribute("aria-valuetext")'), /estimated scam probability/);
+  assert.equal(run('$("risk-meter").getAttribute("aria-label")'), 'Calibrated spam score');
+  assert.match(run('$("risk-meter").getAttribute("aria-valuetext")'), /calibrated spam score/);
   run('lang = "taglish"; renderMeter({spam_probability:0.35,probability_calibrated:false,prediction:"ham",risk_band:"looks_safe"})');
-  assert.equal(run('$("risk-meter").getAttribute("aria-label")'), 'Model score (hindi pa-calibrate)');
-  assert.match(run('$("risk-meter").getAttribute("aria-valuetext")'), /model score \(hindi pa-calibrate\)/);
+  assert.equal(run('$("risk-meter").getAttribute("aria-label")'), 'Uncalibrated na spam model score');
+
+  run('window.currentAnalysis = {probability_calibrated:true}; modelInfo.probability_calibrated = false; lang = "en"; renderModelInfo()');
+  assert.equal(run('$("risk-meter").getAttribute("aria-label")'), 'Calibrated spam score',
+    'late metadata rendering must not overwrite the displayed result interpretation');
+  run('historyEnabled = true; modelInfo.model_version = "m1"; addHistory({message:"fixture", prediction:"spam", spam_probability:0.9, probability_calibrated:true, model_version:"m1", risk_band:"likely_scam"}, "single", {render:false}); var savedEntry = loadHistory()[0]');
+  assert.equal(run('savedEntry.probability_calibrated'), true, 'history must preserve score calibration state');
+  assert.equal(run('savedEntry.model_version'), 'm1', 'history must preserve model version');
+  assert.match(run('scoreLabel(savedEntry)'), /calibrated spam score/);
+  run('lang = "taglish"; renderModelInfo()');
+  assert.equal(run('$("risk-meter").getAttribute("aria-label")'), 'Calibrated na spam score',
+    'language changes must preserve the displayed result calibration state');
   run('lang = "en"; currentTheme = "light"; toggleTheme()');
   assert.equal(run('currentTheme'), 'dark');
   assert.equal(run('document.documentElement.getAttribute("data-theme")'), 'dark');

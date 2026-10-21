@@ -102,9 +102,70 @@ def test_threshold_diagnostic_does_not_blame_data_for_policy_mismatch() -> None:
     assert diagnostic["status"] == "validation_policy_mismatch"
 
 
+def test_threshold_diagnostic_requires_recorded_candidate_to_match_validation() -> None:
+    bundle = _bundle(
+        threshold=0.5,
+        metadata={
+            "threshold_selection": {
+                "decision": {"policy": "cv-robust", "candidate_threshold": 0.35, "threshold": 0.5, "adopted": False}
+            },
+            "training_config": {"threshold_policy": "cv-robust"},
+        },
+    )
+
+    diagnostic = _threshold_diagnostic(bundle, 0.4)
+
+    assert diagnostic["status"] == "validation_candidate_mismatch"
+
+
+def test_threshold_diagnostic_handles_malformed_optional_metadata() -> None:
+    bundle = _bundle(
+        threshold=0.5,
+        metadata={
+            "threshold_selection": {
+                "decision": {"policy": "cv-robust", "candidate_threshold": "broken", "threshold": None}
+            }
+        },
+    )
+
+    diagnostic = _threshold_diagnostic(bundle, 0.4)
+
+    assert diagnostic["status"] == "policy_metadata_malformed"
+
+
+def test_threshold_diagnostic_does_not_assume_retained_default_without_matching_candidate() -> None:
+    bundle = _bundle(
+        threshold=0.5,
+        metadata={
+            "threshold_selection": {
+                "decision": {"policy": "cv-robust", "candidate_threshold": 0.4, "threshold": 0.5, "adopted": False}
+            },
+            "training_config": {"threshold_policy": "validation"},
+        },
+    )
+
+    assert _threshold_diagnostic(bundle, 0.4)["status"] == "validation_policy_mismatch"
+
+
+def test_threshold_diagnostic_checks_configured_policy_matches_decision() -> None:
+    bundle = _bundle(
+        threshold=0.5,
+        metadata={
+            "threshold_selection": {
+                "decision": {"policy": "cv-robust", "candidate_threshold": 0.4, "threshold": 0.5, "adopted": False}
+            },
+            "training_config": {"threshold_policy": "validation"},
+        },
+    )
+
+    assert _threshold_diagnostic(bundle, 0.4)["status"] == "validation_policy_mismatch"
+
+
 def test_evaluation_score_description_uses_artifact_calibration_metadata() -> None:
     uncalibrated = _bundle(metadata={"probability_calibrated": False})
     calibrated = _bundle(metadata={"probability_calibrated": True})
 
     assert "uncalibrated" in _score_interpretation(uncalibrated)
-    assert "calibrated spam probability estimate" in _score_interpretation(calibrated)
+    assert "fraud probability" in _score_interpretation(calibrated)
+    malformed = _bundle(metadata={"probability_calibrated": "true"})
+    assert "uncalibrated" in _score_interpretation(malformed)

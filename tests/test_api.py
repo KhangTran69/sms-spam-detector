@@ -707,6 +707,13 @@ def test_index_and_static_files_are_served(client):
     script = client.get("/static/app.js")
     assert script.status_code == 200
     assert "javascript" in script.headers["content-type"]
+    assert script.headers["cache-control"] == "no-cache"
+
+    head = client.head("/static/app.js")
+    assert head.status_code == 200
+    assert head.content == b""
+    assert head.headers["content-length"] == str(len(script.content))
+    assert head.headers["cache-control"] == "no-cache"
 
     styles = client.get("/static/styles.css")
     assert styles.status_code == 200
@@ -723,6 +730,9 @@ def test_index_and_static_files_are_served(client):
 
     missing_script = client.get("/static/not-a-bundled-file.js")
     assert_error_schema(missing_script, 404, "not_found")
+
+    traversal = client.get("/static/%2e%2e%2fmain.py")
+    assert_error_schema(traversal, 404, "not_found")
 
 
 def test_missing_static_directory_returns_safe_error_and_api_stays_healthy(client, monkeypatch, tmp_path):

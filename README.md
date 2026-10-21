@@ -1,9 +1,10 @@
 # Philippine SMS Spam and Scam Detector
 
-An assistive SMS classifier, API, and web app for Philippine English, Filipino,
-and Taglish. It combines word and character TF-IDF features with URL, phone,
-money, urgency, and brand signals. The classifier is picked by cross-validation
-and calibrated, and the service is FastAPI with a no-build web UI.
+An assistive spam-versus-ham SMS classifier, API, and web app for Philippine
+English, Filipino, and Taglish. It combines word and character TF-IDF features
+with URL, phone, money, urgency, and brand signals. Spam includes unwanted
+advertising as well as suspected fraud; a calibrated spam score is not a
+probability that a message is a scam. The service is FastAPI with a no-build web UI.
 
 ![Demo: checking a single message, a batch, and the Taglish dark theme](docs/images/demo.gif)
 
@@ -50,7 +51,7 @@ the data needed for an independently reproducible evaluation.
 
 | | |
 |---|---|
-| ![Likely scam result](docs/images/02-likely-scam.png) | ![Looks safe result](docs/images/03-looks-safe.png) |
+| ![Likely spam result](docs/images/02-likely-scam.png) | ![Looks safe result](docs/images/03-looks-safe.png) |
 | ![Batch check](docs/images/04-batch.png) | ![Taglish, dark theme](docs/images/05-dark-taglish.png) |
 
 ## API

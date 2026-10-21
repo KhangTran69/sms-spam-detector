@@ -213,12 +213,31 @@ def test_feedback_is_operator_opt_in_and_never_sends_message_text(api_source, js
 
 
 def test_uncalibrated_scores_are_not_presented_as_probability(js, html):
-    assert "uncalibrated model score" in js
+    assert "uncalibrated spam model score" in js
+    assert "calibrated spam score" in js
+    assert "estimated scam probability" not in js.lower()
+    assert "Likely spam" in js
+    assert "Spam or unwanted advertising" in js
     assert "calibration status follows the loaded model" in html
-    assert 'modelInfo.probability_calibrated ? t("meter.aria.calibrated") : t("meter.aria")' in js
+    assert 'displayedCalibration ? t("meter.aria.calibrated") : t("meter.aria")' in js
     assert 'analysis && analysis.probability_calibrated === true ? t("meter.aria.calibrated") : t("meter.aria")' in js
     assert "probability_calibrated" in js
     assert "} scam probability" not in js
+    assert 't("batch.col.scoreDescription")' in js
+    assert "probability_calibrated: analysis.probability_calibrated === true" in js
+    assert "displayedCalibration" in js
+
+
+def test_service_worker_installs_complete_static_shell_and_never_caches_api():
+    sw = (ROOT / "api" / "web" / "sw.js").read_text(encoding="utf-8")
+    assert '"/manifest.webmanifest"' in sw
+    assert "await Promise.all(SHELL_ASSETS.map((asset) => cache.add(asset)))" in sw
+    assert "await caches.delete(CACHE_NAME)" in sw
+    assert "const SHELL_PATHS" in sw, "only exact shell paths should be intercepted"
+    assert "if (!SHELL_PATHS.has(url.pathname)) return" in sw
+    for path in ("/analyze", "/analyze/batch", "/predict", "/feedback", "/model-info"):
+        assert f'"{path}"' in sw
+    assert "smsd-shell-v7" in sw
 
 
 def test_app_js_handles_network_and_api_error_states(js):

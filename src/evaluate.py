@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
@@ -82,9 +83,9 @@ def _coverage_counts(frame: Any, column: str) -> dict[str, int]:
 
 def _score_interpretation(bundle: ModelBundle) -> str:
     """Describe scores using the loaded artifact's declared calibration state."""
-    if bool(bundle.metadata.get("probability_calibrated", False)):
-        return "calibrated spam probability estimate; calibration does not establish Philippine representativeness"
-    return "uncalibrated model score; not a probability"
+    if bundle.metadata.get("probability_calibrated") is True:
+        return "calibrated spam-versus-ham score; calibration does not make it a fraud probability or establish Philippine representativeness"
+    return "uncalibrated spam-versus-ham model score; not a probability"
 
 
 def _threshold_diagnostic(bundle: ModelBundle, recomputed_threshold: float) -> dict[str, Any]:
@@ -93,26 +94,50 @@ def _threshold_diagnostic(bundle: ModelBundle, recomputed_threshold: float) -> d
     decision = selection.get("decision", {}) if isinstance(selection, dict) else {}
     policy = decision.get("policy") if isinstance(decision, dict) else None
     adopted = decision.get("adopted") if isinstance(decision, dict) else None
-    decided_threshold = decision.get("threshold") if isinstance(decision, dict) else None
-    if abs(recomputed_threshold - bundle.threshold) <= 1e-9:
+    decided_threshold = _metadata_threshold(decision.get("threshold")) if isinstance(decision, dict) else None
+    candidate = _metadata_threshold(decision.get("candidate_threshold")) if isinstance(decision, dict) else None
+    config = bundle.metadata.get("training_config")
+    configured_policy = config.get("threshold_policy") if isinstance(config, dict) else None
+    matches = abs(recomputed_threshold - bundle.threshold) <= 1e-9
+    if not isinstance(selection, dict) or not isinstance(decision, dict):
+        status = "policy_metadata_unavailable_or_unrecognized" if matches else "policy_metadata_malformed"
+    elif policy == "validation" and (configured_policy in (None, "validation")):
+        status = "validation_policy_mismatch" if not matches else "matches_validation"
+    elif candidate is None or decided_threshold is None:
+        status = "policy_metadata_malformed"
+    elif configured_policy is not None and configured_policy != policy:
+        status = "validation_policy_mismatch"
+    elif abs(candidate - recomputed_threshold) > 1e-9:
+        status = "validation_candidate_mismatch"
+    elif matches:
         status = "matches_validation"
     elif (
         policy == "cv-robust"
         and adopted is False
-        and decided_threshold is not None
-        and abs(float(decided_threshold) - bundle.threshold) <= 1e-9
+        and configured_policy in (None, "cv-robust")
+        and abs(decided_threshold - bundle.threshold) <= 1e-9
     ):
         status = "default_intentionally_retained"
-    elif policy == "validation":
-        status = "validation_policy_mismatch"
     else:
         status = "policy_metadata_unavailable_or_unrecognized"
     return {
         "artifact_threshold": float(bundle.threshold),
         "recomputed_validation_candidate": float(recomputed_threshold),
+        "recorded_candidate_threshold": candidate,
         "policy": str(policy) if policy is not None else None,
         "status": status,
     }
+
+
+def _metadata_threshold(value: Any) -> float | None:
+    """Return only finite probability thresholds; tolerate malformed old metadata."""
+    if isinstance(value, bool):
+        return None
+    try:
+        threshold = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return threshold if math.isfinite(threshold) and 0 <= threshold <= 1 else None
 
 
 # Diagnostic examples from the project brief. They are deliberately excluded
@@ -328,10 +353,14 @@ def evaluate(
         false_negative_cost=config.get("false_negative_cost"),
     )
     threshold_diagnostic = _threshold_diagnostic(bundle, recomputed.threshold)
-    if threshold_diagnostic["status"] == "validation_policy_mismatch":
+    if threshold_diagnostic["status"] in {
+        "validation_policy_mismatch",
+        "validation_candidate_mismatch",
+        "policy_metadata_malformed",
+    }:
         warnings.append(
-            "Artifact threshold differs from the candidate recomputed on validation despite a recorded "
-            "validation-only threshold policy; inspect threshold-selection metadata."
+            "Recorded threshold policy metadata is inconsistent with the current validation candidate; "
+            "inspect policy metadata separately from dataset hashes and split fingerprints."
         )
     elif (
         threshold_diagnostic["status"] == "policy_metadata_unavailable_or_unrecognized"
@@ -477,7 +506,7 @@ def evaluate(
                 holdout,
                 holdout_probabilities,
                 threshold,
-                probability_calibrated=bool(bundle.metadata.get("probability_calibrated", False)),
+                probability_calibrated=bundle.metadata.get("probability_calibrated") is True,
             ),
         }
 

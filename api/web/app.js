@@ -58,7 +58,7 @@ const I18N = {
     "model.loading": "Loading…",
     "model.versionPrefix": "Model version: ",
     "model.thresholds.loading": "Decision threshold and risk bands are loading from the API.",
-    "model.thresholds.line": "Decision threshold {threshold} · risk bands: likely scam ≥ {scam}, suspicious ≥ {suspicious}.",
+    "model.thresholds.line": "Decision threshold {threshold} · risk bands: likely spam ≥ {scam}, suspicious ≥ {suspicious}.",
     "model.fallbackSuffix": " Using built-in fallback thresholds until model information is available.",
     "model.legacyWarning": "This is a legacy model with missing training metadata. Treat results as a demo only.",
     "check.label": "Paste the SMS you want to check",
@@ -83,16 +83,16 @@ const I18N = {
     "examples.scamKind": "scam",
     "examples.safeKind": "safe",
     "result.aria": "Analysis result",
-    "band.likely_scam": "Likely scam",
+    "band.likely_scam": "Likely spam",
     "band.suspicious": "Suspicious",
     "band.looks_safe": "Looks safe",
-    "verdict.score.uncalibrated": "uncalibrated model score",
-    "verdict.score.calibrated": "estimated scam probability",
+    "verdict.score.uncalibrated": "uncalibrated spam model score",
+    "verdict.score.calibrated": "calibrated spam score",
     "verdict.modelVerdict": "model verdict",
     "verdict.decisionThreshold": "decision threshold",
-    "meter.title": "Estimated scam score",
-    "meter.aria": "Uncalibrated model score",
-    "meter.aria.calibrated": "Estimated scam probability",
+    "meter.title": "Spam score",
+    "meter.aria": "Uncalibrated spam model score",
+    "meter.aria.calibrated": "Calibrated spam score",
     "copy.summary": "Copy summary",
     "copy.done": "Copied!",
     "copy.fail": "Could not copy automatically; please copy manually.",
@@ -136,7 +136,7 @@ const I18N = {
     "feedback.help": "Optional anonymous report. It sends your selected correction, category, and model version only—never the SMS text. The operator must enable feedback collection.",
     "feedback.label": "What do you think the message is?",
     "feedback.ham": "Legitimate message",
-    "feedback.spam": "Spam or scam",
+    "feedback.spam": "Spam or unwanted advertising",
     "feedback.category": "Message category",
     "feedback.cat.other": "Not sure / other",
     "feedback.cat.otp": "OTP or verification code",
@@ -164,12 +164,13 @@ const I18N = {
     "batch.col.num": "#",
     "batch.col.message": "Message",
     "batch.col.verdict": "Verdict",
-    "batch.col.risk": "Scam risk",
+    "batch.col.risk": "Spam score",
+    "batch.col.scoreDescription": "Score description",
     "batch.col.signals": "Signals",
     "batch.csv": "Download CSV",
     "batch.csv.done": "Downloaded {file}",
     "batch.csv.fail": "No results to download yet.",
-    "batch.rowAria": "Message {n}: {band}, {pct} model score. Detected text patterns: {signals}. Press Enter to open the full analysis.",
+    "batch.rowAria": "Message {n}: {band}, {pct} {score}. Detected text patterns: {signals}. Press Enter to open the full analysis.",
     "batch.count.one": "1 message · {chars} characters",
     "batch.count.many": "{n} messages · {chars} characters",
     "history.title": "Recent checks",
@@ -184,7 +185,7 @@ const I18N = {
     "history.cleared": "Saved history cleared from this browser.",
     "history.savedCount": "Saved in this browser: {n} of {limit} checks.",
     "history.confirmClear": "Delete all checks saved in this browser?",
-    "history.reopenAria": "Reopen saved check from {time} — {band}, {pct} model score",
+    "history.reopenAria": "Reopen saved check from {time} — {band}, {pct} {score}",
     "footer.disclaimer": "Heuristic aid, not a guarantee. Verify money or account messages through the official app or hotline — and never share OTPs or PINs.",
     "footer.synthetic": "Checks using synthetic Philippine data are not proof of real-world accuracy.",
   },
@@ -203,7 +204,7 @@ const I18N = {
     "model.loading": "Naglo-load…",
     "model.versionPrefix": "Bersyon ng modelo: ",
     "model.thresholds.loading": "Niloload mula sa API ang decision threshold at risk bands.",
-    "model.thresholds.line": "Decision threshold {threshold} · risk bands: malamang scam ≥ {scam}, kahina-hinala ≥ {suspicious}.",
+    "model.thresholds.line": "Decision threshold {threshold} · risk bands: malamang spam ≥ {scam}, kahina-hinala ≥ {suspicious}.",
     "model.fallbackSuffix": " Ginagamit muna ang built-in na fallback thresholds hanggang makuha ang impormasyon ng modelo.",
     "model.legacyWarning": "Lumang modelo ito na walang kumpletong training metadata. Demo lamang ang resulta.",
     "check.label": "I-paste ang SMS na gusto mong i-check",
@@ -228,16 +229,16 @@ const I18N = {
     "examples.scamKind": "scam",
     "examples.safeKind": "ligtas",
     "result.aria": "Resulta ng pagsusuri",
-    "band.likely_scam": "Malamang scam",
+    "band.likely_scam": "Malamang spam",
     "band.suspicious": "Kahina-hinala",
     "band.looks_safe": "Mukhang ligtas",
-    "verdict.score.uncalibrated": "model score (hindi pa-calibrate)",
-    "verdict.score.calibrated": "tinatayang posibilidad ng scam",
+    "verdict.score.uncalibrated": "uncalibrated na spam model score",
+    "verdict.score.calibrated": "calibrated na spam score",
     "verdict.modelVerdict": "hatol ng modelo",
     "verdict.decisionThreshold": "decision threshold",
-    "meter.title": "Tinatayang scam score",
-    "meter.aria": "Model score (hindi pa-calibrate)",
-    "meter.aria.calibrated": "Tinatayang posibilidad ng scam",
+    "meter.title": "Spam score",
+    "meter.aria": "Uncalibrated na spam model score",
+    "meter.aria.calibrated": "Calibrated na spam score",
     "copy.summary": "Kopyahin ang buod",
     "copy.done": "Nakopya na!",
     "copy.fail": "Hindi awtomatikong nakopya; kopyahin nang manual.",
@@ -309,12 +310,13 @@ const I18N = {
     "batch.col.num": "#",
     "batch.col.message": "Mensahe",
     "batch.col.verdict": "Hatol",
-    "batch.col.risk": "Scam risk",
+    "batch.col.risk": "Spam score",
+    "batch.col.scoreDescription": "Paglalarawan ng score",
     "batch.col.signals": "Mga signal",
     "batch.csv": "I-download ang CSV",
     "batch.csv.done": "Nai-download: {file}",
     "batch.csv.fail": "Wala pang resultang ma-download.",
-    "batch.rowAria": "Mensahe {n}: {band}, {pct} model score. Mga natuklasang pattern: {signals}. Pindutin ang Enter para buksan ang buong analysis.",
+    "batch.rowAria": "Mensahe {n}: {band}, {pct} {score}. Mga natuklasang pattern: {signals}. Pindutin ang Enter para buksan ang buong analysis.",
     "batch.count.one": "1 mensahe · {chars} karakter",
     "batch.count.many": "{n} mensahe · {chars} karakter",
     "history.title": "Mga kamakailang check",
@@ -329,7 +331,7 @@ const I18N = {
     "history.cleared": "Nabura na ang naka-save na history sa browser na ito.",
     "history.savedCount": "Naka-save sa browser na ito: {n} sa {limit} check.",
     "history.confirmClear": "Burahin lahat ng naka-save na check sa browser na ito?",
-    "history.reopenAria": "Buksan muli ang check mula {time} — {band}, {pct} model score",
+    "history.reopenAria": "Buksan muli ang check mula {time} — {band}, {pct} {score}",
     "footer.disclaimer": "Gabay lamang ito, hindi garantiya. I-verify ang mga mensahe tungkol sa pera o account sa opisyal na app o hotline — at huwag kailanman ibahagi ang OTP o PIN.",
     "footer.synthetic": "Ang mga check na gumagamit ng synthetic Philippine data ay hindi patunay ng totoong kakayahan.",
   },
@@ -765,9 +767,13 @@ function renderModelInfo() {
     scam: pct(modelInfo.bands.likely_scam),
     suspicious: pct(modelInfo.bands.suspicious),
   });
+  const displayedCalibration = window.currentAnalysis &&
+    typeof window.currentAnalysis.probability_calibrated === "boolean"
+    ? window.currentAnalysis.probability_calibrated
+    : modelInfo.probability_calibrated;
   $("risk-meter").setAttribute(
     "aria-label",
-    modelInfo.probability_calibrated ? t("meter.aria.calibrated") : t("meter.aria"),
+    displayedCalibration ? t("meter.aria.calibrated") : t("meter.aria"),
   );
 }
 
@@ -1126,6 +1132,8 @@ function addHistory(analysis, source = "single", { render = true } = {}) {
   const duplicate = newest &&
     newest.message === analysis.message &&
     newest.source === source &&
+      newest.model_version === String(analysis.model_version || modelInfo.model_version) &&
+      newest.probability_calibrated === (analysis.probability_calibrated === true) &&
     Math.abs(numberOr(newest.spam_probability, -1) - numberOr(analysis.spam_probability, -2)) < 0.005;
   if (!duplicate) {
     entries.unshift({
@@ -1133,6 +1141,8 @@ function addHistory(analysis, source = "single", { render = true } = {}) {
       message: analysis.message,
       prediction: analysis.prediction,
       spam_probability: numberOr(analysis.spam_probability, 0),
+      probability_calibrated: analysis.probability_calibrated === true,
+      model_version: String(analysis.model_version || modelInfo.model_version),
       risk_band: bandOf(analysis),
       decision_threshold: numberOr(analysis.decision_threshold, modelInfo.decision_threshold),
       flags: Array.isArray(analysis.flags) ? analysis.flags : [],
@@ -1198,7 +1208,12 @@ function renderHistory() {
     item.tabIndex = 0;
     item.setAttribute("role", "button");
     item.setAttribute("aria-label",
-      t("history.reopenAria", { time: timestamp, band: bandTitle(band), pct: pct(entry.spam_probability) }));
+      t("history.reopenAria", {
+        time: timestamp,
+        band: bandTitle(band),
+        pct: pct(entry.spam_probability),
+        score: scoreLabel(entry),
+      }));
     const main = document.createElement("div");
     main.className = "history-item-main";
     const message = document.createElement("div");
@@ -1478,13 +1493,20 @@ function renderBatch(results) {
     riskCell.append(miniMeter(analysis.spam_probability, band));
     const riskPct = document.createElement("span");
     riskPct.textContent = pct(analysis.spam_probability);
+    riskPct.setAttribute("aria-label", `${pct(analysis.spam_probability)} ${scoreLabel(analysis)}`);
     riskCell.append(riskPct);
     const signalCell = document.createElement("td");
     signalCell.dataset.label = t("batch.col.signals");
     const patterns = signalSummary(analysis);
     signalCell.textContent = patterns;
     row.setAttribute("aria-label",
-      t("batch.rowAria", { n: index + 1, band: bandTitle(band), pct: pct(analysis.spam_probability), signals: patterns }));
+      t("batch.rowAria", {
+        n: index + 1,
+        band: bandTitle(band),
+        pct: pct(analysis.spam_probability),
+        score: scoreLabel(analysis),
+        signals: patterns,
+      }));
 
     row.append(numberCell, messageCell, verdictCell, riskCell, signalCell);
     row.addEventListener("click", () => openBatchResult(analysis));
@@ -1520,6 +1542,7 @@ function downloadBatchCsv() {
     t("batch.col.verdict"),
     "Model prediction",
     t("batch.col.risk"),
+    t("batch.col.scoreDescription"),
     t("batch.col.signals"),
     t("summary.model"),
   ];
@@ -1531,6 +1554,7 @@ function downloadBatchCsv() {
       bandTitle(bandOf(analysis)),
       String(analysis.prediction || ""),
       pct(analysis.spam_probability),
+      scoreLabel(analysis),
       signalSummary(analysis),
       String(analysis.model_version || modelInfo.model_version),
     ]);

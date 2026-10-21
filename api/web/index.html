@@ -8,7 +8,7 @@
   <title>PH SMS Scam Detector</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>" />
   <link rel="manifest" href="/manifest.webmanifest" />
-  <link rel="stylesheet" href="/static/styles.css?v=ui6-eval-trust-20261021" />
+  <link rel="stylesheet" href="/static/styles.css?v=ui7-spam-score-20261021" />
   <script>
     // Apply the saved theme before first paint to avoid a flash of the wrong theme.
     (function () {
@@ -95,7 +95,7 @@
         <div id="verdict-card" class="card verdict">
           <div id="verdict-icon" class="verdict-icon" aria-hidden="true">🚨</div>
           <div class="verdict-text">
-            <div id="verdict-title" class="verdict-title" data-i18n="band.likely_scam">Likely scam</div>
+            <div id="verdict-title" class="verdict-title" data-i18n="band.likely_scam">Likely spam</div>
             <div id="verdict-sub" class="verdict-sub"></div>
             <div class="verdict-actions">
               <button type="button" id="btn-copy-summary" class="btn ghost small" data-i18n="copy.summary">Copy summary</button>
@@ -106,14 +106,14 @@
 
         <div class="card">
           <div class="meter-head">
-            <h2 data-i18n="meter.title">Estimated scam score</h2>
+            <h2 data-i18n="meter.title">Spam score</h2>
             <div id="meter-value" class="meter-value">0%</div>
           </div>
-          <div id="risk-meter" class="meter" role="meter" aria-label="Model score; calibration status follows the loaded model"
+          <div id="risk-meter" class="meter" role="meter" aria-label="Spam score; calibration status follows the loaded model"
             aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="0% model score">
             <div id="meter-marker" class="meter-marker" aria-hidden="true" style="left:0%"></div>
           </div>
-          <div class="meter-labels" aria-hidden="true"><span data-i18n="band.looks_safe">Looks safe</span><span data-i18n="band.suspicious">Suspicious</span><span data-i18n="band.likely_scam">Likely scam</span></div>
+          <div class="meter-labels" aria-hidden="true"><span data-i18n="band.looks_safe">Looks safe</span><span data-i18n="band.suspicious">Suspicious</span><span data-i18n="band.likely_scam">Likely spam</span></div>
         </div>
 
         <div class="card">
@@ -135,7 +135,7 @@
             <label for="feedback-label" data-i18n="feedback.label">What do you think the message is?</label>
             <select id="feedback-label" name="expected_label" required>
               <option value="ham" data-i18n="feedback.ham">Legitimate message</option>
-              <option value="spam" data-i18n="feedback.spam">Spam or scam</option>
+              <option value="spam" data-i18n="feedback.spam">Spam or unwanted advertising</option>
             </select>
             <label for="feedback-category" data-i18n="feedback.category">Message category</label>
             <select id="feedback-category" name="category">
@@ -178,7 +178,7 @@
       <p id="batch-empty" class="empty" data-i18n="batch.empty">Add messages above, then choose Check all to see their results here.</p>
 
       <div id="batch-summary" class="summary hidden" role="status" aria-live="polite">
-        <div class="stat stat-scam"><span id="stat-scam" class="stat-num">0</span><span class="stat-label" data-i18n="band.likely_scam">Likely scam</span></div>
+        <div class="stat stat-scam"><span id="stat-scam" class="stat-num">0</span><span class="stat-label" data-i18n="band.likely_scam">Likely spam</span></div>
         <div class="stat stat-suspicious"><span id="stat-suspicious" class="stat-num">0</span><span class="stat-label" data-i18n="band.suspicious">Suspicious</span></div>
         <div class="stat stat-safe"><span id="stat-safe" class="stat-num">0</span><span class="stat-label" data-i18n="band.looks_safe">Looks safe</span></div>
       </div>
@@ -196,7 +196,7 @@
               <th scope="col" class="col-num" data-i18n="batch.col.num">#</th>
               <th scope="col" data-i18n="batch.col.message">Message</th>
               <th scope="col" data-i18n="batch.col.verdict">Verdict</th>
-              <th scope="col" data-i18n="batch.col.risk">Scam risk</th>
+              <th scope="col" data-i18n="batch.col.risk">Spam score</th>
               <th scope="col" data-i18n="batch.col.signals">Signals</th>
             </tr>
           </thead>
@@ -232,6 +232,6 @@
     <p data-i18n="footer.synthetic">Checks using synthetic Philippine data are not proof of real-world accuracy.</p>
   </footer>
 
-  <script src="/static/app.js?v=ui6-eval-trust-20261021"></script>
+  <script src="/static/app.js?v=ui7-spam-score-20261021"></script>
 </body>
 </html>

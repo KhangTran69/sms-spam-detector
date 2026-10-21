@@ -1,64 +1,66 @@
-/* PH SMS Scam Detector service worker — offline static shell.
- *
- * Privacy rules baked into this file:
- * - Only GET requests for the static shell (/, /static/*, /manifest.webmanifest)
- *   are ever cached.
- * - POST requests (message analysis, feedback) are never intercepted or cached,
- *   so SMS text never reaches the cache.
- * - /model-info, /health, /ready are always fetched from the network so the UI
- *   shows the deployed model's thresholds, never a stale copy.
+/* PH SMS Scam Detector service worker — atomic, static-only offline shell.
+ * SMS messages and API responses are never written to Cache Storage.
  */
 "use strict";
 
-const CACHE_NAME = "smsd-shell-v6";
+const CACHE_NAME = "smsd-shell-v7";
 const SHELL_ASSETS = [
   "/",
-  "/static/styles.css?v=ui6-eval-trust-20261021",
-  "/static/app.js?v=ui6-eval-trust-20261021",
+  "/static/styles.css?v=ui7-spam-score-20261021",
+  "/static/app.js?v=ui7-spam-score-20261021",
   "/manifest.webmanifest",
 ];
+const SHELL_PATHS = new Set(["/", "/static/styles.css", "/static/app.js", "/manifest.webmanifest"]);
 const NEVER_CACHE_PATHS = ["/analyze", "/analyze/batch", "/predict", "/feedback", "/model-info", "/health", "/ready"];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(async (cache) => {
-      // Add assets individually so one failure does not block installation.
-      await Promise.allSettled(SHELL_ASSETS.map((asset) => cache.add(asset)));
-    }).then(() => self.skipWaiting()),
-  );
+  event.waitUntil((async () => {
+    try {
+      const cache = await caches.open(CACHE_NAME);
+      await Promise.all(SHELL_ASSETS.map((asset) => cache.add(asset)));
+      await self.skipWaiting();
+    } catch (error) {
+      // Do not activate a partial shell; retain the previously active worker.
+      await caches.delete(CACHE_NAME);
+      throw error;
+    }
+  })());
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    Promise.all([
-      self.clients.claim(),
-      caches.keys().then((keys) =>
-      Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))),
-      ),
-    ]),
-  );
+  event.waitUntil((async () => {
+    await self.clients.claim();
+    const keys = await caches.keys();
+    await Promise.all(keys.filter((key) => key.startsWith("smsd-shell-") && key !== CACHE_NAME)
+      .map((key) => caches.delete(key)));
+  })());
 });
 
 self.addEventListener("fetch", (event) => {
   const request = event.request;
-  if (request.method !== "GET") return; // never touch POST bodies (messages)
+  if (request.method !== "GET") return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
   if (NEVER_CACHE_PATHS.some((path) => url.pathname === path || url.pathname.startsWith(`${path}/`))) return;
-  if (url.pathname.startsWith("/docs") || url.pathname.startsWith("/openapi")) return;
+  if (!SHELL_PATHS.has(url.pathname)) return;
 
-  // Network-first with cache fallback: updates land on reload, shell survives offline.
-  event.respondWith(
-    fetch(request)
-      .then((response) => {
-        if (response && response.ok && (url.pathname === "/" || url.pathname.startsWith("/static"))) {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-        }
-        return response;
-      })
-      .catch(() =>
-        caches.match(request).then((cached) => cached || caches.match("/")),
-      ),
-  );
+  // Network-first delivers matched HTML/CSS/JS versions together; a complete
+  // installed shell remains available when offline or an update is interrupted.
+  event.respondWith((async () => {
+    try {
+      const response = await fetch(request);
+      if (response && response.ok) {
+        const cache = await caches.open(CACHE_NAME);
+        await cache.put(request, response.clone());
+      }
+      return response;
+    } catch {
+      const cached = await caches.match(request);
+      if (cached) return cached;
+      return new Response("Offline and this app asset is not cached.", {
+        status: 503,
+        headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
+      });
+    }
+  })());
 });
