@@ -229,7 +229,7 @@ def test_uncalibrated_scores_are_not_presented_as_probability(js, html):
     assert "displayedCalibration" in js
 
 
-def test_service_worker_installs_complete_static_shell_and_never_caches_api():
+def test_service_worker_installs_complete_static_shell_and_never_caches_api(html, js):
     sw = (ROOT / "api" / "web" / "sw.js").read_text(encoding="utf-8")
     assert '"/manifest.webmanifest"' in sw
     assert "await Promise.allSettled(SHELL_ASSETS.map((asset) => cache.add(asset)))" in sw
@@ -239,9 +239,13 @@ def test_service_worker_installs_complete_static_shell_and_never_caches_api():
     assert "await cache.put(request" not in sw, "runtime responses must not mutate an installed release"
     for path in ("/analyze", "/analyze/batch", "/predict", "/feedback", "/model-info"):
         assert f'"{path}"' in sw
-    assert "smsd-shell-v10" in sw
-    assert '"/static/styles.css?v=ui10-safety-guidance-20261021"' in sw
-    assert '"/static/app.js?v=ui10-safety-guidance-20261021"' in sw
+    assert "smsd-shell-v11" in sw
+    assert '"/static/styles.css?v=ui11-privacy-preview-20261021"' in sw
+    assert '"/static/app.js?v=ui11-privacy-preview-20261021"' in sw
+    assert 'id="single-privacy-review"' in html
+    assert 'id="batch-privacy-review"' in html
+    assert 'id="compare-review-a"' in html and 'id="compare-review-b"' in html
+    assert "detectSensitiveSpans" in js and "applyPrivacyMasks" in js
 
 
 def test_safety_guidance_is_optional_and_memory_only(js, html, css):

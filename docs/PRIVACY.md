@@ -61,6 +61,33 @@ The language and two-state light/dark theme preferences are also stored in brows
 **Copy summary** writes the displayed result, including the message text, to the user's clipboard only after the user clicks the button. **Download CSV** generates a file locally in the browser and includes batch message text; the file is outside the app's control after download. Users should review it before sharing and delete it when no longer needed.
 CSV fields are quoted and embedded quotation marks escaped. Message cells that could be interpreted as spreadsheet formulas (including values with leading whitespace/control characters followed by `=`, `+`, `-`, or `@`) are prefixed as text before export. This is a convenience safeguard; review downloaded files before opening them in spreadsheet software.
 
+### Optional Privacy Preview
+
+Before analysis, users may review possible Philippine phone numbers, email
+addresses, verification codes identified by nearby words such as “OTP”, and
+account or transaction references. Matching runs locally in the page. The
+suggestions are best-effort: they may miss personal details or flag harmless
+text. Users can reject suggestions, select and mask additional text manually,
+and inspect the exact trimmed message that will be sent. Masking changes the
+input and can change the detector result; it does not guarantee anonymization.
+
+The user must explicitly confirm the reviewed text. Confirmation replaces the
+message in the input with that text, and only that text is submitted. The app
+does not submit both the original and masked versions. Comparison messages have
+independent previews. In batch mode, each entry can be reviewed separately;
+entries not reviewed are submitted as entered. If history is enabled, a masked
+analysis stores only the masked message. Result summaries and batch CSVs use
+the text the API analyzed. Feedback continues to contain only its categorical
+correction fields, never message text.
+
+The preview's draft and span map exist only in page memory and are discarded
+when the review is cancelled, confirmed, the tab changes, or the source message
+is edited. The original text may remain in the editable input until the user
+confirms a masked version or clears it. The feature does not promise secure
+memory erasure and does not automatically identify names or every kind of
+personal information. Users should not submit details they do not wish to send
+to the detector operator.
+
 The optional **Message Safety Checklist** asks only categorical questions and
 offers selectable next-step situations (multiple situations can be selected).
 Answers exist only in page memory, are

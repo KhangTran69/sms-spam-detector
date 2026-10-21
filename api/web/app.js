@@ -68,8 +68,39 @@ const I18N = {
     "check.placeholder": "e.g. Bank notice: Your account review is due. Visit bank-help.example to read more.",
     "check.help": "At most 10,000 characters. Messages are analysed in memory and are never stored on the server.",
     "check.clear": "Clear",
-    "check.run": "Check message",
+    "check.run": "Check message as written",
     "check.busy": "Checking…",
+    "privacy.review": "Review sensitive details",
+    "privacy.optional": "Optional: review and mask details before analysis.",
+    "privacy.reviewA": "Review Message A",
+    "privacy.reviewB": "Review Message B",
+    "privacy.reviewBatch": "Review messages individually",
+    "privacy.batchHelp": "Choose which entries to mask before submitting; unreviewed entries stay unchanged.",
+    "privacy.title": "Local privacy preview",
+    "privacy.help": "Suggestions are generated in this browser. They can miss personal details or flag harmless text. Review each one; this does not guarantee anonymization.",
+    "privacy.edit": "Review or edit this text; select text below if you want to mask it manually",
+    "privacy.detected": "Suggested details to mask",
+    "privacy.none": "No likely phone numbers, email addresses, contextual codes, or reference numbers were detected. Names and other personal details may still be present.",
+    "privacy.manual": "Mask selected text",
+    "privacy.selectFirst": "Select some text in the preview first.",
+    "privacy.selectionAdded": "Selected text will be masked in the preview.",
+    "privacy.manualType": "Placeholder for selected text",
+    "privacy.maskedPreview": "Exact text to submit",
+    "privacy.warning": "Masking changes the text and may change the detector’s result. Review the exact text below.",
+    "privacy.accept": "Analyze this reviewed text",
+    "privacy.cancel": "Cancel review",
+    "privacy.code": "Possible verification code",
+    "privacy.phone": "Possible Philippine phone number",
+    "privacy.email": "Possible email address",
+    "privacy.reference": "Possible account or transaction reference",
+    "privacy.maskedResult": "This result was produced from text with privacy masks. Masking can change the model’s assessment and does not guarantee anonymization.",
+    "privacy.maskedBadge": "Masked before analysis",
+    "privacy.batchEntry": "Message {n}",
+    "privacy.reviewBatchEntry": "Review message {n}",
+    "privacy.batchMasked": "Masked before analysis",
+    "privacy.batchUnmasked": "Not masked",
+    "privacy.batchApplied": "Reviewed text applied to message {n}.",
+    "privacy.batchColumn": "Masked before analysis",
     "error.empty": "Type or paste an SMS message first.",
     "error.tooLong": "That message is {n} characters — the limit is 10,000.",
     "error.reach": "Could not reach the detector API. Check that the server is running and try again.",
@@ -247,7 +278,7 @@ const I18N = {
     "batch.csv": "Download CSV",
     "batch.csv.done": "Downloaded {file}",
     "batch.csv.fail": "No results to download yet.",
-    "batch.rowAria": "Message {n}: {band}, {pct} {score}. Detected text patterns: {signals}. Press Enter to open the full analysis.",
+    "batch.rowAria": "Message {n}: {band}, {pct} {score}. Detected text patterns: {signals}. {privacy} Press Enter to open the full analysis.",
     "batch.count.one": "1 message · {chars} characters",
     "batch.count.many": "{n} messages · {chars} characters",
     "history.title": "Recent checks",
@@ -291,8 +322,39 @@ const I18N = {
     "check.placeholder": "Hal. May notice sa account mo. Tingnan sa bank-help.example kung kailangan ng action.",
     "check.help": "Hanggang 10,000 karakter. Sinusuri sa memory ang mga mensahe at hindi kailanman iniimbak sa server.",
     "check.clear": "Burahin",
-    "check.run": "I-check ang mensahe",
+    "check.run": "I-check ang mensahe ayon sa pagkakasulat",
     "check.busy": "Sinusuri…",
+    "privacy.review": "Suriin ang sensitibong detalye",
+    "privacy.optional": "Opsyonal: suriin at takpan ang detalye bago magpa-analyze.",
+    "privacy.reviewA": "Suriin ang Mensahe A",
+    "privacy.reviewB": "Suriin ang Mensahe B",
+    "privacy.reviewBatch": "Suriin nang paisa-isa ang mga mensahe",
+    "privacy.batchHelp": "Piliin kung aling entries ang tatakpan bago ipadala; hindi mababago ang hindi sinuri.",
+    "privacy.title": "Privacy preview sa browser na ito",
+    "privacy.help": "Sa browser na ito lang hinahanap ang mga mungkahi. Maaaring may hindi makita o mapagkamalang sensitibo ang karaniwang text. Suriin ang bawat isa; hindi nito ginagarantiya ang anonymization.",
+    "privacy.edit": "Suriin o baguhin ang text; pumili ng bahagi sa ibaba kung mano-manong tatakpan",
+    "privacy.detected": "Mga mungkahing takpan",
+    "privacy.none": "Walang nakitang posibleng phone number, email, code ayon sa konteksto, o reference number. Maaaring may pangalan at iba pang personal na detalye pa rin.",
+    "privacy.manual": "Takpan ang napiling text",
+    "privacy.selectFirst": "Pumili muna ng text sa preview.",
+    "privacy.selectionAdded": "Tatanggalin sa isusumiteng preview ang napiling text.",
+    "privacy.manualType": "Placeholder para sa napiling text",
+    "privacy.maskedPreview": "Eksaktong text na ipapadala",
+    "privacy.warning": "Binabago ng masking ang text at maaaring magbago ang resulta ng detector. Suriin sa ibaba ang eksaktong text.",
+    "privacy.accept": "I-analyze ang sinuring text",
+    "privacy.cancel": "Kanselahin ang pagsusuri",
+    "privacy.code": "Posibleng verification code",
+    "privacy.phone": "Posibleng numero ng telepono sa Pilipinas",
+    "privacy.email": "Posibleng email address",
+    "privacy.reference": "Posibleng account o transaction reference",
+    "privacy.maskedResult": "Resulta ito mula sa text na may privacy masks. Maaaring baguhin ng masking ang assessment ng modelo at hindi nito ginagarantiya ang anonymization.",
+    "privacy.maskedBadge": "Tinakpan bago i-analyze",
+    "privacy.batchEntry": "Mensahe {n}",
+    "privacy.reviewBatchEntry": "Suriin ang mensahe {n}",
+    "privacy.batchMasked": "Tinakpan bago i-analyze",
+    "privacy.batchUnmasked": "Hindi tinakpan",
+    "privacy.batchApplied": "Na-update ang sinuring text para sa mensahe {n}.",
+    "privacy.batchColumn": "Tinakpan bago i-analyze",
     "error.empty": "Mag-type o mag-paste muna ng mensahe.",
     "error.tooLong": "{n} karakter ang mensahe — ang limit ay 10,000.",
     "error.reach": "Hindi makausap ang detector API. Siguraduhing naka-run ang server at subukan ulit.",
@@ -470,7 +532,7 @@ const I18N = {
     "batch.csv": "I-download ang CSV",
     "batch.csv.done": "Nai-download: {file}",
     "batch.csv.fail": "Wala pang resultang ma-download.",
-    "batch.rowAria": "Mensahe {n}: {band}, {pct} {score}. Mga natuklasang pattern: {signals}. Pindutin ang Enter para buksan ang buong analysis.",
+    "batch.rowAria": "Mensahe {n}: {band}, {pct} {score}. Mga natuklasang pattern: {signals}. {privacy} Pindutin ang Enter para buksan ang buong analysis.",
     "batch.count.one": "1 mensahe · {chars} karakter",
     "batch.count.many": "{n} mensahe · {chars} karakter",
     "history.title": "Mga kamakailang check",
@@ -564,6 +626,11 @@ function setLanguage(nextLang) {
   updateHistoryBadge();
   updateCharCount();
   updateBatchCount();
+  clearPrivacyReview("single-privacy-review");
+  clearPrivacyReview("compare-review-a");
+  clearPrivacyReview("compare-review-b");
+  clearBatchPrivacyReview();
+  $("batch-review-status").textContent = "";
   $("example-status").textContent = t("examples.note");
   $("copy-status").textContent = "";
   $("feedback-status").textContent = "";
@@ -872,6 +939,10 @@ function tabElements() {
 
 function selectTab(tab) {
   const name = tab.dataset.tab;
+  clearPrivacyReview("single-privacy-review");
+  clearPrivacyReview("compare-review-a");
+  clearPrivacyReview("compare-review-b");
+  clearBatchPrivacyReview();
   // A request belongs to the view where it was started. Leaving that view
   // cancels it so a late response cannot replace a result after navigation.
   if (name !== "check" && singleAbortController) invalidateSingle();
@@ -1400,6 +1471,7 @@ function buildSummaryText(analysis) {
     `${t("summary.signals")}: ${signalSummary(analysis)}`,
     `${t("summary.message")}: ${typeof analysis.message === "string" ? analysis.message : ""}`,
   ];
+  if (analysis.masked_input === true) lines.push(t("privacy.maskedResult"));
   lines.push(`${t("summary.tips")}:`);
   for (const tip of buildTips(analysis)) lines.push(`- ${tip}`);
   lines.push(`${t("summary.model")}: ${modelVersion}`);
@@ -1444,6 +1516,8 @@ function renderAnalysis(analysis, { save = true } = {}) {
   renderSignals(analysis);
   renderTips(analysis);
   renderSafetyGuidance($("safety-guidance"), analysis);
+  $("privacy-result-note").classList.toggle("hidden", analysis.masked_input !== true);
+  $("privacy-result-note").textContent = analysis.masked_input === true ? t("privacy.maskedResult") : "";
   $("copy-status").textContent = "";
   window.currentAnalysis = analysis;
   renderModelInfo(analysis);
@@ -1551,6 +1625,7 @@ function addHistory(analysis, source = "single", { render = true } = {}) {
   const duplicate = newest &&
     newest.message === analysis.message &&
     newest.source === source &&
+      newest.masked_input === (analysis.masked_input === true) &&
       newest.model_version === (typeof analysis.model_version === "string" ? analysis.model_version : null) &&
       newest.probability_calibrated === (typeof analysis.probability_calibrated === "boolean" ? analysis.probability_calibrated : null) &&
     Math.abs(numberOr(newest.spam_probability, -1) - numberOr(analysis.spam_probability, -2)) < 0.005;
@@ -1566,6 +1641,7 @@ function addHistory(analysis, source = "single", { render = true } = {}) {
       decision_threshold: validFraction(analysis.decision_threshold),
       suspicious_threshold: validFraction(analysis.suspicious_threshold),
       flags: Array.isArray(analysis.flags) ? analysis.flags : [],
+      masked_input: analysis.masked_input === true,
       source,
     });
     saveHistory(entries);
@@ -1613,7 +1689,7 @@ function openSavedEntry(entry) {
   $("message-input").value = entry.message;
   updateCharCount();
   switchTab("check");
-  runCheck({ save: false });
+  runCheck({ save: false, masked: entry.masked_input === true });
 }
 
 function renderHistory() {
@@ -1638,7 +1714,7 @@ function renderHistory() {
         band: bandTitle(band),
         pct: pct(entry.spam_probability),
         score: scoreLabel(entry),
-      }));
+      }) + (entry.masked_input === true ? ` · ${t("privacy.maskedBadge")}` : ""));
     const main = document.createElement("div");
     main.className = "history-item-main";
     const message = document.createElement("div");
@@ -1647,6 +1723,7 @@ function renderHistory() {
     const meta = document.createElement("div");
     meta.className = "history-meta";
     meta.textContent = `${timestamp}${entry.source === "batch" ? " · batch" : ""}`;
+    if (entry.masked_input === true) meta.textContent += ` · ${t("privacy.maskedBadge")}`;
     main.append(message, meta);
     const risk = document.createElement("span");
     risk.className = `history-risk ${bandView(band).css}`;
@@ -1694,12 +1771,212 @@ function initHistory() {
   updateHistoryBadge();
 }
 
+/* ---------- Local-only privacy preview ---------- */
+const PRIVACY_PLACEHOLDERS = {
+  phone: "[PHONE]",
+  email: "[EMAIL]",
+  code: "[CODE]",
+  reference: "[REFERENCE]",
+};
+
+function detectSensitiveSpans(message) {
+  const found = [];
+  const collect = (regex, type, capture = 0) => {
+    regex.lastIndex = 0;
+    let match;
+    while ((match = regex.exec(message)) !== null) {
+      const value = match[capture];
+      if (!value) continue;
+      const offset = capture ? match[0].indexOf(value) : 0;
+      found.push({ start: match.index + offset, end: match.index + offset + value.length, type, manual: false });
+      if (!match[0].length) regex.lastIndex += 1;
+    }
+  };
+  collect(/(?<!\d)(?:\+?63[\s().-]?9\d{2}|09\d{2})[\s().-]?\d{3}[\s.-]?\d{4}(?!\d)/g, "phone");
+  collect(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "email");
+  collect(/\b(?:otp(?:\s+code)?|one[\s-]?time(?:\s+(?:password|code|pin))?|verification\s+code|security\s+code|kodigo\s+sa\s+beripikasyon)\b\s*(?:is|:|=|-|mo\s+ay|ay|mo)?\s*([A-Z0-9]{4,8})\b/gi, "code", 1);
+  collect(/\b(?:account|acct)\s*(?:number|no\.?|#)\s*[:=#-]?\s*((?=[A-Z0-9-]{5,24}\b)(?=[A-Z0-9-]*\d)[A-Z0-9][A-Z0-9-]{4,23})\b/gi, "reference", 1);
+  collect(/\b(?:reference|ref|transaction|txn)\s*(?:number|no\.?|id|#)\s*[:=#-]?\s*((?=[A-Z0-9-]{5,24}\b)(?=[A-Z0-9-]*\d)[A-Z0-9][A-Z0-9-]{4,23})\b/gi, "reference", 1);
+  const priority = { phone: 0, email: 1, code: 2, reference: 3 };
+  found.sort((a, b) => priority[a.type] - priority[b.type] || a.start - b.start || b.end - a.end);
+  const accepted = [];
+  for (const span of found) {
+    if (!accepted.some((other) => span.start < other.end && other.start < span.end)) accepted.push(span);
+  }
+  return accepted.sort((a, b) => a.start - b.start || a.end - b.end);
+}
+
+function normalizePrivacySpans(spans) {
+  const valid = spans.filter((span) => Number.isInteger(span.start) && Number.isInteger(span.end)
+    && span.start >= 0 && span.end > span.start && PRIVACY_PLACEHOLDERS[span.type])
+    .sort((a, b) => a.start - b.start || Number(Boolean(b.manual)) - Number(Boolean(a.manual)));
+  const merged = [];
+  for (const span of valid) {
+    const previous = merged[merged.length - 1];
+    if (previous && span.start < previous.end) {
+      previous.end = Math.max(previous.end, span.end);
+      if (span.manual && !previous.manual) {
+        previous.type = span.type;
+        previous.manual = true;
+      }
+    } else {
+      merged.push({ ...span });
+    }
+  }
+  return merged;
+}
+
+function applyPrivacyMasks(message, spans) {
+  const selected = normalizePrivacySpans(spans);
+  let output = message;
+  for (const span of selected.slice().reverse()) {
+    output = output.slice(0, span.start) + PRIVACY_PLACEHOLDERS[span.type] + output.slice(span.end);
+  }
+  return output;
+}
+
+function buildPrivacyReview(container, initialText, onConfirm) {
+  container.replaceChildren();
+  container.classList.remove("hidden");
+  const heading = document.createElement("h3");
+  heading.textContent = t("privacy.title");
+  const help = document.createElement("p");
+  help.className = "hint";
+  help.textContent = t("privacy.help");
+  const editLabel = document.createElement("label");
+  editLabel.textContent = t("privacy.edit");
+  const draft = document.createElement("textarea");
+  draft.rows = 5;
+  draft.value = initialText;
+  draft.setAttribute("aria-label", t("privacy.edit"));
+  editLabel.append(draft);
+  const suggestionHeading = document.createElement("h4");
+  suggestionHeading.textContent = t("privacy.detected");
+  const suggestions = document.createElement("ul");
+  suggestions.className = "privacy-suggestions";
+  const none = document.createElement("p");
+  none.className = "hint privacy-none";
+  none.textContent = t("privacy.none");
+  const manualRow = document.createElement("div");
+  manualRow.className = "privacy-manual-row";
+  const manualTypeLabel = document.createElement("label");
+  manualTypeLabel.textContent = t("privacy.manualType");
+  const manualType = document.createElement("select");
+  for (const type of Object.keys(PRIVACY_PLACEHOLDERS)) {
+    const option = document.createElement("option");
+    option.value = type;
+    option.textContent = PRIVACY_PLACEHOLDERS[type];
+    manualType.append(option);
+  }
+  manualTypeLabel.append(manualType);
+  const manualButton = document.createElement("button");
+  manualButton.type = "button";
+  manualButton.className = "btn ghost";
+  manualButton.textContent = t("privacy.manual");
+  const manualStatus = document.createElement("span");
+  manualStatus.className = "hint";
+  manualStatus.setAttribute("role", "status");
+  manualRow.append(manualTypeLabel, manualButton, manualStatus);
+  const outputLabel = document.createElement("label");
+  outputLabel.textContent = t("privacy.maskedPreview");
+  const output = document.createElement("textarea");
+  output.rows = 5;
+  output.readOnly = true;
+  outputLabel.append(output);
+  const warning = document.createElement("p");
+  warning.className = "privacy-warning";
+  warning.textContent = t("privacy.warning");
+  const actions = document.createElement("div");
+  actions.className = "buttons privacy-review-buttons";
+  const cancel = document.createElement("button");
+  cancel.type = "button";
+  cancel.className = "btn ghost";
+  cancel.textContent = t("privacy.cancel");
+  const accept = document.createElement("button");
+  accept.type = "button";
+  accept.className = "btn primary";
+  accept.textContent = t("privacy.accept");
+  actions.append(cancel, accept);
+  container.append(heading, help, editLabel, suggestionHeading, suggestions, none, manualRow, outputLabel, warning, actions);
+
+  let detected = detectSensitiveSpans(draft.value);
+  let selected = new Set(detected.map((_, index) => index));
+  let manual = [];
+  const chosenSpans = () => [...detected.filter((_, index) => selected.has(index)), ...manual];
+  const render = () => {
+    suggestions.replaceChildren();
+    none.classList.toggle("hidden", detected.length > 0);
+    suggestionHeading.classList.toggle("hidden", detected.length === 0);
+    detected.forEach((span, index) => {
+      const item = document.createElement("li");
+      const label = document.createElement("label");
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = selected.has(index);
+      checkbox.addEventListener("change", () => {
+        if (checkbox.checked) selected.add(index);
+        else selected.delete(index);
+        updateOutput();
+      });
+      const text = document.createElement("span");
+      text.textContent = `${t(`privacy.${span.type}`)} → ${PRIVACY_PLACEHOLDERS[span.type]}`;
+      label.append(checkbox, text);
+      item.append(label);
+      suggestions.append(item);
+    });
+    updateOutput();
+  };
+  const updateOutput = () => {
+    output.value = applyPrivacyMasks(draft.value, chosenSpans()).trim();
+  };
+  draft.addEventListener("input", () => {
+    detected = detectSensitiveSpans(draft.value);
+    selected = new Set(detected.map((_, index) => index));
+    manual = [];
+    manualStatus.textContent = "";
+    render();
+  });
+  manualButton.addEventListener("click", () => {
+    const start = draft.selectionStart;
+    const end = draft.selectionEnd;
+    if (!Number.isInteger(start) || !Number.isInteger(end) || start === end) {
+      manualStatus.textContent = t("privacy.selectFirst");
+      return;
+    }
+    manual.push({ start, end, type: manualType.value, manual: true });
+    manualStatus.textContent = t("privacy.selectionAdded");
+    updateOutput();
+  });
+  const dispose = () => {
+    container.replaceChildren();
+    container.classList.add("hidden");
+  };
+  cancel.addEventListener("click", dispose);
+  accept.addEventListener("click", () => {
+    const spans = normalizePrivacySpans(chosenSpans());
+    const text = applyPrivacyMasks(draft.value, spans).trim();
+    dispose();
+    onConfirm({ text, masked: spans.length > 0 });
+  });
+  render();
+  draft.focus();
+}
+
+function clearPrivacyReview(containerId) {
+  const container = $(containerId);
+  if (container) {
+    container.replaceChildren();
+    container.classList.add("hidden");
+  }
+}
+
 /* ---------- Single check flow ---------- */
 let singleRevision = 0;
 let batchRevision = 0;
 let singleAbortController = null;
 let batchAbortController = null;
 let batchProgress = null;
+let batchMaskedIndices = new Set();
 
 function invalidateSingle() {
   singleRevision += 1;
@@ -1716,6 +1993,9 @@ function invalidateSingle() {
   $("signals").replaceChildren();
   $("tips").replaceChildren();
   $("safety-guidance").replaceChildren();
+  $("privacy-result-note").classList.add("hidden");
+  $("privacy-result-note").textContent = "";
+  clearPrivacyReview("single-privacy-review");
   $("copy-status").textContent = "";
   $("feedback-status").textContent = "";
   $("feedback-form").classList.add("hidden");
@@ -1737,6 +2017,7 @@ function invalidateBatch() {
   $("batch-progress").classList.add("hidden");
   $("batch-empty").classList.remove("hidden");
   $("batch-tbody").replaceChildren();
+  $("csv-status").textContent = "";
   hideBanner($("batch-error"));
   setBusy($("btn-batch"), false, t("batch.run"));
 }
@@ -1745,7 +2026,7 @@ function updateCharCount() {
   $("char-count").textContent = `${Array.from($("message-input").value).length} / ${MAX_MESSAGE_LENGTH}`;
 }
 
-async function runCheck({ save = true } = {}) {
+async function runCheck({ save = true, masked = false } = {}) {
   invalidateSingle();
   const revision = singleRevision;
   const input = $("message-input");
@@ -1768,6 +2049,7 @@ async function runCheck({ save = true } = {}) {
   try {
     const analysis = await postJson(API.analyze, { message }, { signal: controller.signal });
     if (revision !== singleRevision) return;
+    analysis.masked_input = masked;
     renderAnalysis(analysis, { save });
   } catch (failure) {
     if (failure && failure.offline) showOfflineBanner();
@@ -1794,6 +2076,51 @@ function updateBatchCount() {
   $("batch-count").textContent = count === 1
     ? t("batch.count.one", { chars: characters.toLocaleString() })
     : t("batch.count.many", { n: count, chars: characters.toLocaleString() });
+}
+
+function clearBatchPrivacyReview() {
+  const container = $("batch-privacy-review");
+  container.replaceChildren();
+  container.classList.add("hidden");
+}
+
+function renderBatchPrivacyReview() {
+  const container = $("batch-privacy-review");
+  const messages = parseBatchInput();
+  container.replaceChildren();
+  container.classList.toggle("hidden", messages.length === 0);
+  messages.forEach((message, index) => {
+    const entry = document.createElement("section");
+    entry.className = "batch-review-entry";
+    const heading = document.createElement("h3");
+    heading.textContent = t("privacy.batchEntry", { n: index + 1 });
+    const status = document.createElement("p");
+    status.className = "hint";
+    status.textContent = batchMaskedIndices.has(index) ? t("privacy.batchMasked") : t("privacy.batchUnmasked");
+    const review = document.createElement("div");
+    review.className = "privacy-review hidden";
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "btn secondary";
+    button.textContent = t("privacy.reviewBatchEntry", { n: index + 1 });
+    button.addEventListener("click", () => {
+      buildPrivacyReview(review, message, ({ text, masked }) => {
+        const updated = parseBatchInput();
+        if (index >= updated.length) return;
+        updated[index] = text;
+        $("batch-input").value = updated.join("\n");
+        invalidateBatch();
+        updateBatchCount();
+        if (masked) batchMaskedIndices.add(index);
+        else batchMaskedIndices.delete(index);
+        renderBatchPrivacyReview();
+        const announcement = $("batch-review-status");
+        announcement.textContent = t("privacy.batchApplied", { n: index + 1 });
+      });
+    });
+    entry.append(heading, status, button, review);
+    container.append(entry);
+  });
 }
 
 function showBatchProgress(done, total) {
@@ -1827,6 +2154,7 @@ async function runBatch() {
   invalidateBatch();
   const revision = batchRevision;
   const messages = parseBatchInput();
+  clearBatchPrivacyReview();
   const banner = $("batch-error");
   hideBanner(banner);
   if (!messages.length) {
@@ -1864,6 +2192,7 @@ async function runBatch() {
       updateBatchProgress(results.length, messages.length);
     }
     if (revision !== batchRevision) return;
+    results.forEach((analysis, index) => { analysis.masked_input = batchMaskedIndices.has(index); });
     lastBatchResults = results;
     renderBatch(results);
     $("batch-empty").classList.add("hidden");
@@ -1919,6 +2248,12 @@ function renderBatch(results) {
     messageCell.dataset.label = t("batch.col.message");
     messageCell.textContent = analysis.message;
     messageCell.title = analysis.message;
+    if (analysis.masked_input === true) {
+      const badge = document.createElement("span");
+      badge.className = "privacy-masked-badge";
+      badge.textContent = t("privacy.maskedBadge");
+      messageCell.append(badge);
+    }
     const verdictCell = document.createElement("td");
     verdictCell.dataset.label = t("batch.col.verdict");
     verdictCell.append(verdictPill(band));
@@ -1941,6 +2276,7 @@ function renderBatch(results) {
         pct: pct(analysis.spam_probability),
         score: scoreLabel(analysis),
         signals: patterns,
+        privacy: analysis.masked_input === true ? t("privacy.maskedBadge") : "",
       }));
 
     row.append(numberCell, messageCell, verdictCell, riskCell, signalCell);
@@ -1978,6 +2314,7 @@ const COMPARE_EXAMPLE_NAMES = { otp: "OTP", delivery: "delivery", account: "bank
 let compareRevision = 0;
 let compareAbortController = null;
 let currentComparison = null;
+let compareMaskedInputs = [false, false];
 
 function updateCompareCount(side) {
   const value = $(side === "a" ? "compare-message-a" : "compare-message-b").value;
@@ -2021,6 +2358,10 @@ function renderComparisonCard(result, name, index) {
   const verdict = document.createElement("p");
   verdict.className = `compare-verdict ${bandView(bandOf(result)).css}`;
   verdict.textContent = `${t("compare.verdict")}: ${bandTitle(bandOf(result))} (${result.prediction || t("value.unavailable")})`;
+  const privacyNote = document.createElement("p");
+  privacyNote.className = "privacy-result-note";
+  privacyNote.textContent = result.masked_input === true ? t("privacy.maskedResult") : "";
+  privacyNote.classList.toggle("hidden", result.masked_input !== true);
   const details = document.createElement("dl");
   details.className = "compare-metadata";
   const rows = [
@@ -2063,7 +2404,7 @@ function renderComparisonCard(result, name, index) {
   const guidance = document.createElement("div");
   guidance.className = "compare-guidance";
   renderSafetyGuidance(guidance, result, `compare-${index}`);
-  card.append(heading, verdict, details, provenance, signalHeading, highlighted, signalList, tipsHeading, tips, guidance);
+  card.append(heading, verdict, privacyNote, details, provenance, signalHeading, highlighted, signalList, tipsHeading, tips, guidance);
   return card;
 }
 
@@ -2121,6 +2462,7 @@ function comparisonSummaryText(comparison) {
     lines.push(`${t("compare.interpretation")}: ${scoreLabel(result)}`);
     lines.push(`${t("compare.modelVersion")}: ${modelContextText(result)}`);
     lines.push(`${t("compare.thresholds")}: ${pct(validFraction(result.decision_threshold))} / ${pct(validFraction(result.suspicious_threshold))}`);
+    if (result.masked_input === true) lines.push(t("privacy.maskedResult"));
     const provenance = resultMatchesLoadedModel(result) && modelInfo.data_note
       ? `${modelInfo.data_note}${modelInfo.warnings.length ? ` ${modelInfo.warnings.join(" ")}` : ""}`
       : t("model.provenance.unavailable");
@@ -2159,6 +2501,8 @@ async function runComparison() {
   const leftInput = $("compare-message-a");
   const rightInput = $("compare-message-b");
   const messages = [leftInput.value.trim(), rightInput.value.trim()];
+  clearPrivacyReview("compare-review-a");
+  clearPrivacyReview("compare-review-b");
   const banner = $("compare-error");
   if (messages.some((message) => !message)) {
     showBanner(banner, t("compare.error.empty"));
@@ -2183,6 +2527,7 @@ async function runComparison() {
       || data.results.some((result, index) => !result || result.message !== messages[index])) {
       throw new Error(t("compare.error.failed"));
     }
+    data.results.forEach((result, index) => { result.masked_input = compareMaskedInputs[index]; });
     renderComparison(data.results);
   } catch (failure) {
     if (failure && failure.offline) showOfflineBanner();
@@ -2215,7 +2560,30 @@ function initComparison() {
   for (const side of ["a", "b"]) {
     $(`compare-message-${side}`).addEventListener("input", () => {
       invalidateComparison();
+      compareMaskedInputs[side === "a" ? 0 : 1] = false;
+      clearPrivacyReview(`compare-review-${side}`);
       updateCompareCount(side);
+    });
+    $(`btn-compare-review-${side}`).addEventListener("click", () => {
+      const input = $(`compare-message-${side}`);
+      const message = input.value.trim();
+      if (!message) {
+        showBanner($("compare-error"), t("compare.error.empty"));
+        input.focus();
+        return;
+      }
+      if (Array.from(message).length > MAX_MESSAGE_LENGTH) {
+        showBanner($("compare-error"), t("compare.error.tooLong", {
+          n: side.toUpperCase(), count: Array.from(message).length,
+        }));
+        return;
+      }
+      invalidateComparison();
+      buildPrivacyReview($(`compare-review-${side}`), message, ({ text, masked }) => {
+        input.value = text;
+        compareMaskedInputs[side === "a" ? 0 : 1] = masked;
+        updateCompareCount(side);
+      });
     });
     updateCompareCount(side);
   }
@@ -2225,6 +2593,9 @@ function initComparison() {
     const left = $("compare-message-a");
     const right = $("compare-message-b");
     [left.value, right.value] = [right.value, left.value];
+    compareMaskedInputs.reverse();
+    clearPrivacyReview("compare-review-a");
+    clearPrivacyReview("compare-review-b");
     updateCompareCount("a");
     updateCompareCount("b");
   });
@@ -2232,6 +2603,9 @@ function initComparison() {
     invalidateComparison();
     $("compare-message-a").value = "";
     $("compare-message-b").value = "";
+    compareMaskedInputs = [false, false];
+    clearPrivacyReview("compare-review-a");
+    clearPrivacyReview("compare-review-b");
     updateCompareCount("a");
     updateCompareCount("b");
     $("compare-message-a").focus();
@@ -2244,6 +2618,9 @@ function initComparison() {
       invalidateComparison();
       $("compare-message-a").value = pair[0];
       $("compare-message-b").value = pair[1];
+      compareMaskedInputs = [false, false];
+      clearPrivacyReview("compare-review-a");
+      clearPrivacyReview("compare-review-b");
       updateCompareCount("a");
       updateCompareCount("b");
       $("compare-example-note").textContent = t("compare.exampleLoaded", {
@@ -2278,6 +2655,7 @@ function downloadBatchCsv() {
     t("summary.suspiciousThreshold"),
     t("batch.col.signals"),
     t("summary.model"),
+    t("privacy.batchColumn"),
   ];
   const rows = [header];
   lastBatchResults.forEach((analysis, index) => {
@@ -2291,7 +2669,8 @@ function downloadBatchCsv() {
       pct(analysis.decision_threshold),
       pct(analysis.suspicious_threshold),
       signalSummary(analysis),
-      String(analysis.model_version || modelInfo.model_version),
+      modelContextText(analysis),
+      analysis.masked_input === true ? t("privacy.batchMasked") : t("privacy.batchUnmasked"),
     ]);
   });
   // BOM so Excel opens UTF-8 (₱, Filipino text) correctly.
@@ -2320,6 +2699,24 @@ function initSingleCheck() {
     }
   });
   $("btn-check").addEventListener("click", () => runCheck());
+  $("btn-privacy-review").addEventListener("click", () => {
+    const message = input.value.trim();
+    if (!message) {
+      showBanner($("error-banner"), t("error.empty"));
+      input.focus();
+      return;
+    }
+    if (Array.from(message).length > MAX_MESSAGE_LENGTH) {
+      showBanner($("error-banner"), t("error.tooLong", { n: Array.from(message).length }));
+      return;
+    }
+    invalidateSingle();
+    buildPrivacyReview($("single-privacy-review"), message, ({ text, masked }) => {
+      input.value = text;
+      updateCharCount();
+      runCheck({ masked });
+    });
+  });
   $("btn-copy-summary").addEventListener("click", copySummary);
   $("feedback-form").addEventListener("submit", submitFeedback);
   $("btn-clear").addEventListener("click", () => {
@@ -2350,7 +2747,13 @@ function initSingleCheck() {
 
 function initBatchCheck() {
   const input = $("batch-input");
-  input.addEventListener("input", () => { invalidateBatch(); updateBatchCount(); });
+  input.addEventListener("input", () => {
+    invalidateBatch();
+    batchMaskedIndices.clear();
+    clearBatchPrivacyReview();
+    $("batch-review-status").textContent = "";
+    updateBatchCount();
+  });
   input.addEventListener("keydown", (event) => {
     if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
       event.preventDefault();
@@ -2358,6 +2761,10 @@ function initBatchCheck() {
     }
   });
   $("btn-batch").addEventListener("click", () => runBatch());
+  $("btn-batch-review").addEventListener("click", () => {
+    invalidateBatch();
+    renderBatchPrivacyReview();
+  });
   $("btn-csv").addEventListener("click", downloadBatchCsv);
   updateBatchCount();
   $("batch-empty").textContent = t("batch.empty");

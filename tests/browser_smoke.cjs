@@ -270,17 +270,87 @@ async function main() {
     await page.locator('#tab-history').click();
     await page.locator('#history-optin').check();
     await page.locator('#tab-check').click();
-    await page.locator('#message-input').fill('Opt-in history browser fixture.');
-    await page.locator('#btn-check').click();
+    await page.locator('#message-input').fill('Lunch costs ₱500 on 2026-10-21.');
+    await page.locator('#btn-privacy-review').click();
+    const emptyPrivacyReview = page.locator('#single-privacy-review');
+    await emptyPrivacyReview.waitFor({ state: 'visible' });
+    if (!(await emptyPrivacyReview.locator('.privacy-none').textContent()).includes('No likely')) throw new Error('privacy preview did not explain an empty detection set');
+    await emptyPrivacyReview.getByRole('button', { name: 'Cancel review' }).click();
+    if (await page.locator('#message-input').inputValue() !== 'Lunch costs ₱500 on 2026-10-21.') {
+      throw new Error('cancelling a preview changed the source message');
+    }
+    const privateFixture = '😀 OTP is 123456. Call 0917-123-4567 or email user@example.test. Reference no: TX-12345; amount ₱500 on 2026-10-21. Secret Name. <img src=x onerror=alert(1)>';
+    await page.locator('#message-input').fill(privateFixture);
+    await page.locator('#btn-privacy-review').click();
+    const privacyReview = page.locator('#single-privacy-review');
+    await privacyReview.waitFor({ state: 'visible' });
+    const maskedPreview = privacyReview.locator('textarea').nth(1);
+    const expectedMasked = '😀 OTP is [CODE]. Call [PHONE] or email [EMAIL]. Reference no: [REFERENCE]; amount ₱500 on 2026-10-21. Secret Name. <img src=x onerror=alert(1)>';
+    if (await maskedPreview.inputValue() !== expectedMasked) throw new Error('privacy preview did not mask contextual identifiers while preserving amounts, dates, Unicode, and untrusted text');
+    const otpSuggestion = privacyReview.locator('.privacy-suggestions input[type="checkbox"]').first();
+    await otpSuggestion.uncheck();
+    if (!(await maskedPreview.inputValue()).includes('OTP is 123456')) throw new Error('users could not reject an automated masking suggestion');
+    await otpSuggestion.check();
+    if (await maskedPreview.inputValue() !== expectedMasked) throw new Error('accepting a suggestion did not restore its placeholder');
+    if (await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)) throw new Error('privacy preview overflows the 360px viewport');
+    await page.locator('#btn-lang').click();
+    if (await privacyReview.isVisible()) throw new Error('language change did not discard temporary preview state');
+    if (await page.locator('#message-input').inputValue() !== privateFixture) throw new Error('discarding the preview changed the original editable message');
+    await page.locator('#btn-privacy-review').click();
+    if (!(await privacyReview.locator('h3').textContent()).includes('Privacy preview sa browser')) throw new Error('privacy preview did not use Taglish strings');
+    await page.locator('#btn-lang').click();
+    if (await privacyReview.isVisible()) throw new Error('switching language left stale translated review state open');
+    await page.locator('#btn-privacy-review').click();
+    if (!(await privacyReview.locator('h3').textContent()).includes('Local privacy preview')) throw new Error('English privacy preview copy did not render');
+    await privacyReview.locator('textarea').nth(0).waitFor({ state: 'visible' });
+    const manualDraft = privacyReview.locator('textarea').first();
+    const manualStart = privateFixture.indexOf('Secret Name');
+    await manualDraft.focus();
+    await manualDraft.evaluate((element, range) => element.setSelectionRange(range, range), manualStart);
+    for (let i = 0; i < 'Secret Name'.length; i += 1) await manualDraft.press('Shift+ArrowRight');
+    await privacyReview.locator('select').selectOption('reference');
+    await privacyReview.getByRole('button', { name: 'Mask selected text' }).click();
+    const expectedWithManual = expectedMasked.replace('Secret Name', '[REFERENCE]');
+    if (await maskedPreview.inputValue() !== expectedWithManual) throw new Error('manual keyboard-selectable masking did not update the exact preview');
+    await page.locator('#btn-theme').click();
+    if (await page.locator('html').getAttribute('data-theme') !== 'dark' || !(await privacyReview.isVisible())) throw new Error('privacy review did not remain usable in dark mode');
+    await page.locator('#btn-theme').click();
+    await page.setViewportSize({ width: 1280, height: 900 });
+    if (await privacyReview.evaluate((item) => item.getBoundingClientRect().width < 500)) throw new Error('desktop privacy preview is unexpectedly constrained');
+    await page.setViewportSize({ width: 360, height: 800 });
+    await privacyReview.getByRole('button', { name: 'Analyze this reviewed text' }).click();
+    await page.locator('#result').waitFor({ state: 'visible' });
+    if (await page.locator('#message-input').inputValue() !== expectedWithManual) throw new Error('confirmed masked text did not replace the raw input');
+    if (analysisRequestBodies.at(-1).message !== expectedWithManual) throw new Error('API received text different from the confirmed masked preview');
+    if (JSON.stringify(analysisRequestBodies.at(-1)).includes('123456') || JSON.stringify(analysisRequestBodies.at(-1)).includes('0917-123-4567') || JSON.stringify(analysisRequestBodies.at(-1)).includes('Secret Name')) {
+      throw new Error('original sensitive values were sent after confirming the masked preview');
+    }
+    if (!(await page.locator('#privacy-result-note').textContent()).includes('privacy masks')) throw new Error('masked result was not identified as such');
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page.locator('#btn-copy-summary').click();
+    const copiedMaskedSummary = await page.evaluate(() => navigator.clipboard.readText());
+    if (!copiedMaskedSummary.includes('[PHONE]') || copiedMaskedSummary.includes('0917-123-4567') || copiedMaskedSummary.includes('Secret Name')) {
+      throw new Error('copied result summary did not match the masked text that was analyzed');
+    }
     await page.locator('#result').waitFor({ state: 'visible' });
     await page.locator('#tab-history').click();
     const historyEntry = page.locator('#history-list li').first();
     await historyEntry.waitFor({ state: 'visible' });
+    const savedPrivacyHistory = await page.evaluate(() => JSON.parse(localStorage.getItem('smsd_history_v1') || '[]'));
+    if (!savedPrivacyHistory[0].masked_input || savedPrivacyHistory[0].message !== expectedWithManual
+      || JSON.stringify(savedPrivacyHistory).includes('0917-123-4567') || JSON.stringify(savedPrivacyHistory).includes('Secret Name')) {
+      throw new Error('opt-in history did not retain only the submitted masked message');
+    }
     const historyLabel = await historyEntry.getAttribute('aria-label');
     if (!historyLabel || !historyLabel.includes('calibrated spam score') || /\{[^}]+\}/.test(historyLabel)) {
       const markup = await historyEntry.evaluate((item) => item.outerHTML);
       throw new Error(`history accessible label is incomplete: ${historyLabel}; ${markup}`);
     }
+    if (!(await historyEntry.textContent()).includes('Masked before analysis')) throw new Error('history did not label the masked result');
+    await historyEntry.click();
+    await page.locator('#result').waitFor({ state: 'visible' });
+    if (!(await page.locator('#privacy-result-note').textContent()).includes('privacy masks')) throw new Error('reopened history lost masked result context');
+    await page.locator('#tab-history').click();
     page.on('dialog', (dialog) => dialog.accept());
     await page.locator('#btn-clear-history').click();
     if (await page.locator('#history-list li').count()) throw new Error('clear history did not delete saved entries');
@@ -337,6 +407,23 @@ async function main() {
     }
     if (Object.keys(batchRequestBodies.at(-1)).join(',') !== 'messages') {
       throw new Error('batch/comparison request included checklist answers');
+    }
+    await page.locator('#btn-compare-clear').click();
+    await page.locator('#compare-message-a').fill('Your OTP is 987654. Call 0917-123-4567.');
+    await page.locator('#compare-message-b').fill('Contact me at private.user@example.test.');
+    await page.locator('#btn-compare-review-a').click();
+    await page.locator('#compare-review-a').getByRole('button', { name: 'Analyze this reviewed text' }).click();
+    await page.locator('#btn-compare-review-b').click();
+    await page.locator('#compare-review-b').getByRole('button', { name: 'Analyze this reviewed text' }).click();
+    const expectedCompareA = 'Your OTP is [CODE]. Call [PHONE].';
+    const expectedCompareB = 'Contact me at [EMAIL].';
+    await page.locator('#btn-compare-run').click();
+    await page.locator('#compare-result-cards').waitFor({ state: 'visible' });
+    if (JSON.stringify(batchRequestBodies.at(-1).messages) !== JSON.stringify([expectedCompareA, expectedCompareB])) {
+      throw new Error('comparison did not submit exactly the two independently reviewed texts');
+    }
+    if ((await page.locator('#compare-result-cards .privacy-result-note').evaluateAll((items) => items.filter((item) => !item.classList.contains('hidden')).length)) !== 2) {
+      throw new Error('comparison cards did not identify both masked results');
     }
     await page.setViewportSize({ width: 1280, height: 900 });
     const desktopColumns = await page.locator('#compare-result-cards').evaluate((item) => getComputedStyle(item).gridTemplateColumns.split(' ').length);
@@ -407,6 +494,34 @@ async function main() {
     const savedHistory = await page.evaluate(() => JSON.parse(localStorage.getItem('smsd_history_v1') || '[]'));
     if (savedHistory.some((entry) => Object.keys(entry).some((key) => /guidance|checklist|answer/i.test(key)))) {
       throw new Error('checklist data was stored in opt-in history');
+    }
+
+    await page.locator('#tab-batch').click();
+    await page.locator('#batch-input').fill('Your OTP is 246810 and reference no: REF-98765.\nOrdinary delivery update for today.');
+    await page.locator('#btn-batch-review').click();
+    await page.locator('#batch-privacy-review').waitFor({ state: 'visible' });
+    await page.locator('#batch-privacy-review .batch-review-entry').first().getByRole('button', { name: 'Review message 1' }).click();
+    await page.locator('#batch-privacy-review .batch-review-entry').first().locator('.privacy-review').getByRole('button', { name: 'Analyze this reviewed text' }).click();
+    const expectedBatchMasked = 'Your OTP is [CODE] and reference no: [REFERENCE].';
+    if (await page.locator('#batch-input').inputValue() !== `${expectedBatchMasked}\nOrdinary delivery update for today.`) {
+      throw new Error('batch review did not replace only the confirmed entry');
+    }
+    await page.locator('#btn-batch').click();
+    await page.locator('#batch-results').waitFor({ state: 'visible' });
+    await page.locator('#batch-tbody tr[aria-label]').first().waitFor({ state: 'visible' });
+    if (JSON.stringify(batchRequestBodies.at(-1).messages) !== JSON.stringify([expectedBatchMasked, 'Ordinary delivery update for today.'])) {
+      throw new Error('batch submitted an original sensitive value or changed an unreviewed entry');
+    }
+    if (!(await page.locator('#batch-tbody tr').first().textContent()).includes('Masked before analysis')) {
+      throw new Error(`batch result did not identify the masked entry: ${await page.locator('#batch-tbody tr').first().evaluate((row) => row.outerHTML)}; error=${await page.locator('#batch-error').textContent()}; request=${JSON.stringify(batchRequestBodies.at(-1))}`);
+    }
+    const [maskedBatchDownload] = await Promise.all([
+      page.waitForEvent('download'),
+      page.locator('#btn-csv').click(),
+    ]);
+    const maskedCsv = await fs.readFile(await maskedBatchDownload.path(), 'utf8');
+    if (!maskedCsv.includes('Masked before analysis') || !maskedCsv.includes('[REFERENCE]') || maskedCsv.includes('246810') || maskedCsv.includes('REF-98765')) {
+      throw new Error('batch export did not reflect only the masked message text and status');
     }
 
     const touchSizes = await page.locator('.btn, .tab, .example-chip, #history-optin, .guidance-option, .safety-guidance > summary').evaluateAll((items) =>
