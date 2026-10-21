@@ -61,7 +61,7 @@ the data needed for an independently reproducible evaluation.
 | `GET /health`, `GET /ready` | Liveness; readiness (loads and validates the model) |
 | `GET /model-info` | Version, threshold, risk bands, provenance, caveats |
 | `POST /predict` | Label, score with a `probability_calibrated` indicator, flags, threshold |
-| `POST /analyze`, `POST /analyze/batch` | Adds risk band and highlighted signals; batch takes up to 50 |
+| `POST /analyze`, `POST /analyze/batch` | Adds risk band, highlighted signals, model version, and both risk thresholds per result; batch takes up to 50 |
 | `POST /feedback` | Optional anonymous label correction, off by default; never accepts message text |
 
 ```bash

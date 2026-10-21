@@ -31,8 +31,10 @@ pip install -r requirements.txt -c constraints.txt
 is a reproduction aid, not a compatibility promise for other platforms; the
 bounded ranges in `pyproject.toml` are the package contract. Requirements files
 mirror runtime and development dependencies for Docker and existing workflows.
-The wheel currently contains Python packages, not the root data and web
-assets; run from a checkout or use Docker for a complete service deployment.
+The wheel includes the web UI assets inside the `api` package, so an installed
+wheel can serve the complete UI outside the source checkout. Root datasets and
+model artifacts are intentionally not packaged; supply a trusted model through
+`SMSD_MODEL_PATH` or the documented working-directory model location.
 
 For a reproducible no-corpus demo, `make demo` uses only tracked synthetic CSV
 fixtures, writes an ignored candidate at `models/demo_synthetic.pkl`, runs the
@@ -74,6 +76,10 @@ python -m src.evaluate              # held-out metrics, threshold sweep, synthet
   only after checking fitted vectorizer settings and input columns; a version
   label alone does not establish compatibility. Incompatible feature modes or
   schemas still fail readiness.
+- Each analysis result carries its own model version, decision threshold, and
+  suspicious-band threshold. The UI, copied summary, and batch CSV use these
+  per-result values, so delayed `/model-info` metadata cannot relabel an existing
+  result.
 - The API resolves `SMSD_MODEL_PATH` at startup; when it is unset, code defaults
   to `models/spam_detector_v1.pkl`. Check the running instance with
   `GET /model-info` because a local file or candidate training run does not

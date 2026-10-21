@@ -34,6 +34,7 @@ function analysis(message) {
     probability: 0.82,
     probability_calibrated: true,
     decision_threshold: 0.6,
+    suspicious_threshold: 0.4,
     margin: 0.22,
     confidence: 'high',
     risk_band: 'likely_scam',
@@ -70,10 +71,10 @@ async function main() {
     await page.route('**/model-info', async (route) => {
       await new Promise((resolve) => { releaseModelInfo = resolve; });
       await route.fulfill({ json: {
-        model_version: 'browser-fixture-v1',
-        decision_threshold: 0.6,
-        suspicious_threshold: 0.4,
-        bands: { likely_scam: 0.6, suspicious: 0.4, looks_safe: 0 },
+        model_version: 'late-metadata-model',
+        decision_threshold: 0.9,
+        suspicious_threshold: 0.8,
+        bands: { likely_scam: 0.9, suspicious: 0.8, looks_safe: 0 },
         data_note: 'Synthetic browser fixture only.',
         probability_calibrated: false,
         feedback_enabled: false,
@@ -110,6 +111,19 @@ async function main() {
     await page.waitForTimeout(50);
     if ((await page.locator('#risk-meter').getAttribute('aria-label')) !== 'Calibrated spam score') {
       throw new Error('late model-info response overwrote the calibration wording of the displayed result');
+    }
+    if (!(await page.locator('#model-version').textContent()).includes('browser-fixture-v1')) {
+      throw new Error('late model-info response overwrote the result model version');
+    }
+    if (!(await page.locator('#model-thresholds').textContent()).includes('60%')) {
+      throw new Error('late model-info response overwrote the result thresholds');
+    }
+    const resultBands = await page.locator('#risk-meter').evaluate((meter) => ({
+      likely: meter.style.getPropertyValue('--scam'),
+      suspicious: meter.style.getPropertyValue('--suspect'),
+    }));
+    if (resultBands.likely !== '60%' || resultBands.suspicious !== '40%') {
+      throw new Error(`meter zones did not use the analysis thresholds: ${JSON.stringify(resultBands)}`);
     }
     if ((await page.locator('#history-list li').count()) !== 0) throw new Error('history must start opt-in and empty');
 
@@ -186,6 +200,9 @@ async function main() {
     const csv = await fs.readFile(await download.path(), 'utf8');
     if (!csv.includes("'=SUM(1,1) \"\"quoted\"\"")) throw new Error('CSV did not protect formula-like SMS content and escape quotes');
     if (!csv.includes('calibrated spam score')) throw new Error('CSV omitted the score interpretation');
+    if (!csv.includes('60%') || !csv.includes('40%') || !csv.includes('browser-fixture-v1')) {
+      throw new Error('CSV omitted the result-specific thresholds or model version');
+    }
 
     const touchSizes = await page.locator('.btn, .tab, .example-chip, #history-optin').evaluateAll((items) =>
       items.filter((item) => item.getClientRects().length).map((item) => {

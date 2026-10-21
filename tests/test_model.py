@@ -164,6 +164,7 @@ def test_analyze_message_contract_and_threshold_consistency(trained_artifact):
         "probability_calibrated",
         "probability",
         "decision_threshold",
+        "suspicious_threshold",
         "margin",
         "confidence",
         "risk_band",
@@ -173,6 +174,7 @@ def test_analyze_message_contract_and_threshold_consistency(trained_artifact):
         "model_version",
     }
     assert result["decision_threshold"] == pytest.approx(bundle.threshold)
+    assert result["suspicious_threshold"] == pytest.approx(bundle.suspicious_threshold)
     assert result["probability_calibrated"] is True
     assert result["prediction"] == ("spam" if result["spam_probability"] >= bundle.threshold else "ham")
     assert result["margin"] == pytest.approx(abs(result["spam_probability"] - bundle.threshold))

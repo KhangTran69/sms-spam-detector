@@ -97,6 +97,7 @@ class AnalyzeResponse(BaseModel):
     probability_calibrated: bool
     probability: float
     decision_threshold: float
+    suspicious_threshold: float
     margin: float
     confidence: str
     risk_band: str

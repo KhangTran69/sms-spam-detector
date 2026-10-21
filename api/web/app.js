@@ -103,6 +103,8 @@ const I18N = {
     "summary.message": "Message",
     "summary.tips": "Tips",
     "summary.model": "Model version",
+    "summary.threshold": "Decision threshold",
+    "summary.suspiciousThreshold": "Suspicious band threshold",
     "signals.title": "Message signals",
     "signals.guidance": "These highlights mark text patterns the detector recognizes. They do not show which features influenced the model’s verdict. Links, numbers, amounts, urgency, and brand names can appear in legitimate messages too.",
     "signals.group": "Message text with detected text patterns",
@@ -249,6 +251,8 @@ const I18N = {
     "summary.message": "Mensahe",
     "summary.tips": "Mga tip",
     "summary.model": "Bersyon ng modelo",
+    "summary.threshold": "Threshold ng desisyon",
+    "summary.suspiciousThreshold": "Threshold ng suspicious band",
     "signals.title": "Mga signal sa mensahe",
     "signals.guidance": "Inilalagyan ng highlight ang mga pattern sa text na kilala ng detector. Hindi ito pinapakita kung aling features ang naka-impluwensya sa hatol ng modelo. Ang mga link, numero, halaga, salitang may pagmamadali, at brand ay maaari ring lumabas sa lehitimong mensahe.",
     "signals.group": "Text ng mensahe kasama ang mga natuklasang pattern",
@@ -752,7 +756,12 @@ function initTabs() {
 
 /* ---------- Model information ---------- */
 function renderModelInfo() {
-  $("model-version").textContent = `${t("model.versionPrefix")}${modelInfo.model_version}`;
+  const analysis = window.currentAnalysis;
+  const modelVersion = analysis && typeof analysis.model_version === "string"
+    ? analysis.model_version
+    : modelInfo.model_version;
+  const bands = bandsForAnalysis(analysis);
+  $("model-version").textContent = `${t("model.versionPrefix")}${modelVersion}`;
   $("model-note").textContent = modelInfo.data_note;
   const warning = $("model-warning");
   if (modelInfo.legacy_artifact) {
@@ -763,18 +772,25 @@ function renderModelInfo() {
     warning.classList.add("hidden");
   }
   $("model-thresholds").textContent = t("model.thresholds.line", {
-    threshold: pct(modelInfo.decision_threshold),
-    scam: pct(modelInfo.bands.likely_scam),
-    suspicious: pct(modelInfo.bands.suspicious),
+    threshold: pct(analysis ? bands.likely_scam : modelInfo.decision_threshold),
+    scam: pct(bands.likely_scam),
+    suspicious: pct(bands.suspicious),
   });
-  const displayedCalibration = window.currentAnalysis &&
-    typeof window.currentAnalysis.probability_calibrated === "boolean"
-    ? window.currentAnalysis.probability_calibrated
+  const displayedCalibration = analysis && typeof analysis.probability_calibrated === "boolean"
+    ? analysis.probability_calibrated
     : modelInfo.probability_calibrated;
   $("risk-meter").setAttribute(
     "aria-label",
     displayedCalibration ? t("meter.aria.calibrated") : t("meter.aria"),
   );
+}
+
+function bandsForAnalysis(analysis) {
+  if (!analysis || typeof analysis !== "object") return modelInfo.bands;
+  const likely = numberOr(analysis.decision_threshold, modelInfo.bands.likely_scam);
+  const suspicious = numberOr(analysis.suspicious_threshold, modelInfo.bands.suspicious);
+  if (suspicious < 0 || suspicious >= likely || likely > 1) return modelInfo.bands;
+  return { likely_scam: likely, suspicious, looks_safe: 0 };
 }
 
 async function loadModelInfo() {
@@ -795,10 +811,11 @@ async function loadModelInfo() {
 }
 
 /* ---------- Banding ---------- */
-function bandFromProbability(probability) {
+function bandFromProbability(probability, analysis = null) {
   const value = numberOr(probability, 0);
-  if (value >= modelInfo.bands.likely_scam) return "likely_scam";
-  if (value >= modelInfo.bands.suspicious) return "suspicious";
+  const bands = bandsForAnalysis(analysis);
+  if (value >= bands.likely_scam) return "likely_scam";
+  if (value >= bands.suspicious) return "suspicious";
   return "looks_safe";
 }
 
@@ -807,7 +824,7 @@ function bandOf(analysis) {
   if (analysis && typeof analysis.risk_band === "string" && BAND_VIEW[analysis.risk_band]) {
     return analysis.risk_band;
   }
-  return bandFromProbability(analysis ? analysis.spam_probability : 0);
+  return bandFromProbability(analysis ? analysis.spam_probability : 0, analysis);
 }
 
 function bandView(band) {
@@ -838,8 +855,9 @@ function renderMeter(analysis) {
   const value = Math.round(probability * 100);
   const band = bandOf(analysis);
   const meter = $("risk-meter");
-  meter.style.setProperty("--suspect", `${Math.round(modelInfo.bands.suspicious * 100)}%`);
-  meter.style.setProperty("--scam", `${Math.round(modelInfo.bands.likely_scam * 100)}%`);
+  const bands = bandsForAnalysis(analysis);
+  meter.style.setProperty("--suspect", `${Math.round(bands.suspicious * 100)}%`);
+  meter.style.setProperty("--scam", `${Math.round(bands.likely_scam * 100)}%`);
   meter.setAttribute("aria-valuenow", String(value));
   meter.setAttribute(
     "aria-label",
@@ -981,12 +999,14 @@ function buildSummaryText(analysis) {
     t("summary.header"),
     `${t("summary.verdict")}: ${bandTitle(bandOf(analysis))} (${analysis.prediction})`,
     `${t("summary.score")}: ${pct(analysis.spam_probability)} (${scoreLabel(analysis)})`,
+    `${t("summary.threshold")}: ${pct(analysis.decision_threshold)}`,
+    `${t("summary.suspiciousThreshold")}: ${pct(analysis.suspicious_threshold)}`,
     `${t("summary.signals")}: ${signalSummary(analysis)}`,
     `${t("summary.message")}: ${typeof analysis.message === "string" ? analysis.message : ""}`,
   ];
   lines.push(`${t("summary.tips")}:`);
   for (const tip of buildTips(analysis)) lines.push(`- ${tip}`);
-  lines.push(`${t("summary.model")}: ${modelInfo.model_version}`);
+  lines.push(`${t("summary.model")}: ${analysis.model_version || modelInfo.model_version}`);
   lines.push(t("footer.synthetic"));
   return lines.join("\n");
 }
@@ -1029,6 +1049,7 @@ function renderAnalysis(analysis, { save = true } = {}) {
   renderTips(analysis);
   $("copy-status").textContent = "";
   window.currentAnalysis = analysis;
+  renderModelInfo();
   const feedbackForm = $("feedback-form");
   feedbackForm.classList.toggle("hidden", !modelInfo.feedback_enabled);
   $("feedback-status").textContent = "";
@@ -1145,6 +1166,7 @@ function addHistory(analysis, source = "single", { render = true } = {}) {
       model_version: String(analysis.model_version || modelInfo.model_version),
       risk_band: bandOf(analysis),
       decision_threshold: numberOr(analysis.decision_threshold, modelInfo.decision_threshold),
+      suspicious_threshold: numberOr(analysis.suspicious_threshold, modelInfo.suspicious_threshold),
       flags: Array.isArray(analysis.flags) ? analysis.flags : [],
       source,
     });
@@ -1202,7 +1224,9 @@ function renderHistory() {
   empty.textContent = historyEnabled ? t("history.empty") : t("history.offnote");
   $("btn-clear-history").disabled = entries.length === 0;
   for (const entry of entries) {
-    const band = BAND_VIEW[entry.risk_band] ? entry.risk_band : bandFromProbability(entry.spam_probability);
+    const band = BAND_VIEW[entry.risk_band]
+      ? entry.risk_band
+      : bandFromProbability(entry.spam_probability, entry);
     const timestamp = new Date(numberOr(entry.t, Date.now())).toLocaleString();
     const item = document.createElement("li");
     item.tabIndex = 0;
@@ -1545,6 +1569,8 @@ function downloadBatchCsv() {
     "Model prediction",
     t("batch.col.risk"),
     t("batch.col.scoreDescription"),
+    t("summary.threshold"),
+    t("summary.suspiciousThreshold"),
     t("batch.col.signals"),
     t("summary.model"),
   ];
@@ -1557,6 +1583,8 @@ function downloadBatchCsv() {
       String(analysis.prediction || ""),
       pct(analysis.spam_probability),
       scoreLabel(analysis),
+      pct(analysis.decision_threshold),
+      pct(analysis.suspicious_threshold),
       signalSummary(analysis),
       String(analysis.model_version || modelInfo.model_version),
     ]);

@@ -409,6 +409,7 @@ def _score_message(message: str, spam_probability: float, bundle: ModelBundle) -
         "probability_calibrated": bundle.metadata.get("probability_calibrated") is True,
         "probability": float(spam_probability if prediction == "spam" else 1.0 - spam_probability),
         "decision_threshold": float(bundle.threshold),
+        "suspicious_threshold": float(bundle.suspicious_threshold or 0.0),
         "margin": float(abs(spam_probability - bundle.threshold)),
         "confidence": confidence_label(spam_probability, bundle),
         "risk_band": risk_band(spam_probability, bundle),

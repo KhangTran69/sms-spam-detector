@@ -397,6 +397,7 @@ ANALYZE_KEYS = {
     "probability_calibrated",
     "probability",
     "decision_threshold",
+    "suspicious_threshold",
     "margin",
     "confidence",
     "risk_band",
@@ -417,6 +418,7 @@ def test_analyze_returns_full_contract_payload(client):
     assert body["probability_calibrated"] is False
     assert body["probability"] == pytest.approx(0.93)
     assert body["decision_threshold"] == pytest.approx(DECISION_THRESHOLD)
+    assert body["suspicious_threshold"] == pytest.approx(0.4)
     assert body["margin"] == pytest.approx(abs(0.93 - DECISION_THRESHOLD))
     assert body["confidence"] == "medium"
     assert body["risk_band"] == "likely_scam"
@@ -466,6 +468,7 @@ def test_analyze_with_real_sklearn_pipeline():
     assert body["prediction"] in {"ham", "spam"}
     assert 0.0 <= body["spam_probability"] <= 1.0
     assert body["decision_threshold"] == pytest.approx(0.70)
+    assert body["suspicious_threshold"] == pytest.approx(0.30)
 
 
 # ---------------------------------------------------------------------------

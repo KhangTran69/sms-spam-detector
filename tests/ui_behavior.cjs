@@ -165,6 +165,13 @@ assert.match(run('t("examples.status", {kind: t("examples.scamKind"), index: 1, 
   run('window.currentAnalysis = {probability_calibrated:true}; modelInfo.probability_calibrated = false; lang = "en"; renderModelInfo()');
   assert.equal(run('$("risk-meter").getAttribute("aria-label")'), 'Calibrated spam score',
     'late metadata rendering must not overwrite the displayed result interpretation');
+  run('modelInfo.model_version = "late-model"; modelInfo.decision_threshold = 0.9; modelInfo.suspicious_threshold = 0.8; modelInfo.bands = {likely_scam:0.9,suspicious:0.8,looks_safe:0}; window.currentAnalysis = {model_version:"result-model", decision_threshold:0.65, suspicious_threshold:0.35, probability_calibrated:true, spam_probability:0.7, prediction:"spam", risk_band:"likely_scam"}; renderModelInfo(); renderMeter(window.currentAnalysis)');
+  assert.match(run('$("model-version").textContent'), /result-model/);
+  assert.match(run('$("model-thresholds").textContent'), /65%/);
+  assert.match(run('$("model-thresholds").textContent'), /35%/);
+  assert.match(run('buildSummaryText(window.currentAnalysis)'), /Model version: result-model/);
+  assert.match(run('buildSummaryText(window.currentAnalysis)'), /Decision threshold: 65%/);
+  assert.match(run('buildSummaryText(window.currentAnalysis)'), /Suspicious band threshold: 35%/);
   run('historyEnabled = true; modelInfo.model_version = "m1"; addHistory({message:"fixture", prediction:"spam", spam_probability:0.9, probability_calibrated:true, model_version:"m1", risk_band:"likely_scam"}, "single", {render:false}); var savedEntry = loadHistory()[0]');
   assert.equal(run('savedEntry.probability_calibrated'), true, 'history must preserve score calibration state');
   assert.equal(run('savedEntry.model_version'), 'm1', 'history must preserve model version');
