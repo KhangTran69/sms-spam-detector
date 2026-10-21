@@ -54,8 +54,91 @@ Set a deletion date at collection time, review access periodically, and delete
 the raw export, masked rows, backups, and derived model/evaluation artifacts
 when consent is withdrawn or retention expires. Keep the consent mapping and
 deletion log separately from message data. Record only aggregate counts in
-public reports. The CSV's `source_file` and `group` metadata must never contain
-names, phone numbers, or other donor identifiers.
+public reports. `source_file` and `group` metadata must never contain names,
+phone numbers, or other direct identifiers. Opaque donor/campaign pseudonyms
+may appear in the restricted CSV for split isolation, but must not appear in
+public reports; the loader's reports retain group counts and fingerprints only.
+
+### Local intake preflight
+
+Start from the blank [consented SMS intake template](../data/templates/consented_ph_sms_template.csv)
+in an encrypted workspace outside Git. Keep the reversible consent mapping and
+withdrawal log in a separate restricted register. The CSV's `consent_record_id`
+must be an opaque pseudonym from that register; `group` must be a separate
+donor/campaign pseudonym used for split isolation. Do not put names, phones,
+emails, or account identifiers in either value. Record only the consent version,
+scope, consent date, and retention deadline needed to confirm eligibility.
+The training manifest replaces local paths with a role plus source-hash prefix;
+the full hash is retained for integrity and reproducibility checks.
+
+After two reviewers independently label each row, fill in both reviewer IDs
+and labels plus the adjudicated label. If reviewers disagree, a third,
+independent `adjudicator_id` is required. Cross-check `consent_verified` and
+`consent_active` against the restricted register before setting them to `true`;
+these columns are an operator attestation, not proof that consent exists.
+Choose `consent_scope` as `training`, `evaluation`, or
+`training_and_evaluation`. Never include a live OTP. Mask URLs as `URLTOKEN`,
+phone numbers as `PHONETOKEN`, email addresses as `EMAILTOKEN`, and personal or
+account numbers as the appropriate tokens before running preflight.
+
+Run the local validator from the repository root using the protected CSV path:
+
+```bash
+python -m src.consented_data /secure/workspace/consented_batch.csv --purpose training
+```
+
+It reports row totals, label/language/category counts, group count, and only
+CSV row numbers plus rule codes for failures. It does not print SMS text or
+matched values. A pass catches common residual phones, emails, URLs, long
+numeric codes, consent that does not cover the selected use, missing/revoked/
+expired consent declarations, incomplete review, and unsafe identifiers. It
+cannot reliably detect names or prove that consent or masking is genuine.
+Manually review the batch and verify the consent register before importing it.
+A failing intake exits non-zero. Keep real CSVs outside the repository in the
+encrypted workspace whenever possible. If a temporary local copy must sit
+inside the checkout, use an ignored `data/raw/` path and verify it with
+`git check-ignore -v <path>` and `git status --ignored --short` before any
+commit. Never pass real data to public CI.
+
+After preflight, use the checked CSV only from its protected location and write
+all outputs to a protected candidate directory. For a training batch, pass the
+approved base and consented supplement explicitly and keep the candidate
+separate from the serving artifact:
+
+```bash
+python -m src.train \
+  --data /secure/workspace/base.csv \
+  --supplement /secure/workspace/consented_training.csv \
+  --output /secure/workspace/candidates/consented-candidate.pkl
+```
+
+For a frozen evaluation batch, preflight it with `--purpose evaluation`, then
+evaluate it once against the candidate without using it for threshold selection:
+
+```bash
+python -m src.evaluate \
+  --data /secure/workspace/base.csv \
+  --supplement /secure/workspace/consented_training.csv \
+  --model /secure/workspace/candidates/consented-candidate.pkl \
+  --holdout /secure/workspace/consented_holdout.csv \
+  --plot none \
+  --json-out /secure/workspace/reports/consented-evaluation.json
+```
+
+Use generic, non-identifying directory and file names. Candidate artifacts,
+reports, plots, and their backups can contain learned or aggregate information
+from the private source; restrict access and apply the same retention/deletion
+schedule. Do not point training at the serving artifact path or promote a
+candidate on training success alone.
+
+When a participant withdraws or retention expires, use the opaque
+`consent_record_id` to remove their rows from every training and holdout source
+in the protected workspace; regenerate splits, candidate artifacts, manifests,
+plots, evaluation JSON, and backups from the remaining approved data. Record
+only the withdrawal date, deleted source identifiers, and derived-artifact
+versions in the separate audit log—never copy the withdrawn message into that
+log. Re-run preflight and leakage checks after deletion. Do not delete just the
+CSV row while leaving a model or report trained from it in service.
 
 Do not rely on "publicly posted" as consent for re-publishing someone's private
 messages. Do not scrape private groups or inboxes.
@@ -141,9 +224,9 @@ grouping/analysis):
 
 | Column | Type | Purpose |
 |---|---|---|
-| `source` | string | Provenance, e.g. `uci`, `synthetic_template`, `donor_2026`, `public_bank_alert_example`. |
-| `category` | string | Semantic group, e.g. `prize_scam`, `bank_impersonation`, `otp_legit`, `delivery`. |
-| `language` | string | `en`, `tl`, `taglish`, `mixed`; free text if unsure. |
+| `source` | string | Provenance code, e.g. `uci`, `synthetic_template`, `consented_batch_2026q4`. |
+| `category` | string | Semantic code, e.g. `prize_scam`, `bank_impersonation`, `otp_legit`, `delivery`; use `unknown` if unsure. |
+| `language` | string | Code such as `en`, `tl`, `taglish`, or `mixed`; use `unknown` if unsure. |
 | `labeling_confidence` | float | `0.0`–`1.0` per the scale above. |
 | `labeler` | string | Pseudonym of the labeler. |
 | `labeled_at` | string | ISO-8601 date. |

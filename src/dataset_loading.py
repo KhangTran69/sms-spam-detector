@@ -19,10 +19,12 @@ from src.dataset_schema import (  # noqa: F401
     DEFAULT_SUPPLEMENTS,
     DEFAULT_TEST_SIZE,
     DEFAULT_VAL_SIZE,
+    EMAIL_RE,
     GROUP_KEY_VERSION,
     IMBALANCE_WARN_RATIO,
     LABEL_ALIASES,
     METADATA_COLUMNS,
+    METADATA_TOKEN_RE,
     MIN_CLASS_COUNT,
     RAW_DIR,
     ROOT,
@@ -37,6 +39,11 @@ from src.dataset_schema import (  # noqa: F401
     _sha256,
     make_group_key,
 )
+from src.preprocess import PHONE_RE, URL_RE
+
+
+def _source_label(role: str) -> str:
+    return {"base": "base CSV", "supplement": "supplement CSV", "holdout": "holdout CSV"}.get(role, "dataset CSV")
 
 
 @dataclass
@@ -56,7 +63,8 @@ class FileRecord:
 
     def as_dict(self) -> dict[str, Any]:
         return {
-            "path": self.path,
+            # Do not leak a private workspace path into manifests or artifacts.
+            "path": f"{self.role}:{self.sha256[:12]}",
             "role": self.role,
             "sha256": self.sha256,
             "rows_in": self.rows_in,
@@ -127,21 +135,26 @@ def _load_one(
     min_class_count: int,
 ) -> Dataset:
     path = Path(path)
+    source_label = _source_label(role)
     df = _read_csv(path)
+    try:
+        source_hash = _sha256(path)
+    except OSError:
+        raise DatasetError(f"{source_label} cannot be hashed; keep the input available during preflight.") from None
     if df.empty:
-        raise DatasetError(f"{path}: CSV has columns but no data rows.")
+        raise DatasetError(f"{source_label} has columns but no data rows.")
     lookup = _column_lookup(df, path)
     message_column, label_column = _resolve_message_and_label_columns(lookup, path)
     metadata_columns = _resolve_metadata_columns(lookup)
 
     messages = df[message_column].astype(str).str.strip()
-    labels = _normalize_labels(df[label_column], path)
+    labels = _normalize_labels(df[label_column], source_label=source_label)
     blank_mask = messages.eq("")
     if blank_mask.any():
         row_numbers = (np.flatnonzero(blank_mask.to_numpy()) + 2).tolist()[:10]
         if strict:
             raise DatasetError(
-                f"{path}: {int(blank_mask.sum())} row(s) have a blank message (CSV data rows {row_numbers}). "
+                f"{source_label}: {int(blank_mask.sum())} row(s) have a blank message (CSV data rows {row_numbers}). "
                 "Remove or fix them; pass --lenient-data to drop them with a warning."
             )
         messages = messages[~blank_mask]
@@ -151,7 +164,7 @@ def _load_one(
     working["source"] = (
         df[metadata_columns["source"]].astype(str).str.strip().replace("", "unknown")
         if "source" in metadata_columns
-        else path.stem
+        else "unknown"
     )
     working["category"] = (
         df[metadata_columns["category"]].astype(str).str.strip().replace("", "unknown")
@@ -179,25 +192,31 @@ def _load_one(
         else "unknown"
     )
     if not working["data_kind"].isin(["synthetic", "public", "consented", "real", "unknown"]).all():
-        raise DatasetError(f"{path}: data_kind must be synthetic, public, consented, real, or unknown.")
-    working["source_file"] = path.name
+        raise DatasetError(f"{source_label}: data_kind must be synthetic, public, consented, real, or unknown.")
+    for column in ("source", "category", "language"):
+        invalid = ~working[column].astype(str).str.fullmatch(METADATA_TOKEN_RE)
+        if invalid.any():
+            rows = (np.flatnonzero(invalid.to_numpy()) + 2).tolist()[:10]
+            raise DatasetError(
+                f"{source_label}: {column} metadata must use short category codes; invalid CSV data rows {rows}."
+            )
+    working["source_file"] = f"{role}:{source_hash[:12]}"
     if "group" in metadata_columns:
         working["_provided_group"] = df[metadata_columns["group"]].astype(str).str.strip().replace("", "unknown")
     else:
         working["_provided_group"] = "unknown"
-
     # Remove leading/trailing whitespace variants before duplicate detection.
     working["message"] = working["message"].str.strip()
     working = working[working["message"].ne("")].reset_index(drop=True)
     if working.empty:
-        raise DatasetError(f"{path}: no usable rows after dropping blank messages.")
+        raise DatasetError(f"{source_label}: no usable rows after dropping blank messages.")
 
     working["_message_key"] = working["message"].map(_normalized_message_key)
     conflicts = working.groupby("_message_key")["label"].nunique()
     conflicting_messages = conflicts[conflicts > 1]
     if len(conflicting_messages):
         raise DatasetError(
-            f"{path}: {len(conflicting_messages)} message(s) have conflicting labels. "
+            f"{source_label}: {len(conflicting_messages)} message(s) have conflicting labels. "
             "Resolve the labels before training; duplicate text cannot be both ham and spam."
         )
 
@@ -218,48 +237,51 @@ def _load_one(
     class_counts = {label: int((working["label"] == label).sum()) for label in VALID_LABELS}
     if require_both_classes and 0 in class_counts.values():
         raise DatasetError(
-            f"{path}: training data must contain both ham and spam; found {class_counts}. "
+            f"{source_label}: training data must contain both ham and spam; found {class_counts}. "
             "Add labeled examples for the missing class (include legitimate OTPs/bank alerts as ham)."
         )
     if min_class_count > 0:
         for label, count in class_counts.items():
             if 0 < count < min_class_count:
                 raise DatasetError(
-                    f"{path}: class {label!r} has only {count} row(s); at least {min_class_count} are required "
+                    f"{source_label}: class {label!r} has only {count} row(s); at least {min_class_count} are required "
                     "to build a stratified split."
                 )
 
     warnings: list[str] = []
     if duplicates:
         warnings.append(
-            f"{path}: removed {duplicates} exact or normalized duplicate message(s) before splitting "
+            f"{source_label}: removed {duplicates} exact or normalized duplicate message(s) before splitting "
             f"({exact_duplicates} exact; Unicode NFKC, case-folding, and whitespace normalization; first occurrence kept)."
         )
     nonzero = [count for count in class_counts.values() if count > 0]
     if len(nonzero) == 2 and min(nonzero) > 0 and max(nonzero) / min(nonzero) > IMBALANCE_WARN_RATIO:
         warnings.append(
-            f"{path}: imbalanced classes {class_counts} (ratio {max(nonzero) / min(nonzero):.1f}:1). "
+            f"{source_label}: imbalanced classes {class_counts} (ratio {max(nonzero) / min(nonzero):.1f}:1). "
             "Metrics for the minority class will be noisy; consider collecting more examples."
         )
 
     frame = working[list(CANONICAL_COLUMNS)].reset_index(drop=True)
     provenance: dict[str, str] = {}
     for field_name in ("dataset_id", "dataset_version", "license", "collection_period"):
-        column = metadata_columns.get(field_name)
-        values = set(df[column].astype(str).str.strip()) - {"", "unknown"} if column else set()
+        provenance_column = metadata_columns.get(field_name)
+        values = set(df[provenance_column].astype(str).str.strip()) - {"", "unknown"} if provenance_column else set()
         if len(values) > 1:
-            raise DatasetError(f"{path}: {field_name} must be consistent across rows in one source file.")
-        provenance[field_name] = next(iter(values), "unknown")
+            raise DatasetError(f"{source_label}: {field_name} must be consistent across rows in one source file.")
+        value = next(iter(values), "unknown")
+        if value != "unknown" and (EMAIL_RE.search(value) or PHONE_RE.search(value) or URL_RE.search(value)):
+            raise DatasetError(f"{source_label}: {field_name} metadata must not contain contact details or URLs.")
+        provenance[field_name] = value
 
     record = FileRecord(
         path=str(path),
         role=role,
-        sha256=_sha256(path),
+        sha256=source_hash,
         rows_in=len(df),
         rows_loaded=len(frame),
         duplicates_removed=duplicates,
         class_counts=class_counts,
-        metadata_columns=sorted(metadata_columns.values()),
+        metadata_columns=sorted(metadata_columns),
         provenance=provenance,
         category_counts={str(key): int(value) for key, value in frame["category"].value_counts().items()},
         language_counts={str(key): int(value) for key, value in frame["language"].value_counts().items()},
@@ -327,13 +349,13 @@ def resolve_supplement_paths(
         if not path.exists():
             if strict:
                 raise DatasetError(
-                    f"Supplement CSV not found: {path}. Pass an existing file, or omit --supplement to use the defaults, "
-                    "or use --supplement none to train on the base dataset only."
+                    "Supplement CSV not found (private path omitted). Pass an existing file, or omit --supplement "
+                    "to use defaults, or use --supplement none to train on base data only."
                 )
-            warnings.append(f"Optional supplement not found and skipped: {path}")
+            warnings.append("Optional supplement not found; skipped (private path omitted).")
             continue
         if path.is_dir():
-            raise DatasetError(f"Supplement path is a directory, not a CSV: {path}")
+            raise DatasetError("Supplement path is a directory, not a CSV.")
         paths.append(path)
     return paths, warnings
 
@@ -439,7 +461,6 @@ def group_leakage_report(training: Dataset, holdout: Dataset) -> dict[str, Any]:
         "template_family_overlap_ratio": (
             round(len(overlapping_groups) / len(holdout_groups), 4) if holdout_groups else 0.0
         ),
-        "template_family_overlap_examples": overlapping_groups[:10],
     }
 
 
@@ -454,6 +475,8 @@ def dataset_manifest(dataset: Dataset, *, extra: dict[str, Any] | None = None) -
             "campaign_groups_kept_within_one_split": True,
             "threshold_tuned_on_validation_only": True,
             "message_text_included": False,
+            "private_source_paths_included": False,
+            "group_identifiers_included": False,
         },
     }
     if extra:

@@ -356,7 +356,7 @@ def test_smsd_model_path_env_override(monkeypatch, trained_artifact):
 
 def test_training_is_reproducible(trained_artifact, tmp_path):
     artifact, _ = trained_artifact
-    data_path = Path(artifact["training_config"]["data_path"])
+    data_path = make_tiny_dataset(tmp_path / "reproducible_data.csv")
     second_path = tmp_path / "second.pkl"
     second = train(
         data_path=data_path,
@@ -374,6 +374,34 @@ def test_training_is_reproducible(trained_artifact, tmp_path):
     assert second["threshold"] == pytest.approx(artifact["threshold"])
     assert second["split"] == artifact["split"]
     assert second["metrics"]["test_at_threshold"] == artifact["metrics"]["test_at_threshold"]
+
+
+def test_artifact_metadata_does_not_retain_private_source_paths(tmp_path):
+    import json
+
+    private_dir = tmp_path / "participant-khang-private"
+    private_dir.mkdir()
+    data_path = make_tiny_dataset(private_dir / "khang_sms_messages.csv")
+    artifact = train(
+        data_path=data_path,
+        model_path=tmp_path / "candidate.pkl",
+        supplement_path=None,
+        holdout_path=None,
+        val_size=0.2,
+        test_size=0.2,
+        random_state=7,
+        target_precision=0.5,
+        min_recall=0.0,
+        write_metadata=False,
+        verbose=False,
+    )
+    metadata = {key: value for key, value in artifact.items() if key != "model"}
+    serialized = json.dumps(metadata)
+
+    assert "participant-khang-private" not in serialized
+    assert "khang_sms_messages.csv" not in serialized
+    assert artifact["data_sources"][0]["path"].startswith("base:")
+    assert artifact["dataset"]["files"][0]["path"].startswith("base:")
 
 
 @pytest.mark.parametrize("kind, expected", [("synthetic", True), ("real", False), ("unknown", None)])

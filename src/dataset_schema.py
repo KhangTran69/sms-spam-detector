@@ -45,6 +45,8 @@ DEFAULT_SEED = 42
 GROUP_KEY_VERSION = "1"
 MIN_CLASS_COUNT = 2
 IMBALANCE_WARN_RATIO = 20.0
+METADATA_TOKEN_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
+EMAIL_RE = re.compile(r"(?i)(?<![\w.+-])[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
 
 
 class DatasetError(ValueError):
@@ -60,37 +62,38 @@ def _sha256(path: Path) -> str:
 
 
 def _read_csv(path: Path) -> pd.DataFrame:
-    if not path.exists():
-        raise DatasetError(
-            f"Dataset file not found: {path}. "
-            "Pass an existing CSV (label,message or Kaggle v1/v2 columns) or update the default path."
-        )
-    if path.is_dir():
-        raise DatasetError(f"{path} is a directory; pass individual CSV files instead.")
-    if path.stat().st_size == 0:
-        raise DatasetError(f"{path} is empty (0 bytes). Provide a CSV with at least a header and rows.")
     try:
+        if not path.exists():
+            raise DatasetError("Dataset file not found. Pass an existing CSV or update the configured path.")
+        if path.is_dir():
+            raise DatasetError("Dataset path is a directory; pass an individual CSV file instead.")
+        if path.stat().st_size == 0:
+            raise DatasetError("Dataset file is empty. Provide a CSV with at least a header and rows.")
         try:
             return pd.read_csv(path, encoding="utf-8-sig", dtype=str, keep_default_na=False)
         except UnicodeDecodeError:
             return pd.read_csv(path, encoding="latin-1", dtype=str, keep_default_na=False)
-    except pd.errors.EmptyDataError as exc:
-        raise DatasetError(f"{path} has no readable CSV header/rows: {exc}") from exc
-    except pd.errors.ParserError as exc:
-        raise DatasetError(f"{path} is not valid CSV: {exc}") from exc
+    except pd.errors.EmptyDataError:
+        raise DatasetError("Dataset has no readable CSV header or rows.") from None
+    except pd.errors.ParserError:
+        raise DatasetError("Dataset is not valid CSV.") from None
+    except DatasetError:
+        raise
+    except OSError:
+        raise DatasetError("Dataset cannot be accessed.") from None
 
 
-def _column_lookup(df: pd.DataFrame, path: Path) -> dict[str, str]:
+def _column_lookup(df: pd.DataFrame, path: Path | None = None) -> dict[str, str]:
     lookup: dict[str, str] = {}
     for column in df.columns:
         canonical = str(column).strip().lower().replace(" ", "_")
         if canonical in lookup:
-            raise DatasetError(f"{path}: duplicate column {canonical!r} after normalization; rename one of them.")
+            raise DatasetError("Dataset has duplicate columns after normalization; rename one of them.")
         lookup[canonical] = column
     return lookup
 
 
-def _resolve_message_and_label_columns(lookup: dict[str, str], path: Path) -> tuple[str, str]:
+def _resolve_message_and_label_columns(lookup: dict[str, str], path: Path | None = None) -> tuple[str, str]:
     if "label" in lookup and "message" in lookup:
         return "message", "label"
     if "label" in lookup and "text" in lookup:
@@ -101,10 +104,7 @@ def _resolve_message_and_label_columns(lookup: dict[str, str], path: Path) -> tu
         return "message", "class"
     if "target" in lookup and "message" in lookup:
         return "message", "target"
-    raise DatasetError(
-        f"{path}: could not find message/label columns. "
-        f"Found columns {list(lookup)}; accepted layouts are label+message, label+text, or Kaggle v1(label)+v2(message)."
-    )
+    raise DatasetError("Dataset is missing message/label columns for a recognized schema.")
 
 
 def _resolve_metadata_columns(lookup: dict[str, str]) -> dict[str, str]:
@@ -130,15 +130,14 @@ def _resolve_metadata_columns(lookup: dict[str, str]) -> dict[str, str]:
     return resolved
 
 
-def _normalize_labels(series: pd.Series, path: Path) -> pd.Series:
+def _normalize_labels(series: pd.Series, path: Path | None = None, *, source_label: str = "Dataset") -> pd.Series:
     raw = series.astype(str).str.replace("\ufeff", "", regex=False).str.strip().str.lower()
     raw = raw.str.replace(r"\s+", " ", regex=True)
     normalized = raw.map(LABEL_ALIASES)
     unknown = raw[normalized.isna()]
     if len(unknown):
-        counts = unknown.value_counts().head(10).to_dict()
         raise DatasetError(
-            f"{path}: unrecognized labels {counts}. "
+            f"{source_label} has {len(unknown)} unrecognized labels. "
             f"Allowed values: {sorted(set(LABEL_ALIASES))}; unknown rows must be fixed or removed."
         )
     return normalized.astype(str)

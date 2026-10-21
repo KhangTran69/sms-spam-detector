@@ -2,7 +2,7 @@
 
 Version: see `GET /model-info` (`model_version`, `artifact_schema_version`,
 `trained_at`) and the sidecar for the configured artifact. Owner: repository
-maintainers. Last reviewed: 2026-10-20.
+maintainers. Last reviewed: 2026-10-21.
 
 ## 1. What this model is
 

@@ -113,18 +113,24 @@ def _split_from_artifact(bundle: ModelBundle, dataset: Dataset, overrides: dict[
 
 
 def _data_hash_warnings(bundle: ModelBundle, dataset: Dataset) -> list[str]:
-    recorded = {
-        str(record.get("path")): str(record.get("sha256")) for record in bundle.metadata.get("data_sources", [])
-    }
+    recorded = list(bundle.metadata.get("data_sources", []))
     warnings: list[str] = []
-    for record in dataset.records:
-        expected = recorded.get(str(record.path))
-        if expected and expected != record.sha256:
+    if recorded and len(recorded) != len(dataset.records):
+        warnings.append("The number of current data sources differs from the training manifest.")
+    for index, record in enumerate(dataset.records):
+        if index >= len(recorded):
+            break
+        expected = recorded[index]
+        expected_role = expected.get("role")
+        expected_hash = expected.get("sha256")
+        if expected_role and expected_role != record.role:
+            warnings.append(f"Data source {index + 1} has a different role from the training manifest.")
+        elif expected_hash and str(expected_hash) != record.sha256:
             warnings.append(
-                f"Data changed since training: {record.path} sha256 differs from the artifact. "
+                f"Data source {index + 1} ({record.role}) differs from the training manifest hash. "
                 "Metrics may not reproduce the trained model's results; retrain before trusting this report."
             )
-    if recorded and not warnings:
+    if recorded and len(recorded) == len(dataset.records) and not warnings:
         warnings.append("Data files match the artifact hashes recorded at training time.")
     return warnings
 

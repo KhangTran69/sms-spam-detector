@@ -23,21 +23,24 @@ def import_dataset(input_path: str | Path, output_path: str | Path, *, input_for
     destination = Path(output_path).resolve()
     raw_root = (ROOT / "data" / "raw").resolve()
     if raw_root not in destination.parents:
-        raise DatasetError(f"Output must be inside ignored raw-data storage ({raw_root}).")
+        raise DatasetError("Output must be inside ignored raw-data storage.")
     if destination.exists():
-        raise DatasetError(f"Refusing to overwrite existing dataset: {destination}")
+        raise DatasetError("Refusing to overwrite an existing dataset.")
     if not source.is_file():
-        raise DatasetError(f"Input dataset not found: {source}")
+        raise DatasetError("Input dataset not found.")
 
     detected = input_format
     if detected == "auto":
         detected = "uci-tsv" if source.suffix.lower() in {".tsv", ".txt"} else "csv"
-    if detected == "uci-tsv":
-        frame = pd.read_csv(source, sep="\t", header=None, names=["label", "message"], dtype=str)
-    elif detected == "csv":
-        frame = pd.read_csv(source, dtype=str, keep_default_na=False, encoding="utf-8-sig")
-    else:
+    if detected not in {"uci-tsv", "csv"}:
         raise DatasetError("input_format must be auto, csv, or uci-tsv.")
+    try:
+        if detected == "uci-tsv":
+            frame = pd.read_csv(source, sep="\t", header=None, names=["label", "message"], dtype=str)
+        else:
+            frame = pd.read_csv(source, dtype=str, keep_default_na=False, encoding="utf-8-sig")
+    except (OSError, UnicodeError, pd.errors.ParserError, pd.errors.EmptyDataError):
+        raise DatasetError("Input dataset cannot be read as a valid CSV or TSV.") from None
     columns = {str(column).strip().lower(): column for column in frame.columns}
     if "label" in columns and "message" in columns:
         label_column, message_column = columns["label"], columns["message"]
@@ -45,7 +48,7 @@ def import_dataset(input_path: str | Path, output_path: str | Path, *, input_for
         label_column, message_column = columns["v1"], columns["v2"]
     else:
         raise DatasetError("Input must contain label/message or Kaggle v1/v2 columns.")
-    labels = _normalize_labels(frame[label_column], source)
+    labels = _normalize_labels(frame[label_column], source_label="public dataset import")
     messages = frame[message_column].astype(str).str.strip()
     if messages.eq("").any():
         raise DatasetError("Input contains blank messages; fix them before importing.")
@@ -55,7 +58,7 @@ def import_dataset(input_path: str | Path, output_path: str | Path, *, input_for
         {
             "label": labels,
             "message": messages,
-            "source": "UCI SMS Spam Collection",
+            "source": "uci_sms_spam_collection",
             "data_kind": "public",
             "dataset_id": "uci-sms-spam-collection-228",
             "dataset_version": "1.0",
@@ -77,8 +80,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--format", choices=("auto", "csv", "uci-tsv"), default="auto")
     args = parser.parse_args(argv)
-    output = import_dataset(args.input, args.output, input_format=args.format)
-    print(f"Imported public dataset to {output}; license: {UCI_LICENSE}; source: {UCI_URL}")
+    import_dataset(args.input, args.output, input_format=args.format)
+    print(f"Imported public dataset; license: {UCI_LICENSE}; source: {UCI_URL}")
     return 0
 
 

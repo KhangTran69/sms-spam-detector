@@ -1,1 +1,1 @@
-label,message,category,language,source,group,received_at,consent_id,consent_recorded_at,redaction_reviewed_by,labeler,labeled_at,second_labeler,second_label,labeling_confidence
+label,message,data_kind,source,category,language,group,consent_record_id,consent_verified,consent_active,consent_scope,consent_version,consent_date,retention_until,reviewer_a_id,reviewer_a_label,reviewer_b_id,reviewer_b_label,adjudicator_id,adjudicated_label

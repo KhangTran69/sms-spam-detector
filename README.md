@@ -83,6 +83,26 @@ pytest -q && ruff check . && ruff format --check . && mypy src api
 `make help` lists common commands. `python -m src.train --help` and
 `python -m src.evaluate --help` list every option.
 
+## Adding consented Philippine messages
+
+No consented Philippine messages are currently included. Use the blank
+[intake template](data/templates/consented_ph_sms_template.csv) only in an
+approved encrypted workspace, verify revocable consent and its permitted use,
+redact personal details, and have two reviewers label each message with an
+independent adjudicator for disagreements. Keep consent records separate from
+message data, apply a retention deadline, and remove derived artifacts when
+consent is withdrawn. Run the local-only preflight before using a batch:
+
+```bash
+python -m src.consented_data /secure/workspace/consented_batch.csv --purpose training
+```
+
+The preflight reports aggregate counts and row/rule codes only; it cannot prove
+consent or detect every identifier. Keep a campaign-separated evaluation batch
+out of training and threshold selection. See
+[docs/DATA_COLLECTION.md](docs/DATA_COLLECTION.md) for the full workflow and
+privacy limits.
+
 ## Documentation
 
 [Model card and limitations](docs/MODEL_CARD.md) ·

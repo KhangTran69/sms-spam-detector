@@ -1,9 +1,11 @@
 """Privacy and provenance regressions for evaluation reports."""
 
+from types import SimpleNamespace
+
 import pandas as pd
 
-from src.data import Dataset
-from src.evaluate import _errors, _length_strata, _provenance_banner
+from src.data import Dataset, FileRecord
+from src.evaluate import _data_hash_warnings, _errors, _length_strata, _provenance_banner
 
 
 def test_misclassification_records_never_contain_message_text() -> None:
@@ -38,3 +40,22 @@ def test_evaluation_banner_reflects_declared_provenance() -> None:
 def test_message_length_metrics_use_documented_codepoint_ranges() -> None:
     frame = pd.DataFrame({"message": ["a" * 70, "b" * 71, "c" * 161]})
     assert _length_strata(frame)["message_length_range"].tolist() == ["1-70", "71-160", "161+"]
+
+
+def test_artifact_hash_report_does_not_expose_private_source_paths() -> None:
+    record = FileRecord(
+        path="/secure/participant-name/private-messages.csv",
+        role="base",
+        sha256="current-hash",
+        rows_in=2,
+        rows_loaded=2,
+        duplicates_removed=0,
+    )
+    dataset = Dataset(pd.DataFrame(), records=[record])
+    bundle = SimpleNamespace(metadata={"data_sources": [{"role": "base", "path": "base:old", "sha256": "old-hash"}]})
+
+    warnings = _data_hash_warnings(bundle, dataset)
+
+    assert any("differs from the training manifest hash" in warning for warning in warnings)
+    assert "participant-name" not in str(warnings)
+    assert "private-messages.csv" not in str(warnings)

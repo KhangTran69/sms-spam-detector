@@ -186,7 +186,7 @@ def train(
         print("=== Dataset ===")
         print(
             f"rows={len(dataset)} classes={_class_counts(dataset)} groups={dataset.frame['group'].nunique()} "
-            f"files={[record.path for record in dataset.records]}"
+            f"files={[record.as_dict()['path'] for record in dataset.records]}"
         )
         for warning in dataset.warnings:
             print(f"warning: {warning}")
@@ -302,9 +302,9 @@ def train(
         "model_selection": selection.as_dict(),
         "calibration_method": "sigmoid CalibratedClassifierCV (5-fold, training split only)",
         "training_config": {
-            "data_path": str(Path(data_path)),
-            "supplement_paths": [str(path) for path in _supplement_paths_used(supplement_path)],
-            "holdout_path": str(holdout_path) if holdout_path else None,
+            "data_role": "base",
+            "supplement_count": len(_supplement_paths_used(supplement_path)),
+            "holdout_evaluated": holdout is not None,
             "val_size": val_size,
             "test_size": test_size,
             "random_state": random_state,
@@ -318,6 +318,7 @@ def train(
             "strict_data": strict_data,
         },
         "data_sources": [record.as_dict() for record in dataset.records],
+        "holdout_source": holdout.records[0].as_dict() if holdout and holdout.records else None,
         "dataset": dataset.summary(),
         "dataset_manifest": dataset_manifest(
             dataset,

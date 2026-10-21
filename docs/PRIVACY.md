@@ -85,6 +85,12 @@ history is being stored in the browser and clear it; see the UI's history panel.
 - Any **collected** dataset for retraining must be masked before storage; see
   [DATA_COLLECTION.md](DATA_COLLECTION.md). Real message data must never be
   committed to Git — only the synthetic Philippine CSVs are tracked.
+- The training manifest omits local directory paths and stores source roles,
+  row/coverage aggregates, and SHA-256 hashes. A serialized TF-IDF model still
+  contains learned vocabulary and weights derived from its training messages;
+  treat candidate and serving artifacts as restricted data, never commit them,
+  and rebuild/delete them when a contributing consent is withdrawn. A checksum
+  identifies bytes but does not make a pickle trustworthy.
 - Do not enable request-body logging, tracing of payloads, or crash-dump capture
   of request contents.
 

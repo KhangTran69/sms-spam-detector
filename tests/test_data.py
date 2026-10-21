@@ -90,6 +90,20 @@ def test_unknown_label_rejected(tmp_path):
         load_dataset(path)
 
 
+def test_invalid_label_error_never_echoes_values_or_private_paths(tmp_path):
+    private_path = tmp_path / "participant_khang" / "private_sms.csv"
+    private_path.parent.mkdir()
+    write_csv(private_path, [("Khang Tran 09171234567", "private body")])
+
+    with pytest.raises(DatasetError) as raised:
+        load_dataset(private_path)
+
+    assert "Khang Tran" not in str(raised.value)
+    assert "09171234567" not in str(raised.value)
+    assert "participant_khang" not in str(raised.value)
+    assert "private_sms.csv" not in str(raised.value)
+
+
 def test_blank_message_strict_and_lenient(tmp_path):
     path = write_csv(tmp_path / "blank.csv", [("ham", "hello"), ("spam", "   ")])
     with pytest.raises(DatasetError, match="blank message"):
@@ -172,6 +186,15 @@ def test_metadata_columns_are_preserved(tmp_path):
     assert frame.loc[0, "source"] == "consented_q1"
     assert frame.loc[0, "group"] == "otp-family"
     assert frame.loc[0, "labeling_confidence"] == "high"
+    assert dataset.records[0].as_dict()["path"].startswith("data:")
+
+
+def test_missing_source_provenance_is_not_inferred_from_private_filename(tmp_path):
+    path = tiny_training_csv(tmp_path / "donor_name_private_corpus.csv")
+    dataset = load_dataset(path)
+
+    assert dataset.frame["source"].eq("unknown").all()
+    assert "donor_name_private_corpus.csv" not in str(dataset.records[0].as_dict())
 
 
 def test_time_split_keeps_campaigns_disjoint_and_respects_date_order(tmp_path):
@@ -453,6 +476,39 @@ def test_holdout_exact_overlap_is_a_hard_error(tmp_path):
     holdout = load_dataset(holdout_path, role="holdout")
     with pytest.raises(DatasetError, match="leaks the answer"):
         group_leakage_report(training, holdout)
+
+
+def test_holdout_leakage_report_does_not_echo_private_group_identifiers(tmp_path):
+    training = load_dataset(
+        write_csv(
+            tmp_path / "training.csv",
+            [
+                ("ham", "training message alpha", "participant-alice-private"),
+                ("spam", "training scam beta", "scam-family"),
+            ],
+            columns=("label", "message", "group"),
+        ),
+        require_both_classes=False,
+        min_class_count=0,
+    )
+    holdout = load_dataset(
+        write_csv(
+            tmp_path / "holdout.csv",
+            [
+                ("ham", "different test message", "participant-alice-private"),
+                ("spam", "different scam", "test-family"),
+            ],
+            columns=("label", "message", "group"),
+        ),
+        role="holdout",
+        require_both_classes=False,
+        min_class_count=0,
+    )
+
+    report = group_leakage_report(training, holdout)
+
+    assert report["template_family_overlap"] == 1
+    assert "participant-alice-private" not in str(report)
 
 
 def test_repo_holdout_has_no_exact_leakage():
