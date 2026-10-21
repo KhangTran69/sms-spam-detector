@@ -78,6 +78,31 @@ assert.equal(run('csvCell("=SUM(1,1)")'), '"\'=SUM(1,1)"', 'formula-like text mu
 assert.equal(run('csvCell("  @SUM(1,1)")'), '"\'  @SUM(1,1)"', 'leading whitespace must not bypass formula protection');
 assert.equal(run(`csvCell(${JSON.stringify('\uFEFF=1+1')})`), '"\'\uFEFF=1+1"', 'Unicode BOM must not bypass formula protection');
 assert.match(run('t("examples.status", {kind: t("examples.scamKind"), index: 1, total: 20})'), /Loaded fictional scam message 1 of 20/);
+const privacyFixture = '😀 OTP is 123456. Call 0917-123-4567 or email user@example.test. Reference no: TX-12345; amount ₱500 on 2026-10-21.';
+const privacySpans = Array.from(run(`detectSensitiveSpans(${JSON.stringify(privacyFixture)})`), span => ({
+  type: span.type,
+  value: privacyFixture.slice(span.start, span.end),
+  start: span.start,
+  end: span.end,
+}));
+assert.deepEqual(privacySpans.map(span => [span.type, span.value]), [
+  ['code', '123456'], ['phone', '0917-123-4567'], ['email', 'user@example.test'], ['reference', 'TX-12345'],
+], 'privacy suggestions cover contextual codes, Philippine phones, email, and references while leaving ordinary amounts and dates alone');
+assert.equal(run(`applyPrivacyMasks(${JSON.stringify(privacyFixture)}, detectSensitiveSpans(${JSON.stringify(privacyFixture)}))`),
+  '😀 OTP is [CODE]. Call [PHONE] or email [EMAIL]. Reference no: [REFERENCE]; amount ₱500 on 2026-10-21.',
+  'Unicode offsets preserve surrounding text and replace only selected sensitive spans');
+assert.deepEqual(Array.from(run(`detectSensitiveSpans(${JSON.stringify('Payment of ₱500 due 2026-10-21; code word is ordinary here.')})`)), [],
+  'amounts, dates, and ordinary code wording do not trigger suggestions by themselves');
+assert.deepEqual(Array.from(run(`detectSensitiveSpans(${JSON.stringify('OTP code is 4321; transaction pending; 123456789012345.')})`), span => span.type), ['code'],
+  'OTP code phrasing is supported without masking unrelated status words or long digit strings');
+assert.deepEqual(Array.from(run(`detectSensitiveSpans(${JSON.stringify('OTP mo ay 4321. One-time PIN: 9876.')})`), span => span.type), ['code', 'code'],
+  'Taglish OTP wording and one-time PINs are detected locally');
+assert.equal(run(`applyPrivacyMasks("ABCDEFGHI", [{start:0,end:5,type:"reference"},{start:3,end:9,type:"phone",manual:true}])`),
+  '[PHONE]', 'overlapping selections collapse to one placeholder');
+assert.match(run('t("privacy.title")'), /Local privacy preview/);
+run('lang = "taglish"');
+assert.match(run('t("privacy.title")'), /Privacy preview sa browser/);
+run('lang = "en"');
 (async () => {
   run(`lang = "en";
     var lowScoreResult = {message:"private SMS fixture", spam_probability:0.05, risk_band:"looks_safe"};
@@ -291,9 +316,9 @@ assert.match(run('t("examples.status", {kind: t("examples.scamKind"), index: 1, 
   assert.equal(run('compareScoreInterpretation(left,{...right,probability_calibrated:false})'), false,
     'different calibration states cannot be compared directly');
   assert.equal(run('$ ("compare-signal-differences").childNodes.length'), 1, 'detected signal differences render');
-  assert.equal(run('$ ("compare-result-cards").childNodes[0].childNodes[5].childNodes.map(n => n.textContent).join("")'), '😀 <img src=x>',
+  assert.equal(run('$ ("compare-result-cards").childNodes[0].childNodes[6].childNodes.map(n => n.textContent).join("")'), '😀 <img src=x>',
     'comparison message content remains intact when safely highlighted');
-  assert.equal(run('$ ("compare-result-cards").childNodes[0].childNodes[5].childNodes.some(n => n.tagName === "img")'), false,
+  assert.equal(run('$ ("compare-result-cards").childNodes[0].childNodes[6].childNodes.some(n => n.tagName === "img")'), false,
     'untrusted message markup is never parsed as an element');
   run('renderComparison([left,{...right,model_version:"other-model"}])');
   assert.match(run('$ ("compare-summary").textContent'), /cannot be compared directly/);
@@ -322,5 +347,5 @@ assert.match(run('t("examples.status", {kind: t("examples.scamKind"), index: 1, 
   assert.equal(run('$("copy-status").textContent'), '', 'language changes clear stale copy status');
   assert.equal(busyCheckButton.textContent, 'Sinusuri…', 'busy labels change language immediately');
   run('setBusy(busyCheckButton, false, t("check.run"))');
-  assert.equal(busyCheckButton.textContent, 'I-check ang mensahe', 'busy buttons return to the translated idle label');
+  assert.equal(busyCheckButton.textContent, 'I-check ang mensahe ayon sa pagkakasulat', 'busy buttons return to the translated idle label');
 })().catch(error => { console.error(error); process.exitCode = 1; });

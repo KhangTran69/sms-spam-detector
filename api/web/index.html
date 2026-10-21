@@ -8,7 +8,7 @@
   <title>PH SMS Scam Detector</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>" />
   <link rel="manifest" href="/manifest.webmanifest" />
-  <link rel="stylesheet" href="/static/styles.css?v=ui10-safety-guidance-20261021" />
+  <link rel="stylesheet" href="/static/styles.css?v=ui11-privacy-preview-20261021" />
   <script>
     // Apply the saved theme before first paint to avoid a flash of the wrong theme.
     (function () {
@@ -76,11 +76,16 @@
           placeholder="e.g. Bank notice: Your account review is due. Visit bank-help.example to read more."></textarea>
         <p id="message-help" class="hint" data-i18n="check.help">At most 10,000 characters. Messages are analysed in memory and are
           never stored on the server.</p>
+        <div class="privacy-actions">
+          <button type="button" id="btn-privacy-review" class="btn secondary" data-i18n="privacy.review">Review sensitive details</button>
+          <span class="hint" data-i18n="privacy.optional">Optional: review and mask details before analysis.</span>
+        </div>
+        <div id="single-privacy-review" class="privacy-review hidden"></div>
         <div class="input-row">
           <span id="char-count" class="char-count">0 / 10000</span>
           <div class="buttons">
             <button type="button" id="btn-clear" class="btn ghost" data-i18n="check.clear">Clear</button>
-            <button type="button" id="btn-check" class="btn primary" data-i18n="check.run">Check message</button>
+            <button type="button" id="btn-check" class="btn primary" data-i18n="check.run">Check message as written</button>
           </div>
         </div>
         <div id="error-banner" class="error hidden" role="alert" aria-live="assertive"></div>
@@ -105,6 +110,7 @@
             </div>
           </div>
         </div>
+        <p id="privacy-result-note" class="privacy-result-note hidden"></p>
 
         <div class="card">
           <div class="meter-head">
@@ -175,6 +181,12 @@
             <button type="button" id="btn-batch" class="btn primary" data-i18n="batch.run">Check all</button>
           </div>
         </div>
+        <div class="privacy-actions batch-privacy-actions">
+          <button type="button" id="btn-batch-review" class="btn secondary" data-i18n="privacy.reviewBatch">Review messages individually</button>
+          <span class="hint" data-i18n="privacy.batchHelp">Choose which entries to mask before submitting; unreviewed entries stay unchanged.</span>
+        </div>
+        <div id="batch-privacy-review" class="batch-privacy-review hidden"></div>
+        <p id="batch-review-status" class="hint" role="status" aria-live="polite"></p>
         <div id="batch-error" class="error hidden" role="alert" aria-live="assertive"></div>
       </div>
 
@@ -227,6 +239,10 @@
             <p id="compare-help-b" class="hint" data-i18n="compare.inputHelp">Up to 10,000 characters. Text is sent to this detector's API for analysis.</p>
             <span id="compare-count-b" class="char-count">0 / 10000</span>
           </div>
+        </div>
+        <div class="compare-review-actions">
+          <div><button type="button" id="btn-compare-review-a" class="btn secondary" data-i18n="privacy.reviewA">Review Message A</button><div id="compare-review-a" class="privacy-review hidden"></div></div>
+          <div><button type="button" id="btn-compare-review-b" class="btn secondary" data-i18n="privacy.reviewB">Review Message B</button><div id="compare-review-b" class="privacy-review hidden"></div></div>
         </div>
         <div class="input-row">
           <div class="buttons">
@@ -290,6 +306,6 @@
     <p data-i18n="footer.synthetic">Checks using synthetic Philippine data are not proof of real-world accuracy.</p>
   </footer>
 
-  <script src="/static/app.js?v=ui10-safety-guidance-20261021"></script>
+  <script src="/static/app.js?v=ui11-privacy-preview-20261021"></script>
 </body>
 </html>

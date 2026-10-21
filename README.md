@@ -80,6 +80,18 @@ UI only. They use placeholders and reserved `.example` domains and are not
 training or evaluation data. The existing history feature remains opt-in and
 browser-local.
 
+The optional **Privacy Preview** runs in the browser before analysis. It suggests
+possible Philippine phone numbers, email addresses, context-labeled verification
+codes, and account or transaction references. Review each suggestion, reject
+false positives, or select additional text to mask manually. The preview shows
+the exact trimmed text that will be submitted. Confirming it replaces the
+message in the input with the reviewed version; only that version is sent. The
+same per-message review is available for comparison and batch inputs. Entries
+left unreviewed in a batch are submitted unchanged. Detection can miss personal
+details or suggest harmless text, and masking can change the detector's result;
+it does not guarantee anonymization. The ordinary analysis actions remain
+available for messages the user chooses to submit as written.
+
 Analysis results also offer an optional **Message Safety Checklist** with
 practical next steps for unexpected requests, credential sharing, opened links,
 or sent payments. Its categorical answers stay in page memory; they do not
