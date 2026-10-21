@@ -28,7 +28,7 @@ from typing import Any
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -385,28 +385,54 @@ submit_feedback = _routes.submit_feedback
 _append_feedback_report = _routes._append_feedback_report
 
 
-if WEB_DIR.is_dir():
-    app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
+app.mount("/static", StaticFiles(directory=WEB_DIR, check_dir=False), name="static")
 
-    @app.get("/", include_in_schema=False)
-    def index():
-        """Serve the bundled single-page UI."""
-        return FileResponse(WEB_DIR / "index.html", headers={"Cache-Control": "no-cache"})
 
-    @app.get("/manifest.webmanifest", include_in_schema=False)
-    def webmanifest():
-        """PWA manifest (installable app shell)."""
-        return FileResponse(
-            WEB_DIR / "manifest.webmanifest",
-            media_type="application/manifest+json",
-            headers={"Cache-Control": "no-cache"},
+def _ui_asset_response(
+    filename: str,
+    *,
+    media_type: str,
+    headers: dict[str, str] | None = None,
+) -> Response:
+    """Read a small bundled UI entry asset and fail with a safe setup hint.
+
+    Reading before constructing the response catches missing/unreadable package
+    assets synchronously, instead of letting a streaming ``FileResponse`` fail
+    after headers have started and become an opaque internal server error.
+    """
+    path = WEB_DIR / filename
+    try:
+        body = path.read_bytes()
+    except OSError:
+        logger.error("Bundled UI asset unavailable (%s)", filename)
+        return _error_response(
+            503,
+            "ui_unavailable",
+            "The bundled web interface is unavailable. Reinstall the project or run it from a complete checkout.",
         )
+    response_headers = {"Cache-Control": "no-cache"}
+    if headers:
+        response_headers.update(headers)
+    return Response(content=body, media_type=media_type, headers=response_headers)
 
-    @app.get("/sw.js", include_in_schema=False)
-    def service_worker():
-        """Service worker for the offline static shell (never caches message data)."""
-        return FileResponse(
-            WEB_DIR / "sw.js",
-            media_type="text/javascript",
-            headers={"Service-Worker-Allowed": "/", "Cache-Control": "no-cache"},
-        )
+
+@app.get("/", include_in_schema=False)
+def index():
+    """Serve the bundled single-page UI."""
+    return _ui_asset_response("index.html", media_type="text/html")
+
+
+@app.get("/manifest.webmanifest", include_in_schema=False)
+def webmanifest():
+    """PWA manifest (installable app shell)."""
+    return _ui_asset_response("manifest.webmanifest", media_type="application/manifest+json")
+
+
+@app.get("/sw.js", include_in_schema=False)
+def service_worker():
+    """Service worker for the offline static shell (never caches message data)."""
+    return _ui_asset_response(
+        "sw.js",
+        media_type="text/javascript",
+        headers={"Service-Worker-Allowed": "/"},
+    )

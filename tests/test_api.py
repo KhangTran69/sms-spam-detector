@@ -702,7 +702,36 @@ def test_index_and_static_files_are_served(client):
     assert index.status_code == 200
     assert "text/html" in index.headers["content-type"]
     assert "PH SMS Scam Detector" in index.text
+    assert index.headers["cache-control"] == "no-cache"
 
     script = client.get("/static/app.js")
     assert script.status_code == 200
     assert "javascript" in script.headers["content-type"]
+
+    styles = client.get("/static/styles.css")
+    assert styles.status_code == 200
+    assert "text/css" in styles.headers["content-type"]
+
+    manifest = client.get("/manifest.webmanifest")
+    assert manifest.status_code == 200
+    assert "application/manifest+json" in manifest.headers["content-type"]
+
+    worker = client.get("/sw.js")
+    assert worker.status_code == 200
+    assert "text/javascript" in worker.headers["content-type"]
+    assert worker.headers["service-worker-allowed"] == "/"
+
+    missing_script = client.get("/static/not-a-bundled-file.js")
+    assert_error_schema(missing_script, 404, "not_found")
+
+
+@pytest.mark.parametrize("path", ["/", "/manifest.webmanifest", "/sw.js"])
+def test_missing_ui_entry_asset_returns_clear_service_error(client, monkeypatch, tmp_path, path):
+    monkeypatch.setattr(api_main, "WEB_DIR", tmp_path / "missing-web-package")
+
+    response = client.get(path)
+
+    assert response.status_code == 503
+    assert_error_schema(response, 503, "ui_unavailable")
+    assert "bundled web interface is unavailable" in response.json()["error"]["message"].lower()
+    assert str(tmp_path) not in response.text

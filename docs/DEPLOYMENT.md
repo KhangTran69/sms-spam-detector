@@ -104,6 +104,42 @@ uvicorn api.main:app --host 127.0.0.1 --port 8000
 more concurrency once memory permits (the model is loaded lazily per process;
 each worker holds its own copy). Do not use `--reload` in production.
 
+### Verify or restart the local process safely
+
+Check the page shell and its entry assets as well as API health; a live process
+can still be serving stale code or an incomplete package:
+
+```bash
+for path in / /static/app.js /static/styles.css /manifest.webmanifest /sw.js /health /ready /model-info; do
+  printf '%s ' "$path"
+  curl -sS -o /dev/null -w '%{http_code} %{content_type}\n' "http://127.0.0.1:8000$path"
+done
+```
+
+On macOS, identify the listener and inspect both its command and working
+directory before stopping anything:
+
+```bash
+lsof -nP -iTCP:8000 -sTCP:LISTEN
+# Replace 12345 below with the PID reported by lsof.
+ps -p 12345 -o pid=,command=
+lsof -a -p 12345 -d cwd
+```
+
+Only if that PID is the detector's Uvicorn process and its working directory is
+this checkout, stop that specific process with `kill -TERM 12345`, replacing
+`12345` with the verified PID. Then start the server in a terminal from the repository root with
+`.venv/bin/python -m uvicorn api.main:app --host 127.0.0.1 --port 8000` and
+repeat the route checks. If the listener belongs to another project or the
+identity is unclear, leave it running and use a free port such as 8001. Do not
+use a broad `pkill uvicorn` command. The detector does not log SMS contents;
+retain only message-free status codes and route names when diagnosing failures.
+
+The home page, manifest, and service worker return a sanitized `ui_unavailable`
+503 if their bundled entry file is missing or unreadable. Reinstall the package
+or run from a complete checkout. A 200 from `/health` alone proves only that the
+process is alive; verify the UI routes and `/ready` separately.
+
 Smoke test:
 
 ```bash
