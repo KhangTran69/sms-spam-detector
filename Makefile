@@ -16,7 +16,6 @@
 
 PYTHON ?= .venv/bin/python
 PIP ?= $(PYTHON) -m pip
-UVICORN ?= .venv/bin/uvicorn
 IMAGE ?= philippine-sms-spam-detector:local
 PORT ?= 8000
 DEMO_MODEL ?= models/demo_synthetic.pkl
@@ -67,7 +66,8 @@ demo:
 	$(PYTHON) scripts/demo_smoke.py --model "$(DEMO_MODEL)"
 
 serve:
-	$(UVICORN) api.main:app --host 127.0.0.1 --port $(PORT) --reload
+	@command -v "$(PYTHON)" >/dev/null 2>&1 || { echo "Python not found at $(PYTHON). Create .venv and run: make dev-install" >&2; exit 2; }
+	$(PYTHON) -m api.cli --host 127.0.0.1 --port $(PORT) --reload
 
 docker-build:
 	docker build -t $(IMAGE) .

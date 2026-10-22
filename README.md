@@ -29,8 +29,15 @@ python -m src.import_public_dataset --input SMSSpamCollection --format uci-tsv
 python -m src.train --data data/raw/imported/uci_sms_spam.csv
 
 # 3. Serve the API and web UI at http://127.0.0.1:8000 (interactive docs at /docs)
-smsd-serve            # or: uvicorn api.main:app --host 127.0.0.1 --port 8000
+smsd-serve            # or: make serve from the repository root
 ```
+
+Run the command in a terminal and leave that terminal open while using the
+site; the local server runs in the foreground and stops when you press
+Ctrl-C or close the terminal. If startup reports missing packages, run
+`make dev-install`. If the model file is missing, the UI still opens but
+analysis remains unavailable; train a model with the command above or point
+`SMSD_MODEL_PATH` at a trusted model artifact.
 
 No data? `make demo` trains and smoke-tests a synthetic-only model. With Docker,
 train first, then run `docker compose up -d` (the model is mounted read-only; see

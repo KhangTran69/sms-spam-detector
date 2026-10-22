@@ -42,7 +42,7 @@ busyCheckButton.setAttribute('aria-busy', 'true');
 const storedValues = new Map();
 const requests = [];
 let copiedClipboard = '';
-const context = vm.createContext({ console, AbortController, tabs, panels, busyCheckButton, requests,
+const context = vm.createContext({ console, AbortController, setTimeout, clearTimeout, tabs, panels, busyCheckButton, requests,
   navigator: { clipboard: { async writeText(value) { copiedClipboard = value; } } },
   localStorage: { getItem: key => storedValues.get(key) || null,
     setItem(key, value) { storedValues.set(key, String(value)); }, removeItem: key => storedValues.delete(key) },
@@ -73,6 +73,8 @@ assert.equal(run('EXAMPLES.safe.length'), 20, 'the safe example set must contain
 assert.equal(run('new Set(EXAMPLES.scam).size'), 20, 'scam examples must be distinct');
 assert.equal(run('new Set(EXAMPLES.safe).size'), 20, 'safe examples must be distinct');
 assert.equal(run('EXAMPLES.safe.length'), 20, 'safe examples should cycle independently');
+assert.equal(run('FALLBACK_MODEL_INFO.bands.likely_scam'), 0.5, 'fallback scam band matches the built-in API threshold');
+assert.equal(run('FALLBACK_MODEL_INFO.suspicious_threshold'), 0.25, 'fallback suspicious band matches the built-in API threshold');
 assert.equal(run(`csvCell(${JSON.stringify('a, b "quoted"')})`), '"a, b ""quoted"""', 'CSV must escape quotes and delimiters');
 assert.equal(run('csvCell("=SUM(1,1)")'), '"\'=SUM(1,1)"', 'formula-like text must be exported as text');
 assert.equal(run('csvCell("  @SUM(1,1)")'), '"\'  @SUM(1,1)"', 'leading whitespace must not bypass formula protection');
@@ -333,11 +335,22 @@ run('lang = "en"');
   run('$ ("offline-banner").classList.add("hidden"); apiAvailable = null; fetch = async () => { throw new TypeError("failed to fetch"); }; var apiFailure = requestJson("/model-info");');
   let apiFailure;
   try { await run('apiFailure'); } catch (error) { apiFailure = error; }
-  assert.equal(apiFailure.apiUnavailable, true, 'a failed API request is reported as an API failure');
+  assert.equal(apiFailure.apiUnavailable, true, `a failed API request is reported as an API failure (${apiFailure && apiFailure.message}; timeout=${apiFailure && apiFailure.timeout}; aborted=${apiFailure && apiFailure.aborted})`);
   assert.equal(apiFailure.offline, undefined, 'an API request failure is not labeled as browser offline status');
   assert.equal(run('$ ("offline-banner").classList.contains("hidden")'), true,
     'an API request failure does not show the browser offline banner');
   assert.equal(run('$ ("api-status").dataset.state'), 'error', 'the API status announces request reachability');
+  const realSetTimeout = context.setTimeout;
+  context.setTimeout = (callback, delay) => {
+    if (delay === 20000) { callback(); return 123; }
+    return realSetTimeout(callback, delay);
+  };
+  run('window.navigator.onLine = true; fetch = async (_path, options) => { if (options.signal.aborted) throw Object.assign(new Error("aborted"), {name:"AbortError"}); }; var timeoutFailure = requestJson("/model-info");');
+  let timeoutFailure;
+  try { await run('timeoutFailure'); } catch (error) { timeoutFailure = error; }
+  assert.equal(timeoutFailure.timeout, true, 'slow API requests time out with a distinct error state');
+  assert.equal(run('$ ("api-status").dataset.state'), 'warning', 'a timeout is distinct from an unreachable API');
+  context.setTimeout = realSetTimeout;
   run('window.navigator.onLine = false; fetch = async () => { throw new TypeError("failed to fetch"); }; var offlineFailure = requestJson("/model-info");');
   try { await run('offlineFailure'); } catch { /* expected unreachable API */ }
   assert.equal(run('$ ("offline-banner").classList.contains("hidden")'), false,
@@ -346,6 +359,12 @@ run('lang = "en"');
   await run('localApiResponse');
   assert.equal(run('$ ("offline-banner").classList.contains("hidden")'), true,
     'a reachable local API clears a misleading general-internet offline banner');
+  run('var olderMetadataResolve; var newerMetadataResolve; requestJson = () => new Promise(resolve => { if (!olderMetadataResolve) olderMetadataResolve = resolve; else newerMetadataResolve = resolve; }); var oldMetadata = loadModelInfo(); var newMetadata = loadModelInfo();');
+  run('newerMetadataResolve({model_version:"newer", decision_threshold:0.6, suspicious_threshold:0.3, bands:{likely_scam:0.6,suspicious:0.3}, data_note:"new", warnings:[]})');
+  await run('newMetadata');
+  run('olderMetadataResolve({model_version:"older", decision_threshold:0.9, suspicious_threshold:0.8, bands:{likely_scam:0.9,suspicious:0.8}, data_note:"old", warnings:[]})');
+  await run('oldMetadata');
+  assert.equal(run('modelInfo.model_version'), 'newer', 'a stale metadata retry cannot replace the latest model information');
   run('selectTab(tabs[2]); $("compare-message-a").value="A"; $("compare-message-b").value="B"; var partialCompare = runComparison(); pending.shift().resolve({results:[left]});');
   await run('partialCompare');
   assert.equal(run('$ ("compare-results").classList.contains("hidden")'), true, 'incomplete response is never shown as a complete comparison');

@@ -13,6 +13,7 @@ const API = {
 
 const HISTORY_KEY = "smsd_history_v1";
 const HISTORY_PREF_KEY = "smsd_history_enabled_v1";
+const API_TIMEOUT_MS = 20000;
 const HISTORY_LIMIT = 50;
 const BATCH_LIMIT = 50;
 const MAX_BATCH_CHARACTERS = 200000;
@@ -28,11 +29,11 @@ const HISTORY_OFF_NOTE =
 /* Fallback thresholds mirror the API default; the authoritative values are
    fetched from GET /model-info on load (decision_threshold, suspicious_threshold
    and the risk `bands`). These constants only cover a metadata fetch failure. */
-const FALLBACK_BANDS = { likely_scam: 0.7, suspicious: 0.4, looks_safe: 0.0 };
+const FALLBACK_BANDS = { likely_scam: 0.5, suspicious: 0.25, looks_safe: 0.0 };
 const FALLBACK_MODEL_INFO = {
   model_version: "unknown",
   decision_threshold: 0.5,
-  suspicious_threshold: 0.4,
+  suspicious_threshold: 0.25,
   bands: { ...FALLBACK_BANDS },
   data_note: SYNTHETIC_DATA_NOTE,
   probability_calibrated: false,
@@ -53,10 +54,14 @@ const I18N = {
     "theme.dark": "Switch to dark mode",
     "offline.banner": "You appear to be offline. The page still works, but new checks need a connection.",
     "service.apiLabel": "Detector API:",
+    "service.browserLabel": "Browser reports:",
+    "service.browserOnline": "Online",
+    "service.browserOffline": "Offline",
     "service.modelLabel": "Model:",
     "service.checking": "Checking…",
     "service.apiAvailable": "Available",
     "service.apiUnavailable": "Could not reach API",
+    "service.apiSlow": "Request timed out",
     "service.modelReady": "Ready",
     "service.modelUnavailable": "Unavailable",
     "service.modelUnknown": "Status unknown",
@@ -71,7 +76,7 @@ const I18N = {
     "model.versionPrefix": "Model version: ",
     "model.thresholds.loading": "Decision threshold and risk bands are loading from the API.",
     "model.thresholds.line": "Decision threshold {threshold} · risk bands: likely spam ≥ {scam}, suspicious ≥ {suspicious}.",
-    "model.fallbackSuffix": " Using built-in fallback thresholds until model information is available.",
+    "model.fallbackSuffix": " Model information is unavailable; built-in fallback thresholds are shown.",
     "model.legacyWarning": "This is a legacy model with missing training metadata. Treat results as a demo only.",
     "model.provenance.unavailable": "Model provenance is unavailable for this result.",
     "check.label": "Paste the SMS you want to check",
@@ -115,6 +120,7 @@ const I18N = {
     "error.tooLong": "That message is {n} characters — the limit is 10,000.",
     "error.reach": "Could not reach the detector API. Check that the server is running and try again.",
     "error.http": "Request failed (HTTP {status}). Please try again.",
+    "error.timeout": "The detector did not respond in time. Try again; the SMS was not sent again automatically.",
     "error.model503": "The model is not available on this server. If you run this project locally, train it with: python -m src.train",
     "error.trainHint": " If you run this project locally, train the model with: python -m src.train",
     "error.generic": "Something went wrong. Please try again.",
@@ -316,10 +322,14 @@ const I18N = {
     "theme.dark": "Lumipat sa madilim na mode",
     "offline.banner": "Mukhang offline ka. Gumagana pa rin ang pahina, pero kailangan ng connection ang mga bagong check.",
     "service.apiLabel": "Detector API:",
+    "service.browserLabel": "Sabi ng browser:",
+    "service.browserOnline": "May koneksyon",
+    "service.browserOffline": "Walang koneksyon",
     "service.modelLabel": "Modelo:",
     "service.checking": "Sinusuri…",
     "service.apiAvailable": "Available",
     "service.apiUnavailable": "Hindi maabot ang API",
+    "service.apiSlow": "Nag-time out ang request",
     "service.modelReady": "Handa",
     "service.modelUnavailable": "Hindi available",
     "service.modelUnknown": "Hindi alam ang status",
@@ -334,7 +344,7 @@ const I18N = {
     "model.versionPrefix": "Bersyon ng modelo: ",
     "model.thresholds.loading": "Niloload mula sa API ang decision threshold at risk bands.",
     "model.thresholds.line": "Decision threshold {threshold} · risk bands: malamang spam ≥ {scam}, kahina-hinala ≥ {suspicious}.",
-    "model.fallbackSuffix": " Ginagamit muna ang built-in na fallback thresholds hanggang makuha ang impormasyon ng modelo.",
+    "model.fallbackSuffix": " Hindi available ang impormasyon ng modelo; built-in na fallback thresholds ang ipinapakita.",
     "model.legacyWarning": "Lumang modelo ito na walang kumpletong training metadata. Demo lamang ang resulta.",
     "model.provenance.unavailable": "Hindi available ang pinagmulan ng modelo para sa resultang ito.",
     "check.label": "I-paste ang SMS na gusto mong i-check",
@@ -378,6 +388,7 @@ const I18N = {
     "error.tooLong": "{n} karakter ang mensahe — ang limit ay 10,000.",
     "error.reach": "Hindi makausap ang detector API. Siguraduhing naka-run ang server at subukan ulit.",
     "error.http": "Nabigo ang request (HTTP {status}). Subukan ulit.",
+    "error.timeout": "Hindi agad sumagot ang detector. Subukan ulit; hindi awtomatikong ipinadala muli ang SMS.",
     "error.model503": "Hindi available ang modelo sa server na ito. Kung local ang pag-run mo, i-train ito gamit ang: python -m src.train",
     "error.trainHint": " Kung local ang pag-run mo, i-train ang modelo gamit ang: python -m src.train",
     "error.generic": "May naganap na mali. Subukan ulit.",
@@ -712,13 +723,35 @@ function hideOfflineBanner() {
 function renderConnectionStatus() {
   const api = $("api-status");
   const model = $("readiness-status");
+  const browser = $("browser-status");
+  const reportsOnline = window.navigator.onLine;
+  browser.textContent = typeof reportsOnline === "boolean"
+    ? t(reportsOnline ? "service.browserOnline" : "service.browserOffline") : t("service.modelUnknown");
   api.textContent = apiAvailable === null ? t("service.checking")
-    : apiAvailable ? t("service.apiAvailable") : t("service.apiUnavailable");
+    : apiAvailable === true ? t("service.apiAvailable")
+      : apiAvailable === "timeout" ? t("service.apiSlow") : t("service.apiUnavailable");
   model.textContent = modelReady === null ? t("service.checking")
     : modelReady === true ? t("service.modelReady")
       : modelReady === false ? t("service.modelUnavailable") : t("service.modelUnknown");
-  api.dataset.state = apiAvailable === null ? "checking" : apiAvailable ? "ready" : "error";
+  api.dataset.state = apiAvailable === true ? "ready"
+    : apiAvailable === false ? "error" : apiAvailable === "timeout" ? "warning" : "checking";
   model.dataset.state = modelReady === true ? "ready" : modelReady === false ? "error" : "checking";
+}
+
+function setApiAvailability(value, requestSequence) {
+  if (requestSequence < apiStatusSequence) return false;
+  apiStatusSequence = requestSequence;
+  apiAvailable = value;
+  renderConnectionStatus();
+  return true;
+}
+
+function setModelReadiness(value, requestSequence) {
+  if (requestSequence < modelStatusSequence) return false;
+  modelStatusSequence = requestSequence;
+  modelReady = value;
+  renderConnectionStatus();
+  return true;
 }
 
 /* ---------- Banding ---------- */
@@ -810,6 +843,10 @@ let modelInfoLoaded = false;
 let modelInfoError = null;
 let apiAvailable = null;
 let modelReady = null;
+let apiRequestSequence = 0;
+let apiStatusSequence = 0;
+let modelStatusSequence = 0;
+let modelInfoRequestSequence = 0;
 let historyEnabled = false;
 let lastBatchResults = null;
 
@@ -891,7 +928,8 @@ async function parseResponse(response) {
   let data = null;
   try {
     data = await response.json();
-  } catch {
+  } catch (error) {
+    if (error && error.name === "AbortError") throw error;
     data = null;
   }
   if (!response.ok) {
@@ -904,40 +942,79 @@ async function parseResponse(response) {
   return data;
 }
 
-async function requestJson(path, options) {
+async function requestJson(path, options = {}) {
+  const requestSequence = ++apiRequestSequence;
+  const controller = new AbortController();
+  const externalSignal = options.signal;
+  let callerAborted = false;
+  let timedOut = false;
+  const abortFromCaller = () => {
+    callerAborted = true;
+    controller.abort();
+  };
+  if (externalSignal) {
+    if (externalSignal.aborted) abortFromCaller();
+    else externalSignal.addEventListener("abort", abortFromCaller, { once: true });
+  }
+  const timeoutId = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, API_TIMEOUT_MS);
   let response;
   try {
-    response = await fetch(path, options);
+    response = await fetch(path, { ...options, signal: controller.signal });
   } catch (throwable) {
-    if (throwable && throwable.name === "AbortError") {
+    clearTimeout(timeoutId);
+    if (externalSignal) externalSignal.removeEventListener("abort", abortFromCaller);
+    if (callerAborted || (throwable && throwable.name === "AbortError" && !timedOut)) {
       const aborted = new Error("Request aborted");
       aborted.aborted = true;
       throw aborted;
     }
+    if (timedOut) {
+      const failure = new Error(t("error.timeout"));
+      failure.timeout = true;
+      if (setApiAvailability("timeout", requestSequence)) {
+        setModelReadiness("unknown", requestSequence);
+      }
+      throw failure;
+    }
     const failure = new Error(t("error.reach"));
     failure.apiUnavailable = true;
-    apiAvailable = false;
-    modelReady = "unknown";
-    renderConnectionStatus();
-    if (window.navigator.onLine === false) showOfflineBanner();
-    throw failure;
-  }
-  apiAvailable = true;
-  renderConnectionStatus();
-  // A reachable local or remote API is enough for this app to work even if
-  // the browser reports that general internet access is unavailable.
-  hideOfflineBanner();
-  try {
-    const data = await parseResponse(response);
-    if (path === API.ready) modelReady = true;
-    renderConnectionStatus();
-    return data;
-  } catch (failure) {
-    if (failure && (failure.status === 503 || failure.code === "model_unavailable")) {
-      modelReady = false;
-      renderConnectionStatus();
+    if (setApiAvailability(false, requestSequence)) {
+      setModelReadiness("unknown", requestSequence);
+      if (window.navigator.onLine === false) showOfflineBanner();
     }
     throw failure;
+  }
+  if (setApiAvailability(true, requestSequence)) {
+    // A reachable local or remote API is enough for this app to work even if
+    // the browser reports that general internet access is unavailable.
+    hideOfflineBanner();
+  }
+  try {
+    const data = await parseResponse(response);
+    if (path === API.ready) setModelReadiness(true, requestSequence);
+    return data;
+  } catch (failure) {
+    if (callerAborted || (failure && failure.name === "AbortError" && !timedOut)) {
+      const aborted = new Error("Request aborted");
+      aborted.aborted = true;
+      throw aborted;
+    }
+    if (timedOut) {
+      const timeoutFailure = new Error(t("error.timeout"));
+      timeoutFailure.timeout = true;
+      if (setApiAvailability("timeout", requestSequence)) setModelReadiness("unknown", requestSequence);
+      throw timeoutFailure;
+    }
+    if (failure && (failure.status === 503 || failure.code === "model_unavailable")) {
+      setModelReadiness(false, requestSequence);
+    }
+    throw failure;
+  } finally {
+    clearTimeout(timeoutId);
+    if (externalSignal) externalSignal.removeEventListener("abort", abortFromCaller);
   }
 }
 
@@ -1109,15 +1186,18 @@ function bandsForAnalysis(analysis) {
 }
 
 async function loadModelInfo() {
+  const requestSequence = ++modelInfoRequestSequence;
   const warning = $("model-warning");
   try {
     const info = await requestJson(API.modelInfo);
+    if (requestSequence !== modelInfoRequestSequence) return;
     modelInfo = normalizeModelInfo(info);
     modelInfoLoaded = true;
     modelInfoError = null;
     warning.textContent = "";
     warning.classList.add("hidden");
   } catch (failure) {
+    if (requestSequence !== modelInfoRequestSequence) return;
     if (failure && failure.aborted) return;
     modelInfo = normalizeModelInfo(FALLBACK_MODEL_INFO);
     modelInfoLoaded = false;
@@ -1133,13 +1213,8 @@ async function refreshServiceStatus() {
   renderConnectionStatus();
   try {
     await requestJson(API.ready);
-    modelReady = true;
-  } catch (failure) {
-    if (failure && (failure.status === 503 || failure.code === "model_unavailable")) {
-      modelReady = false;
-    } else if (failure && !failure.apiUnavailable) {
-      modelReady = "unknown";
-    }
+  } catch {
+    // requestJson records reachability and readiness without resending SMS.
   }
   renderConnectionStatus();
 }
@@ -2836,9 +2911,11 @@ function initBatchCheck() {
 
 function initOfflineDetection() {
   window.addEventListener("offline", () => {
+    renderConnectionStatus();
     refreshServiceStatus();
   });
   window.addEventListener("online", () => {
+    renderConnectionStatus();
     hideOfflineBanner();
     refreshServiceStatus();
     loadModelInfo();

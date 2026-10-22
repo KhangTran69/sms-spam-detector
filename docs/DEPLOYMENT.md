@@ -106,8 +106,13 @@ uvicorn api.main:app --host 127.0.0.1 --port 8000
 # Ready:   http://127.0.0.1:8000/ready
 ```
 
-`make serve` wraps this with `--reload` for development. Use `--workers N` for
-more concurrency once memory permits (the model is loaded lazily per process;
+`make serve` uses the project CLI preflight and wraps this with `--reload` for
+development. It reports missing Python packages before startup and warns when the
+configured model artifact is absent. In that case the UI and liveness endpoint
+still start, but readiness and analysis return 503 until a model is available.
+Run it in a terminal that stays open; closing that terminal or pressing Ctrl-C
+stops the foreground server. Use `--workers N` for more concurrency once memory
+permits (the model is loaded lazily per process;
 each worker holds its own copy). Do not use `--reload` in production.
 
 ### Verify or restart the local process safely
