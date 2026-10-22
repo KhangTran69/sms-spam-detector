@@ -115,6 +115,59 @@ stops the foreground server. Use `--workers N` for more concurrency once memory
 permits (the model is loaded lazily per process;
 each worker holds its own copy). Do not use `--reload` in production.
 
+### Keep a local macOS server running after closing the terminal
+
+On macOS, install a LaunchAgent for the logged-in user. Create
+`~/Library/LaunchAgents/com.ph.smsd.plist`; replace `/Users/YOU/...` with the
+checkout and model paths and use the Python executable from its virtual
+environment:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.ph.smsd</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/YOU/.../sms-spam-detector/.venv/bin/python</string>
+    <string>-m</string><string>api.cli</string>
+    <string>--host</string><string>127.0.0.1</string>
+    <string>--port</string><string>8000</string>
+  </array>
+  <key>WorkingDirectory</key><string>/Users/YOU/.../sms-spam-detector</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>SMSD_MODEL_PATH</key><string>/Users/YOU/.../sms-spam-detector/models/spam_detector_v1.pkl</string>
+    <key>PYTHONUNBUFFERED</key><string>1</string>
+  </dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ThrottleInterval</key><integer>10</integer>
+  <key>StandardOutPath</key><string>/Users/YOU/Library/Logs/ph-smsd.out.log</string>
+  <key>StandardErrorPath</key><string>/Users/YOU/Library/Logs/ph-smsd.err.log</string>
+</dict>
+</plist>
+```
+
+Load and inspect the agent with:
+
+```bash
+mkdir -p "$HOME/Library/Logs"
+launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.ph.smsd.plist"
+launchctl print "gui/$(id -u)/com.ph.smsd"
+curl -fsS http://127.0.0.1:8000/ready
+```
+
+`KeepAlive` restarts a process that exits unexpectedly; launchd throttles rapid
+restart loops. The service starts at login and stays local to this Mac. Stop it
+with `launchctl bootout "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.ph.smsd.plist"`;
+load it again with `bootstrap` after a planned stop. Logs contain service
+diagnostics and request paths, never message bodies; keep them private and
+rotate or remove them under your normal local log-retention practice. If port
+8000 is already occupied, inspect its owner with `lsof -nP -iTCP:8000 -sTCP:LISTEN`
+and change the LaunchAgent port or stop only the verified detector process.
+
 ### Keep a local Linux server running after closing the terminal
 
 On a machine using systemd, a user service can supervise the local server and
@@ -217,7 +270,13 @@ hash alone is not enough to call the recorded policy consistent.
 
 To run the automated browser suite locally, use `npm ci`,
 `npx playwright install chromium`, and `npm run test:browser`. It verifies
-interaction and offline shell behavior with synthetic fixtures only.
+mocked UI states plus real localhost analysis through a temporary model trained
+from tracked synthetic fixtures. The browser run checks missing-model readiness
+separately from API reachability, service failure/recovery without resubmitting a
+message, the real missing-model 503, an interrupted analysis response, mobile
+reflow, and offline shell behavior. It blocks external requests during the real
+API scenario. Automated accessibility checks do not replace manual
+screen-reader testing.
 
 Smoke test:
 

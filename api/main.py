@@ -384,7 +384,7 @@ submit_feedback = _routes.submit_feedback
 _append_feedback_report = _routes._append_feedback_report
 
 
-_STATIC_ASSETS = {"app.js", "styles.css", "icon.svg"}
+_STATIC_ASSETS = {"app.js", "api-client.js", "i18n.js", "privacy-preview.js", "styles.css", "icon.svg"}
 
 
 @app.api_route("/static/{asset_name}", methods=["GET", "HEAD"], include_in_schema=False)
@@ -401,7 +401,14 @@ def static_asset(asset_name: str, request: Request):
             "ui_unavailable",
             "The bundled web interface is unavailable. Reinstall the project or run it from a complete checkout.",
         )
-    media_type = {"app.js": "text/javascript", "styles.css": "text/css", "icon.svg": "image/svg+xml"}[asset_name]
+    media_type = {
+        "app.js": "text/javascript",
+        "api-client.js": "text/javascript",
+        "i18n.js": "text/javascript",
+        "privacy-preview.js": "text/javascript",
+        "styles.css": "text/css",
+        "icon.svg": "image/svg+xml",
+    }[asset_name]
     headers = {"Cache-Control": "no-cache", "Content-Length": str(len(body))}
     return Response(b"" if request.method == "HEAD" else body, media_type=media_type, headers=headers)
 

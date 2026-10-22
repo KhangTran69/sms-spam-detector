@@ -19,6 +19,9 @@ API_ROUTES = ROOT / "api" / "routes.py"
 API_SCHEMAS = ROOT / "api" / "schemas.py"
 INDEX_HTML = ROOT / "api" / "web" / "index.html"
 APP_JS = ROOT / "api" / "web" / "app.js"
+I18N_JS = ROOT / "api" / "web" / "i18n.js"
+PRIVACY_JS = ROOT / "api" / "web" / "privacy-preview.js"
+API_CLIENT_JS = ROOT / "api" / "web" / "api-client.js"
 STYLES_CSS = ROOT / "api" / "web" / "styles.css"
 
 
@@ -34,7 +37,7 @@ def html() -> str:
 
 @pytest.fixture(scope="module")
 def js() -> str:
-    return APP_JS.read_text(encoding="utf-8")
+    return "\n".join(path.read_text(encoding="utf-8") for path in (APP_JS, API_CLIENT_JS, I18N_JS, PRIVACY_JS))
 
 
 @pytest.fixture(scope="module")
@@ -243,9 +246,10 @@ def test_service_worker_installs_complete_static_shell_and_never_caches_api(html
     assert "await cache.put(request" not in sw, "runtime responses must not mutate an installed release"
     for path in ("/analyze", "/analyze/batch", "/predict", "/feedback", "/model-info"):
         assert f'"{path}"' in sw
-    assert "smsd-shell-v13" in sw
-    assert '"/static/styles.css?v=ui13-spam-signal-copy-20261022"' in sw
-    assert '"/static/app.js?v=ui13-spam-signal-copy-20261022"' in sw
+    assert "smsd-shell-v14" in sw
+    for asset in ("styles.css", "app.js", "api-client.js", "i18n.js", "privacy-preview.js"):
+        assert f'"/static/{asset}?v=ui14-modular-frontend-20261022"' in sw
+    assert 'type="module" src="/static/app.js?v=ui14-modular-frontend-20261022"' in html
     assert 'id="single-privacy-review"' in html
     assert 'id="batch-privacy-review"' in html
     assert 'id="compare-review-a"' in html and 'id="compare-review-b"' in html
@@ -491,8 +495,8 @@ def test_offline_banner_exists_and_is_wired(js, html):
     assert "refreshServiceStatus();" in js
     assert 'id="api-status"' in html and 'id="readiness-status"' in html
     assert 'id="btn-retry-status"' in html
-    assert "API_TIMEOUT_MS = 20000" in js
-    assert "apiRequestSequence" in js and "modelInfoRequestSequence" in js
+    assert "const timeoutMs = 20000" in js
+    assert "let requestSequence = 0" in js and "modelInfoRequestSequence" in js
 
 
 def test_service_worker_never_caches_messages(js, html, api_source):

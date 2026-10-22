@@ -1,0 +1,6593 @@
+{
+  "report_schema_version": 1,
+  "run": {
+    "model_sha256": "696501dd5f83ea436e3c33d48df596db84650589a52ecaa6772ae8c71eac5126",
+    "source_revision": "0e5cd45de2afe0ade795410c51cd5f35cf55c121",
+    "source_tree_clean": false,
+    "python_version": "3.13.3",
+    "libraries": {
+      "numpy": "2.5.4",
+      "pandas": "3.0.6",
+      "scikit-learn": "1.9.1",
+      "scipy": "1.18.1",
+      "threadpoolctl": "3.7.0",
+      "joblib": "1.6.0",
+      "fastapi": "0.146.0",
+      "starlette": "1.9.0",
+      "uvicorn": "0.54.0",
+      "pydantic": "2.14.1",
+      "pydantic-core": "2.50.1",
+      "matplotlib": "3.11.2"
+    }
+  },
+  "banner": "MIXED-PROVENANCE BENCHMARK — NOT REAL-WORLD PERFORMANCE",
+  "model": {
+    "model_version": "uci-synthetic-ph-diagnostic-20261022",
+    "artifact_schema_version": 2,
+    "feature_version": "2.2.0",
+    "classes": [
+      "ham",
+      "spam"
+    ],
+    "decision_threshold": 0.5,
+    "suspicious_threshold": 0.25,
+    "bands": {
+      "likely_scam": 0.5,
+      "suspicious": 0.25,
+      "looks_safe": 0.0
+    },
+    "trained_at": "2026-10-22T09:07:01+00:00",
+    "training_data": [
+      {
+        "path": "base:18d69dd0eaef",
+        "role": "base",
+        "sha256": "18d69dd0eaefced609c353220af15b0ac4beebccdd1d9732a7e804dfe3a05ef3",
+        "rows_in": 5572,
+        "rows_loaded": 5157,
+        "duplicates_removed": 415,
+        "class_counts": {
+          "ham": 4515,
+          "spam": 642
+        },
+        "metadata_columns": [
+          "collection_period",
+          "data_kind",
+          "dataset_id",
+          "dataset_version",
+          "language",
+          "license",
+          "source"
+        ],
+        "provenance": {
+          "dataset_id": "uci-sms-spam-collection-228",
+          "dataset_version": "1.0",
+          "license": "CC BY 4.0",
+          "collection_period": "historical; exact per-message dates unavailable"
+        },
+        "category_counts": {
+          "unknown": 5157
+        },
+        "language_counts": {
+          "en": 5157
+        },
+        "data_kind_counts": {
+          "public": 5157
+        }
+      },
+      {
+        "path": "supplement:e2551477919b",
+        "role": "supplement",
+        "sha256": "e2551477919b8def8f87cb8c03f47630b399b26e132f99ddb60974fa43146d00",
+        "rows_in": 128,
+        "rows_loaded": 128,
+        "duplicates_removed": 0,
+        "class_counts": {
+          "ham": 70,
+          "spam": 58
+        },
+        "metadata_columns": [
+          "data_kind"
+        ],
+        "provenance": {
+          "dataset_id": "unknown",
+          "dataset_version": "unknown",
+          "license": "unknown",
+          "collection_period": "unknown"
+        },
+        "category_counts": {
+          "unknown": 128
+        },
+        "language_counts": {
+          "unknown": 128
+        },
+        "data_kind_counts": {
+          "synthetic": 128
+        }
+      },
+      {
+        "path": "supplement:fc421a56d052",
+        "role": "supplement",
+        "sha256": "fc421a56d05211bc74422f5fe00936de3401eec5ccbf7ecaccaf60a55804324e",
+        "rows_in": 141,
+        "rows_loaded": 141,
+        "duplicates_removed": 0,
+        "class_counts": {
+          "ham": 41,
+          "spam": 100
+        },
+        "metadata_columns": [
+          "category",
+          "data_kind",
+          "group"
+        ],
+        "provenance": {
+          "dataset_id": "unknown",
+          "dataset_version": "unknown",
+          "license": "unknown",
+          "collection_period": "unknown"
+        },
+        "category_counts": {
+          "legitimate": 41,
+          "prize_scam": 19,
+          "loan_scam": 13,
+          "bank_phishing": 12,
+          "investment_scam": 11,
+          "delivery_scam": 10,
+          "job_scam": 10,
+          "load_scam": 9,
+          "romance_scam": 8,
+          "impersonation_scam": 8
+        },
+        "language_counts": {
+          "unknown": 141
+        },
+        "data_kind_counts": {
+          "synthetic": 141
+        }
+      },
+      {
+        "path": "supplement:638d4992e5cc",
+        "role": "supplement",
+        "sha256": "638d4992e5cccf9168dfaea85e01fb0bf78361182fa8014bf051488e873dffd2",
+        "rows_in": 52,
+        "rows_loaded": 52,
+        "duplicates_removed": 0,
+        "class_counts": {
+          "ham": 36,
+          "spam": 16
+        },
+        "metadata_columns": [
+          "category",
+          "data_kind",
+          "labeling_confidence",
+          "language",
+          "source"
+        ],
+        "provenance": {
+          "dataset_id": "unknown",
+          "dataset_version": "unknown",
+          "license": "unknown",
+          "collection_period": "unknown"
+        },
+        "category_counts": {
+          "bank_alert": 8,
+          "legit_link": 7,
+          "promo": 4,
+          "otp": 3,
+          "delivery": 3,
+          "government": 3,
+          "personal_taglish": 3,
+          "bank_phishing": 3,
+          "bill": 2,
+          "appointment": 2,
+          "prize_scam": 2,
+          "delivery_scam": 2,
+          "school": 1,
+          "sim_registration_scam": 1,
+          "loan_scam": 1,
+          "job_scam": 1,
+          "investment_scam": 1,
+          "otp_social_engineering": 1,
+          "relative_scam": 1,
+          "government_subsidy_scam": 1,
+          "load_scam": 1,
+          "romance_scam": 1
+        },
+        "language_counts": {
+          "en": 42,
+          "taglish": 10
+        },
+        "data_kind_counts": {
+          "synthetic": 52
+        }
+      },
+      {
+        "path": "supplement:1695232f09c5",
+        "role": "supplement",
+        "sha256": "1695232f09c55ae852dda75eeee019c525dbdf3eef32dd316ff5f47cb5b1dd91",
+        "rows_in": 42,
+        "rows_loaded": 42,
+        "duplicates_removed": 0,
+        "class_counts": {
+          "ham": 0,
+          "spam": 42
+        },
+        "metadata_columns": [
+          "category",
+          "data_kind",
+          "group",
+          "labeling_confidence",
+          "language",
+          "source"
+        ],
+        "provenance": {
+          "dataset_id": "unknown",
+          "dataset_version": "unknown",
+          "license": "unknown",
+          "collection_period": "unknown"
+        },
+        "category_counts": {
+          "bank_phishing": 6,
+          "delivery_scam": 6,
+          "prize_scam": 6,
+          "job_scam": 6,
+          "loan_scam": 6,
+          "investment_scam": 6,
+          "impersonation_scam": 6
+        },
+        "language_counts": {
+          "en": 14,
+          "taglish": 14,
+          "tl": 14
+        },
+        "data_kind_counts": {
+          "synthetic": 42
+        }
+      },
+      {
+        "path": "supplement:a58a8352670b",
+        "role": "supplement",
+        "sha256": "a58a8352670b96385d1ae6ec9e78d7e8d1fb7678ddca96c222b76a61a74690d7",
+        "rows_in": 150,
+        "rows_loaded": 150,
+        "duplicates_removed": 0,
+        "class_counts": {
+          "ham": 90,
+          "spam": 60
+        },
+        "metadata_columns": [
+          "category",
+          "data_kind",
+          "group",
+          "labeling_confidence",
+          "language",
+          "source"
+        ],
+        "provenance": {
+          "dataset_id": "unknown",
+          "dataset_version": "unknown",
+          "license": "unknown",
+          "collection_period": "unknown"
+        },
+        "category_counts": {
+          "personal": 18,
+          "bank_phishing": 12,
+          "otp": 9,
+          "bank_alert": 9,
+          "delivery": 9,
+          "work": 9,
+          "ewallet_phishing": 6,
+          "parcel_scam": 6,
+          "job_scam": 6,
+          "loan_scam": 6,
+          "prize_scam": 6,
+          "otp_theft": 6,
+          "investment_scam": 6,
+          "sim_registration_scam": 6,
+          "appointment": 6,
+          "school": 6,
+          "telco_notice": 6,
+          "legit_link": 6,
+          "bill": 3,
+          "promo": 3,
+          "school_work": 3,
+          "personal_taglish": 3
+        },
+        "language_counts": {
+          "en": 76,
+          "taglish": 52,
+          "tl": 22
+        },
+        "data_kind_counts": {
+          "synthetic": 150
+        }
+      }
+    ],
+    "synthetic_training_data": true,
+    "training_data_kind_counts": {
+      "public": 3676,
+      "synthetic": 374
+    },
+    "probability_calibrated": true,
+    "data_note": "Training data may include synthetic examples and messages with unverified provenance. Synthetic examples are engineering checks, not proof of real-world accuracy. Real-data labels alone do not establish representative Philippine performance.",
+    "metrics": {
+      "validation_at_threshold": {
+        "threshold": 0.5,
+        "precision": 0.9389312977099237,
+        "recall": 0.9389312977099237,
+        "f1": 0.9389312977099237,
+        "accuracy": 0.980246913580247,
+        "false_positive_rate": 0.011782032400589101,
+        "predicted_spam_rate": 0.1617283950617284,
+        "tp": 123,
+        "fp": 8,
+        "tn": 671,
+        "fn": 8,
+        "support": 810,
+        "support_spam": 131,
+        "support_ham": 679,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.8841196490252834,
+            0.9687337760694541
+          ],
+          "recall": [
+            0.8841196490252834,
+            0.9687337760694541
+          ],
+          "false_positive_rate": [
+            0.005981971944940739,
+            0.023075225101883937
+          ]
+        }
+      },
+      "test_at_threshold": {
+        "threshold": 0.5,
+        "precision": 0.9461538461538461,
+        "recall": 0.9389312977099237,
+        "f1": 0.9425287356321839,
+        "accuracy": 0.9814814814814815,
+        "false_positive_rate": 0.010309278350515464,
+        "predicted_spam_rate": 0.16049382716049382,
+        "tp": 123,
+        "fp": 7,
+        "tn": 672,
+        "fn": 8,
+        "support": 810,
+        "support_spam": 131,
+        "support_ham": 679,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.8930220274608427,
+            0.9736750410118185
+          ],
+          "recall": [
+            0.8841196490252834,
+            0.9687337760694541
+          ],
+          "false_positive_rate": [
+            0.005002605588057285,
+            0.021125653893297784
+          ]
+        }
+      },
+      "test_at_default_0.5": {
+        "threshold": 0.5,
+        "precision": 0.9461538461538461,
+        "recall": 0.9389312977099237,
+        "f1": 0.9425287356321839,
+        "accuracy": 0.9814814814814815,
+        "false_positive_rate": 0.010309278350515464,
+        "predicted_spam_rate": 0.16049382716049382,
+        "tp": 123,
+        "fp": 7,
+        "tn": 672,
+        "fn": 8,
+        "support": 810,
+        "support_spam": 131,
+        "support_ham": 679,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.8930220274608427,
+            0.9736750410118185
+          ],
+          "recall": [
+            0.8841196490252834,
+            0.9687337760694541
+          ],
+          "false_positive_rate": [
+            0.005002605588057285,
+            0.021125653893297784
+          ]
+        }
+      },
+      "baseline_multinomial_nb_at_0.5": {
+        "threshold": 0.5,
+        "precision": 0.905982905982906,
+        "recall": 0.8091603053435115,
+        "f1": 0.8548387096774193,
+        "accuracy": 0.9555555555555556,
+        "false_positive_rate": 0.016200294550810016,
+        "predicted_spam_rate": 0.14444444444444443,
+        "tp": 106,
+        "fp": 11,
+        "tn": 668,
+        "fn": 25,
+        "support": 810,
+        "support_spam": 131,
+        "support_ham": 679,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.8394644932391968,
+            0.9466895380602931
+          ],
+          "recall": [
+            0.7334438580403313,
+            0.8672615978959621
+          ],
+          "false_positive_rate": [
+            0.009069635293032228,
+            0.02877437445020127
+          ]
+        }
+      },
+      "test_by_category": [
+        {
+          "source_file": "base:18d69dd0eaef",
+          "category": "unknown",
+          "language": "en",
+          "threshold": 0.5,
+          "precision": 0.9896907216494846,
+          "recall": 0.9320388349514563,
+          "f1": 0.9600000000000001,
+          "accuracy": 0.9891891891891892,
+          "false_positive_rate": 0.0015698587127158557,
+          "predicted_spam_rate": 0.13108108108108107,
+          "tp": 96,
+          "fp": 1,
+          "tn": 636,
+          "fn": 7,
+          "support": 740,
+          "support_spam": 103,
+          "support_ham": 637,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.943895009757101,
+              0.9981778351917131
+            ],
+            "recall": [
+              0.866317705300666,
+              0.966692260890114
+            ],
+            "false_positive_rate": [
+              0.0002771723820887478,
+              0.008838122423343857
+            ]
+          }
+        },
+        {
+          "source_file": "supplement:1695232f09c5",
+          "category": "job_scam",
+          "language": "en",
+          "threshold": 0.5,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 1.0,
+          "tp": 1,
+          "fp": 0,
+          "tn": 0,
+          "fn": 0,
+          "support": 1,
+          "support_spam": 1,
+          "support_ham": 0,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.20654931437723745,
+              1.0
+            ],
+            "recall": [
+              0.20654931437723745,
+              1.0
+            ],
+            "false_positive_rate": null
+          }
+        },
+        {
+          "source_file": "supplement:1695232f09c5",
+          "category": "job_scam",
+          "language": "taglish",
+          "threshold": 0.5,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 1.0,
+          "tp": 1,
+          "fp": 0,
+          "tn": 0,
+          "fn": 0,
+          "support": 1,
+          "support_spam": 1,
+          "support_ham": 0,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.20654931437723745,
+              1.0
+            ],
+            "recall": [
+              0.20654931437723745,
+              1.0
+            ],
+            "false_positive_rate": null
+          }
+        },
+        {
+          "source_file": "supplement:1695232f09c5",
+          "category": "job_scam",
+          "language": "tl",
+          "threshold": 0.5,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 1.0,
+          "tp": 1,
+          "fp": 0,
+          "tn": 0,
+          "fn": 0,
+          "support": 1,
+          "support_spam": 1,
+          "support_ham": 0,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.20654931437723745,
+              1.0
+            ],
+            "recall": [
+              0.20654931437723745,
+              1.0
+            ],
+            "false_positive_rate": null
+          }
+        },
+        {
+          "source_file": "supplement:638d4992e5cc",
+          "category": "bank_alert",
+          "language": "en",
+          "threshold": 0.5,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "tn": 2,
+          "fn": 0,
+          "support": 2,
+          "support_spam": 0,
+          "support_ham": 2,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": null,
+            "recall": null,
+            "false_positive_rate": [
+              0.0,
+              0.6576197724933469
+            ]
+          }
+        },
+        {
+          "source_file": "supplement:638d4992e5cc",
+          "category": "legit_link",
+          "language": "en",
+          "threshold": 0.5,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "tn": 2,
+          "fn": 0,
+          "support": 2,
+          "support_spam": 0,
+          "support_ham": 2,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": null,
+            "recall": null,
+            "false_positive_rate": [
+              0.0,
+              0.6576197724933469
+            ]
+          }
+        },
+        {
+          "source_file": "supplement:638d4992e5cc",
+          "category": "otp",
+          "language": "en",
+          "threshold": 0.5,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "tn": 2,
+          "fn": 0,
+          "support": 2,
+          "support_spam": 0,
+          "support_ham": 2,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": null,
+            "recall": null,
+            "false_positive_rate": [
+              0.0,
+              0.6576197724933469
+            ]
+          }
+        },
+        {
+          "source_file": "supplement:638d4992e5cc",
+          "category": "promo",
+          "language": "en",
+          "threshold": 0.5,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "tn": 1,
+          "fn": 0,
+          "support": 1,
+          "support_spam": 0,
+          "support_ham": 1,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": null,
+            "recall": null,
+            "false_positive_rate": [
+              0.0,
+              0.7934506856227626
+            ]
+          }
+        },
+        {
+          "source_file": "supplement:638d4992e5cc",
+          "category": "relative_scam",
+          "language": "taglish",
+          "threshold": 0.5,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 1.0,
+          "tp": 1,
+          "fp": 0,
+          "tn": 0,
+          "fn": 0,
+          "support": 1,
+          "support_spam": 1,
+          "support_ham": 0,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.20654931437723745,
+              1.0
+            ],
+            "recall": [
+              0.20654931437723745,
+              1.0
+            ],
+            "false_positive_rate": null
+          }
+        },
+        {
+          "source_file": "supplement:a58a8352670b",
+          "category": "delivery",
+          "language": "en",
+          "threshold": 0.5,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "accuracy": 0.0,
+          "false_positive_rate": 1.0,
+          "predicted_spam_rate": 1.0,
+          "tp": 0,
+          "fp": 1,
+          "tn": 0,
+          "fn": 0,
+          "support": 1,
+          "support_spam": 0,
+          "support_ham": 1,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.0,
+              0.7934506856227626
+            ],
+            "recall": null,
+            "false_positive_rate": [
+              0.20654931437723745,
+              1.0
+            ]
+          }
+        },
+        {
+          "source_file": "supplement:a58a8352670b",
+          "category": "delivery",
+          "language": "taglish",
+          "threshold": 0.5,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "accuracy": 0.0,
+          "false_positive_rate": 1.0,
+          "predicted_spam_rate": 1.0,
+          "tp": 0,
+          "fp": 1,
+          "tn": 0,
+          "fn": 0,
+          "support": 1,
+          "support_spam": 0,
+          "support_ham": 1,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.0,
+              0.7934506856227626
+            ],
+            "recall": null,
+            "false_positive_rate": [
+              0.20654931437723745,
+              1.0
+            ]
+          }
+        },
+        {
+          "source_file": "supplement:a58a8352670b",
+          "category": "delivery",
+          "language": "tl",
+          "threshold": 0.5,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "accuracy": 0.0,
+          "false_positive_rate": 1.0,
+          "predicted_spam_rate": 1.0,
+          "tp": 0,
+          "fp": 1,
+          "tn": 0,
+          "fn": 0,
+          "support": 1,
+          "support_spam": 0,
+          "support_ham": 1,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.0,
+              0.7934506856227626
+            ],
+            "recall": null,
+            "false_positive_rate": [
+              0.20654931437723745,
+              1.0
+            ]
+          }
+        },
+        {
+          "source_file": "supplement:a58a8352670b",
+          "category": "ewallet_phishing",
+          "language": "taglish",
+          "threshold": 0.5,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 1.0,
+          "tp": 6,
+          "fp": 0,
+          "tn": 0,
+          "fn": 0,
+          "support": 6,
+          "support_spam": 6,
+          "support_ham": 0,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.6096657120978346,
+              1.0
+            ],
+            "recall": [
+              0.6096657120978346,
+              1.0
+            ],
+            "false_positive_rate": null
+          }
+        },
+        {
+          "source_file": "supplement:a58a8352670b",
+          "category": "personal_taglish",
+          "language": "en",
+          "threshold": 0.5,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "tn": 1,
+          "fn": 0,
+          "support": 1,
+          "support_spam": 0,
+          "support_ham": 1,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": null,
+            "recall": null,
+            "false_positive_rate": [
+              0.0,
+              0.7934506856227626
+            ]
+          }
+        },
+        {
+          "source_file": "supplement:a58a8352670b",
+          "category": "personal_taglish",
+          "language": "taglish",
+          "threshold": 0.5,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "tn": 1,
+          "fn": 0,
+          "support": 1,
+          "support_spam": 0,
+          "support_ham": 1,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": null,
+            "recall": null,
+            "false_positive_rate": [
+              0.0,
+              0.7934506856227626
+            ]
+          }
+        },
+        {
+          "source_file": "supplement:a58a8352670b",
+          "category": "personal_taglish",
+          "language": "tl",
+          "threshold": 0.5,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "tn": 1,
+          "fn": 0,
+          "support": 1,
+          "support_spam": 0,
+          "support_ham": 1,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": null,
+            "recall": null,
+            "false_positive_rate": [
+              0.0,
+              0.7934506856227626
+            ]
+          }
+        },
+        {
+          "source_file": "supplement:a58a8352670b",
+          "category": "work",
+          "language": "en",
+          "threshold": 0.5,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "tn": 9,
+          "fn": 0,
+          "support": 9,
+          "support_spam": 0,
+          "support_ham": 9,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": null,
+            "recall": null,
+            "false_positive_rate": [
+              0.0,
+              0.2991450484195441
+            ]
+          }
+        },
+        {
+          "source_file": "supplement:e2551477919b",
+          "category": "unknown",
+          "language": "unknown",
+          "threshold": 0.5,
+          "precision": 0.8181818181818182,
+          "recall": 0.9,
+          "f1": 0.8571428571428572,
+          "accuracy": 0.85,
+          "false_positive_rate": 0.2,
+          "predicted_spam_rate": 0.55,
+          "tp": 9,
+          "fp": 2,
+          "tn": 8,
+          "fn": 1,
+          "support": 20,
+          "support_spam": 10,
+          "support_ham": 10,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.523019438039156,
+              0.9486323102539149
+            ],
+            "recall": [
+              0.5958499732047615,
+              0.9821237869049271
+            ],
+            "false_positive_rate": [
+              0.05668215145437519,
+              0.5098375284633583
+            ]
+          }
+        },
+        {
+          "source_file": "supplement:fc421a56d052",
+          "category": "delivery_scam",
+          "language": "unknown",
+          "threshold": 0.5,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 1.0,
+          "tp": 2,
+          "fp": 0,
+          "tn": 0,
+          "fn": 0,
+          "support": 2,
+          "support_spam": 2,
+          "support_ham": 0,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.34238022750665303,
+              1.0
+            ],
+            "recall": [
+              0.34238022750665303,
+              1.0
+            ],
+            "false_positive_rate": null
+          }
+        },
+        {
+          "source_file": "supplement:fc421a56d052",
+          "category": "investment_scam",
+          "language": "unknown",
+          "threshold": 0.5,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 1.0,
+          "tp": 3,
+          "fp": 0,
+          "tn": 0,
+          "fn": 0,
+          "support": 3,
+          "support_spam": 3,
+          "support_ham": 0,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.4385029682449546,
+              1.0
+            ],
+            "recall": [
+              0.4385029682449546,
+              1.0
+            ],
+            "false_positive_rate": null
+          }
+        },
+        {
+          "source_file": "supplement:fc421a56d052",
+          "category": "legitimate",
+          "language": "unknown",
+          "threshold": 0.5,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "accuracy": 0.9,
+          "false_positive_rate": 0.1,
+          "predicted_spam_rate": 0.1,
+          "tp": 0,
+          "fp": 1,
+          "tn": 9,
+          "fn": 0,
+          "support": 10,
+          "support_spam": 0,
+          "support_ham": 10,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.0,
+              0.7934506856227626
+            ],
+            "recall": null,
+            "false_positive_rate": [
+              0.017876213095072896,
+              0.4041500267952385
+            ]
+          }
+        },
+        {
+          "source_file": "supplement:fc421a56d052",
+          "category": "load_scam",
+          "language": "unknown",
+          "threshold": 0.5,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 1.0,
+          "tp": 2,
+          "fp": 0,
+          "tn": 0,
+          "fn": 0,
+          "support": 2,
+          "support_spam": 2,
+          "support_ham": 0,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.34238022750665303,
+              1.0
+            ],
+            "recall": [
+              0.34238022750665303,
+              1.0
+            ],
+            "false_positive_rate": null
+          }
+        },
+        {
+          "source_file": "supplement:fc421a56d052",
+          "category": "prize_scam",
+          "language": "unknown",
+          "threshold": 0.5,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 1.0,
+          "tp": 1,
+          "fp": 0,
+          "tn": 0,
+          "fn": 0,
+          "support": 1,
+          "support_spam": 1,
+          "support_ham": 0,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.20654931437723745,
+              1.0
+            ],
+            "recall": [
+              0.20654931437723745,
+              1.0
+            ],
+            "false_positive_rate": null
+          }
+        }
+      ],
+      "validation_sweep": [
+        {
+          "threshold": 0.3,
+          "precision": 0.9318181818181818,
+          "recall": 0.9389312977099237,
+          "f1": 0.9353612167300379,
+          "accuracy": 0.9790123456790123,
+          "false_positive_rate": 0.013254786450662739,
+          "predicted_spam_rate": 0.16296296296296298,
+          "tp": 123,
+          "fp": 9,
+          "tn": 670,
+          "fn": 8,
+          "support": 810,
+          "support_spam": 131,
+          "support_ham": 679,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.8754959371651043,
+              0.9637176651451884
+            ],
+            "recall": [
+              0.8841196490252834,
+              0.9687337760694541
+            ],
+            "false_positive_rate": [
+              0.006988778714056926,
+              0.02499735589823736
+            ]
+          }
+        },
+        {
+          "threshold": 0.4,
+          "precision": 0.9389312977099237,
+          "recall": 0.9389312977099237,
+          "f1": 0.9389312977099237,
+          "accuracy": 0.980246913580247,
+          "false_positive_rate": 0.011782032400589101,
+          "predicted_spam_rate": 0.1617283950617284,
+          "tp": 123,
+          "fp": 8,
+          "tn": 671,
+          "fn": 8,
+          "support": 810,
+          "support_spam": 131,
+          "support_ham": 679,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.8841196490252834,
+              0.9687337760694541
+            ],
+            "recall": [
+              0.8841196490252834,
+              0.9687337760694541
+            ],
+            "false_positive_rate": [
+              0.005981971944940739,
+              0.023075225101883937
+            ]
+          }
+        },
+        {
+          "threshold": 0.5,
+          "precision": 0.9389312977099237,
+          "recall": 0.9389312977099237,
+          "f1": 0.9389312977099237,
+          "accuracy": 0.980246913580247,
+          "false_positive_rate": 0.011782032400589101,
+          "predicted_spam_rate": 0.1617283950617284,
+          "tp": 123,
+          "fp": 8,
+          "tn": 671,
+          "fn": 8,
+          "support": 810,
+          "support_spam": 131,
+          "support_ham": 679,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.8841196490252834,
+              0.9687337760694541
+            ],
+            "recall": [
+              0.8841196490252834,
+              0.9687337760694541
+            ],
+            "false_positive_rate": [
+              0.005981971944940739,
+              0.023075225101883937
+            ]
+          }
+        },
+        {
+          "threshold": 0.6,
+          "precision": 0.9534883720930233,
+          "recall": 0.9389312977099237,
+          "f1": 0.9461538461538462,
+          "accuracy": 0.9827160493827161,
+          "false_positive_rate": 0.008836524300441826,
+          "predicted_spam_rate": 0.15925925925925927,
+          "tp": 123,
+          "fp": 6,
+          "tn": 673,
+          "fn": 8,
+          "support": 810,
+          "support_spam": 131,
+          "support_ham": 679,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.9022377213880084,
+              0.9785114139999394
+            ],
+            "recall": [
+              0.8841196490252834,
+              0.9687337760694541
+            ],
+            "false_positive_rate": [
+              0.004055971514177598,
+              0.019143350401707858
+            ]
+          }
+        },
+        {
+          "threshold": 0.7,
+          "precision": 0.96,
+          "recall": 0.916030534351145,
+          "f1": 0.9375,
+          "accuracy": 0.980246913580247,
+          "false_positive_rate": 0.007363770250368188,
+          "predicted_spam_rate": 0.15432098765432098,
+          "tp": 120,
+          "fp": 5,
+          "tn": 674,
+          "fn": 11,
+          "support": 810,
+          "support_spam": 131,
+          "support_ham": 679,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.9097744468602555,
+              0.9827953909280842
+            ],
+            "recall": [
+              0.8558897996241043,
+              0.9524669250309078
+            ],
+            "false_positive_rate": [
+              0.0031493448999006125,
+              0.017121039450515234
+            ]
+          }
+        },
+        {
+          "threshold": 0.8,
+          "precision": 0.959349593495935,
+          "recall": 0.9007633587786259,
+          "f1": 0.9291338582677164,
+          "accuracy": 0.9777777777777777,
+          "false_positive_rate": 0.007363770250368188,
+          "predicted_spam_rate": 0.15185185185185185,
+          "tp": 118,
+          "fp": 5,
+          "tn": 674,
+          "fn": 13,
+          "support": 810,
+          "support_spam": 131,
+          "support_ham": 679,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.9083622660666856,
+              0.9825136435185179
+            ],
+            "recall": [
+              0.837607144602738,
+              0.9410851130924571
+            ],
+            "false_positive_rate": [
+              0.0031493448999006125,
+              0.017121039450515234
+            ]
+          }
+        },
+        {
+          "threshold": 0.9,
+          "precision": 0.9747899159663865,
+          "recall": 0.8854961832061069,
+          "f1": 0.928,
+          "accuracy": 0.9777777777777777,
+          "false_positive_rate": 0.004418262150220913,
+          "predicted_spam_rate": 0.1469135802469136,
+          "tp": 116,
+          "fp": 3,
+          "tn": 676,
+          "fn": 15,
+          "support": 810,
+          "support_spam": 131,
+          "support_ham": 679,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.9284951063536421,
+              0.9913897687107348
+            ],
+            "recall": [
+              0.8196581083613613,
+              0.9293696823740171
+            ],
+            "false_positive_rate": [
+              0.0015037214426657317,
+              0.0129087877768109
+            ]
+          }
+        }
+      ],
+      "calibration": {
+        "validation": {
+          "n": 810,
+          "brier_score": 0.015533044820934361,
+          "log_loss": 0.058721233346756184,
+          "n_bins": 10,
+          "expected_calibration_error": 0.011040704224662275,
+          "max_calibration_error": 0.5630673299283554,
+          "bins": [
+            {
+              "bin_lower": 0.0,
+              "bin_upper": 0.1,
+              "count": 667,
+              "mean_probability": 0.007815696515842721,
+              "observed_rate": 0.0074962518740629685
+            },
+            {
+              "bin_lower": 0.1,
+              "bin_upper": 0.2,
+              "count": 6,
+              "mean_probability": 0.13867338885668543,
+              "observed_rate": 0.0
+            },
+            {
+              "bin_lower": 0.2,
+              "bin_upper": 0.30000000000000004,
+              "count": 5,
+              "mean_probability": 0.2410572218147215,
+              "observed_rate": 0.6
+            },
+            {
+              "bin_lower": 0.30000000000000004,
+              "bin_upper": 0.4,
+              "count": 1,
+              "mean_probability": 0.38303208520051596,
+              "observed_rate": 0.0
+            },
+            {
+              "bin_lower": 0.4,
+              "bin_upper": 0.5,
+              "count": 0,
+              "mean_probability": null,
+              "observed_rate": null
+            },
+            {
+              "bin_lower": 0.5,
+              "bin_upper": 0.6000000000000001,
+              "count": 2,
+              "mean_probability": 0.5630673299283554,
+              "observed_rate": 0.0
+            },
+            {
+              "bin_lower": 0.6000000000000001,
+              "bin_upper": 0.7000000000000001,
+              "count": 4,
+              "mean_probability": 0.6506055593841102,
+              "observed_rate": 0.75
+            },
+            {
+              "bin_lower": 0.7000000000000001,
+              "bin_upper": 0.8,
+              "count": 2,
+              "mean_probability": 0.7314572442889034,
+              "observed_rate": 1.0
+            },
+            {
+              "bin_lower": 0.8,
+              "bin_upper": 0.9,
+              "count": 4,
+              "mean_probability": 0.8561267816065412,
+              "observed_rate": 0.5
+            },
+            {
+              "bin_lower": 0.9,
+              "bin_upper": 1.0,
+              "count": 119,
+              "mean_probability": 0.9935698275333924,
+              "observed_rate": 0.9747899159663865
+            }
+          ]
+        },
+        "test": {
+          "n": 810,
+          "brier_score": 0.015883274570959255,
+          "log_loss": 0.06394811881408537,
+          "n_bins": 10,
+          "expected_calibration_error": 0.011504842665122661,
+          "max_calibration_error": 0.5089959347137833,
+          "bins": [
+            {
+              "bin_lower": 0.0,
+              "bin_upper": 0.1,
+              "count": 671,
+              "mean_probability": 0.007820629123385386,
+              "observed_rate": 0.005961251862891207
+            },
+            {
+              "bin_lower": 0.1,
+              "bin_upper": 0.2,
+              "count": 2,
+              "mean_probability": 0.1456750637682735,
+              "observed_rate": 0.5
+            },
+            {
+              "bin_lower": 0.2,
+              "bin_upper": 0.30000000000000004,
+              "count": 1,
+              "mean_probability": 0.2126856170935523,
+              "observed_rate": 0.0
+            },
+            {
+              "bin_lower": 0.30000000000000004,
+              "bin_upper": 0.4,
+              "count": 5,
+              "mean_probability": 0.3629082067871659,
+              "observed_rate": 0.4
+            },
+            {
+              "bin_lower": 0.4,
+              "bin_upper": 0.5,
+              "count": 1,
+              "mean_probability": 0.49100406528621665,
+              "observed_rate": 1.0
+            },
+            {
+              "bin_lower": 0.5,
+              "bin_upper": 0.6000000000000001,
+              "count": 3,
+              "mean_probability": 0.5876932757026397,
+              "observed_rate": 1.0
+            },
+            {
+              "bin_lower": 0.6000000000000001,
+              "bin_upper": 0.7000000000000001,
+              "count": 1,
+              "mean_probability": 0.6565842336666615,
+              "observed_rate": 1.0
+            },
+            {
+              "bin_lower": 0.7000000000000001,
+              "bin_upper": 0.8,
+              "count": 5,
+              "mean_probability": 0.7473846314871907,
+              "observed_rate": 0.8
+            },
+            {
+              "bin_lower": 0.8,
+              "bin_upper": 0.9,
+              "count": 4,
+              "mean_probability": 0.8709186188828415,
+              "observed_rate": 0.5
+            },
+            {
+              "bin_lower": 0.9,
+              "bin_upper": 1.0,
+              "count": 117,
+              "mean_probability": 0.992550451019675,
+              "observed_rate": 0.9658119658119658
+            }
+          ]
+        }
+      },
+      "classification_report": {
+        "ham": {
+          "precision": 0.9882352941176471,
+          "recall": 0.9896907216494846,
+          "f1-score": 0.9889624724061811,
+          "support": 679.0
+        },
+        "spam": {
+          "precision": 0.9461538461538461,
+          "recall": 0.9389312977099237,
+          "f1-score": 0.9425287356321839,
+          "support": 131.0
+        },
+        "accuracy": 0.9814814814814815,
+        "macro avg": {
+          "precision": 0.9671945701357466,
+          "recall": 0.9643110096797041,
+          "f1-score": 0.9657456040191825,
+          "support": 810.0
+        },
+        "weighted avg": {
+          "precision": 0.9814295290765879,
+          "recall": 0.9814814814814815,
+          "f1-score": 0.9814528186810038,
+          "support": 810.0
+        }
+      },
+      "holdout_at_threshold": {
+        "threshold": 0.5,
+        "precision": 0.9692307692307692,
+        "recall": 0.9,
+        "f1": 0.9333333333333333,
+        "accuracy": 0.9318181818181818,
+        "false_positive_rate": 0.03225806451612903,
+        "predicted_spam_rate": 0.49242424242424243,
+        "tp": 126,
+        "fp": 4,
+        "tn": 120,
+        "fn": 14,
+        "support": 264,
+        "support_spam": 140,
+        "support_ham": 124,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.9235555115015023,
+            0.9879707156852621
+          ],
+          "recall": [
+            0.8391410969490967,
+            0.939493942755373
+          ],
+          "false_positive_rate": [
+            0.012614619069790334,
+            0.08001150495858558
+          ]
+        }
+      },
+      "holdout_calibration": {
+        "n": 264,
+        "brier_score": 0.05908985894486521,
+        "log_loss": 0.21540423277976736,
+        "n_bins": 10,
+        "expected_calibration_error": 0.04455941586077135,
+        "max_calibration_error": 0.3891476702035348,
+        "bins": [
+          {
+            "bin_lower": 0.0,
+            "bin_upper": 0.1,
+            "count": 123,
+            "mean_probability": 0.017741832490013956,
+            "observed_rate": 0.06504065040650407
+          },
+          {
+            "bin_lower": 0.1,
+            "bin_upper": 0.2,
+            "count": 9,
+            "mean_probability": 0.17511088502903352,
+            "observed_rate": 0.5555555555555556
+          },
+          {
+            "bin_lower": 0.2,
+            "bin_upper": 0.30000000000000004,
+            "count": 2,
+            "mean_probability": 0.20881226520647722,
+            "observed_rate": 0.5
+          },
+          {
+            "bin_lower": 0.30000000000000004,
+            "bin_upper": 0.4,
+            "count": 0,
+            "mean_probability": null,
+            "observed_rate": null
+          },
+          {
+            "bin_lower": 0.4,
+            "bin_upper": 0.5,
+            "count": 0,
+            "mean_probability": null,
+            "observed_rate": null
+          },
+          {
+            "bin_lower": 0.5,
+            "bin_upper": 0.6000000000000001,
+            "count": 0,
+            "mean_probability": null,
+            "observed_rate": null
+          },
+          {
+            "bin_lower": 0.6000000000000001,
+            "bin_upper": 0.7000000000000001,
+            "count": 1,
+            "mean_probability": 0.6108523297964652,
+            "observed_rate": 1.0
+          },
+          {
+            "bin_lower": 0.7000000000000001,
+            "bin_upper": 0.8,
+            "count": 2,
+            "mean_probability": 0.7909494536018329,
+            "observed_rate": 1.0
+          },
+          {
+            "bin_lower": 0.8,
+            "bin_upper": 0.9,
+            "count": 8,
+            "mean_probability": 0.8759461027415179,
+            "observed_rate": 0.875
+          },
+          {
+            "bin_lower": 0.9,
+            "bin_upper": 1.0,
+            "count": 119,
+            "mean_probability": 0.9842414797836773,
+            "observed_rate": 0.9747899159663865
+          }
+        ]
+      },
+      "holdout_by_category": [
+        {
+          "source_file": "holdout:ec5ff937c0e2",
+          "category": "appointment",
+          "threshold": 0.5,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "tn": 9,
+          "fn": 0,
+          "support": 9,
+          "support_spam": 0,
+          "support_ham": 9,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": null,
+            "recall": null,
+            "false_positive_rate": [
+              0.0,
+              0.2991450484195441
+            ]
+          }
+        },
+        {
+          "source_file": "holdout:ec5ff937c0e2",
+          "category": "bank_alert",
+          "threshold": 0.5,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "tn": 16,
+          "fn": 0,
+          "support": 16,
+          "support_spam": 0,
+          "support_ham": 16,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": null,
+            "recall": null,
+            "false_positive_rate": [
+              0.0,
+              0.1936076805344365
+            ]
+          }
+        },
+        {
+          "source_file": "holdout:ec5ff937c0e2",
+          "category": "bank_phishing",
+          "threshold": 0.5,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 1.0,
+          "tp": 24,
+          "fp": 0,
+          "tn": 0,
+          "fn": 0,
+          "support": 24,
+          "support_spam": 24,
+          "support_ham": 0,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.8620237953250198,
+              1.0
+            ],
+            "recall": [
+              0.8620237953250198,
+              1.0
+            ],
+            "false_positive_rate": null
+          }
+        },
+        {
+          "source_file": "holdout:ec5ff937c0e2",
+          "category": "bill",
+          "threshold": 0.5,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "tn": 3,
+          "fn": 0,
+          "support": 3,
+          "support_spam": 0,
+          "support_ham": 3,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": null,
+            "recall": null,
+            "false_positive_rate": [
+              0.0,
+              0.5614970317550454
+            ]
+          }
+        },
+        {
+          "source_file": "holdout:ec5ff937c0e2",
+          "category": "community",
+          "threshold": 0.5,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "tn": 8,
+          "fn": 0,
+          "support": 8,
+          "support_spam": 0,
+          "support_ham": 8,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": null,
+            "recall": null,
+            "false_positive_rate": [
+              0.0,
+              0.32440756488388023
+            ]
+          }
+        },
+        {
+          "source_file": "holdout:ec5ff937c0e2",
+          "category": "delivery",
+          "threshold": 0.5,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "tn": 11,
+          "fn": 0,
+          "support": 11,
+          "support_spam": 0,
+          "support_ham": 11,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": null,
+            "recall": null,
+            "false_positive_rate": [
+              0.0,
+              0.2588329669680317
+            ]
+          }
+        },
+        {
+          "source_file": "holdout:ec5ff937c0e2",
+          "category": "delivery_scam",
+          "threshold": 0.5,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 1.0,
+          "tp": 1,
+          "fp": 0,
+          "tn": 0,
+          "fn": 0,
+          "support": 1,
+          "support_spam": 1,
+          "support_ham": 0,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.20654931437723745,
+              1.0
+            ],
+            "recall": [
+              0.20654931437723745,
+              1.0
+            ],
+            "false_positive_rate": null
+          }
+        },
+        {
+          "source_file": "holdout:ec5ff937c0e2",
+          "category": "ewallet_phishing",
+          "threshold": 0.5,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 1.0,
+          "tp": 12,
+          "fp": 0,
+          "tn": 0,
+          "fn": 0,
+          "support": 12,
+          "support_spam": 12,
+          "support_ham": 0,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.7575059933447592,
+              1.0
+            ],
+            "recall": [
+              0.7575059933447592,
+              1.0
+            ],
+            "false_positive_rate": null
+          }
+        },
+        {
+          "source_file": "holdout:ec5ff937c0e2",
+          "category": "ewallet_receipt",
+          "threshold": 0.5,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "accuracy": 0.625,
+          "false_positive_rate": 0.375,
+          "predicted_spam_rate": 0.375,
+          "tp": 0,
+          "fp": 3,
+          "tn": 5,
+          "fn": 0,
+          "support": 8,
+          "support_spam": 0,
+          "support_ham": 8,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.0,
+              0.5614970317550454
+            ],
+            "recall": null,
+            "false_positive_rate": [
+              0.13684428582359742,
+              0.6942576053973727
+            ]
+          }
+        },
+        {
+          "source_file": "holdout:ec5ff937c0e2",
+          "category": "government_impersonation",
+          "threshold": 0.5,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 1.0,
+          "tp": 20,
+          "fp": 0,
+          "tn": 0,
+          "fn": 0,
+          "support": 20,
+          "support_spam": 20,
+          "support_ham": 0,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.8388748419471806,
+              1.0
+            ],
+            "recall": [
+              0.8388748419471806,
+              1.0
+            ],
+            "false_positive_rate": null
+          }
+        },
+        {
+          "source_file": "holdout:ec5ff937c0e2",
+          "category": "government_subsidy_scam",
+          "threshold": 0.5,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 1.0,
+          "tp": 1,
+          "fp": 0,
+          "tn": 0,
+          "fn": 0,
+          "support": 1,
+          "support_spam": 1,
+          "support_ham": 0,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.20654931437723745,
+              1.0
+            ],
+            "recall": [
+              0.20654931437723745,
+              1.0
+            ],
+            "false_positive_rate": null
+          }
+        },
+        {
+          "source_file": "holdout:ec5ff937c0e2",
+          "category": "impersonation_scam",
+          "threshold": 0.5,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 1.0,
+          "tp": 1,
+          "fp": 0,
+          "tn": 0,
+          "fn": 0,
+          "support": 1,
+          "support_spam": 1,
+          "support_ham": 0,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.20654931437723745,
+              1.0
+            ],
+            "recall": [
+              0.20654931437723745,
+              1.0
+            ],
+            "false_positive_rate": null
+          }
+        },
+        {
+          "source_file": "holdout:ec5ff937c0e2",
+          "category": "investment_scam",
+          "threshold": 0.5,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 1.0,
+          "tp": 9,
+          "fp": 0,
+          "tn": 0,
+          "fn": 0,
+          "support": 9,
+          "support_spam": 9,
+          "support_ham": 0,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.7008549515804559,
+              1.0
+            ],
+            "recall": [
+              0.7008549515804559,
+              1.0
+            ],
+            "false_positive_rate": null
+          }
+        },
+        {
+          "source_file": "holdout:ec5ff937c0e2",
+          "category": "job_scam",
+          "threshold": 0.5,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 1.0,
+          "tp": 13,
+          "fp": 0,
+          "tn": 0,
+          "fn": 0,
+          "support": 13,
+          "support_spam": 13,
+          "support_ham": 0,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.7719046276458016,
+              1.0
+            ],
+            "recall": [
+              0.7719046276458016,
+              1.0
+            ],
+            "false_positive_rate": null
+          }
+        },
+        {
+          "source_file": "holdout:ec5ff937c0e2",
+          "category": "legit_link",
+          "threshold": 0.5,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "tn": 9,
+          "fn": 0,
+          "support": 9,
+          "support_spam": 0,
+          "support_ham": 9,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": null,
+            "recall": null,
+            "false_positive_rate": [
+              0.0,
+              0.2991450484195441
+            ]
+          }
+        },
+        {
+          "source_file": "holdout:ec5ff937c0e2",
+          "category": "load_scam",
+          "threshold": 0.5,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 1.0,
+          "tp": 2,
+          "fp": 0,
+          "tn": 0,
+          "fn": 0,
+          "support": 2,
+          "support_spam": 2,
+          "support_ham": 0,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.34238022750665303,
+              1.0
+            ],
+            "recall": [
+              0.34238022750665303,
+              1.0
+            ],
+            "false_positive_rate": null
+          }
+        },
+        {
+          "source_file": "holdout:ec5ff937c0e2",
+          "category": "loan_scam",
+          "threshold": 0.5,
+          "precision": 1.0,
+          "recall": 0.5555555555555556,
+          "f1": 0.7142857142857143,
+          "accuracy": 0.5555555555555556,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 0.5555555555555556,
+          "tp": 5,
+          "fp": 0,
+          "tn": 0,
+          "fn": 4,
+          "support": 9,
+          "support_spam": 9,
+          "support_ham": 0,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.5655175352168251,
+              1.0
+            ],
+            "recall": [
+              0.26665129349549305,
+              0.8112214789023355
+            ],
+            "false_positive_rate": null
+          }
+        },
+        {
+          "source_file": "holdout:ec5ff937c0e2",
+          "category": "otp",
+          "threshold": 0.5,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "accuracy": 0.9090909090909091,
+          "false_positive_rate": 0.09090909090909091,
+          "predicted_spam_rate": 0.09090909090909091,
+          "tp": 0,
+          "fp": 1,
+          "tn": 10,
+          "fn": 0,
+          "support": 11,
+          "support_spam": 0,
+          "support_ham": 11,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.0,
+              0.7934506856227626
+            ],
+            "recall": null,
+            "false_positive_rate": [
+              0.016232172885884855,
+              0.37735843645159567
+            ]
+          }
+        },
+        {
+          "source_file": "holdout:ec5ff937c0e2",
+          "category": "otp_social_engineering",
+          "threshold": 0.5,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 1.0,
+          "tp": 1,
+          "fp": 0,
+          "tn": 0,
+          "fn": 0,
+          "support": 1,
+          "support_spam": 1,
+          "support_ham": 0,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.20654931437723745,
+              1.0
+            ],
+            "recall": [
+              0.20654931437723745,
+              1.0
+            ],
+            "false_positive_rate": null
+          }
+        },
+        {
+          "source_file": "holdout:ec5ff937c0e2",
+          "category": "otp_theft",
+          "threshold": 0.5,
+          "precision": 1.0,
+          "recall": 0.25,
+          "f1": 0.4,
+          "accuracy": 0.25,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 0.25,
+          "tp": 2,
+          "fp": 0,
+          "tn": 0,
+          "fn": 6,
+          "support": 8,
+          "support_spam": 8,
+          "support_ham": 0,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.34238022750665303,
+              1.0
+            ],
+            "recall": [
+              0.071479212752109,
+              0.5907245696898311
+            ],
+            "false_positive_rate": null
+          }
+        },
+        {
+          "source_file": "holdout:ec5ff937c0e2",
+          "category": "parcel_scam",
+          "threshold": 0.5,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 1.0,
+          "tp": 9,
+          "fp": 0,
+          "tn": 0,
+          "fn": 0,
+          "support": 9,
+          "support_spam": 9,
+          "support_ham": 0,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.7008549515804559,
+              1.0
+            ],
+            "recall": [
+              0.7008549515804559,
+              1.0
+            ],
+            "false_positive_rate": null
+          }
+        },
+        {
+          "source_file": "holdout:ec5ff937c0e2",
+          "category": "personal",
+          "threshold": 0.5,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "tn": 32,
+          "fn": 0,
+          "support": 32,
+          "support_spam": 0,
+          "support_ham": 32,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": null,
+            "recall": null,
+            "false_positive_rate": [
+              0.0,
+              0.1071791982550706
+            ]
+          }
+        },
+        {
+          "source_file": "holdout:ec5ff937c0e2",
+          "category": "personal_taglish",
+          "threshold": 0.5,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "tn": 5,
+          "fn": 0,
+          "support": 5,
+          "support_spam": 0,
+          "support_ham": 5,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": null,
+            "recall": null,
+            "false_positive_rate": [
+              0.0,
+              0.43448246478317476
+            ]
+          }
+        },
+        {
+          "source_file": "holdout:ec5ff937c0e2",
+          "category": "prize_scam",
+          "threshold": 0.5,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 1.0,
+          "tp": 11,
+          "fp": 0,
+          "tn": 0,
+          "fn": 0,
+          "support": 11,
+          "support_spam": 11,
+          "support_ham": 0,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.7411670330319684,
+              1.0
+            ],
+            "recall": [
+              0.7411670330319684,
+              1.0
+            ],
+            "false_positive_rate": null
+          }
+        },
+        {
+          "source_file": "holdout:ec5ff937c0e2",
+          "category": "promo",
+          "threshold": 0.5,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "tn": 3,
+          "fn": 0,
+          "support": 3,
+          "support_spam": 0,
+          "support_ham": 3,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": null,
+            "recall": null,
+            "false_positive_rate": [
+              0.0,
+              0.5614970317550454
+            ]
+          }
+        },
+        {
+          "source_file": "holdout:ec5ff937c0e2",
+          "category": "relative_scam",
+          "threshold": 0.5,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 1.0,
+          "tp": 1,
+          "fp": 0,
+          "tn": 0,
+          "fn": 0,
+          "support": 1,
+          "support_spam": 1,
+          "support_ham": 0,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.20654931437723745,
+              1.0
+            ],
+            "recall": [
+              0.20654931437723745,
+              1.0
+            ],
+            "false_positive_rate": null
+          }
+        },
+        {
+          "source_file": "holdout:ec5ff937c0e2",
+          "category": "romance_scam",
+          "threshold": 0.5,
+          "precision": 1.0,
+          "recall": 0.5555555555555556,
+          "f1": 0.7142857142857143,
+          "accuracy": 0.5555555555555556,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 0.5555555555555556,
+          "tp": 5,
+          "fp": 0,
+          "tn": 0,
+          "fn": 4,
+          "support": 9,
+          "support_spam": 9,
+          "support_ham": 0,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.5655175352168251,
+              1.0
+            ],
+            "recall": [
+              0.26665129349549305,
+              0.8112214789023355
+            ],
+            "false_positive_rate": null
+          }
+        },
+        {
+          "source_file": "holdout:ec5ff937c0e2",
+          "category": "school",
+          "threshold": 0.5,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "tn": 1,
+          "fn": 0,
+          "support": 1,
+          "support_spam": 0,
+          "support_ham": 1,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": null,
+            "recall": null,
+            "false_positive_rate": [
+              0.0,
+              0.7934506856227626
+            ]
+          }
+        },
+        {
+          "source_file": "holdout:ec5ff937c0e2",
+          "category": "sim_registration_scam",
+          "threshold": 0.5,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 1.0,
+          "tp": 9,
+          "fp": 0,
+          "tn": 0,
+          "fn": 0,
+          "support": 9,
+          "support_spam": 9,
+          "support_ham": 0,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": [
+              0.7008549515804559,
+              1.0
+            ],
+            "recall": [
+              0.7008549515804559,
+              1.0
+            ],
+            "false_positive_rate": null
+          }
+        },
+        {
+          "source_file": "holdout:ec5ff937c0e2",
+          "category": "work",
+          "threshold": 0.5,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0,
+          "predicted_spam_rate": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "tn": 8,
+          "fn": 0,
+          "support": 8,
+          "support_spam": 0,
+          "support_ham": 8,
+          "confidence_intervals_95": {
+            "method": "Wilson score; binomial marginal intervals",
+            "precision": null,
+            "recall": null,
+            "false_positive_rate": [
+              0.0,
+              0.32440756488388023
+            ]
+          }
+        }
+      ],
+      "holdout_false_positive_categories": {
+        "ewallet_receipt": 3,
+        "otp": 1
+      }
+    },
+    "legacy_artifact": false,
+    "warnings": [
+      "base CSV: removed 415 exact or normalized duplicate message(s) before splitting (414 exact; Unicode NFKC, case-folding, and whitespace normalization; first occurrence kept)."
+    ]
+  },
+  "training_config": {
+    "data_role": "base",
+    "supplement_count": 5,
+    "holdout_evaluated": true,
+    "val_size": 0.15,
+    "test_size": 0.15,
+    "random_state": 42,
+    "target_precision": 0.95,
+    "min_recall": 0.8,
+    "false_positive_cost": null,
+    "false_negative_cost": null,
+    "split_by": "group",
+    "text_features": "combined",
+    "threshold_policy": "cv-robust",
+    "strict_data": true
+  },
+  "threshold": 0.5,
+  "threshold_diagnostic": {
+    "artifact_threshold": 0.5,
+    "recomputed_validation_candidate": 0.93,
+    "selected_validation_candidate": 0.93,
+    "recorded_candidate_threshold": 0.93,
+    "policy": "cv-robust",
+    "settings_consistent": true,
+    "status": "default_intentionally_retained"
+  },
+  "score_interpretation": "calibrated spam-versus-ham score; calibration does not make it a fraud probability or establish Philippine representativeness",
+  "dataset": {
+    "rows": 5670,
+    "class_counts": {
+      "ham": 4752,
+      "spam": 918
+    },
+    "class_imbalance_ratio": 5.176,
+    "group_count": 5320,
+    "data_kind_counts": {
+      "public": 5157,
+      "synthetic": 513
+    },
+    "language_counts": {
+      "en": 5289,
+      "unknown": 269,
+      "taglish": 76,
+      "tl": 36
+    },
+    "category_counts": {
+      "unknown": 5285,
+      "legitimate": 41,
+      "prize_scam": 33,
+      "bank_phishing": 33,
+      "loan_scam": 26,
+      "investment_scam": 24,
+      "job_scam": 23,
+      "delivery_scam": 18,
+      "personal": 18,
+      "bank_alert": 17,
+      "impersonation_scam": 14,
+      "legit_link": 13,
+      "otp": 12,
+      "delivery": 12,
+      "load_scam": 10,
+      "romance_scam": 9,
+      "work": 9,
+      "appointment": 8,
+      "promo": 7,
+      "school": 7,
+      "sim_registration_scam": 7,
+      "personal_taglish": 6,
+      "ewallet_phishing": 6,
+      "parcel_scam": 6,
+      "otp_theft": 6,
+      "telco_notice": 6,
+      "bill": 5,
+      "government": 3,
+      "school_work": 3,
+      "otp_social_engineering": 1,
+      "relative_scam": 1,
+      "government_subsidy_scam": 1
+    },
+    "files": [
+      {
+        "path": "base:18d69dd0eaef",
+        "role": "base",
+        "sha256": "18d69dd0eaefced609c353220af15b0ac4beebccdd1d9732a7e804dfe3a05ef3",
+        "rows_in": 5572,
+        "rows_loaded": 5157,
+        "duplicates_removed": 415,
+        "class_counts": {
+          "ham": 4515,
+          "spam": 642
+        },
+        "metadata_columns": [
+          "collection_period",
+          "data_kind",
+          "dataset_id",
+          "dataset_version",
+          "language",
+          "license",
+          "source"
+        ],
+        "provenance": {
+          "dataset_id": "uci-sms-spam-collection-228",
+          "dataset_version": "1.0",
+          "license": "CC BY 4.0",
+          "collection_period": "historical; exact per-message dates unavailable"
+        },
+        "category_counts": {
+          "unknown": 5157
+        },
+        "language_counts": {
+          "en": 5157
+        },
+        "data_kind_counts": {
+          "public": 5157
+        }
+      },
+      {
+        "path": "supplement:e2551477919b",
+        "role": "supplement",
+        "sha256": "e2551477919b8def8f87cb8c03f47630b399b26e132f99ddb60974fa43146d00",
+        "rows_in": 128,
+        "rows_loaded": 128,
+        "duplicates_removed": 0,
+        "class_counts": {
+          "ham": 70,
+          "spam": 58
+        },
+        "metadata_columns": [
+          "data_kind"
+        ],
+        "provenance": {
+          "dataset_id": "unknown",
+          "dataset_version": "unknown",
+          "license": "unknown",
+          "collection_period": "unknown"
+        },
+        "category_counts": {
+          "unknown": 128
+        },
+        "language_counts": {
+          "unknown": 128
+        },
+        "data_kind_counts": {
+          "synthetic": 128
+        }
+      },
+      {
+        "path": "supplement:fc421a56d052",
+        "role": "supplement",
+        "sha256": "fc421a56d05211bc74422f5fe00936de3401eec5ccbf7ecaccaf60a55804324e",
+        "rows_in": 141,
+        "rows_loaded": 141,
+        "duplicates_removed": 0,
+        "class_counts": {
+          "ham": 41,
+          "spam": 100
+        },
+        "metadata_columns": [
+          "category",
+          "data_kind",
+          "group"
+        ],
+        "provenance": {
+          "dataset_id": "unknown",
+          "dataset_version": "unknown",
+          "license": "unknown",
+          "collection_period": "unknown"
+        },
+        "category_counts": {
+          "legitimate": 41,
+          "prize_scam": 19,
+          "loan_scam": 13,
+          "bank_phishing": 12,
+          "investment_scam": 11,
+          "delivery_scam": 10,
+          "job_scam": 10,
+          "load_scam": 9,
+          "romance_scam": 8,
+          "impersonation_scam": 8
+        },
+        "language_counts": {
+          "unknown": 141
+        },
+        "data_kind_counts": {
+          "synthetic": 141
+        }
+      },
+      {
+        "path": "supplement:638d4992e5cc",
+        "role": "supplement",
+        "sha256": "638d4992e5cccf9168dfaea85e01fb0bf78361182fa8014bf051488e873dffd2",
+        "rows_in": 52,
+        "rows_loaded": 52,
+        "duplicates_removed": 0,
+        "class_counts": {
+          "ham": 36,
+          "spam": 16
+        },
+        "metadata_columns": [
+          "category",
+          "data_kind",
+          "labeling_confidence",
+          "language",
+          "source"
+        ],
+        "provenance": {
+          "dataset_id": "unknown",
+          "dataset_version": "unknown",
+          "license": "unknown",
+          "collection_period": "unknown"
+        },
+        "category_counts": {
+          "bank_alert": 8,
+          "legit_link": 7,
+          "promo": 4,
+          "otp": 3,
+          "delivery": 3,
+          "government": 3,
+          "personal_taglish": 3,
+          "bank_phishing": 3,
+          "bill": 2,
+          "appointment": 2,
+          "prize_scam": 2,
+          "delivery_scam": 2,
+          "school": 1,
+          "sim_registration_scam": 1,
+          "loan_scam": 1,
+          "job_scam": 1,
+          "investment_scam": 1,
+          "otp_social_engineering": 1,
+          "relative_scam": 1,
+          "government_subsidy_scam": 1,
+          "load_scam": 1,
+          "romance_scam": 1
+        },
+        "language_counts": {
+          "en": 42,
+          "taglish": 10
+        },
+        "data_kind_counts": {
+          "synthetic": 52
+        }
+      },
+      {
+        "path": "supplement:1695232f09c5",
+        "role": "supplement",
+        "sha256": "1695232f09c55ae852dda75eeee019c525dbdf3eef32dd316ff5f47cb5b1dd91",
+        "rows_in": 42,
+        "rows_loaded": 42,
+        "duplicates_removed": 0,
+        "class_counts": {
+          "ham": 0,
+          "spam": 42
+        },
+        "metadata_columns": [
+          "category",
+          "data_kind",
+          "group",
+          "labeling_confidence",
+          "language",
+          "source"
+        ],
+        "provenance": {
+          "dataset_id": "unknown",
+          "dataset_version": "unknown",
+          "license": "unknown",
+          "collection_period": "unknown"
+        },
+        "category_counts": {
+          "bank_phishing": 6,
+          "delivery_scam": 6,
+          "prize_scam": 6,
+          "job_scam": 6,
+          "loan_scam": 6,
+          "investment_scam": 6,
+          "impersonation_scam": 6
+        },
+        "language_counts": {
+          "en": 14,
+          "taglish": 14,
+          "tl": 14
+        },
+        "data_kind_counts": {
+          "synthetic": 42
+        }
+      },
+      {
+        "path": "supplement:a58a8352670b",
+        "role": "supplement",
+        "sha256": "a58a8352670b96385d1ae6ec9e78d7e8d1fb7678ddca96c222b76a61a74690d7",
+        "rows_in": 150,
+        "rows_loaded": 150,
+        "duplicates_removed": 0,
+        "class_counts": {
+          "ham": 90,
+          "spam": 60
+        },
+        "metadata_columns": [
+          "category",
+          "data_kind",
+          "group",
+          "labeling_confidence",
+          "language",
+          "source"
+        ],
+        "provenance": {
+          "dataset_id": "unknown",
+          "dataset_version": "unknown",
+          "license": "unknown",
+          "collection_period": "unknown"
+        },
+        "category_counts": {
+          "personal": 18,
+          "bank_phishing": 12,
+          "otp": 9,
+          "bank_alert": 9,
+          "delivery": 9,
+          "work": 9,
+          "ewallet_phishing": 6,
+          "parcel_scam": 6,
+          "job_scam": 6,
+          "loan_scam": 6,
+          "prize_scam": 6,
+          "otp_theft": 6,
+          "investment_scam": 6,
+          "sim_registration_scam": 6,
+          "appointment": 6,
+          "school": 6,
+          "telco_notice": 6,
+          "legit_link": 6,
+          "bill": 3,
+          "promo": 3,
+          "school_work": 3,
+          "personal_taglish": 3
+        },
+        "language_counts": {
+          "en": 76,
+          "taglish": 52,
+          "tl": 22
+        },
+        "data_kind_counts": {
+          "synthetic": 150
+        }
+      }
+    ],
+    "warnings": [
+      "base CSV: removed 415 exact or normalized duplicate message(s) before splitting (414 exact; Unicode NFKC, case-folding, and whitespace normalization; first occurrence kept)."
+    ]
+  },
+  "split": {
+    "method": "stratified_group_kfold",
+    "grouped": true,
+    "seed": 42,
+    "requested_val_size": 0.15,
+    "requested_test_size": 0.15,
+    "sizes": {
+      "train": 4050,
+      "val": 810,
+      "test": 810
+    },
+    "warnings": [],
+    "group_fingerprint": "08cd1d8daa1860cf336148f11479e1cb026cd81ec791150eef43bacddb30de24",
+    "group_fingerprint_version": "row-membership-v1",
+    "group_sizes": {
+      "train": 3800,
+      "val": 760,
+      "test": 760
+    },
+    "group_leakage": 0
+  },
+  "split_summary": {
+    "train": {
+      "rows": 4050,
+      "class_counts": {
+        "ham": 3394,
+        "spam": 656
+      },
+      "groups": 3800,
+      "provenance": {
+        "public": 3676,
+        "synthetic": 374
+      },
+      "language": {
+        "en": 3776,
+        "taglish": 61,
+        "tl": 21,
+        "unknown": 192
+      },
+      "category": {
+        "appointment": 8,
+        "bank_alert": 14,
+        "bank_phishing": 30,
+        "bill": 5,
+        "delivery": 9,
+        "delivery_scam": 16,
+        "government": 3,
+        "impersonation_scam": 11,
+        "investment_scam": 13,
+        "job_scam": 20,
+        "legit_link": 11,
+        "legitimate": 23,
+        "load_scam": 4,
+        "loan_scam": 21,
+        "otp": 10,
+        "otp_theft": 6,
+        "parcel_scam": 6,
+        "personal": 9,
+        "personal_taglish": 3,
+        "prize_scam": 27,
+        "promo": 3,
+        "romance_scam": 9,
+        "school": 6,
+        "school_work": 3,
+        "sim_registration_scam": 7,
+        "telco_notice": 6,
+        "unknown": 3767
+      }
+    },
+    "val": {
+      "rows": 810,
+      "class_counts": {
+        "ham": 679,
+        "spam": 131
+      },
+      "groups": 760,
+      "provenance": {
+        "public": 741,
+        "synthetic": 69
+      },
+      "language": {
+        "en": 754,
+        "taglish": 5,
+        "tl": 12,
+        "unknown": 39
+      },
+      "category": {
+        "bank_alert": 1,
+        "bank_phishing": 3,
+        "government_subsidy_scam": 1,
+        "impersonation_scam": 3,
+        "investment_scam": 8,
+        "legitimate": 8,
+        "load_scam": 4,
+        "loan_scam": 5,
+        "otp_social_engineering": 1,
+        "personal": 9,
+        "prize_scam": 5,
+        "promo": 3,
+        "school": 1,
+        "unknown": 758
+      }
+    },
+    "test": {
+      "rows": 810,
+      "class_counts": {
+        "ham": 679,
+        "spam": 131
+      },
+      "groups": 760,
+      "provenance": {
+        "public": 740,
+        "synthetic": 70
+      },
+      "language": {
+        "en": 759,
+        "taglish": 10,
+        "tl": 3,
+        "unknown": 38
+      },
+      "category": {
+        "bank_alert": 2,
+        "delivery": 3,
+        "delivery_scam": 2,
+        "ewallet_phishing": 6,
+        "investment_scam": 3,
+        "job_scam": 3,
+        "legit_link": 2,
+        "legitimate": 10,
+        "load_scam": 2,
+        "otp": 2,
+        "personal_taglish": 3,
+        "prize_scam": 1,
+        "promo": 1,
+        "relative_scam": 1,
+        "unknown": 760,
+        "work": 9
+      }
+    }
+  },
+  "validation": {
+    "threshold_selection": {
+      "threshold": 0.93,
+      "precision": 0.9827586206896551,
+      "recall": 0.8702290076335878,
+      "f1": 0.9230769230769231,
+      "fbeta": 0.9579831932773109,
+      "target_precision": 0.95,
+      "min_recall": 0.8,
+      "achieved_target": true,
+      "strategy": "max_f0.5_subject_to_precision_recall",
+      "note": "Best precision-weighted F0.5 among validation thresholds with spam precision >= 0.95 and recall >= 0.80; precision is weighted twice as heavily as recall."
+    },
+    "sweep": [
+      {
+        "threshold": 0.3,
+        "precision": 0.9318181818181818,
+        "recall": 0.9389312977099237,
+        "f1": 0.9353612167300379,
+        "accuracy": 0.9790123456790123,
+        "false_positive_rate": 0.013254786450662739,
+        "predicted_spam_rate": 0.16296296296296298,
+        "tp": 123,
+        "fp": 9,
+        "tn": 670,
+        "fn": 8,
+        "support": 810,
+        "support_spam": 131,
+        "support_ham": 679,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.8754959371651043,
+            0.9637176651451884
+          ],
+          "recall": [
+            0.8841196490252834,
+            0.9687337760694541
+          ],
+          "false_positive_rate": [
+            0.006988778714056926,
+            0.02499735589823736
+          ]
+        }
+      },
+      {
+        "threshold": 0.4,
+        "precision": 0.9389312977099237,
+        "recall": 0.9389312977099237,
+        "f1": 0.9389312977099237,
+        "accuracy": 0.980246913580247,
+        "false_positive_rate": 0.011782032400589101,
+        "predicted_spam_rate": 0.1617283950617284,
+        "tp": 123,
+        "fp": 8,
+        "tn": 671,
+        "fn": 8,
+        "support": 810,
+        "support_spam": 131,
+        "support_ham": 679,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.8841196490252834,
+            0.9687337760694541
+          ],
+          "recall": [
+            0.8841196490252834,
+            0.9687337760694541
+          ],
+          "false_positive_rate": [
+            0.005981971944940739,
+            0.023075225101883937
+          ]
+        }
+      },
+      {
+        "threshold": 0.5,
+        "precision": 0.9389312977099237,
+        "recall": 0.9389312977099237,
+        "f1": 0.9389312977099237,
+        "accuracy": 0.980246913580247,
+        "false_positive_rate": 0.011782032400589101,
+        "predicted_spam_rate": 0.1617283950617284,
+        "tp": 123,
+        "fp": 8,
+        "tn": 671,
+        "fn": 8,
+        "support": 810,
+        "support_spam": 131,
+        "support_ham": 679,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.8841196490252834,
+            0.9687337760694541
+          ],
+          "recall": [
+            0.8841196490252834,
+            0.9687337760694541
+          ],
+          "false_positive_rate": [
+            0.005981971944940739,
+            0.023075225101883937
+          ]
+        }
+      },
+      {
+        "threshold": 0.6,
+        "precision": 0.9534883720930233,
+        "recall": 0.9389312977099237,
+        "f1": 0.9461538461538462,
+        "accuracy": 0.9827160493827161,
+        "false_positive_rate": 0.008836524300441826,
+        "predicted_spam_rate": 0.15925925925925927,
+        "tp": 123,
+        "fp": 6,
+        "tn": 673,
+        "fn": 8,
+        "support": 810,
+        "support_spam": 131,
+        "support_ham": 679,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.9022377213880084,
+            0.9785114139999394
+          ],
+          "recall": [
+            0.8841196490252834,
+            0.9687337760694541
+          ],
+          "false_positive_rate": [
+            0.004055971514177598,
+            0.019143350401707858
+          ]
+        }
+      },
+      {
+        "threshold": 0.7,
+        "precision": 0.96,
+        "recall": 0.916030534351145,
+        "f1": 0.9375,
+        "accuracy": 0.980246913580247,
+        "false_positive_rate": 0.007363770250368188,
+        "predicted_spam_rate": 0.15432098765432098,
+        "tp": 120,
+        "fp": 5,
+        "tn": 674,
+        "fn": 11,
+        "support": 810,
+        "support_spam": 131,
+        "support_ham": 679,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.9097744468602555,
+            0.9827953909280842
+          ],
+          "recall": [
+            0.8558897996241043,
+            0.9524669250309078
+          ],
+          "false_positive_rate": [
+            0.0031493448999006125,
+            0.017121039450515234
+          ]
+        }
+      },
+      {
+        "threshold": 0.8,
+        "precision": 0.959349593495935,
+        "recall": 0.9007633587786259,
+        "f1": 0.9291338582677164,
+        "accuracy": 0.9777777777777777,
+        "false_positive_rate": 0.007363770250368188,
+        "predicted_spam_rate": 0.15185185185185185,
+        "tp": 118,
+        "fp": 5,
+        "tn": 674,
+        "fn": 13,
+        "support": 810,
+        "support_spam": 131,
+        "support_ham": 679,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.9083622660666856,
+            0.9825136435185179
+          ],
+          "recall": [
+            0.837607144602738,
+            0.9410851130924571
+          ],
+          "false_positive_rate": [
+            0.0031493448999006125,
+            0.017121039450515234
+          ]
+        }
+      },
+      {
+        "threshold": 0.9,
+        "precision": 0.9747899159663865,
+        "recall": 0.8854961832061069,
+        "f1": 0.928,
+        "accuracy": 0.9777777777777777,
+        "false_positive_rate": 0.004418262150220913,
+        "predicted_spam_rate": 0.1469135802469136,
+        "tp": 116,
+        "fp": 3,
+        "tn": 676,
+        "fn": 15,
+        "support": 810,
+        "support_spam": 131,
+        "support_ham": 679,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.9284951063536421,
+            0.9913897687107348
+          ],
+          "recall": [
+            0.8196581083613613,
+            0.9293696823740171
+          ],
+          "false_positive_rate": [
+            0.0015037214426657317,
+            0.0129087877768109
+          ]
+        }
+      }
+    ]
+  },
+  "test": {
+    "at_threshold": {
+      "threshold": 0.5,
+      "precision": 0.9461538461538461,
+      "recall": 0.9389312977099237,
+      "f1": 0.9425287356321839,
+      "accuracy": 0.9814814814814815,
+      "false_positive_rate": 0.010309278350515464,
+      "predicted_spam_rate": 0.16049382716049382,
+      "tp": 123,
+      "fp": 7,
+      "tn": 672,
+      "fn": 8,
+      "support": 810,
+      "support_spam": 131,
+      "support_ham": 679,
+      "confidence_intervals_95": {
+        "method": "Wilson score; binomial marginal intervals",
+        "precision": [
+          0.8930220274608427,
+          0.9736750410118185
+        ],
+        "recall": [
+          0.8841196490252834,
+          0.9687337760694541
+        ],
+        "false_positive_rate": [
+          0.005002605588057285,
+          0.021125653893297784
+        ]
+      },
+      "campaign_bootstrap_95": {
+        "available": true,
+        "method": "percentile cluster bootstrap; resample whole group IDs with replacement",
+        "group_column": "group",
+        "group_count": 760,
+        "replicates": 1000,
+        "seed": 42,
+        "confidence_level": 0.95,
+        "intervals": {
+          "precision": [
+            0.8842791237405185,
+            0.9910714285714286
+          ],
+          "recall": [
+            0.8925597618412868,
+            0.9745236424484508
+          ],
+          "f1": [
+            0.9003884462151395,
+            0.9729729729729729
+          ],
+          "false_positive_rate": [
+            0.0014858841010401188,
+            0.022158987022431857
+          ]
+        },
+        "note": "Group validity depends on source metadata; template families may not be independent real campaigns."
+      }
+    },
+    "at_default_0.5": {
+      "threshold": 0.5,
+      "precision": 0.9461538461538461,
+      "recall": 0.9389312977099237,
+      "f1": 0.9425287356321839,
+      "accuracy": 0.9814814814814815,
+      "false_positive_rate": 0.010309278350515464,
+      "predicted_spam_rate": 0.16049382716049382,
+      "tp": 123,
+      "fp": 7,
+      "tn": 672,
+      "fn": 8,
+      "support": 810,
+      "support_spam": 131,
+      "support_ham": 679,
+      "confidence_intervals_95": {
+        "method": "Wilson score; binomial marginal intervals",
+        "precision": [
+          0.8930220274608427,
+          0.9736750410118185
+        ],
+        "recall": [
+          0.8841196490252834,
+          0.9687337760694541
+        ],
+        "false_positive_rate": [
+          0.005002605588057285,
+          0.021125653893297784
+        ]
+      }
+    },
+    "calibration": {
+      "n": 810,
+      "brier_score": 0.015883274570959255,
+      "log_loss": 0.06394811881408537,
+      "n_bins": 10,
+      "expected_calibration_error": 0.011504842665122661,
+      "max_calibration_error": 0.5089959347137833,
+      "bins": [
+        {
+          "bin_lower": 0.0,
+          "bin_upper": 0.1,
+          "count": 671,
+          "mean_probability": 0.007820629123385386,
+          "observed_rate": 0.005961251862891207
+        },
+        {
+          "bin_lower": 0.1,
+          "bin_upper": 0.2,
+          "count": 2,
+          "mean_probability": 0.1456750637682735,
+          "observed_rate": 0.5
+        },
+        {
+          "bin_lower": 0.2,
+          "bin_upper": 0.30000000000000004,
+          "count": 1,
+          "mean_probability": 0.2126856170935523,
+          "observed_rate": 0.0
+        },
+        {
+          "bin_lower": 0.30000000000000004,
+          "bin_upper": 0.4,
+          "count": 5,
+          "mean_probability": 0.3629082067871659,
+          "observed_rate": 0.4
+        },
+        {
+          "bin_lower": 0.4,
+          "bin_upper": 0.5,
+          "count": 1,
+          "mean_probability": 0.49100406528621665,
+          "observed_rate": 1.0
+        },
+        {
+          "bin_lower": 0.5,
+          "bin_upper": 0.6000000000000001,
+          "count": 3,
+          "mean_probability": 0.5876932757026397,
+          "observed_rate": 1.0
+        },
+        {
+          "bin_lower": 0.6000000000000001,
+          "bin_upper": 0.7000000000000001,
+          "count": 1,
+          "mean_probability": 0.6565842336666615,
+          "observed_rate": 1.0
+        },
+        {
+          "bin_lower": 0.7000000000000001,
+          "bin_upper": 0.8,
+          "count": 5,
+          "mean_probability": 0.7473846314871907,
+          "observed_rate": 0.8
+        },
+        {
+          "bin_lower": 0.8,
+          "bin_upper": 0.9,
+          "count": 4,
+          "mean_probability": 0.8709186188828415,
+          "observed_rate": 0.5
+        },
+        {
+          "bin_lower": 0.9,
+          "bin_upper": 1.0,
+          "count": 117,
+          "mean_probability": 0.992550451019675,
+          "observed_rate": 0.9658119658119658
+        }
+      ]
+    },
+    "by_data_kind": [
+      {
+        "data_kind": "public",
+        "threshold": 0.5,
+        "precision": 0.9896907216494846,
+        "recall": 0.9320388349514563,
+        "f1": 0.9600000000000001,
+        "accuracy": 0.9891891891891892,
+        "false_positive_rate": 0.0015698587127158557,
+        "predicted_spam_rate": 0.13108108108108107,
+        "tp": 96,
+        "fp": 1,
+        "tn": 636,
+        "fn": 7,
+        "support": 740,
+        "support_spam": 103,
+        "support_ham": 637,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.943895009757101,
+            0.9981778351917131
+          ],
+          "recall": [
+            0.866317705300666,
+            0.966692260890114
+          ],
+          "false_positive_rate": [
+            0.0002771723820887478,
+            0.008838122423343857
+          ]
+        }
+      },
+      {
+        "data_kind": "synthetic",
+        "threshold": 0.5,
+        "precision": 0.8181818181818182,
+        "recall": 0.9642857142857143,
+        "f1": 0.8852459016393442,
+        "accuracy": 0.9,
+        "false_positive_rate": 0.14285714285714285,
+        "predicted_spam_rate": 0.4714285714285714,
+        "tp": 27,
+        "fp": 6,
+        "tn": 36,
+        "fn": 1,
+        "support": 70,
+        "support_spam": 28,
+        "support_ham": 42,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.6561176836533009,
+            0.9138923179105933
+          ],
+          "recall": [
+            0.8228780225664668,
+            0.9936674801509623
+          ],
+          "false_positive_rate": [
+            0.06715967015962647,
+            0.27841089474444775
+          ]
+        }
+      }
+    ],
+    "by_source_category_language": [
+      {
+        "source_file": "base:18d69dd0eaef",
+        "category": "unknown",
+        "language": "en",
+        "threshold": 0.5,
+        "precision": 0.9896907216494846,
+        "recall": 0.9320388349514563,
+        "f1": 0.9600000000000001,
+        "accuracy": 0.9891891891891892,
+        "false_positive_rate": 0.0015698587127158557,
+        "predicted_spam_rate": 0.13108108108108107,
+        "tp": 96,
+        "fp": 1,
+        "tn": 636,
+        "fn": 7,
+        "support": 740,
+        "support_spam": 103,
+        "support_ham": 637,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.943895009757101,
+            0.9981778351917131
+          ],
+          "recall": [
+            0.866317705300666,
+            0.966692260890114
+          ],
+          "false_positive_rate": [
+            0.0002771723820887478,
+            0.008838122423343857
+          ]
+        }
+      },
+      {
+        "source_file": "supplement:1695232f09c5",
+        "category": "job_scam",
+        "language": "en",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 1,
+        "fp": 0,
+        "tn": 0,
+        "fn": 0,
+        "support": 1,
+        "support_spam": 1,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.20654931437723745,
+            1.0
+          ],
+          "recall": [
+            0.20654931437723745,
+            1.0
+          ],
+          "false_positive_rate": null
+        }
+      },
+      {
+        "source_file": "supplement:1695232f09c5",
+        "category": "job_scam",
+        "language": "taglish",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 1,
+        "fp": 0,
+        "tn": 0,
+        "fn": 0,
+        "support": 1,
+        "support_spam": 1,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.20654931437723745,
+            1.0
+          ],
+          "recall": [
+            0.20654931437723745,
+            1.0
+          ],
+          "false_positive_rate": null
+        }
+      },
+      {
+        "source_file": "supplement:1695232f09c5",
+        "category": "job_scam",
+        "language": "tl",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 1,
+        "fp": 0,
+        "tn": 0,
+        "fn": 0,
+        "support": 1,
+        "support_spam": 1,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.20654931437723745,
+            1.0
+          ],
+          "recall": [
+            0.20654931437723745,
+            1.0
+          ],
+          "false_positive_rate": null
+        }
+      },
+      {
+        "source_file": "supplement:638d4992e5cc",
+        "category": "bank_alert",
+        "language": "en",
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "tn": 2,
+        "fn": 0,
+        "support": 2,
+        "support_spam": 0,
+        "support_ham": 2,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": [
+            0.0,
+            0.6576197724933469
+          ]
+        }
+      },
+      {
+        "source_file": "supplement:638d4992e5cc",
+        "category": "legit_link",
+        "language": "en",
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "tn": 2,
+        "fn": 0,
+        "support": 2,
+        "support_spam": 0,
+        "support_ham": 2,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": [
+            0.0,
+            0.6576197724933469
+          ]
+        }
+      },
+      {
+        "source_file": "supplement:638d4992e5cc",
+        "category": "otp",
+        "language": "en",
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "tn": 2,
+        "fn": 0,
+        "support": 2,
+        "support_spam": 0,
+        "support_ham": 2,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": [
+            0.0,
+            0.6576197724933469
+          ]
+        }
+      },
+      {
+        "source_file": "supplement:638d4992e5cc",
+        "category": "promo",
+        "language": "en",
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "tn": 1,
+        "fn": 0,
+        "support": 1,
+        "support_spam": 0,
+        "support_ham": 1,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": [
+            0.0,
+            0.7934506856227626
+          ]
+        }
+      },
+      {
+        "source_file": "supplement:638d4992e5cc",
+        "category": "relative_scam",
+        "language": "taglish",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 1,
+        "fp": 0,
+        "tn": 0,
+        "fn": 0,
+        "support": 1,
+        "support_spam": 1,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.20654931437723745,
+            1.0
+          ],
+          "recall": [
+            0.20654931437723745,
+            1.0
+          ],
+          "false_positive_rate": null
+        }
+      },
+      {
+        "source_file": "supplement:a58a8352670b",
+        "category": "delivery",
+        "language": "en",
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "accuracy": 0.0,
+        "false_positive_rate": 1.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 0,
+        "fp": 1,
+        "tn": 0,
+        "fn": 0,
+        "support": 1,
+        "support_spam": 0,
+        "support_ham": 1,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.0,
+            0.7934506856227626
+          ],
+          "recall": null,
+          "false_positive_rate": [
+            0.20654931437723745,
+            1.0
+          ]
+        }
+      },
+      {
+        "source_file": "supplement:a58a8352670b",
+        "category": "delivery",
+        "language": "taglish",
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "accuracy": 0.0,
+        "false_positive_rate": 1.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 0,
+        "fp": 1,
+        "tn": 0,
+        "fn": 0,
+        "support": 1,
+        "support_spam": 0,
+        "support_ham": 1,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.0,
+            0.7934506856227626
+          ],
+          "recall": null,
+          "false_positive_rate": [
+            0.20654931437723745,
+            1.0
+          ]
+        }
+      },
+      {
+        "source_file": "supplement:a58a8352670b",
+        "category": "delivery",
+        "language": "tl",
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "accuracy": 0.0,
+        "false_positive_rate": 1.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 0,
+        "fp": 1,
+        "tn": 0,
+        "fn": 0,
+        "support": 1,
+        "support_spam": 0,
+        "support_ham": 1,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.0,
+            0.7934506856227626
+          ],
+          "recall": null,
+          "false_positive_rate": [
+            0.20654931437723745,
+            1.0
+          ]
+        }
+      },
+      {
+        "source_file": "supplement:a58a8352670b",
+        "category": "ewallet_phishing",
+        "language": "taglish",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 6,
+        "fp": 0,
+        "tn": 0,
+        "fn": 0,
+        "support": 6,
+        "support_spam": 6,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.6096657120978346,
+            1.0
+          ],
+          "recall": [
+            0.6096657120978346,
+            1.0
+          ],
+          "false_positive_rate": null
+        }
+      },
+      {
+        "source_file": "supplement:a58a8352670b",
+        "category": "personal_taglish",
+        "language": "en",
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "tn": 1,
+        "fn": 0,
+        "support": 1,
+        "support_spam": 0,
+        "support_ham": 1,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": [
+            0.0,
+            0.7934506856227626
+          ]
+        }
+      },
+      {
+        "source_file": "supplement:a58a8352670b",
+        "category": "personal_taglish",
+        "language": "taglish",
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "tn": 1,
+        "fn": 0,
+        "support": 1,
+        "support_spam": 0,
+        "support_ham": 1,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": [
+            0.0,
+            0.7934506856227626
+          ]
+        }
+      },
+      {
+        "source_file": "supplement:a58a8352670b",
+        "category": "personal_taglish",
+        "language": "tl",
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "tn": 1,
+        "fn": 0,
+        "support": 1,
+        "support_spam": 0,
+        "support_ham": 1,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": [
+            0.0,
+            0.7934506856227626
+          ]
+        }
+      },
+      {
+        "source_file": "supplement:a58a8352670b",
+        "category": "work",
+        "language": "en",
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "tn": 9,
+        "fn": 0,
+        "support": 9,
+        "support_spam": 0,
+        "support_ham": 9,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": [
+            0.0,
+            0.2991450484195441
+          ]
+        }
+      },
+      {
+        "source_file": "supplement:e2551477919b",
+        "category": "unknown",
+        "language": "unknown",
+        "threshold": 0.5,
+        "precision": 0.8181818181818182,
+        "recall": 0.9,
+        "f1": 0.8571428571428572,
+        "accuracy": 0.85,
+        "false_positive_rate": 0.2,
+        "predicted_spam_rate": 0.55,
+        "tp": 9,
+        "fp": 2,
+        "tn": 8,
+        "fn": 1,
+        "support": 20,
+        "support_spam": 10,
+        "support_ham": 10,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.523019438039156,
+            0.9486323102539149
+          ],
+          "recall": [
+            0.5958499732047615,
+            0.9821237869049271
+          ],
+          "false_positive_rate": [
+            0.05668215145437519,
+            0.5098375284633583
+          ]
+        }
+      },
+      {
+        "source_file": "supplement:fc421a56d052",
+        "category": "delivery_scam",
+        "language": "unknown",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 2,
+        "fp": 0,
+        "tn": 0,
+        "fn": 0,
+        "support": 2,
+        "support_spam": 2,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.34238022750665303,
+            1.0
+          ],
+          "recall": [
+            0.34238022750665303,
+            1.0
+          ],
+          "false_positive_rate": null
+        }
+      },
+      {
+        "source_file": "supplement:fc421a56d052",
+        "category": "investment_scam",
+        "language": "unknown",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 3,
+        "fp": 0,
+        "tn": 0,
+        "fn": 0,
+        "support": 3,
+        "support_spam": 3,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.4385029682449546,
+            1.0
+          ],
+          "recall": [
+            0.4385029682449546,
+            1.0
+          ],
+          "false_positive_rate": null
+        }
+      },
+      {
+        "source_file": "supplement:fc421a56d052",
+        "category": "legitimate",
+        "language": "unknown",
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "accuracy": 0.9,
+        "false_positive_rate": 0.1,
+        "predicted_spam_rate": 0.1,
+        "tp": 0,
+        "fp": 1,
+        "tn": 9,
+        "fn": 0,
+        "support": 10,
+        "support_spam": 0,
+        "support_ham": 10,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.0,
+            0.7934506856227626
+          ],
+          "recall": null,
+          "false_positive_rate": [
+            0.017876213095072896,
+            0.4041500267952385
+          ]
+        }
+      },
+      {
+        "source_file": "supplement:fc421a56d052",
+        "category": "load_scam",
+        "language": "unknown",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 2,
+        "fp": 0,
+        "tn": 0,
+        "fn": 0,
+        "support": 2,
+        "support_spam": 2,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.34238022750665303,
+            1.0
+          ],
+          "recall": [
+            0.34238022750665303,
+            1.0
+          ],
+          "false_positive_rate": null
+        }
+      },
+      {
+        "source_file": "supplement:fc421a56d052",
+        "category": "prize_scam",
+        "language": "unknown",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 1,
+        "fp": 0,
+        "tn": 0,
+        "fn": 0,
+        "support": 1,
+        "support_spam": 1,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.20654931437723745,
+            1.0
+          ],
+          "recall": [
+            0.20654931437723745,
+            1.0
+          ],
+          "false_positive_rate": null
+        }
+      }
+    ],
+    "by_language": [
+      {
+        "language": "en",
+        "threshold": 0.5,
+        "precision": 0.9797979797979798,
+        "recall": 0.9326923076923077,
+        "f1": 0.9556650246305419,
+        "accuracy": 0.9881422924901185,
+        "false_positive_rate": 0.0030534351145038168,
+        "predicted_spam_rate": 0.13043478260869565,
+        "tp": 97,
+        "fp": 2,
+        "tn": 653,
+        "fn": 7,
+        "support": 759,
+        "support_spam": 104,
+        "support_ham": 655,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.9293096883284993,
+            0.9944422798892423
+          ],
+          "recall": [
+            0.8675421323612021,
+            0.9670163109703299
+          ],
+          "false_positive_rate": [
+            0.0008377618069389872,
+            0.011064128573077618
+          ]
+        }
+      },
+      {
+        "language": "taglish",
+        "threshold": 0.5,
+        "precision": 0.8888888888888888,
+        "recall": 1.0,
+        "f1": 0.9411764705882353,
+        "accuracy": 0.9,
+        "false_positive_rate": 0.5,
+        "predicted_spam_rate": 0.9,
+        "tp": 8,
+        "fp": 1,
+        "tn": 1,
+        "fn": 0,
+        "support": 10,
+        "support_spam": 8,
+        "support_ham": 2,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.5650002944233439,
+            0.9801091123614551
+          ],
+          "recall": [
+            0.6755924351161198,
+            1.0
+          ],
+          "false_positive_rate": [
+            0.09453120573423074,
+            0.9054687942657693
+          ]
+        }
+      },
+      {
+        "language": "tl",
+        "threshold": 0.5,
+        "precision": 0.5,
+        "recall": 1.0,
+        "f1": 0.6666666666666666,
+        "accuracy": 0.6666666666666666,
+        "false_positive_rate": 0.5,
+        "predicted_spam_rate": 0.6666666666666666,
+        "tp": 1,
+        "fp": 1,
+        "tn": 1,
+        "fn": 0,
+        "support": 3,
+        "support_spam": 1,
+        "support_ham": 2,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.09453120573423074,
+            0.9054687942657693
+          ],
+          "recall": [
+            0.20654931437723745,
+            1.0
+          ],
+          "false_positive_rate": [
+            0.09453120573423074,
+            0.9054687942657693
+          ]
+        }
+      },
+      {
+        "language": "unknown",
+        "threshold": 0.5,
+        "precision": 0.85,
+        "recall": 0.9444444444444444,
+        "f1": 0.8947368421052632,
+        "accuracy": 0.8947368421052632,
+        "false_positive_rate": 0.15,
+        "predicted_spam_rate": 0.5263157894736842,
+        "tp": 17,
+        "fp": 3,
+        "tn": 17,
+        "fn": 1,
+        "support": 38,
+        "support_spam": 18,
+        "support_ham": 20,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.6395811352592431,
+            0.9476312541037835
+          ],
+          "recall": [
+            0.7424269921812741,
+            0.990124809021697
+          ],
+          "false_positive_rate": [
+            0.052368745896216595,
+            0.36041886474075696
+          ]
+        }
+      }
+    ],
+    "by_category": [
+      {
+        "category": "bank_alert",
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "tn": 2,
+        "fn": 0,
+        "support": 2,
+        "support_spam": 0,
+        "support_ham": 2,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": [
+            0.0,
+            0.6576197724933469
+          ]
+        }
+      },
+      {
+        "category": "delivery",
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "accuracy": 0.0,
+        "false_positive_rate": 1.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 0,
+        "fp": 3,
+        "tn": 0,
+        "fn": 0,
+        "support": 3,
+        "support_spam": 0,
+        "support_ham": 3,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.0,
+            0.5614970317550454
+          ],
+          "recall": null,
+          "false_positive_rate": [
+            0.4385029682449546,
+            1.0
+          ]
+        }
+      },
+      {
+        "category": "delivery_scam",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 2,
+        "fp": 0,
+        "tn": 0,
+        "fn": 0,
+        "support": 2,
+        "support_spam": 2,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.34238022750665303,
+            1.0
+          ],
+          "recall": [
+            0.34238022750665303,
+            1.0
+          ],
+          "false_positive_rate": null
+        }
+      },
+      {
+        "category": "ewallet_phishing",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 6,
+        "fp": 0,
+        "tn": 0,
+        "fn": 0,
+        "support": 6,
+        "support_spam": 6,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.6096657120978346,
+            1.0
+          ],
+          "recall": [
+            0.6096657120978346,
+            1.0
+          ],
+          "false_positive_rate": null
+        }
+      },
+      {
+        "category": "investment_scam",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 3,
+        "fp": 0,
+        "tn": 0,
+        "fn": 0,
+        "support": 3,
+        "support_spam": 3,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.4385029682449546,
+            1.0
+          ],
+          "recall": [
+            0.4385029682449546,
+            1.0
+          ],
+          "false_positive_rate": null
+        }
+      },
+      {
+        "category": "job_scam",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 3,
+        "fp": 0,
+        "tn": 0,
+        "fn": 0,
+        "support": 3,
+        "support_spam": 3,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.4385029682449546,
+            1.0
+          ],
+          "recall": [
+            0.4385029682449546,
+            1.0
+          ],
+          "false_positive_rate": null
+        }
+      },
+      {
+        "category": "legit_link",
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "tn": 2,
+        "fn": 0,
+        "support": 2,
+        "support_spam": 0,
+        "support_ham": 2,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": [
+            0.0,
+            0.6576197724933469
+          ]
+        }
+      },
+      {
+        "category": "legitimate",
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "accuracy": 0.9,
+        "false_positive_rate": 0.1,
+        "predicted_spam_rate": 0.1,
+        "tp": 0,
+        "fp": 1,
+        "tn": 9,
+        "fn": 0,
+        "support": 10,
+        "support_spam": 0,
+        "support_ham": 10,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.0,
+            0.7934506856227626
+          ],
+          "recall": null,
+          "false_positive_rate": [
+            0.017876213095072896,
+            0.4041500267952385
+          ]
+        }
+      },
+      {
+        "category": "load_scam",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 2,
+        "fp": 0,
+        "tn": 0,
+        "fn": 0,
+        "support": 2,
+        "support_spam": 2,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.34238022750665303,
+            1.0
+          ],
+          "recall": [
+            0.34238022750665303,
+            1.0
+          ],
+          "false_positive_rate": null
+        }
+      },
+      {
+        "category": "otp",
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "tn": 2,
+        "fn": 0,
+        "support": 2,
+        "support_spam": 0,
+        "support_ham": 2,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": [
+            0.0,
+            0.6576197724933469
+          ]
+        }
+      },
+      {
+        "category": "personal_taglish",
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "tn": 3,
+        "fn": 0,
+        "support": 3,
+        "support_spam": 0,
+        "support_ham": 3,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": [
+            0.0,
+            0.5614970317550454
+          ]
+        }
+      },
+      {
+        "category": "prize_scam",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 1,
+        "fp": 0,
+        "tn": 0,
+        "fn": 0,
+        "support": 1,
+        "support_spam": 1,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.20654931437723745,
+            1.0
+          ],
+          "recall": [
+            0.20654931437723745,
+            1.0
+          ],
+          "false_positive_rate": null
+        }
+      },
+      {
+        "category": "promo",
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "tn": 1,
+        "fn": 0,
+        "support": 1,
+        "support_spam": 0,
+        "support_ham": 1,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": [
+            0.0,
+            0.7934506856227626
+          ]
+        }
+      },
+      {
+        "category": "relative_scam",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 1,
+        "fp": 0,
+        "tn": 0,
+        "fn": 0,
+        "support": 1,
+        "support_spam": 1,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.20654931437723745,
+            1.0
+          ],
+          "recall": [
+            0.20654931437723745,
+            1.0
+          ],
+          "false_positive_rate": null
+        }
+      },
+      {
+        "category": "unknown",
+        "threshold": 0.5,
+        "precision": 0.9722222222222222,
+        "recall": 0.9292035398230089,
+        "f1": 0.9502262443438914,
+        "accuracy": 0.9855263157894737,
+        "false_positive_rate": 0.00463678516228748,
+        "predicted_spam_rate": 0.14210526315789473,
+        "tp": 105,
+        "fp": 3,
+        "tn": 644,
+        "fn": 8,
+        "support": 760,
+        "support_spam": 113,
+        "support_ham": 647,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.9214966112497636,
+            0.9905086601007103
+          ],
+          "recall": [
+            0.8664924814187024,
+            0.9636922918547725
+          ],
+          "false_positive_rate": [
+            0.0015781519615661061,
+            0.013542978825840345
+          ]
+        }
+      },
+      {
+        "category": "work",
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "tn": 9,
+        "fn": 0,
+        "support": 9,
+        "support_spam": 0,
+        "support_ham": 9,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": [
+            0.0,
+            0.2991450484195441
+          ]
+        }
+      }
+    ],
+    "by_message_length_range": [
+      {
+        "message_length_range": "1-70",
+        "threshold": 0.5,
+        "precision": 0.7142857142857143,
+        "recall": 1.0,
+        "f1": 0.8333333333333333,
+        "accuracy": 0.9955056179775281,
+        "false_positive_rate": 0.004545454545454545,
+        "predicted_spam_rate": 0.015730337078651686,
+        "tp": 5,
+        "fp": 2,
+        "tn": 438,
+        "fn": 0,
+        "support": 445,
+        "support_spam": 5,
+        "support_ham": 440,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.35893445183261935,
+            0.9177810759959433
+          ],
+          "recall": [
+            0.5655175352168251,
+            1.0
+          ],
+          "false_positive_rate": [
+            0.0012474139094275421,
+            0.01641983790956481
+          ]
+        }
+      },
+      {
+        "message_length_range": "161+",
+        "threshold": 0.5,
+        "precision": 0.8888888888888888,
+        "recall": 0.8888888888888888,
+        "f1": 0.8888888888888888,
+        "accuracy": 0.9523809523809523,
+        "false_positive_rate": 0.030303030303030304,
+        "predicted_spam_rate": 0.21428571428571427,
+        "tp": 8,
+        "fp": 1,
+        "tn": 32,
+        "fn": 1,
+        "support": 42,
+        "support_spam": 9,
+        "support_ham": 33,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.5650002944233439,
+            0.9801091123614551
+          ],
+          "recall": [
+            0.5650002944233439,
+            0.9801091123614551
+          ],
+          "false_positive_rate": [
+            0.00536941053687183,
+            0.1531872538211892
+          ]
+        }
+      },
+      {
+        "message_length_range": "71-160",
+        "threshold": 0.5,
+        "precision": 0.9649122807017544,
+        "recall": 0.9401709401709402,
+        "f1": 0.9523809523809523,
+        "accuracy": 0.9659442724458205,
+        "false_positive_rate": 0.019417475728155338,
+        "predicted_spam_rate": 0.35294117647058826,
+        "tp": 110,
+        "fp": 4,
+        "tn": 202,
+        "fn": 7,
+        "support": 323,
+        "support_spam": 117,
+        "support_ham": 206,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.9132415849113642,
+            0.9862720587655025
+          ],
+          "recall": [
+            0.8816369507918818,
+            0.9707195252486178
+          ],
+          "false_positive_rate": [
+            0.0075763491456009545,
+            0.04885415265915653
+          ]
+        }
+      }
+    ]
+  },
+  "warnings": [
+    "base CSV: removed 415 exact or normalized duplicate message(s) before splitting (414 exact; Unicode NFKC, case-folding, and whitespace normalization; first occurrence kept).",
+    "Data files match the artifact hashes recorded at training time.",
+    "Small legitimate holdout category support ({'appointment': 9, 'bill': 3, 'community': 8, 'ewallet_receipt': 8, 'legit_link': 9, 'personal_taglish': 5, 'promo': 3, 'school': 1, 'work': 8}); category false-positive counts are descriptive only."
+  ],
+  "holdout": {
+    "banner": "SYNTHETIC BENCHMARK — NOT REAL-WORLD PERFORMANCE",
+    "data_note": "Training data may include synthetic examples and messages with unverified provenance. Synthetic examples are engineering checks, not proof of real-world accuracy. Real-data labels alone do not establish representative Philippine performance.",
+    "at_threshold": {
+      "threshold": 0.5,
+      "precision": 0.9692307692307692,
+      "recall": 0.9,
+      "f1": 0.9333333333333333,
+      "accuracy": 0.9318181818181818,
+      "false_positive_rate": 0.03225806451612903,
+      "predicted_spam_rate": 0.49242424242424243,
+      "tp": 126,
+      "fp": 4,
+      "tn": 120,
+      "fn": 14,
+      "support": 264,
+      "support_spam": 140,
+      "support_ham": 124,
+      "confidence_intervals_95": {
+        "method": "Wilson score; binomial marginal intervals",
+        "precision": [
+          0.9235555115015023,
+          0.9879707156852621
+        ],
+        "recall": [
+          0.8391410969490967,
+          0.939493942755373
+        ],
+        "false_positive_rate": [
+          0.012614619069790334,
+          0.08001150495858558
+        ]
+      }
+    },
+    "campaign_bootstrap_95": {
+      "available": true,
+      "method": "percentile cluster bootstrap; resample whole group IDs with replacement",
+      "group_column": "group",
+      "group_count": 69,
+      "replicates": 1000,
+      "seed": 42,
+      "confidence_level": 0.95,
+      "intervals": {
+        "precision": [
+          0.9051621510673235,
+          1.0
+        ],
+        "recall": [
+          0.7815060399159663,
+          1.0
+        ],
+        "f1": [
+          0.8557667525773196,
+          0.98425626119165
+        ],
+        "false_positive_rate": [
+          0.0,
+          0.09244393121487005
+        ]
+      },
+      "note": "Group validity depends on source metadata; template families may not be independent real campaigns."
+    },
+    "at_default_0.5": {
+      "threshold": 0.5,
+      "precision": 0.9692307692307692,
+      "recall": 0.9,
+      "f1": 0.9333333333333333,
+      "accuracy": 0.9318181818181818,
+      "false_positive_rate": 0.03225806451612903,
+      "predicted_spam_rate": 0.49242424242424243,
+      "tp": 126,
+      "fp": 4,
+      "tn": 120,
+      "fn": 14,
+      "support": 264,
+      "support_spam": 140,
+      "support_ham": 124,
+      "confidence_intervals_95": {
+        "method": "Wilson score; binomial marginal intervals",
+        "precision": [
+          0.9235555115015023,
+          0.9879707156852621
+        ],
+        "recall": [
+          0.8391410969490967,
+          0.939493942755373
+        ],
+        "false_positive_rate": [
+          0.012614619069790334,
+          0.08001150495858558
+        ]
+      }
+    },
+    "calibration": {
+      "n": 264,
+      "brier_score": 0.05908985894486521,
+      "log_loss": 0.21540423277976736,
+      "n_bins": 10,
+      "expected_calibration_error": 0.04455941586077135,
+      "max_calibration_error": 0.3891476702035348,
+      "bins": [
+        {
+          "bin_lower": 0.0,
+          "bin_upper": 0.1,
+          "count": 123,
+          "mean_probability": 0.017741832490013956,
+          "observed_rate": 0.06504065040650407
+        },
+        {
+          "bin_lower": 0.1,
+          "bin_upper": 0.2,
+          "count": 9,
+          "mean_probability": 0.17511088502903352,
+          "observed_rate": 0.5555555555555556
+        },
+        {
+          "bin_lower": 0.2,
+          "bin_upper": 0.30000000000000004,
+          "count": 2,
+          "mean_probability": 0.20881226520647722,
+          "observed_rate": 0.5
+        },
+        {
+          "bin_lower": 0.30000000000000004,
+          "bin_upper": 0.4,
+          "count": 0,
+          "mean_probability": null,
+          "observed_rate": null
+        },
+        {
+          "bin_lower": 0.4,
+          "bin_upper": 0.5,
+          "count": 0,
+          "mean_probability": null,
+          "observed_rate": null
+        },
+        {
+          "bin_lower": 0.5,
+          "bin_upper": 0.6000000000000001,
+          "count": 0,
+          "mean_probability": null,
+          "observed_rate": null
+        },
+        {
+          "bin_lower": 0.6000000000000001,
+          "bin_upper": 0.7000000000000001,
+          "count": 1,
+          "mean_probability": 0.6108523297964652,
+          "observed_rate": 1.0
+        },
+        {
+          "bin_lower": 0.7000000000000001,
+          "bin_upper": 0.8,
+          "count": 2,
+          "mean_probability": 0.7909494536018329,
+          "observed_rate": 1.0
+        },
+        {
+          "bin_lower": 0.8,
+          "bin_upper": 0.9,
+          "count": 8,
+          "mean_probability": 0.8759461027415179,
+          "observed_rate": 0.875
+        },
+        {
+          "bin_lower": 0.9,
+          "bin_upper": 1.0,
+          "count": 119,
+          "mean_probability": 0.9842414797836773,
+          "observed_rate": 0.9747899159663865
+        }
+      ]
+    },
+    "by_source_category_language": [
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "appointment",
+        "language": "en",
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "tn": 9,
+        "fn": 0,
+        "support": 9,
+        "support_spam": 0,
+        "support_ham": 9,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": [
+            0.0,
+            0.2991450484195441
+          ]
+        }
+      },
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "bank_alert",
+        "language": "en",
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "tn": 16,
+        "fn": 0,
+        "support": 16,
+        "support_spam": 0,
+        "support_ham": 16,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": [
+            0.0,
+            0.1936076805344365
+          ]
+        }
+      },
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "bank_phishing",
+        "language": "en",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 15,
+        "fp": 0,
+        "tn": 0,
+        "fn": 0,
+        "support": 15,
+        "support_spam": 15,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.7961166989641515,
+            1.0
+          ],
+          "recall": [
+            0.7961166989641515,
+            1.0
+          ],
+          "false_positive_rate": null
+        }
+      },
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "bank_phishing",
+        "language": "taglish",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 1,
+        "fp": 0,
+        "tn": 0,
+        "fn": 0,
+        "support": 1,
+        "support_spam": 1,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.20654931437723745,
+            1.0
+          ],
+          "recall": [
+            0.20654931437723745,
+            1.0
+          ],
+          "false_positive_rate": null
+        }
+      },
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "bank_phishing",
+        "language": "tl",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 8,
+        "fp": 0,
+        "tn": 0,
+        "fn": 0,
+        "support": 8,
+        "support_spam": 8,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.6755924351161198,
+            1.0
+          ],
+          "recall": [
+            0.6755924351161198,
+            1.0
+          ],
+          "false_positive_rate": null
+        }
+      },
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "bill",
+        "language": "en",
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "tn": 3,
+        "fn": 0,
+        "support": 3,
+        "support_spam": 0,
+        "support_ham": 3,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": [
+            0.0,
+            0.5614970317550454
+          ]
+        }
+      },
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "community",
+        "language": "taglish",
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "tn": 8,
+        "fn": 0,
+        "support": 8,
+        "support_spam": 0,
+        "support_ham": 8,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": [
+            0.0,
+            0.32440756488388023
+          ]
+        }
+      },
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "delivery",
+        "language": "en",
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "tn": 4,
+        "fn": 0,
+        "support": 4,
+        "support_spam": 0,
+        "support_ham": 4,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": [
+            0.0,
+            0.4898908364545973
+          ]
+        }
+      },
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "delivery",
+        "language": "taglish",
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "tn": 7,
+        "fn": 0,
+        "support": 7,
+        "support_spam": 0,
+        "support_ham": 7,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": [
+            0.0,
+            0.35433043506668743
+          ]
+        }
+      },
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "delivery_scam",
+        "language": "en",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 1,
+        "fp": 0,
+        "tn": 0,
+        "fn": 0,
+        "support": 1,
+        "support_spam": 1,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.20654931437723745,
+            1.0
+          ],
+          "recall": [
+            0.20654931437723745,
+            1.0
+          ],
+          "false_positive_rate": null
+        }
+      },
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "ewallet_phishing",
+        "language": "en",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 12,
+        "fp": 0,
+        "tn": 0,
+        "fn": 0,
+        "support": 12,
+        "support_spam": 12,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.7575059933447592,
+            1.0
+          ],
+          "recall": [
+            0.7575059933447592,
+            1.0
+          ],
+          "false_positive_rate": null
+        }
+      },
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "ewallet_receipt",
+        "language": "en",
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "accuracy": 0.625,
+        "false_positive_rate": 0.375,
+        "predicted_spam_rate": 0.375,
+        "tp": 0,
+        "fp": 3,
+        "tn": 5,
+        "fn": 0,
+        "support": 8,
+        "support_spam": 0,
+        "support_ham": 8,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.0,
+            0.5614970317550454
+          ],
+          "recall": null,
+          "false_positive_rate": [
+            0.13684428582359742,
+            0.6942576053973727
+          ]
+        }
+      },
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "government_impersonation",
+        "language": "en",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 8,
+        "fp": 0,
+        "tn": 0,
+        "fn": 0,
+        "support": 8,
+        "support_spam": 8,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.6755924351161198,
+            1.0
+          ],
+          "recall": [
+            0.6755924351161198,
+            1.0
+          ],
+          "false_positive_rate": null
+        }
+      },
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "government_impersonation",
+        "language": "taglish",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 12,
+        "fp": 0,
+        "tn": 0,
+        "fn": 0,
+        "support": 12,
+        "support_spam": 12,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.7575059933447592,
+            1.0
+          ],
+          "recall": [
+            0.7575059933447592,
+            1.0
+          ],
+          "false_positive_rate": null
+        }
+      },
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "government_subsidy_scam",
+        "language": "taglish",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 1,
+        "fp": 0,
+        "tn": 0,
+        "fn": 0,
+        "support": 1,
+        "support_spam": 1,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.20654931437723745,
+            1.0
+          ],
+          "recall": [
+            0.20654931437723745,
+            1.0
+          ],
+          "false_positive_rate": null
+        }
+      },
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "impersonation_scam",
+        "language": "taglish",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 1,
+        "fp": 0,
+        "tn": 0,
+        "fn": 0,
+        "support": 1,
+        "support_spam": 1,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.20654931437723745,
+            1.0
+          ],
+          "recall": [
+            0.20654931437723745,
+            1.0
+          ],
+          "false_positive_rate": null
+        }
+      },
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "investment_scam",
+        "language": "taglish",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 9,
+        "fp": 0,
+        "tn": 0,
+        "fn": 0,
+        "support": 9,
+        "support_spam": 9,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.7008549515804559,
+            1.0
+          ],
+          "recall": [
+            0.7008549515804559,
+            1.0
+          ],
+          "false_positive_rate": null
+        }
+      },
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "job_scam",
+        "language": "en",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 12,
+        "fp": 0,
+        "tn": 0,
+        "fn": 0,
+        "support": 12,
+        "support_spam": 12,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.7575059933447592,
+            1.0
+          ],
+          "recall": [
+            0.7575059933447592,
+            1.0
+          ],
+          "false_positive_rate": null
+        }
+      },
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "job_scam",
+        "language": "taglish",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 1,
+        "fp": 0,
+        "tn": 0,
+        "fn": 0,
+        "support": 1,
+        "support_spam": 1,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.20654931437723745,
+            1.0
+          ],
+          "recall": [
+            0.20654931437723745,
+            1.0
+          ],
+          "false_positive_rate": null
+        }
+      },
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "legit_link",
+        "language": "en",
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "tn": 9,
+        "fn": 0,
+        "support": 9,
+        "support_spam": 0,
+        "support_ham": 9,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": [
+            0.0,
+            0.2991450484195441
+          ]
+        }
+      },
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "load_scam",
+        "language": "en",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 2,
+        "fp": 0,
+        "tn": 0,
+        "fn": 0,
+        "support": 2,
+        "support_spam": 2,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.34238022750665303,
+            1.0
+          ],
+          "recall": [
+            0.34238022750665303,
+            1.0
+          ],
+          "false_positive_rate": null
+        }
+      },
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "loan_scam",
+        "language": "taglish",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 0.5555555555555556,
+        "f1": 0.7142857142857143,
+        "accuracy": 0.5555555555555556,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 0.5555555555555556,
+        "tp": 5,
+        "fp": 0,
+        "tn": 0,
+        "fn": 4,
+        "support": 9,
+        "support_spam": 9,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.5655175352168251,
+            1.0
+          ],
+          "recall": [
+            0.26665129349549305,
+            0.8112214789023355
+          ],
+          "false_positive_rate": null
+        }
+      },
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "otp",
+        "language": "en",
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "tn": 4,
+        "fn": 0,
+        "support": 4,
+        "support_spam": 0,
+        "support_ham": 4,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": [
+            0.0,
+            0.4898908364545973
+          ]
+        }
+      },
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "otp",
+        "language": "taglish",
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "accuracy": 0.8571428571428571,
+        "false_positive_rate": 0.14285714285714285,
+        "predicted_spam_rate": 0.14285714285714285,
+        "tp": 0,
+        "fp": 1,
+        "tn": 6,
+        "fn": 0,
+        "support": 7,
+        "support_spam": 0,
+        "support_ham": 7,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.0,
+            0.7934506856227626
+          ],
+          "recall": null,
+          "false_positive_rate": [
+            0.02567962434474355,
+            0.5131278292743189
+          ]
+        }
+      },
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "otp_social_engineering",
+        "language": "taglish",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 1,
+        "fp": 0,
+        "tn": 0,
+        "fn": 0,
+        "support": 1,
+        "support_spam": 1,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.20654931437723745,
+            1.0
+          ],
+          "recall": [
+            0.20654931437723745,
+            1.0
+          ],
+          "false_positive_rate": null
+        }
+      },
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "otp_theft",
+        "language": "taglish",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 0.25,
+        "f1": 0.4,
+        "accuracy": 0.25,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 0.25,
+        "tp": 2,
+        "fp": 0,
+        "tn": 0,
+        "fn": 6,
+        "support": 8,
+        "support_spam": 8,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.34238022750665303,
+            1.0
+          ],
+          "recall": [
+            0.071479212752109,
+            0.5907245696898311
+          ],
+          "false_positive_rate": null
+        }
+      },
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "parcel_scam",
+        "language": "en",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 1,
+        "fp": 0,
+        "tn": 0,
+        "fn": 0,
+        "support": 1,
+        "support_spam": 1,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.20654931437723745,
+            1.0
+          ],
+          "recall": [
+            0.20654931437723745,
+            1.0
+          ],
+          "false_positive_rate": null
+        }
+      },
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "parcel_scam",
+        "language": "taglish",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 8,
+        "fp": 0,
+        "tn": 0,
+        "fn": 0,
+        "support": 8,
+        "support_spam": 8,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.6755924351161198,
+            1.0
+          ],
+          "recall": [
+            0.6755924351161198,
+            1.0
+          ],
+          "false_positive_rate": null
+        }
+      },
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "personal",
+        "language": "en",
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "tn": 16,
+        "fn": 0,
+        "support": 16,
+        "support_spam": 0,
+        "support_ham": 16,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": [
+            0.0,
+            0.1936076805344365
+          ]
+        }
+      },
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "personal",
+        "language": "tl",
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "tn": 16,
+        "fn": 0,
+        "support": 16,
+        "support_spam": 0,
+        "support_ham": 16,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": [
+            0.0,
+            0.1936076805344365
+          ]
+        }
+      },
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "personal_taglish",
+        "language": "taglish",
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "tn": 5,
+        "fn": 0,
+        "support": 5,
+        "support_spam": 0,
+        "support_ham": 5,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": [
+            0.0,
+            0.43448246478317476
+          ]
+        }
+      },
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "prize_scam",
+        "language": "en",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 8,
+        "fp": 0,
+        "tn": 0,
+        "fn": 0,
+        "support": 8,
+        "support_spam": 8,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.6755924351161198,
+            1.0
+          ],
+          "recall": [
+            0.6755924351161198,
+            1.0
+          ],
+          "false_positive_rate": null
+        }
+      },
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "prize_scam",
+        "language": "taglish",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 3,
+        "fp": 0,
+        "tn": 0,
+        "fn": 0,
+        "support": 3,
+        "support_spam": 3,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.4385029682449546,
+            1.0
+          ],
+          "recall": [
+            0.4385029682449546,
+            1.0
+          ],
+          "false_positive_rate": null
+        }
+      },
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "promo",
+        "language": "en",
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "tn": 3,
+        "fn": 0,
+        "support": 3,
+        "support_spam": 0,
+        "support_ham": 3,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": [
+            0.0,
+            0.5614970317550454
+          ]
+        }
+      },
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "relative_scam",
+        "language": "taglish",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 1,
+        "fp": 0,
+        "tn": 0,
+        "fn": 0,
+        "support": 1,
+        "support_spam": 1,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.20654931437723745,
+            1.0
+          ],
+          "recall": [
+            0.20654931437723745,
+            1.0
+          ],
+          "false_positive_rate": null
+        }
+      },
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "romance_scam",
+        "language": "en",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 0.5,
+        "f1": 0.6666666666666666,
+        "accuracy": 0.5,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 0.5,
+        "tp": 4,
+        "fp": 0,
+        "tn": 0,
+        "fn": 4,
+        "support": 8,
+        "support_spam": 8,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.5101091635454027,
+            1.0
+          ],
+          "recall": [
+            0.21521606221387757,
+            0.7847839377861224
+          ],
+          "false_positive_rate": null
+        }
+      },
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "romance_scam",
+        "language": "taglish",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 1,
+        "fp": 0,
+        "tn": 0,
+        "fn": 0,
+        "support": 1,
+        "support_spam": 1,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.20654931437723745,
+            1.0
+          ],
+          "recall": [
+            0.20654931437723745,
+            1.0
+          ],
+          "false_positive_rate": null
+        }
+      },
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "school",
+        "language": "en",
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "tn": 1,
+        "fn": 0,
+        "support": 1,
+        "support_spam": 0,
+        "support_ham": 1,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": [
+            0.0,
+            0.7934506856227626
+          ]
+        }
+      },
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "sim_registration_scam",
+        "language": "en",
+        "threshold": 0.5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 1.0,
+        "tp": 9,
+        "fp": 0,
+        "tn": 0,
+        "fn": 0,
+        "support": 9,
+        "support_spam": 9,
+        "support_ham": 0,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.7008549515804559,
+            1.0
+          ],
+          "recall": [
+            0.7008549515804559,
+            1.0
+          ],
+          "false_positive_rate": null
+        }
+      },
+      {
+        "source_file": "holdout:ec5ff937c0e2",
+        "category": "work",
+        "language": "taglish",
+        "threshold": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "accuracy": 1.0,
+        "false_positive_rate": 0.0,
+        "predicted_spam_rate": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "tn": 8,
+        "fn": 0,
+        "support": 8,
+        "support_spam": 0,
+        "support_ham": 8,
+        "confidence_intervals_95": {
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": [
+            0.0,
+            0.32440756488388023
+          ]
+        }
+      }
+    ],
+    "false_positive_categories": {
+      "ewallet_receipt": 3,
+      "otp": 1
+    },
+    "legitimate_flagged_total": 4,
+    "by_category": {
+      "appointment": {
+        "rows": 9,
+        "ham_rows": 9,
+        "false_positives": 0
+      },
+      "bank_alert": {
+        "rows": 16,
+        "ham_rows": 16,
+        "false_positives": 0
+      },
+      "bank_phishing": {
+        "rows": 24,
+        "ham_rows": 0,
+        "false_positives": 0
+      },
+      "bill": {
+        "rows": 3,
+        "ham_rows": 3,
+        "false_positives": 0
+      },
+      "community": {
+        "rows": 8,
+        "ham_rows": 8,
+        "false_positives": 0
+      },
+      "delivery": {
+        "rows": 11,
+        "ham_rows": 11,
+        "false_positives": 0
+      },
+      "delivery_scam": {
+        "rows": 1,
+        "ham_rows": 0,
+        "false_positives": 0
+      },
+      "ewallet_phishing": {
+        "rows": 12,
+        "ham_rows": 0,
+        "false_positives": 0
+      },
+      "ewallet_receipt": {
+        "rows": 8,
+        "ham_rows": 8,
+        "false_positives": 3
+      },
+      "government_impersonation": {
+        "rows": 20,
+        "ham_rows": 0,
+        "false_positives": 0
+      },
+      "government_subsidy_scam": {
+        "rows": 1,
+        "ham_rows": 0,
+        "false_positives": 0
+      },
+      "impersonation_scam": {
+        "rows": 1,
+        "ham_rows": 0,
+        "false_positives": 0
+      },
+      "investment_scam": {
+        "rows": 9,
+        "ham_rows": 0,
+        "false_positives": 0
+      },
+      "job_scam": {
+        "rows": 13,
+        "ham_rows": 0,
+        "false_positives": 0
+      },
+      "legit_link": {
+        "rows": 9,
+        "ham_rows": 9,
+        "false_positives": 0
+      },
+      "load_scam": {
+        "rows": 2,
+        "ham_rows": 0,
+        "false_positives": 0
+      },
+      "loan_scam": {
+        "rows": 9,
+        "ham_rows": 0,
+        "false_positives": 0
+      },
+      "otp": {
+        "rows": 11,
+        "ham_rows": 11,
+        "false_positives": 1
+      },
+      "otp_social_engineering": {
+        "rows": 1,
+        "ham_rows": 0,
+        "false_positives": 0
+      },
+      "otp_theft": {
+        "rows": 8,
+        "ham_rows": 0,
+        "false_positives": 0
+      },
+      "parcel_scam": {
+        "rows": 9,
+        "ham_rows": 0,
+        "false_positives": 0
+      },
+      "personal": {
+        "rows": 32,
+        "ham_rows": 32,
+        "false_positives": 0
+      },
+      "personal_taglish": {
+        "rows": 5,
+        "ham_rows": 5,
+        "false_positives": 0
+      },
+      "prize_scam": {
+        "rows": 11,
+        "ham_rows": 0,
+        "false_positives": 0
+      },
+      "promo": {
+        "rows": 3,
+        "ham_rows": 3,
+        "false_positives": 0
+      },
+      "relative_scam": {
+        "rows": 1,
+        "ham_rows": 0,
+        "false_positives": 0
+      },
+      "romance_scam": {
+        "rows": 9,
+        "ham_rows": 0,
+        "false_positives": 0
+      },
+      "school": {
+        "rows": 1,
+        "ham_rows": 1,
+        "false_positives": 0
+      },
+      "sim_registration_scam": {
+        "rows": 9,
+        "ham_rows": 0,
+        "false_positives": 0
+      },
+      "work": {
+        "rows": 8,
+        "ham_rows": 8,
+        "false_positives": 0
+      }
+    },
+    "leakage": {
+      "exact_message_overlap": 0,
+      "normalized_message_overlap": 0,
+      "template_family_overlap": 0,
+      "holdout_template_family_count": 69,
+      "template_family_overlap_ratio": 0.0
+    },
+    "errors": [
+      {
+        "index": 98,
+        "label": "spam",
+        "prediction": "ham",
+        "spam_score": 0.1972,
+        "probability_calibrated": true,
+        "category": "loan_scam",
+        "language": "taglish"
+      },
+      {
+        "index": 99,
+        "label": "spam",
+        "prediction": "ham",
+        "spam_score": 0.1986,
+        "probability_calibrated": true,
+        "category": "loan_scam",
+        "language": "taglish"
+      },
+      {
+        "index": 100,
+        "label": "spam",
+        "prediction": "ham",
+        "spam_score": 0.2152,
+        "probability_calibrated": true,
+        "category": "loan_scam",
+        "language": "taglish"
+      },
+      {
+        "index": 101,
+        "label": "spam",
+        "prediction": "ham",
+        "spam_score": 0.1792,
+        "probability_calibrated": true,
+        "category": "loan_scam",
+        "language": "taglish"
+      },
+      {
+        "index": 134,
+        "label": "spam",
+        "prediction": "ham",
+        "spam_score": 0.046,
+        "probability_calibrated": true,
+        "category": "otp_theft",
+        "language": "taglish"
+      },
+      {
+        "index": 135,
+        "label": "spam",
+        "prediction": "ham",
+        "spam_score": 0.0401,
+        "probability_calibrated": true,
+        "category": "otp_theft",
+        "language": "taglish"
+      },
+      {
+        "index": 136,
+        "label": "spam",
+        "prediction": "ham",
+        "spam_score": 0.0399,
+        "probability_calibrated": true,
+        "category": "otp_theft",
+        "language": "taglish"
+      },
+      {
+        "index": 137,
+        "label": "spam",
+        "prediction": "ham",
+        "spam_score": 0.0361,
+        "probability_calibrated": true,
+        "category": "otp_theft",
+        "language": "taglish"
+      },
+      {
+        "index": 138,
+        "label": "spam",
+        "prediction": "ham",
+        "spam_score": 0.1819,
+        "probability_calibrated": true,
+        "category": "otp_theft",
+        "language": "taglish"
+      },
+      {
+        "index": 139,
+        "label": "spam",
+        "prediction": "ham",
+        "spam_score": 0.1832,
+        "probability_calibrated": true,
+        "category": "otp_theft",
+        "language": "taglish"
+      },
+      {
+        "index": 154,
+        "label": "spam",
+        "prediction": "ham",
+        "spam_score": 0.025,
+        "probability_calibrated": true,
+        "category": "romance_scam",
+        "language": "en"
+      },
+      {
+        "index": 155,
+        "label": "spam",
+        "prediction": "ham",
+        "spam_score": 0.0228,
+        "probability_calibrated": true,
+        "category": "romance_scam",
+        "language": "en"
+      },
+      {
+        "index": 156,
+        "label": "spam",
+        "prediction": "ham",
+        "spam_score": 0.0226,
+        "probability_calibrated": true,
+        "category": "romance_scam",
+        "language": "en"
+      },
+      {
+        "index": 157,
+        "label": "spam",
+        "prediction": "ham",
+        "spam_score": 0.0221,
+        "probability_calibrated": true,
+        "category": "romance_scam",
+        "language": "en"
+      },
+      {
+        "index": 168,
+        "label": "ham",
+        "prediction": "spam",
+        "spam_score": 0.9802,
+        "probability_calibrated": true,
+        "category": "otp",
+        "language": "taglish"
+      },
+      {
+        "index": 188,
+        "label": "ham",
+        "prediction": "spam",
+        "spam_score": 0.8495,
+        "probability_calibrated": true,
+        "category": "ewallet_receipt",
+        "language": "en"
+      },
+      {
+        "index": 191,
+        "label": "ham",
+        "prediction": "spam",
+        "spam_score": 0.9654,
+        "probability_calibrated": true,
+        "category": "ewallet_receipt",
+        "language": "en"
+      },
+      {
+        "index": 192,
+        "label": "ham",
+        "prediction": "spam",
+        "spam_score": 0.9634,
+        "probability_calibrated": true,
+        "category": "ewallet_receipt",
+        "language": "en"
+      }
+    ]
+  },
+  "diagnostic_examples": [
+    {
+      "example_id": 1,
+      "prediction": "spam",
+      "spam_score": 0.9977
+    },
+    {
+      "example_id": 2,
+      "prediction": "spam",
+      "spam_score": 0.952
+    },
+    {
+      "example_id": 3,
+      "prediction": "spam",
+      "spam_score": 0.9993
+    }
+  ]
+}

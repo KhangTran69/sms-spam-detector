@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import argparse
+import errno
 import importlib.util
+import socket
 import sys
 
 RUNTIME_MODULES = {
@@ -74,6 +76,25 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     import uvicorn
+
+    # Uvicorn reports a bind failure during its startup task and exits with its
+    # own code rather than raising OSError to this caller. A short preflight
+    # keeps the common local port-conflict case actionable; uvicorn still owns
+    # the actual listening socket, so retain the handler below for races.
+    try:
+        address = socket.getaddrinfo(args.host, args.port, type=socket.SOCK_STREAM)[0]
+        with socket.socket(address[0], address[1], address[2]) as probe:
+            probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            probe.bind(address[4])
+    except OSError as error:
+        if error.errno in {errno.EADDRINUSE, 48, 98, 10048}:
+            print(
+                f"Cannot listen on {args.host}:{args.port}: the port is already in use. "
+                "Stop the identified local server or choose another port with --port.",
+                file=sys.stderr,
+            )
+            return 1
+        raise
 
     try:
         uvicorn.run("api.main:app", host=args.host, port=args.port, reload=args.reload)

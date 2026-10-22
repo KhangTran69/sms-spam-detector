@@ -45,16 +45,17 @@ train first, then run `docker compose up -d` (the model is mounted read-only; se
 
 ## Evaluation status
 
-This repository does not currently contain a reproducible, versioned benchmark
-run. The local base CSV and model artifacts are ignored by Git, the base
-dataset's provenance is unknown, and the imported UCI file referenced in older
-run notes is not present in this workspace. Earlier performance numbers could
-not be matched to a current artifact and fixed evaluation membership, so they
-are not presented as current results. The tracked Philippine training and
-holdout messages are synthetic diagnostics only; they do not establish
-real-world Philippine reliability. See the
-[dataset inventory](docs/DATASET_INVENTORY.md) for current workspace counts and
-the data needed for an independently reproducible evaluation.
+The versioned [UCI + synthetic diagnostic report](docs/benchmarks/uci-synthetic-ph-diagnostic-20261022.json)
+records the exact model and input hashes, configuration, split fingerprints,
+dependencies, coverage, errors, and uncertainty. Its public English corpus
+results and tracked synthetic Philippine fixture results are separated; the
+separate Philippine holdout is synthetic only. The report is an engineering
+reproducibility check, not evidence of real-world Philippine reliability. It
+was generated from a working tree with uncommitted changes (`source_tree_clean`
+is false). No consented Philippine messages are available, so claims about
+real-world performance remain blocked. See the
+[dataset inventory](docs/DATASET_INVENTORY.md) and
+[benchmark runbook](docs/BENCHMARKING.md).
 
 | | |
 |---|---|
@@ -124,9 +125,14 @@ pytest -q && ruff check . && ruff format --check . && mypy src api
 Release checks build and install the wheel in a temporary environment outside
 the checkout with `python scripts/wheel_smoke.py`. The UI behavior suite uses a
 development-only Playwright dependency: run `npm ci`, install Chromium with
-`npx playwright install chromium`, then run `npm run test:browser`. It uses a
-temporary server and synthetic browser responses; it does not add training data
-or exercise the serving model.
+`npx playwright install chromium`, then run `npm run test:browser`. The suite
+checks mocked UI states and also trains a temporary model from the tracked
+synthetic Philippine fixtures to exercise real localhost analysis, missing
+model readiness, service failure/recovery, and page reflow without an external
+network connection. It also exercises a real missing-model 503 and cancellation
+of an in-flight analysis response. The temporary artifact is deleted after the
+run. Automated keyboard, layout, and contrast checks do not replace manual
+screen-reader testing.
 
 ## Adding consented Philippine messages
 

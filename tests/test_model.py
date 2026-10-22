@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 from pathlib import Path
 
@@ -252,12 +253,29 @@ def test_hash_verified_bytes_are_the_bytes_given_to_joblib(trained_artifact, mon
         received.append(payload)
         return original_load(io.BytesIO(payload))
 
-    import io
-
     monkeypatch.setattr(joblib, "load", capture)
     monkeypatch.setenv("SMSD_MODEL_SHA256", hashlib.sha256(model_path.read_bytes()).hexdigest())
     assert load_model(model_path).path == model_path
     assert received == [model_path.read_bytes()]
+
+
+def test_identified_artifact_hash_matches_the_exact_bytes_deserialized(trained_artifact, tmp_path, monkeypatch):
+    _, trained_path = trained_artifact
+    model_path = tmp_path / "replace-after-read.pkl"
+    original_bytes = trained_path.read_bytes()
+    model_path.write_bytes(original_bytes)
+    original_load = joblib.load
+
+    def replace_file_after_read(source):
+        payload = source.read()
+        model_path.write_bytes(b"replacement artifact")
+        return original_load(io.BytesIO(payload))
+
+    monkeypatch.setattr(joblib, "load", replace_file_after_read)
+    bundle = load_model(model_path, identify_artifact=True)
+
+    assert bundle.artifact_sha256 == hashlib.sha256(original_bytes).hexdigest()
+    assert hashlib.sha256(model_path.read_bytes()).hexdigest() != bundle.artifact_sha256
 
 
 def test_compatible_word_only_feature_version_loads_with_warning(tmp_path):

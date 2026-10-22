@@ -3,11 +3,14 @@
  */
 "use strict";
 
-const CACHE_NAME = "smsd-shell-v13";
+const CACHE_NAME = "smsd-shell-v14";
 const SHELL_ASSETS = [
   "/",
-  "/static/styles.css?v=ui13-spam-signal-copy-20261022",
-  "/static/app.js?v=ui13-spam-signal-copy-20261022",
+  "/static/styles.css?v=ui14-modular-frontend-20261022",
+  "/static/app.js?v=ui14-modular-frontend-20261022",
+  "/static/api-client.js?v=ui14-modular-frontend-20261022",
+  "/static/i18n.js?v=ui14-modular-frontend-20261022",
+  "/static/privacy-preview.js?v=ui14-modular-frontend-20261022",
   "/manifest.webmanifest",
 ];
 const SHELL_REQUESTS = new Set(SHELL_ASSETS.map((asset) => {
