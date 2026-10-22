@@ -315,6 +315,7 @@ textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 }
 .connection-status strong[data-state="ready"] { color: var(--green-ink); }
 .connection-status strong[data-state="error"] { color: var(--red-ink); }
+.connection-status strong[data-state="warning"] { color: var(--amber-ink); }
 .connection-status .btn { min-height: 44px; padding: 6px 10px; }
 .model-warning {
   margin: 10px 0 0;

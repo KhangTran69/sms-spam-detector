@@ -8,7 +8,7 @@
   <title>PH SMS Scam Detector</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>" />
   <link rel="manifest" href="/manifest.webmanifest" />
-  <link rel="stylesheet" href="/static/styles.css?v=ui11-privacy-preview-20261021" />
+  <link rel="stylesheet" href="/static/styles.css?v=ui12-live-service-status-20261022" />
   <script>
     // Apply the saved theme before first paint to avoid a flash of the wrong theme.
     (function () {
@@ -64,6 +64,7 @@
         data; it is not proof of real-world accuracy. Treat every verdict as a hint, not a fact.</p>
       <p id="model-thresholds" class="model-thresholds" data-i18n="model.thresholds.loading">Decision threshold and risk bands are loading from the API.</p>
       <div class="connection-status" aria-live="polite" aria-atomic="true">
+        <span><span data-i18n="service.browserLabel">Browser reports:</span> <strong id="browser-status" data-i18n="service.checking">Checking…</strong></span>
         <span><span data-i18n="service.apiLabel">Detector API:</span> <strong id="api-status" data-i18n="service.checking">Checking…</strong></span>
         <span><span data-i18n="service.modelLabel">Model:</span> <strong id="readiness-status" data-i18n="service.checking">Checking…</strong></span>
         <button type="button" id="btn-retry-status" class="btn" data-i18n="service.retry">Retry connection</button>
@@ -311,6 +312,6 @@
     <p data-i18n="footer.synthetic">Checks using synthetic Philippine data are not proof of real-world accuracy.</p>
   </footer>
 
-  <script src="/static/app.js?v=ui11-privacy-preview-20261021"></script>
+  <script src="/static/app.js?v=ui12-live-service-status-20261022"></script>
 </body>
 </html>

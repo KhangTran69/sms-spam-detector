@@ -239,9 +239,9 @@ def test_service_worker_installs_complete_static_shell_and_never_caches_api(html
     assert "await cache.put(request" not in sw, "runtime responses must not mutate an installed release"
     for path in ("/analyze", "/analyze/batch", "/predict", "/feedback", "/model-info"):
         assert f'"{path}"' in sw
-    assert "smsd-shell-v11" in sw
-    assert '"/static/styles.css?v=ui11-privacy-preview-20261021"' in sw
-    assert '"/static/app.js?v=ui11-privacy-preview-20261021"' in sw
+    assert "smsd-shell-v12" in sw
+    assert '"/static/styles.css?v=ui12-live-service-status-20261022"' in sw
+    assert '"/static/app.js?v=ui12-live-service-status-20261022"' in sw
     assert 'id="single-privacy-review"' in html
     assert 'id="batch-privacy-review"' in html
     assert 'id="compare-review-a"' in html and 'id="compare-review-b"' in html
@@ -483,9 +483,12 @@ def test_offline_banner_exists_and_is_wired(js, html):
     assert "navigator.onLine" in js
     assert "failure.offline" not in js, "API request failures must not be presented as browser offline status"
     assert 'ready: "/ready"' in js
+    assert 'id="browser-status"' in html
     assert "refreshServiceStatus();" in js
     assert 'id="api-status"' in html and 'id="readiness-status"' in html
     assert 'id="btn-retry-status"' in html
+    assert "API_TIMEOUT_MS = 20000" in js
+    assert "apiRequestSequence" in js and "modelInfoRequestSequence" in js
 
 
 def test_service_worker_never_caches_messages(js, html, api_source):
