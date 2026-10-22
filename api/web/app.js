@@ -919,10 +919,14 @@ async function requestJson(path, options) {
     apiAvailable = false;
     modelReady = "unknown";
     renderConnectionStatus();
+    if (window.navigator.onLine === false) showOfflineBanner();
     throw failure;
   }
   apiAvailable = true;
   renderConnectionStatus();
+  // A reachable local or remote API is enough for this app to work even if
+  // the browser reports that general internet access is unavailable.
+  hideOfflineBanner();
   try {
     const data = await parseResponse(response);
     if (path === API.ready) modelReady = true;
@@ -2831,8 +2835,9 @@ function initBatchCheck() {
 }
 
 function initOfflineDetection() {
-  if (!window.navigator.onLine) showOfflineBanner();
-  window.addEventListener("offline", showOfflineBanner);
+  window.addEventListener("offline", () => {
+    refreshServiceStatus();
+  });
   window.addEventListener("online", () => {
     hideOfflineBanner();
     refreshServiceStatus();

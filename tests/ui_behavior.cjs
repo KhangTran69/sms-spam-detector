@@ -46,7 +46,7 @@ const context = vm.createContext({ console, AbortController, tabs, panels, busyC
   navigator: { clipboard: { async writeText(value) { copiedClipboard = value; } } },
   localStorage: { getItem: key => storedValues.get(key) || null,
     setItem(key, value) { storedValues.set(key, String(value)); }, removeItem: key => storedValues.delete(key) },
-  window: { matchMedia: () => ({matches: false}) },
+  window: { navigator: { onLine: true }, matchMedia: () => ({matches: false}) },
   document: { getElementById(id) { if (!elements.has(id)) elements.set(id, element()); return elements.get(id); },
     querySelectorAll(selector) {
       if (selector === '.example-chip') return exampleChips;
@@ -338,6 +338,14 @@ run('lang = "en"');
   assert.equal(run('$ ("offline-banner").classList.contains("hidden")'), true,
     'an API request failure does not show the browser offline banner');
   assert.equal(run('$ ("api-status").dataset.state'), 'error', 'the API status announces request reachability');
+  run('window.navigator.onLine = false; fetch = async () => { throw new TypeError("failed to fetch"); }; var offlineFailure = requestJson("/model-info");');
+  try { await run('offlineFailure'); } catch { /* expected unreachable API */ }
+  assert.equal(run('$ ("offline-banner").classList.contains("hidden")'), false,
+    'the offline banner appears when the browser is offline and the API cannot be reached');
+  run('fetch = async () => ({ok:true, status:200, async json(){ return {}; }}); var localApiResponse = requestJson("/ready");');
+  await run('localApiResponse');
+  assert.equal(run('$ ("offline-banner").classList.contains("hidden")'), true,
+    'a reachable local API clears a misleading general-internet offline banner');
   run('selectTab(tabs[2]); $("compare-message-a").value="A"; $("compare-message-b").value="B"; var partialCompare = runComparison(); pending.shift().resolve({results:[left]});');
   await run('partialCompare');
   assert.equal(run('$ ("compare-results").classList.contains("hidden")'), true, 'incomplete response is never shown as a complete comparison');
