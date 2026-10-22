@@ -63,6 +63,11 @@
       <p id="model-note" class="model-note">This model is trained and evaluated on synthetic Philippine
         data; it is not proof of real-world accuracy. Treat every verdict as a hint, not a fact.</p>
       <p id="model-thresholds" class="model-thresholds" data-i18n="model.thresholds.loading">Decision threshold and risk bands are loading from the API.</p>
+      <div class="connection-status" aria-live="polite" aria-atomic="true">
+        <span><span data-i18n="service.apiLabel">Detector API:</span> <strong id="api-status" data-i18n="service.checking">Checking…</strong></span>
+        <span><span data-i18n="service.modelLabel">Model:</span> <strong id="readiness-status" data-i18n="service.checking">Checking…</strong></span>
+        <button type="button" id="btn-retry-status" class="btn" data-i18n="service.retry">Retry connection</button>
+      </div>
       <p id="model-warning" class="model-warning hidden"></p>
     </section>
 

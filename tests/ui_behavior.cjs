@@ -330,6 +330,14 @@ run('lang = "en"');
   await run('pendingCompare');
   assert.equal(run('$ ("compare-results").classList.contains("hidden")'), true, 'clearing while pending suppresses a stale comparison');
   assert.equal(run('compareAbortController'), null, 'tab switching aborts the pending comparison');
+  run('$ ("offline-banner").classList.add("hidden"); apiAvailable = null; fetch = async () => { throw new TypeError("failed to fetch"); }; var apiFailure = requestJson("/model-info");');
+  let apiFailure;
+  try { await run('apiFailure'); } catch (error) { apiFailure = error; }
+  assert.equal(apiFailure.apiUnavailable, true, 'a failed API request is reported as an API failure');
+  assert.equal(apiFailure.offline, undefined, 'an API request failure is not labeled as browser offline status');
+  assert.equal(run('$ ("offline-banner").classList.contains("hidden")'), true,
+    'an API request failure does not show the browser offline banner');
+  assert.equal(run('$ ("api-status").dataset.state'), 'error', 'the API status announces request reachability');
   run('selectTab(tabs[2]); $("compare-message-a").value="A"; $("compare-message-b").value="B"; var partialCompare = runComparison(); pending.shift().resolve({results:[left]});');
   await run('partialCompare');
   assert.equal(run('$ ("compare-results").classList.contains("hidden")'), true, 'incomplete response is never shown as a complete comparison');

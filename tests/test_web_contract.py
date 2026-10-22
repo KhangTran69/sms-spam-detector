@@ -481,6 +481,11 @@ def test_offline_banner_exists_and_is_wired(js, html):
     assert "initOfflineDetection" in js
     assert 'addEventListener("offline"' in js and 'addEventListener("online"' in js
     assert "navigator.onLine" in js
+    assert "failure.offline" not in js, "API request failures must not be presented as browser offline status"
+    assert 'ready: "/ready"' in js
+    assert "refreshServiceStatus();" in js
+    assert 'id="api-status"' in html and 'id="readiness-status"' in html
+    assert 'id="btn-retry-status"' in html
 
 
 def test_service_worker_never_caches_messages(js, html, api_source):

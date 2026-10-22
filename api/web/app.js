@@ -5,6 +5,7 @@
    tests/test_web_contract.py asserts every path here exists on the API. */
 const API = {
   modelInfo: "/model-info",
+  ready: "/ready",
   analyze: "/analyze",
   analyzeBatch: "/analyze/batch",
   feedback: "/feedback",
@@ -51,6 +52,15 @@ const I18N = {
     "theme.light": "Switch to light mode",
     "theme.dark": "Switch to dark mode",
     "offline.banner": "You appear to be offline. The page still works, but new checks need a connection.",
+    "service.apiLabel": "Detector API:",
+    "service.modelLabel": "Model:",
+    "service.checking": "Checking…",
+    "service.apiAvailable": "Available",
+    "service.apiUnavailable": "Could not reach API",
+    "service.modelReady": "Ready",
+    "service.modelUnavailable": "Unavailable",
+    "service.modelUnknown": "Status unknown",
+    "service.retry": "Retry connection",
     "tab.check": "Check a message",
     "tab.batch": "Batch check",
     "tab.compare": "Compare messages",
@@ -305,6 +315,15 @@ const I18N = {
     "theme.light": "Lumipat sa maliwanag na mode",
     "theme.dark": "Lumipat sa madilim na mode",
     "offline.banner": "Mukhang offline ka. Gumagana pa rin ang pahina, pero kailangan ng connection ang mga bagong check.",
+    "service.apiLabel": "Detector API:",
+    "service.modelLabel": "Modelo:",
+    "service.checking": "Sinusuri…",
+    "service.apiAvailable": "Available",
+    "service.apiUnavailable": "Hindi maabot ang API",
+    "service.modelReady": "Handa",
+    "service.modelUnavailable": "Hindi available",
+    "service.modelUnknown": "Hindi alam ang status",
+    "service.retry": "Subukang kumonekta ulit",
     "tab.check": "Tingnan ang mensahe",
     "tab.batch": "Maramihang check",
     "tab.compare": "Ikumpara ang mga mensahe",
@@ -621,6 +640,7 @@ function setLanguage(nextLang) {
   resetIdleLabels();
   $("btn-lang").textContent = lang === "taglish" ? "EN" : "Taglish";
   updateThemeButton();
+  renderConnectionStatus();
   renderActiveModelInfo();
   renderHistory();
   updateHistoryBadge();
@@ -687,6 +707,18 @@ function showOfflineBanner() {
 
 function hideOfflineBanner() {
   $("offline-banner").classList.add("hidden");
+}
+
+function renderConnectionStatus() {
+  const api = $("api-status");
+  const model = $("readiness-status");
+  api.textContent = apiAvailable === null ? t("service.checking")
+    : apiAvailable ? t("service.apiAvailable") : t("service.apiUnavailable");
+  model.textContent = modelReady === null ? t("service.checking")
+    : modelReady === true ? t("service.modelReady")
+      : modelReady === false ? t("service.modelUnavailable") : t("service.modelUnknown");
+  api.dataset.state = apiAvailable === null ? "checking" : apiAvailable ? "ready" : "error";
+  model.dataset.state = modelReady === true ? "ready" : modelReady === false ? "error" : "checking";
 }
 
 /* ---------- Banding ---------- */
@@ -776,6 +808,8 @@ const $ = (id) => document.getElementById(id);
 let modelInfo = normalizeModelInfo(FALLBACK_MODEL_INFO);
 let modelInfoLoaded = false;
 let modelInfoError = null;
+let apiAvailable = null;
+let modelReady = null;
 let historyEnabled = false;
 let lastBatchResults = null;
 
@@ -881,12 +915,26 @@ async function requestJson(path, options) {
       throw aborted;
     }
     const failure = new Error(t("error.reach"));
-    failure.offline = true;
+    failure.apiUnavailable = true;
+    apiAvailable = false;
+    modelReady = "unknown";
+    renderConnectionStatus();
     throw failure;
   }
-  const data = await parseResponse(response);
-  hideOfflineBanner();
-  return data;
+  apiAvailable = true;
+  renderConnectionStatus();
+  try {
+    const data = await parseResponse(response);
+    if (path === API.ready) modelReady = true;
+    renderConnectionStatus();
+    return data;
+  } catch (failure) {
+    if (failure && (failure.status === 503 || failure.code === "model_unavailable")) {
+      modelReady = false;
+      renderConnectionStatus();
+    }
+    throw failure;
+  }
 }
 
 function postJson(path, body, { signal } = {}) {
@@ -1070,10 +1118,26 @@ async function loadModelInfo() {
     modelInfo = normalizeModelInfo(FALLBACK_MODEL_INFO);
     modelInfoLoaded = false;
     modelInfoError = failure;
-    if (failure && failure.offline) showOfflineBanner();
   }
   renderActiveModelInfo();
   if (currentComparison) renderComparison(currentComparison.results);
+}
+
+async function refreshServiceStatus() {
+  apiAvailable = null;
+  modelReady = null;
+  renderConnectionStatus();
+  try {
+    await requestJson(API.ready);
+    modelReady = true;
+  } catch (failure) {
+    if (failure && (failure.status === 503 || failure.code === "model_unavailable")) {
+      modelReady = false;
+    } else if (failure && !failure.apiUnavailable) {
+      modelReady = "unknown";
+    }
+  }
+  renderConnectionStatus();
 }
 
 /* ---------- Banding ---------- */
@@ -1558,7 +1622,6 @@ async function submitFeedback(event) {
     status.textContent = `${result.message} ${t("feedback.receipt", { id: result.report_id })}`;
     sent = true;
   } catch (failure) {
-    if (failure && failure.offline) showOfflineBanner();
     if (window.currentAnalysis === analysis) status.textContent = describeError(failure);
   } finally {
     if (window.currentAnalysis === analysis) {
@@ -2052,7 +2115,6 @@ async function runCheck({ save = true, masked = false } = {}) {
     analysis.masked_input = masked;
     renderAnalysis(analysis, { save });
   } catch (failure) {
-    if (failure && failure.offline) showOfflineBanner();
     if (revision === singleRevision && !(failure && failure.aborted)) {
       showBanner(banner, describeError(failure));
     }
@@ -2203,7 +2265,6 @@ async function runBatch() {
       announceHistory(t("history.savedCount", { n: loadHistory().length, limit: HISTORY_LIMIT }));
     }
   } catch (failure) {
-    if (failure && failure.offline) showOfflineBanner();
     if (revision === batchRevision && !(failure && failure.aborted)) {
       showBanner(banner, describeError(failure));
       $("batch-results").classList.add("hidden");
@@ -2530,7 +2591,6 @@ async function runComparison() {
     data.results.forEach((result, index) => { result.masked_input = compareMaskedInputs[index]; });
     renderComparison(data.results);
   } catch (failure) {
-    if (failure && failure.offline) showOfflineBanner();
     if (revision === compareRevision && !(failure && failure.aborted)) {
       showBanner(banner, failure && failure.message === t("compare.error.failed")
         ? t("compare.error.failed") : describeError(failure));
@@ -2773,7 +2833,11 @@ function initBatchCheck() {
 function initOfflineDetection() {
   if (!window.navigator.onLine) showOfflineBanner();
   window.addEventListener("offline", showOfflineBanner);
-  window.addEventListener("online", hideOfflineBanner);
+  window.addEventListener("online", () => {
+    hideOfflineBanner();
+    refreshServiceStatus();
+    loadModelInfo();
+  });
 }
 
 function initServiceWorker() {
@@ -2805,7 +2869,13 @@ document.addEventListener("DOMContentLoaded", () => {
   initSingleCheck();
   initBatchCheck();
   initOfflineDetection();
+  $("btn-retry-status").addEventListener("click", () => {
+    refreshServiceStatus();
+    loadModelInfo();
+  });
+  renderConnectionStatus();
   renderModelInfo();
+  refreshServiceStatus();
   loadModelInfo();
   initComparison();
   initServiceWorker();
