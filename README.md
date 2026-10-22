@@ -159,6 +159,7 @@ privacy limits.
 
 [Model card and limitations](docs/MODEL_CARD.md) ·
 [Data collection and consented import](docs/DATA_COLLECTION.md) ·
+[Reproducible benchmark reports](docs/BENCHMARKING.md) ·
 [Dataset inventory](docs/DATASET_INVENTORY.md) ·
 [Deployment](docs/DEPLOYMENT.md) · [Retraining](docs/RETRAINING.md) ·
 [Privacy](docs/PRIVACY.md) · [Human review](docs/HUMAN_REVIEW.md)

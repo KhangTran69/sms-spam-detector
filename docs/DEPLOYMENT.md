@@ -115,6 +115,38 @@ stops the foreground server. Use `--workers N` for more concurrency once memory
 permits (the model is loaded lazily per process;
 each worker holds its own copy). Do not use `--reload` in production.
 
+### Keep a local Linux server running after closing the terminal
+
+On a machine using systemd, a user service can supervise the local server and
+restart it after an unexpected failure. Create
+`~/.config/systemd/user/smsd.service`, replacing the paths with the checkout's
+absolute path:
+
+```ini
+[Unit]
+Description=Local Philippine SMS detector
+
+[Service]
+WorkingDirectory=/absolute/path/to/sms-spam-detector
+Environment=SMSD_MODEL_PATH=/absolute/path/to/sms-spam-detector/models/spam_detector_v1.pkl
+ExecStart=/absolute/path/to/sms-spam-detector/.venv/bin/smsd-serve --host 127.0.0.1 --port 8000
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=default.target
+```
+
+Then run `systemctl --user daemon-reload` and
+`systemctl --user enable --now smsd.service`. Check it with
+`systemctl --user status smsd.service`; read message-free service output with
+`journalctl --user -u smsd.service`. It remains bound to localhost. To have the
+user service start at machine boot without an active login session, enable user
+lingering through the machine administrator. This example is for Linux/systemd;
+other operating systems need their native service manager.
+
 ### Verify or restart the local process safely
 
 Check the page shell and its entry assets as well as API health; a live process

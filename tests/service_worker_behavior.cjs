@@ -14,6 +14,7 @@ function createWorker({ failAsset = null, delayAsset = null, networkFails = true
     ['smsd-shell-v9', new Map([['/', new Response('last released shell')]])],
     ['smsd-shell-v10', new Map([['/', new Response('previous release with comparison and checklist')]])],
     ['smsd-shell-v11', new Map([['/', new Response('previous release with privacy preview')]])],
+    ['smsd-shell-v12', new Map([['/', new Response('previous release with live service status')]])],
   ]);
   const deleted = [];
   let skippedWaiting = false;
@@ -38,7 +39,7 @@ function createWorker({ failAsset = null, delayAsset = null, networkFails = true
     async delete(name) { deleted.push(name); return shellCaches.delete(name); },
     async keys() { return [...shellCaches.keys()]; },
     async match(request, options) {
-      assert.equal(options.cacheName, 'smsd-shell-v12');
+      assert.equal(options.cacheName, 'smsd-shell-v13');
       return shellCaches.get(options.cacheName)?.get(cacheKey(request)) || null;
     },
   };
@@ -61,7 +62,7 @@ function createWorker({ failAsset = null, delayAsset = null, networkFails = true
   vm.runInContext(source, context);
   return {
     handlers, caches, shellCaches, deleted,
-    get cacheData() { return shellCaches.get('smsd-shell-v12'); },
+    get cacheData() { return shellCaches.get('smsd-shell-v13'); },
     finishDelayedAsset() { finishDelayedAsset(); },
     get skippedWaiting() { return skippedWaiting; },
   };
@@ -75,9 +76,9 @@ function createWorker({ failAsset = null, delayAsset = null, networkFails = true
   assert.deepEqual(interrupted.deleted, [], 'failed install waits for in-flight cache writes to settle');
   interrupted.finishDelayedAsset();
   await assert.rejects(install, /static shell asset could not be cached/);
-  assert.deepEqual(interrupted.deleted, ['smsd-shell-v12']);
-  assert.equal(interrupted.shellCaches.has('smsd-shell-v12'), false, 'failed candidate cache is removed');
-  assert.equal(await (await interrupted.shellCaches.get('smsd-shell-v11').get('/').text()), 'previous release with privacy preview',
+  assert.deepEqual(interrupted.deleted, ['smsd-shell-v13']);
+  assert.equal(interrupted.shellCaches.has('smsd-shell-v13'), false, 'failed candidate cache is removed');
+  assert.equal(await (await interrupted.shellCaches.get('smsd-shell-v12').get('/').text()), 'previous release with live service status',
     'failed update leaves the previous complete release intact');
   assert.equal(interrupted.skippedWaiting, false, 'partial shell must not activate');
 
@@ -89,8 +90,8 @@ function createWorker({ failAsset = null, delayAsset = null, networkFails = true
   let cleanup;
   worker.handlers.activate({ waitUntil(promise) { cleanup = promise; } });
   await cleanup;
-  assert.deepEqual(worker.deleted, ['smsd-shell-v6', 'smsd-shell-v7', 'smsd-shell-v8', 'smsd-shell-v9', 'smsd-shell-v10', 'smsd-shell-v11'], 'old releases are removed only after new install completed');
-  assert.equal(worker.shellCaches.has('smsd-shell-v12'), true, 'new complete release is active after upgrade');
+  assert.deepEqual(worker.deleted, ['smsd-shell-v6', 'smsd-shell-v7', 'smsd-shell-v8', 'smsd-shell-v9', 'smsd-shell-v10', 'smsd-shell-v11', 'smsd-shell-v12'], 'old releases are removed only after new install completed');
+  assert.equal(worker.shellCaches.has('smsd-shell-v13'), true, 'new complete release is active after upgrade');
 
   let apiIntercepted = false;
   worker.handlers.fetch({
@@ -107,12 +108,12 @@ function createWorker({ failAsset = null, delayAsset = null, networkFails = true
 
   let cachedResponse;
   worker.handlers.fetch({
-    request: { method: 'GET', url: 'http://detector.test/static/app.js?v=ui12-live-service-status-20261022' },
+    request: { method: 'GET', url: 'http://detector.test/static/app.js?v=ui13-spam-signal-copy-20261022' },
     respondWith(promise) { cachedResponse = promise; },
   });
   const response = await cachedResponse;
-  assert.equal(await response.text(), 'cached:/static/app.js?v=ui12-live-service-status-20261022');
-  assert.equal(worker.cacheData.get('/static/app.js?v=ui12-live-service-status-20261022').status, 200,
+  assert.equal(await response.text(), 'cached:/static/app.js?v=ui13-spam-signal-copy-20261022');
+  assert.equal(worker.cacheData.get('/static/app.js?v=ui13-spam-signal-copy-20261022').status, 200,
     'network responses must not overwrite immutable release assets');
 
   let uncachedResponse;
@@ -121,10 +122,10 @@ function createWorker({ failAsset = null, delayAsset = null, networkFails = true
     respondWith(promise) { uncachedResponse = promise; },
   });
   assert.equal(uncachedResponse, undefined, 'unknown asset versions bypass the worker');
-  worker.cacheData.delete('/static/styles.css?v=ui12-live-service-status-20261022');
+  worker.cacheData.delete('/static/styles.css?v=ui13-spam-signal-copy-20261022');
   let unavailableResponse;
   worker.handlers.fetch({
-    request: { method: 'GET', url: 'http://detector.test/static/styles.css?v=ui12-live-service-status-20261022' },
+    request: { method: 'GET', url: 'http://detector.test/static/styles.css?v=ui13-spam-signal-copy-20261022' },
     respondWith(promise) { unavailableResponse = promise; },
   });
   const unavailable = await unavailableResponse;

@@ -8,7 +8,7 @@
   <title>PH SMS Scam Detector</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>" />
   <link rel="manifest" href="/manifest.webmanifest" />
-  <link rel="stylesheet" href="/static/styles.css?v=ui12-live-service-status-20261022" />
+  <link rel="stylesheet" href="/static/styles.css?v=ui13-spam-signal-copy-20261022" />
   <script>
     // Apply the saved theme before first paint to avoid a flash of the wrong theme.
     (function () {
@@ -99,8 +99,8 @@
 
       <div class="examples" aria-label="Example messages" data-i18n-aria-label="examples.aria">
         <span class="examples-label" data-i18n="examples.label">Try an example:</span>
-        <button type="button" class="example-chip scam" data-example="scam"><span aria-hidden="true">🚨</span> <span data-i18n="examples.scam">Scam example</span></button>
-        <button type="button" class="example-chip safe" data-example="safe"><span aria-hidden="true">✅</span> <span data-i18n="examples.safe">Safe example</span></button>
+        <button type="button" class="example-chip scam" data-example="scam"><span aria-hidden="true">🚨</span> <span data-i18n="examples.scam">Spam example</span></button>
+        <button type="button" class="example-chip safe" data-example="safe"><span aria-hidden="true">✅</span> <span data-i18n="examples.safe">Legitimate example</span></button>
         <span id="example-status" class="example-status" role="status" aria-live="polite" data-i18n="examples.note">Fictional demo examples only. Click either button again to cycle through more messages.</span>
       </div>
 
@@ -108,7 +108,7 @@
         <div id="verdict-card" class="card verdict">
           <div id="verdict-icon" class="verdict-icon" aria-hidden="true">🚨</div>
           <div class="verdict-text">
-            <div id="verdict-title" class="verdict-title" data-i18n="band.likely_scam">Likely spam</div>
+            <div id="verdict-title" class="verdict-title" data-i18n="band.likely_scam">More spam signals</div>
             <div id="verdict-sub" class="verdict-sub"></div>
             <div class="verdict-actions">
               <button type="button" id="btn-copy-summary" class="btn ghost small" data-i18n="copy.summary">Copy summary</button>
@@ -127,7 +127,7 @@
             aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="0% model score">
             <div id="meter-marker" class="meter-marker" aria-hidden="true" style="left:0%"></div>
           </div>
-          <div class="meter-labels" aria-hidden="true"><span data-i18n="band.looks_safe">Looks safe</span><span data-i18n="band.suspicious">Suspicious</span><span data-i18n="band.likely_scam">Likely spam</span></div>
+          <div class="meter-labels" aria-hidden="true"><span data-i18n="band.looks_safe">Few spam signals</span><span data-i18n="band.suspicious">Some spam signals</span><span data-i18n="band.likely_scam">More spam signals</span></div>
         </div>
 
         <div class="card">
@@ -200,9 +200,9 @@
       <p id="batch-empty" class="empty" data-i18n="batch.empty">Add messages above, then choose Check all to see their results here.</p>
 
       <div id="batch-summary" class="summary hidden" role="status" aria-live="polite">
-        <div class="stat stat-scam"><span id="stat-scam" class="stat-num">0</span><span class="stat-label" data-i18n="band.likely_scam">Likely spam</span></div>
-        <div class="stat stat-suspicious"><span id="stat-suspicious" class="stat-num">0</span><span class="stat-label" data-i18n="band.suspicious">Suspicious</span></div>
-        <div class="stat stat-safe"><span id="stat-safe" class="stat-num">0</span><span class="stat-label" data-i18n="band.looks_safe">Looks safe</span></div>
+        <div class="stat stat-scam"><span id="stat-scam" class="stat-num">0</span><span class="stat-label" data-i18n="band.likely_scam">More spam signals</span></div>
+        <div class="stat stat-suspicious"><span id="stat-suspicious" class="stat-num">0</span><span class="stat-label" data-i18n="band.suspicious">Some spam signals</span></div>
+        <div class="stat stat-safe"><span id="stat-safe" class="stat-num">0</span><span class="stat-label" data-i18n="band.looks_safe">Few spam signals</span></div>
       </div>
 
       <div id="batch-results" class="card table-card hidden">
@@ -312,6 +312,6 @@
     <p data-i18n="footer.synthetic">Checks using synthetic Philippine data are not proof of real-world accuracy.</p>
   </footer>
 
-  <script src="/static/app.js?v=ui12-live-service-status-20261022"></script>
+  <script src="/static/app.js?v=ui13-spam-signal-copy-20261022"></script>
 </body>
 </html>
