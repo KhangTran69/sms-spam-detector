@@ -217,7 +217,11 @@ def test_uncalibrated_scores_are_not_presented_as_probability(js, html):
     assert "uncalibrated spam model score" in js
     assert "calibrated spam score" in js
     assert "estimated scam probability" not in js.lower()
-    assert "Likely spam" in js
+    assert "More spam signals" in js
+    assert '"band.looks_safe": "Few spam signals"' in js
+    assert '"band.looks_safe": "Kaunti ang spam signal"' in js
+    assert "Looks safe" not in js + html
+    assert "Mukhang ligtas" not in js + html
     assert "Spam or unwanted advertising" in js
     assert "calibration status follows the loaded model" in html
     assert 'displayedCalibration === true ? t("meter.aria.calibrated")' in js
@@ -239,9 +243,9 @@ def test_service_worker_installs_complete_static_shell_and_never_caches_api(html
     assert "await cache.put(request" not in sw, "runtime responses must not mutate an installed release"
     for path in ("/analyze", "/analyze/batch", "/predict", "/feedback", "/model-info"):
         assert f'"{path}"' in sw
-    assert "smsd-shell-v12" in sw
-    assert '"/static/styles.css?v=ui12-live-service-status-20261022"' in sw
-    assert '"/static/app.js?v=ui12-live-service-status-20261022"' in sw
+    assert "smsd-shell-v13" in sw
+    assert '"/static/styles.css?v=ui13-spam-signal-copy-20261022"' in sw
+    assert '"/static/app.js?v=ui13-spam-signal-copy-20261022"' in sw
     assert 'id="single-privacy-review"' in html
     assert 'id="batch-privacy-review"' in html
     assert 'id="compare-review-a"' in html and 'id="compare-review-b"' in html

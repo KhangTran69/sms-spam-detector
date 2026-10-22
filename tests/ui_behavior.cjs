@@ -79,7 +79,7 @@ assert.equal(run(`csvCell(${JSON.stringify('a, b "quoted"')})`), '"a, b ""quoted
 assert.equal(run('csvCell("=SUM(1,1)")'), '"\'=SUM(1,1)"', 'formula-like text must be exported as text');
 assert.equal(run('csvCell("  @SUM(1,1)")'), '"\'  @SUM(1,1)"', 'leading whitespace must not bypass formula protection');
 assert.equal(run(`csvCell(${JSON.stringify('\uFEFF=1+1')})`), '"\'\uFEFF=1+1"', 'Unicode BOM must not bypass formula protection');
-assert.match(run('t("examples.status", {kind: t("examples.scamKind"), index: 1, total: 20})'), /Loaded fictional scam message 1 of 20/);
+assert.match(run('t("examples.status", {kind: t("examples.scamKind"), index: 1, total: 20})'), /Loaded fictional spam message 1 of 20/);
 const privacyFixture = '😀 OTP is 123456. Call 0917-123-4567 or email user@example.test. Reference no: TX-12345; amount ₱500 on 2026-10-21.';
 const privacySpans = Array.from(run(`detectSensitiveSpans(${JSON.stringify(privacyFixture)})`), span => ({
   type: span.type,
@@ -245,15 +245,15 @@ run('lang = "en"');
     'repeated scam clicks should load a different example');
   assert.equal(run('EXAMPLES.scam.length'), 20, 'the scam example set should contain 20 messages');
   assert.equal(run('new Set(EXAMPLES.scam).size'), 20, 'scam examples should not be duplicated');
-  assert.match(run('$("example-status").textContent'), /scam message 2 of 20/);
+  assert.match(run('$("example-status").textContent'), /spam message 2 of 20/);
   for (let index = 0; index < 18; index += 1) exampleChips[0].listeners.click();
-  assert.match(run('$("example-status").textContent'), /scam message 20 of 20/);
+  assert.match(run('$("example-status").textContent'), /spam message 20 of 20/);
   exampleChips[0].listeners.click();
-  assert.match(run('$("example-status").textContent'), /scam message 1 of 20/, 'scam examples should wrap around');
+  assert.match(run('$("example-status").textContent'), /spam message 1 of 20/, 'spam examples should wrap around');
   exampleChips[1].listeners.click();
   assert.equal(run('EXAMPLES.safe.length'), 20, 'the safe example set should contain 20 messages');
   assert.equal(run('new Set(EXAMPLES.safe).size'), 20, 'safe examples should not be duplicated');
-  assert.match(run('$("example-status").textContent'), /safe message 1 of 20/);
+  assert.match(run('$("example-status").textContent'), /legitimate message 1 of 20/);
   assert.equal(run('demoChecks'), 22, 'each example click should trigger analysis');
   run('lang = "en"; renderMeter({spam_probability:0.35,probability_calibrated:true,prediction:"ham",risk_band:"looks_safe"})');
   assert.equal(run('$("risk-meter").getAttribute("aria-label")'), 'Calibrated spam score');

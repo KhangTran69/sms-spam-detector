@@ -9,8 +9,12 @@ are reported when that metadata exists.
 from __future__ import annotations
 
 import argparse
+import hashlib
+import importlib.metadata
 import json
 import math
+import platform
+import subprocess
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
@@ -57,6 +61,45 @@ DEFAULT_PLOT = ROOT / "data" / "processed" / "evaluation.png"
 KEY_THRESHOLDS = (0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
 SYNTHETIC_BANNER = "SYNTHETIC BENCHMARK — NOT REAL-WORLD PERFORMANCE"
 LEGIT_CATEGORIES = ("otp", "bank_alert", "delivery", "bill", "personal_taglish", "promo")
+
+
+def _benchmark_run_info(model_path: str | Path) -> dict[str, Any]:
+    """Return report identifiers without including local filesystem paths."""
+    digest = hashlib.sha256()
+    with Path(model_path).open("rb") as artifact:
+        for chunk in iter(lambda: artifact.read(1024 * 1024), b""):
+            digest.update(chunk)
+    try:
+        revision = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        source_tree_clean = not subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        revision = None
+        source_tree_clean = None
+    versions = {}
+    for package in ("numpy", "pandas", "scikit-learn"):
+        try:
+            versions[package] = importlib.metadata.version(package)
+        except importlib.metadata.PackageNotFoundError:
+            versions[package] = "unknown"
+    return {
+        "model_sha256": digest.hexdigest(),
+        "source_revision": revision,
+        "source_tree_clean": source_tree_clean,
+        "python_version": platform.python_version(),
+        "libraries": versions,
+    }
 
 
 def _provenance_banner(dataset: Dataset) -> str:
@@ -515,6 +558,8 @@ def evaluate(
     validation_sweep = threshold_sweep(val_set.labels, val_probabilities, thresholds=thresholds)
 
     results: dict[str, Any] = {
+        "report_schema_version": 1,
+        "run": _benchmark_run_info(model_path),
         "banner": _provenance_banner(test_set),
         "model": bundle.model_info(),
         "threshold": threshold,

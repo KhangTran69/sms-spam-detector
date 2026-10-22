@@ -1,11 +1,13 @@
 """Privacy and provenance regressions for evaluation reports."""
 
+import hashlib
 from types import SimpleNamespace
 
 import pandas as pd
 
 from src.data import Dataset, FileRecord
 from src.evaluate import (
+    _benchmark_run_info,
     _data_hash_warnings,
     _errors,
     _length_strata,
@@ -21,6 +23,20 @@ def _bundle(**kwargs) -> ModelBundle:
         pipeline=SimpleNamespace(predict_proba=lambda _: None, classes_=["ham", "spam"]),
         **kwargs,
     )
+
+
+def test_benchmark_run_info_binds_artifact_without_exposing_its_path(tmp_path) -> None:
+    private_path = tmp_path / "private-workspace" / "candidate.pkl"
+    private_path.parent.mkdir()
+    artifact = b"fixture model bytes"
+    private_path.write_bytes(artifact)
+
+    info = _benchmark_run_info(private_path)
+
+    assert info["model_sha256"] == hashlib.sha256(artifact).hexdigest()
+    assert str(private_path) not in str(info)
+    assert "source_revision" in info
+    assert "scikit-learn" in info["libraries"]
 
 
 def test_misclassification_records_never_contain_message_text() -> None:
