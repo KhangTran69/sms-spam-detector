@@ -144,6 +144,12 @@ async function main() {
       if (new URL(response.url()).pathname === '/analyze') missingModelAnalysisStatus = response.status();
     });
     await missingModelPage.goto(base, { waitUntil: 'domcontentloaded' });
+    await missingModelPage.emulateMedia({ reducedMotion: 'reduce' });
+    const reducedTransition = await missingModelPage.locator('#btn-check').evaluate((item) =>
+      getComputedStyle(item).transitionDuration.split(',').map((value) => Number.parseFloat(value)));
+    if (reducedTransition.some((seconds) => seconds > 0.001)) {
+      throw new Error(`reduced-motion preference did not shorten UI transitions: ${reducedTransition}`);
+    }
     await missingModelPage.waitForFunction(() => document.querySelector('#api-status').textContent.trim() === 'Available'
       && document.querySelector('#readiness-status').textContent.trim() === 'Unavailable');
     await missingModelPage.locator('#message-input').fill('Fictional test only: model unavailable response.');
@@ -332,6 +338,18 @@ async function main() {
     });
     if (darkGuidanceContrast < 4.5) throw new Error(`safety guidance summary contrast is too low in dark mode: ${darkGuidanceContrast}`);
     await page.locator('#btn-theme').click();
+    const lightGuidanceContrast = await guide.locator('summary').evaluate((item) => {
+      const rgb = (value) => value.match(/\d+(\.\d+)?/g).slice(0, 3).map(Number);
+      const luminance = (color) => {
+        const channels = rgb(color).map((channel) => channel / 255).map((channel) =>
+          channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4);
+        return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+      };
+      const foreground = luminance(getComputedStyle(item).color);
+      const background = luminance(getComputedStyle(item.parentElement).backgroundColor);
+      return (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05);
+    });
+    if (lightGuidanceContrast < 4.5) throw new Error(`safety guidance summary contrast is too low in light mode: ${lightGuidanceContrast}`);
     if (!(await guide.locator('input[data-guidance-field="sensitive"][value="yes"]').isChecked())) {
       throw new Error('theme change discarded the displayed result’s checklist answers');
     }

@@ -21,6 +21,9 @@ INDEX_HTML = ROOT / "api" / "web" / "index.html"
 APP_JS = ROOT / "api" / "web" / "app.js"
 I18N_JS = ROOT / "api" / "web" / "i18n.js"
 PRIVACY_JS = ROOT / "api" / "web" / "privacy-preview.js"
+HISTORY_JS = ROOT / "api" / "web" / "history-store.js"
+CONNECTION_JS = ROOT / "api" / "web" / "connection-status.js"
+RESULT_FORMAT_JS = ROOT / "api" / "web" / "result-format.js"
 API_CLIENT_JS = ROOT / "api" / "web" / "api-client.js"
 STYLES_CSS = ROOT / "api" / "web" / "styles.css"
 
@@ -37,7 +40,10 @@ def html() -> str:
 
 @pytest.fixture(scope="module")
 def js() -> str:
-    return "\n".join(path.read_text(encoding="utf-8") for path in (APP_JS, API_CLIENT_JS, I18N_JS, PRIVACY_JS))
+    return "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in (APP_JS, API_CLIENT_JS, I18N_JS, PRIVACY_JS, HISTORY_JS, CONNECTION_JS, RESULT_FORMAT_JS)
+    )
 
 
 @pytest.fixture(scope="module")
@@ -65,7 +71,17 @@ def js_endpoint_paths(js: str) -> set[str]:
 
 
 def test_web_assets_exist():
-    for path in (INDEX_HTML, APP_JS, STYLES_CSS):
+    for path in (
+        INDEX_HTML,
+        APP_JS,
+        API_CLIENT_JS,
+        I18N_JS,
+        PRIVACY_JS,
+        HISTORY_JS,
+        CONNECTION_JS,
+        RESULT_FORMAT_JS,
+        STYLES_CSS,
+    ):
         assert path.is_file(), f"missing web asset: {path}"
         assert path.stat().st_size > 0
 
@@ -107,10 +123,10 @@ def test_model_info_is_fetched_on_load(js):
 
 
 def test_history_is_opt_in_and_privacy_preserving(js, html):
-    assert "HISTORY_PREF_KEY" in js
-    assert 'localStorage.getItem(HISTORY_PREF_KEY) === "1"' in js, "history must default to OFF"
-    assert "HISTORY_KEY" in js
-    assert "removeItem(HISTORY_KEY)" in js, "turning history off must delete stored messages"
+    assert "createHistoryStore" in js
+    assert 'preferenceKey = "smsd_history_enabled_v1"' in js, "history must default to OFF"
+    assert 'key = "smsd_history_v1"' in js
+    assert "if (!value) clear();" in js, "turning history off must delete stored messages"
     assert js.count("if (!historyEnabled)") >= 2, "history reads/writes must be guarded when off"
     assert "localStorage" in js
     assert "localStorage" in html
@@ -246,10 +262,12 @@ def test_service_worker_installs_complete_static_shell_and_never_caches_api(html
     assert "await cache.put(request" not in sw, "runtime responses must not mutate an installed release"
     for path in ("/analyze", "/analyze/batch", "/predict", "/feedback", "/model-info"):
         assert f'"{path}"' in sw
-    assert "smsd-shell-v14" in sw
+    assert "smsd-shell-v15" in sw
     for asset in ("styles.css", "app.js", "api-client.js", "i18n.js", "privacy-preview.js"):
-        assert f'"/static/{asset}?v=ui14-modular-frontend-20261022"' in sw
-    assert 'type="module" src="/static/app.js?v=ui14-modular-frontend-20261022"' in html
+        assert f'"/static/{asset}?v=ui15-history-store-20261022"' in sw
+    for asset in ("history-store.js", "connection-status.js", "result-format.js"):
+        assert f'"/static/{asset}?v=ui15-history-store-20261022"' in sw
+    assert 'type="module" src="/static/app.js?v=ui15-history-store-20261022"' in html
     assert 'id="single-privacy-review"' in html
     assert 'id="batch-privacy-review"' in html
     assert 'id="compare-review-a"' in html and 'id="compare-review-b"' in html
@@ -495,7 +513,7 @@ def test_offline_banner_exists_and_is_wired(js, html):
     assert "refreshServiceStatus();" in js
     assert 'id="api-status"' in html and 'id="readiness-status"' in html
     assert 'id="btn-retry-status"' in html
-    assert "const timeoutMs = 20000" in js
+    assert "timeoutMs = 20000" in js
     assert "let requestSequence = 0" in js and "modelInfoRequestSequence" in js
 
 

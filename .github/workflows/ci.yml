@@ -46,6 +46,8 @@ jobs:
           cache: npm
       - name: Install browser test dependency
         run: npm ci
+      - name: Check browser UI module boundaries
+        run: npm run test:modules
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Exercise UI in Chromium

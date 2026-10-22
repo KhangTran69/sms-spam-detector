@@ -113,3 +113,37 @@ derived from private inputs.
 The tracked synthetic Philippine holdout can exercise this report path, but it
 is a pipeline diagnostic only. See [DATA_COLLECTION.md](DATA_COLLECTION.md)
 for consent, labeling, and campaign/date separation requirements.
+
+## One-command candidate benchmark
+
+`python -m src.benchmark` validates the named input paths, trains an isolated
+candidate, evaluates its held-out split, and stores all artifacts in one new or
+empty output directory. A public or consented base CSV must be named explicitly;
+the command does not silently add the repository's synthetic supplements.
+Training and evaluation use the same named sources and the same grouped split.
+The report includes the candidate's exact byte hash, source revision and dirty
+tree status, package versions, dataset hashes, split membership fingerprints,
+class errors, coverage, uncertainty, and a fixed-threshold MultinomialNB baseline
+fit only on the training groups. Baseline and candidate results use identical
+test groups. Public and synthetic rows are broken out by provenance.
+
+For example, with an already approved UCI import and tracked synthetic fixtures:
+
+```bash
+python -m src.benchmark \
+  --data data/raw/imported/uci_sms_spam.csv \
+  --supplement data/raw/ph_supplement.csv data/raw/ph_supplement_2.csv \
+              data/raw/ph_supplement_3.csv data/raw/ph_supplement_4.csv \
+              data/raw/ph_supplement_5.csv \
+  --holdout data/raw/ph_holdout.csv \
+  --output-dir data/processed/uci-synthetic-run
+```
+
+The holdout remains diagnostic and synthetic. For consented files, run
+`python -m src.consented_data ... --purpose training` on each training input
+and `--purpose evaluation` on the frozen holdout first, then keep the candidate
+directory in the same protected workspace as its inputs. Reports omit message
+text and local paths, but source hashes and aggregate metrics still derive from
+private data. The command refuses to overwrite existing candidate or report
+files. Its report schema is versioned; retain the artifact and manifest next to
+the report when reproducing a result.

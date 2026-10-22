@@ -2,6 +2,7 @@
   "name": "philippine-sms-spam-detector-browser-tests",
   "private": true,
   "scripts": {
+    "test:modules": "node tests/ui_modules.cjs",
     "test:browser": "node tests/browser_smoke.cjs"
   },
   "devDependencies": {

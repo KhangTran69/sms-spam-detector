@@ -1,12 +1,13 @@
-import { API, createApiClient } from "./api-client.js?v=ui14-modular-frontend-20261022";
-import { I18N } from "./i18n.js?v=ui14-modular-frontend-20261022";
-import { applyPrivacyMasks, buildPrivacyReview, clearPrivacyReview, detectSensitiveSpans } from "./privacy-preview.js?v=ui14-modular-frontend-20261022";
+import { API, createApiClient } from "./api-client.js?v=ui15-history-store-20261022";
+import { I18N } from "./i18n.js?v=ui15-history-store-20261022";
+import { applyPrivacyMasks, buildPrivacyReview, clearPrivacyReview, detectSensitiveSpans } from "./privacy-preview.js?v=ui15-history-store-20261022";
+import { createHistoryStore } from "./history-store.js?v=ui15-history-store-20261022";
+import { createConnectionStatus } from "./connection-status.js?v=ui15-history-store-20261022";
+import { createResultFormatting, normalizeModelInfo } from "./result-format.js?v=ui15-history-store-20261022";
 
 /* PH SMS Scam Detector — UI logic (no build step, vanilla JS). */
 "use strict";
 
-const HISTORY_KEY = "smsd_history_v1";
-const HISTORY_PREF_KEY = "smsd_history_enabled_v1";
 const HISTORY_LIMIT = 50;
 const BATCH_LIMIT = 50;
 const MAX_BATCH_CHARACTERS = 200000;
@@ -18,6 +19,10 @@ const SYNTHETIC_DATA_NOTE =
   "Checks using synthetic Philippine data are not proof of real-world accuracy. Treat every verdict as a hint, not a fact.";
 const HISTORY_OFF_NOTE =
   "History is off. Turn it on to keep the last 50 checks in this browser.";
+
+function $(id) {
+  return document.getElementById(id);
+}
 
 /* Fallback thresholds mirror the API default; the authoritative values are
    fetched from GET /model-info on load (decision_threshold, suspicious_threshold
@@ -100,7 +105,7 @@ function setLanguage(nextLang) {
   resetIdleLabels();
   $("btn-lang").textContent = lang === "taglish" ? "EN" : "Taglish";
   updateThemeButton();
-  renderConnectionStatus();
+  connectionStatus.render();
   renderActiveModelInfo();
   renderHistory();
   updateHistoryBadge();
@@ -160,68 +165,24 @@ function toggleTheme() {
   updateThemeButton();
 }
 
-/* ---------- Offline banner ---------- */
-function showOfflineBanner() {
-  $("offline-banner").classList.remove("hidden");
-}
-
-function hideOfflineBanner() {
-  $("offline-banner").classList.add("hidden");
-}
-
-function renderConnectionStatus() {
-  const api = $("api-status");
-  const model = $("readiness-status");
-  const browser = $("browser-status");
-  const reportsOnline = window.navigator.onLine;
-  browser.textContent = typeof reportsOnline === "boolean"
-    ? t(reportsOnline ? "service.browserOnline" : "service.browserOffline") : t("service.modelUnknown");
-  api.textContent = apiAvailable === null ? t("service.checking")
-    : apiAvailable === true ? t("service.apiAvailable")
-      : apiAvailable === "timeout" ? t("service.apiSlow") : t("service.apiUnavailable");
-  model.textContent = modelReady === null ? t("service.checking")
-    : modelReady === true ? t("service.modelReady")
-      : modelReady === false ? t("service.modelUnavailable") : t("service.modelUnknown");
-  api.dataset.state = apiAvailable === true ? "ready"
-    : apiAvailable === false ? "error" : apiAvailable === "timeout" ? "warning" : "checking";
-  model.dataset.state = modelReady === true ? "ready" : modelReady === false ? "error" : "checking";
-}
-
-function setApiAvailability(value, requestSequence) {
-  if (requestSequence < apiStatusSequence) return false;
-  apiStatusSequence = requestSequence;
-  apiAvailable = value;
-  renderConnectionStatus();
-  return true;
-}
-
-function setModelReadiness(value, requestSequence) {
-  if (requestSequence < modelStatusSequence) return false;
-  modelStatusSequence = requestSequence;
-  modelReady = value;
-  renderConnectionStatus();
-  return true;
-}
+/* ---------- Connection status ---------- */
+const connectionStatus = createConnectionStatus({
+  element: $, translate: t, browserOnline: () => window.navigator.onLine, offlineBanner: $("offline-banner"),
+});
 
 const apiClient = createApiClient({
   translate: t,
-  setApiAvailability,
-  setModelReadiness,
-  hideOfflineBanner,
-  showOfflineBanner,
+  setApiAvailability: connectionStatus.setApiAvailability,
+  setModelReadiness: connectionStatus.setModelReadiness,
+  hideOfflineBanner: connectionStatus.hideOfflineBanner,
+  showOfflineBanner: connectionStatus.showOfflineBanner,
 });
 
 /* ---------- Banding ---------- */
 /* API risk_band -> presentation. Titles/icons live here so every view is
    consistent; cutoffs always come from modelInfo.bands. */
-const BAND_VIEW = {
-  likely_scam: { css: "spam", icon: "🚨", key: "band.likely_scam" },
-  suspicious: { css: "suspicious", icon: "⚠️", key: "band.suspicious" },
-  looks_safe: { css: "safe", icon: "✅", key: "band.looks_safe" },
-};
-
 function bandTitle(band) {
-  const view = BAND_VIEW[band] || BAND_VIEW.looks_safe;
+  const view = resultFormatting.bandView(band);
   return t(view.key);
 }
 
@@ -293,17 +254,19 @@ const EXAMPLES = {
 };
 const EXAMPLE_INDEX = { scam: -1, safe: -1 };
 
-const $ = (id) => document.getElementById(id);
-
-let modelInfo = normalizeModelInfo(FALLBACK_MODEL_INFO);
+let modelInfo = normalizeModelInfo(FALLBACK_MODEL_INFO, validFraction);
 let modelInfoLoaded = false;
 let modelInfoError = null;
-let apiAvailable = null;
-let modelReady = null;
-let apiStatusSequence = 0;
-let modelStatusSequence = 0;
 let modelInfoRequestSequence = 0;
 let historyEnabled = false;
+const historyStore = createHistoryStore(() => window.localStorage, { limit: HISTORY_LIMIT });
+const resultFormatting = createResultFormatting({
+  translate: t,
+  validFraction,
+  getModelInfo: () => modelInfo,
+  matchesLoadedModel: resultMatchesLoadedModel,
+});
+const { bandsForAnalysis, bandFromProbability, bandOf, bandView, scoreLabel } = resultFormatting;
 let lastBatchResults = null;
 
 /* ---------- Small helpers ---------- */
@@ -331,32 +294,6 @@ function nextExample(kind) {
   const index = (EXAMPLE_INDEX[kind] + 1) % examples.length;
   EXAMPLE_INDEX[kind] = index;
   return { message: examples[index], index: index + 1, total: examples.length };
-}
-
-function normalizeModelInfo(info) {
-  const safe = info && typeof info === "object" ? info : {};
-  const bands = safe.bands && typeof safe.bands === "object" ? safe.bands : {};
-  const decisionThreshold = validFraction(safe.decision_threshold);
-  const likelyThreshold = validFraction(bands.likely_scam) ?? decisionThreshold;
-  const suspiciousThreshold = validFraction(bands.suspicious) ?? validFraction(safe.suspicious_threshold);
-  const normalizedBands = likelyThreshold !== null && suspiciousThreshold !== null
-    && suspiciousThreshold < likelyThreshold
-    ? { likely_scam: likelyThreshold, suspicious: suspiciousThreshold, looks_safe: 0 }
-    : null;
-  return {
-    raw: safe,
-    model_version: typeof safe.model_version === "string" && safe.model_version
-      ? safe.model_version
-      : null,
-    decision_threshold: decisionThreshold,
-    suspicious_threshold: suspiciousThreshold,
-    bands: normalizedBands,
-    data_note: typeof safe.data_note === "string" && safe.data_note.trim() ? safe.data_note.trim() : null,
-    legacy_artifact: safe.legacy_artifact === true,
-    feedback_enabled: safe.feedback_enabled === true,
-    probability_calibrated: typeof safe.probability_calibrated === "boolean" ? safe.probability_calibrated : null,
-    warnings: Array.isArray(safe.warnings) ? safe.warnings.filter((item) => typeof item === "string") : [],
-  };
 }
 
 function describeError(failure) {
@@ -504,24 +441,13 @@ function renderModelInfo(analysis = null) {
   );
 }
 
-function bandsForAnalysis(analysis) {
-  if (!analysis || typeof analysis !== "object") return modelInfo.bands;
-  const useLoaded = resultMatchesLoadedModel(analysis);
-  const likely = validFraction(analysis.decision_threshold)
-    ?? (useLoaded ? validFraction(modelInfo.bands.likely_scam) : null);
-  const suspicious = validFraction(analysis.suspicious_threshold)
-    ?? (useLoaded ? validFraction(modelInfo.bands.suspicious) : null);
-  if (likely === null || suspicious === null || suspicious >= likely) return null;
-  return { likely_scam: likely, suspicious, looks_safe: 0 };
-}
-
 async function loadModelInfo() {
   const requestSequence = ++modelInfoRequestSequence;
   const warning = $("model-warning");
   try {
     const info = await apiClient.requestJson(API.modelInfo);
     if (requestSequence !== modelInfoRequestSequence) return;
-    modelInfo = normalizeModelInfo(info);
+    modelInfo = normalizeModelInfo(info, validFraction);
     modelInfoLoaded = true;
     modelInfoError = null;
     warning.textContent = "";
@@ -529,7 +455,7 @@ async function loadModelInfo() {
   } catch (failure) {
     if (requestSequence !== modelInfoRequestSequence) return;
     if (failure && failure.aborted) return;
-    modelInfo = normalizeModelInfo(FALLBACK_MODEL_INFO);
+    modelInfo = normalizeModelInfo(FALLBACK_MODEL_INFO, validFraction);
     modelInfoLoaded = false;
     modelInfoError = failure;
   }
@@ -538,42 +464,13 @@ async function loadModelInfo() {
 }
 
 async function refreshServiceStatus() {
-  apiAvailable = null;
-  modelReady = null;
-  renderConnectionStatus();
+  connectionStatus.reset();
   try {
     await apiClient.requestJson(API.ready);
   } catch {
     // requestJson records reachability and readiness without resending SMS.
   }
-  renderConnectionStatus();
-}
-
-/* ---------- Banding ---------- */
-function bandFromProbability(probability, analysis = null) {
-  const value = validFraction(probability);
-  const bands = bandsForAnalysis(analysis);
-  if (value === null || !bands) return "unavailable";
-  if (value >= bands.likely_scam) return "likely_scam";
-  if (value >= bands.suspicious) return "suspicious";
-  return "looks_safe";
-}
-
-/* Prefer the API's own verdict band and fall back to the thresholds. */
-function bandOf(analysis) {
-  if (analysis && typeof analysis.risk_band === "string" && BAND_VIEW[analysis.risk_band]) {
-    return analysis.risk_band;
-  }
-  return bandFromProbability(analysis ? analysis.spam_probability : null, analysis);
-}
-
-function bandView(band) {
-  return BAND_VIEW[band] || { css: "unknown", icon: "ℹ️", key: "band.unavailable" };
-}
-
-function scoreLabel(analysis) {
-  if (!analysis || typeof analysis.probability_calibrated !== "boolean") return t("verdict.score.unavailable");
-  return analysis.probability_calibrated ? t("verdict.score.calibrated") : t("verdict.score.uncalibrated");
+  connectionStatus.render();
 }
 
 /* ---------- Single-check rendering ---------- */
@@ -1042,52 +939,24 @@ async function submitFeedback(event) {
 
 /* ---------- History (browser-only, opt-in) ---------- */
 function readHistoryPreference() {
-  try {
-    return localStorage.getItem(HISTORY_PREF_KEY) === "1";
-  } catch {
-    return false;
-  }
+  return historyStore.isEnabled();
 }
 
 function persistHistoryPreference(enabled) {
-  try {
-    localStorage.setItem(HISTORY_PREF_KEY, enabled ? "1" : "0");
-  } catch {
-    /* Storage may be unavailable (private mode / disabled); history stays off. */
-  }
+  return historyStore.setEnabled(enabled);
 }
 
 function clearStoredHistory() {
-  try {
-    localStorage.removeItem(HISTORY_KEY);
-  } catch {
-    /* ignore */
-  }
+  historyStore.clear();
 }
 
 function loadHistory() {
   if (!historyEnabled) return [];
-  try {
-    const parsed = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((entry) => entry && typeof entry.message === "string");
-  } catch {
-    return [];
-  }
+  return historyStore.load();
 }
 
 function saveHistory(entries) {
-  if (!historyEnabled) {
-    clearStoredHistory();
-    return [];
-  }
-  const trimmed = entries.slice(0, HISTORY_LIMIT);
-  try {
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(trimmed));
-  } catch {
-    /* Ignore quota/storage errors; the UI must keep working. */
-  }
-  return trimmed;
+  return historyEnabled ? historyStore.save(entries) : historyStore.save([]);
 }
 
 function addHistory(analysis, source = "single", { render = true } = {}) {
@@ -1173,7 +1042,7 @@ function renderHistory() {
   empty.textContent = historyEnabled ? t("history.empty") : t("history.offnote");
   $("btn-clear-history").disabled = entries.length === 0;
   for (const entry of entries) {
-    const band = BAND_VIEW[entry.risk_band]
+    const band = resultFormatting.isKnownBand(entry.risk_band)
       ? entry.risk_band
       : bandFromProbability(entry.spam_probability, entry);
     const timestamp = new Date(numberOr(entry.t, Date.now())).toLocaleString();
@@ -1213,8 +1082,10 @@ function renderHistory() {
 }
 
 function setHistoryEnabled(enabled) {
-  historyEnabled = Boolean(enabled);
-  persistHistoryPreference(historyEnabled);
+  const requested = Boolean(enabled);
+  historyEnabled = requested ? persistHistoryPreference(true) : false;
+  if (!requested) persistHistoryPreference(false);
+  $("history-optin").checked = historyEnabled;
   if (!historyEnabled) {
     clearStoredHistory();
     announceHistory(t("history.off"));
@@ -2042,12 +1913,12 @@ function initBatchCheck() {
 
 function initOfflineDetection() {
   window.addEventListener("offline", () => {
-    renderConnectionStatus();
+    connectionStatus.render();
     refreshServiceStatus();
   });
   window.addEventListener("online", () => {
-    renderConnectionStatus();
-    hideOfflineBanner();
+    connectionStatus.render();
+    connectionStatus.hideOfflineBanner();
     refreshServiceStatus();
     loadModelInfo();
   });
@@ -2086,7 +1957,7 @@ document.addEventListener("DOMContentLoaded", () => {
     refreshServiceStatus();
     loadModelInfo();
   });
-  renderConnectionStatus();
+  connectionStatus.render();
   renderModelInfo();
   refreshServiceStatus();
   loadModelInfo();
