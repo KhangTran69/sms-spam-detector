@@ -718,6 +718,12 @@ def test_index_and_static_files_are_served(client):
     assert head.headers["content-length"] == str(len(script.content))
     assert head.headers["cache-control"] == "no-cache"
 
+    for module in ("api-client.js", "i18n.js", "privacy-preview.js"):
+        response = client.get(f"/static/{module}")
+        assert response.status_code == 200
+        assert "javascript" in response.headers["content-type"]
+        assert response.headers["cache-control"] == "no-cache"
+
     styles = client.get("/static/styles.css")
     assert styles.status_code == 200
     assert "text/css" in styles.headers["content-type"]

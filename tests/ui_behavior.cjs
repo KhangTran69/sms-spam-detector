@@ -59,11 +59,17 @@ const context = vm.createContext({ console, AbortController, setTimeout, clearTi
     },
     documentElement: element('html'),
     addEventListener() {}, createElement: tagName => element(tagName), createTextNode: text => ({ textContent: text }) } });
-vm.runInContext(fs.readFileSync(path.join(__dirname, '../api/web/app.js'), 'utf8'), context);
+const webDir = path.join(__dirname, '../api/web');
+for (const moduleName of ['api-client.js', 'i18n.js', 'privacy-preview.js']) {
+  const moduleSource = fs.readFileSync(path.join(webDir, moduleName), 'utf8').replace(/^export /gm, '');
+  vm.runInContext(moduleSource, context, { filename: moduleName });
+}
+const appSource = fs.readFileSync(path.join(webDir, 'app.js'), 'utf8').replace(/^import .*;\n/gm, '');
+vm.runInContext(appSource, context, { filename: 'app.js' });
 vm.runInContext(`
   var pending = [];
   var rendered = [];
-  postJson = (path, body) => { requests.push({path, body}); return new Promise((resolve, reject) => pending.push({resolve, reject})); };
+  apiClient.postJson = (path, body) => { requests.push({path, body}); return new Promise((resolve, reject) => pending.push({resolve, reject})); };
   renderAnalysis = analysis => rendered.push(analysis.message);
   renderBatch = rows => rendered.push(rows[0].message);
 `, context);
@@ -332,7 +338,7 @@ run('lang = "en"');
   await run('pendingCompare');
   assert.equal(run('$ ("compare-results").classList.contains("hidden")'), true, 'clearing while pending suppresses a stale comparison');
   assert.equal(run('compareAbortController'), null, 'tab switching aborts the pending comparison');
-  run('$ ("offline-banner").classList.add("hidden"); apiAvailable = null; fetch = async () => { throw new TypeError("failed to fetch"); }; var apiFailure = requestJson("/model-info");');
+  run('$ ("offline-banner").classList.add("hidden"); apiAvailable = null; fetch = async () => { throw new TypeError("failed to fetch"); }; var apiFailure = apiClient.requestJson("/model-info");');
   let apiFailure;
   try { await run('apiFailure'); } catch (error) { apiFailure = error; }
   assert.equal(apiFailure.apiUnavailable, true, `a failed API request is reported as an API failure (${apiFailure && apiFailure.message}; timeout=${apiFailure && apiFailure.timeout}; aborted=${apiFailure && apiFailure.aborted})`);
@@ -345,21 +351,21 @@ run('lang = "en"');
     if (delay === 20000) { callback(); return 123; }
     return realSetTimeout(callback, delay);
   };
-  run('window.navigator.onLine = true; fetch = async (_path, options) => { if (options.signal.aborted) throw Object.assign(new Error("aborted"), {name:"AbortError"}); }; var timeoutFailure = requestJson("/model-info");');
+  run('window.navigator.onLine = true; fetch = async (_path, options) => { if (options.signal.aborted) throw Object.assign(new Error("aborted"), {name:"AbortError"}); }; var timeoutFailure = apiClient.requestJson("/model-info");');
   let timeoutFailure;
   try { await run('timeoutFailure'); } catch (error) { timeoutFailure = error; }
   assert.equal(timeoutFailure.timeout, true, 'slow API requests time out with a distinct error state');
   assert.equal(run('$ ("api-status").dataset.state'), 'warning', 'a timeout is distinct from an unreachable API');
   context.setTimeout = realSetTimeout;
-  run('window.navigator.onLine = false; fetch = async () => { throw new TypeError("failed to fetch"); }; var offlineFailure = requestJson("/model-info");');
+  run('window.navigator.onLine = false; fetch = async () => { throw new TypeError("failed to fetch"); }; var offlineFailure = apiClient.requestJson("/model-info");');
   try { await run('offlineFailure'); } catch { /* expected unreachable API */ }
   assert.equal(run('$ ("offline-banner").classList.contains("hidden")'), false,
     'the offline banner appears when the browser is offline and the API cannot be reached');
-  run('fetch = async () => ({ok:true, status:200, async json(){ return {}; }}); var localApiResponse = requestJson("/ready");');
+  run('fetch = async () => ({ok:true, status:200, async json(){ return {}; }}); var localApiResponse = apiClient.requestJson("/ready");');
   await run('localApiResponse');
   assert.equal(run('$ ("offline-banner").classList.contains("hidden")'), true,
     'a reachable local API clears a misleading general-internet offline banner');
-  run('var olderMetadataResolve; var newerMetadataResolve; requestJson = () => new Promise(resolve => { if (!olderMetadataResolve) olderMetadataResolve = resolve; else newerMetadataResolve = resolve; }); var oldMetadata = loadModelInfo(); var newMetadata = loadModelInfo();');
+  run('var olderMetadataResolve; var newerMetadataResolve; apiClient.requestJson = () => new Promise(resolve => { if (!olderMetadataResolve) olderMetadataResolve = resolve; else newerMetadataResolve = resolve; }); var oldMetadata = loadModelInfo(); var newMetadata = loadModelInfo();');
   run('newerMetadataResolve({model_version:"newer", decision_threshold:0.6, suspicious_threshold:0.3, bands:{likely_scam:0.6,suspicious:0.3}, data_note:"new", warnings:[]})');
   await run('newMetadata');
   run('olderMetadataResolve({model_version:"older", decision_threshold:0.9, suspicious_threshold:0.8, bands:{likely_scam:0.9,suspicious:0.8}, data_note:"old", warnings:[]})');

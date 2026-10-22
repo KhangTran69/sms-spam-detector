@@ -9,7 +9,6 @@ are reported when that metadata exists.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import importlib.metadata
 import json
 import math
@@ -63,12 +62,8 @@ SYNTHETIC_BANNER = "SYNTHETIC BENCHMARK — NOT REAL-WORLD PERFORMANCE"
 LEGIT_CATEGORIES = ("otp", "bank_alert", "delivery", "bill", "personal_taglish", "promo")
 
 
-def _benchmark_run_info(model_path: str | Path) -> dict[str, Any]:
+def _benchmark_run_info(model_sha256: str | None) -> dict[str, Any]:
     """Return report identifiers without including local filesystem paths."""
-    digest = hashlib.sha256()
-    with Path(model_path).open("rb") as artifact:
-        for chunk in iter(lambda: artifact.read(1024 * 1024), b""):
-            digest.update(chunk)
     try:
         revision = subprocess.run(
             ["git", "rev-parse", "HEAD"],
@@ -88,13 +83,26 @@ def _benchmark_run_info(model_path: str | Path) -> dict[str, Any]:
         revision = None
         source_tree_clean = None
     versions = {}
-    for package in ("numpy", "pandas", "scikit-learn"):
+    for package in (
+        "numpy",
+        "pandas",
+        "scikit-learn",
+        "scipy",
+        "threadpoolctl",
+        "joblib",
+        "fastapi",
+        "starlette",
+        "uvicorn",
+        "pydantic",
+        "pydantic-core",
+        "matplotlib",
+    ):
         try:
             versions[package] = importlib.metadata.version(package)
         except importlib.metadata.PackageNotFoundError:
             versions[package] = "unknown"
     return {
-        "model_sha256": digest.hexdigest(),
+        "model_sha256": model_sha256,
         "source_revision": revision,
         "source_tree_clean": source_tree_clean,
         "python_version": platform.python_version(),
@@ -454,7 +462,7 @@ def evaluate(
     verbose: bool = True,
 ) -> dict[str, Any]:
     """Evaluate the artifact; returns a JSON-safe metrics dictionary."""
-    bundle = load_model(model_path)
+    bundle = load_model(model_path, identify_artifact=True)
     threshold = bundle.threshold
     dataset = load_training_dataset(
         data_path,
@@ -559,9 +567,10 @@ def evaluate(
 
     results: dict[str, Any] = {
         "report_schema_version": 1,
-        "run": _benchmark_run_info(model_path),
+        "run": _benchmark_run_info(bundle.artifact_sha256),
         "banner": _provenance_banner(test_set),
         "model": bundle.model_info(),
+        "training_config": bundle.metadata.get("training_config", {}),
         "threshold": threshold,
         "threshold_diagnostic": threshold_diagnostic,
         "score_interpretation": _score_interpretation(bundle),
@@ -588,6 +597,9 @@ def evaluate(
             "at_threshold": test_metrics,
             "at_default_0.5": test_at_default,
             "calibration": test_calibration,
+            "by_data_kind": per_group_metrics(
+                test_set.frame, test_probabilities, threshold, group_columns=("data_kind",)
+            ),
             "by_source_category_language": per_group_metrics(
                 test_set.frame, test_probabilities, threshold, group_columns=("source_file", "category", "language")
             ),
@@ -836,6 +848,9 @@ def _print_report(results: dict[str, Any], threshold: float, holdout: Dataset | 
     print("\n=== Test split ===")
     print(_format_metrics("at tuned threshold", results["test"]["at_threshold"]))
     print(_format_metrics("at default 0.5", results["test"]["at_default_0.5"]))
+    print("Test metrics by provenance:")
+    for group in results["test"]["by_data_kind"]:
+        print(_format_metrics(group["data_kind"], group))
     calibration = results["test"]["calibration"]
     print(
         f"Calibration: Brier={calibration['brier_score']:.4f} log_loss={calibration['log_loss']:.4f} "

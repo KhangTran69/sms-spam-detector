@@ -76,6 +76,7 @@ class ModelBundle:
     metadata: dict[str, Any] = field(default_factory=dict)
     path: Path | None = None
     legacy: bool = False
+    artifact_sha256: str | None = None
 
     def __post_init__(self) -> None:
         if not hasattr(self.pipeline, "predict_proba"):
@@ -206,7 +207,7 @@ def _validate_feature_version(feature_version: Any, signature: dict[str, Any], p
     )
 
 
-def load_model(path: str | Path | None = None) -> ModelBundle:
+def load_model(path: str | Path | None = None, *, identify_artifact: bool = False) -> ModelBundle:
     """Load and validate an artifact; raises FileNotFoundError or ModelArtifactError."""
     artifact_path = Path(path) if path is not None else default_model_path()
     if not artifact_path.exists():
@@ -218,8 +219,11 @@ def load_model(path: str | Path | None = None) -> ModelBundle:
         raise ModelArtifactError(f"Model path {artifact_path} is a directory; pass the .pkl bundle file.")
     expected_sha256 = os.environ.get("SMSD_MODEL_SHA256", "").strip().lower()
     model_bytes: bytes | None = None
-    if expected_sha256:
-        if len(expected_sha256) != 64 or any(character not in "0123456789abcdef" for character in expected_sha256):
+    artifact_sha256: str | None = None
+    if expected_sha256 or identify_artifact:
+        if expected_sha256 and (
+            len(expected_sha256) != 64 or any(character not in "0123456789abcdef" for character in expected_sha256)
+        ):
             raise ModelArtifactError("SMSD_MODEL_SHA256 must be a 64-character hexadecimal SHA-256 digest.")
         try:
             model_bytes = artifact_path.read_bytes()
@@ -227,7 +231,8 @@ def load_model(path: str | Path | None = None) -> ModelBundle:
             raise ModelArtifactError(
                 f"Could not verify model artifact {artifact_path} ({type(exc).__name__})."
             ) from exc
-        if hashlib.sha256(model_bytes).hexdigest() != expected_sha256:
+        artifact_sha256 = hashlib.sha256(model_bytes).hexdigest()
+        if expected_sha256 and artifact_sha256 != expected_sha256:
             raise ModelArtifactError(f"Model artifact SHA-256 mismatch for {artifact_path}.")
     try:
         # Deserialize the exact immutable byte sequence whose digest was
@@ -287,6 +292,7 @@ def load_model(path: str | Path | None = None) -> ModelBundle:
             metadata=metadata,
             path=artifact_path,
             legacy=False,
+            artifact_sha256=artifact_sha256,
         )
 
     if hasattr(artifact, "predict_proba"):
@@ -308,6 +314,7 @@ def load_model(path: str | Path | None = None) -> ModelBundle:
             },
             path=artifact_path,
             legacy=True,
+            artifact_sha256=artifact_sha256,
         )
 
     raise ModelArtifactError(

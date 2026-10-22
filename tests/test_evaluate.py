@@ -25,18 +25,17 @@ def _bundle(**kwargs) -> ModelBundle:
     )
 
 
-def test_benchmark_run_info_binds_artifact_without_exposing_its_path(tmp_path) -> None:
+def test_benchmark_run_info_records_exact_artifact_hash_without_its_path(tmp_path) -> None:
     private_path = tmp_path / "private-workspace" / "candidate.pkl"
     private_path.parent.mkdir()
-    artifact = b"fixture model bytes"
-    private_path.write_bytes(artifact)
+    artifact_hash = hashlib.sha256(b"fixture model bytes").hexdigest()
 
-    info = _benchmark_run_info(private_path)
+    info = _benchmark_run_info(artifact_hash)
 
-    assert info["model_sha256"] == hashlib.sha256(artifact).hexdigest()
+    assert info["model_sha256"] == artifact_hash
     assert str(private_path) not in str(info)
     assert "source_revision" in info
-    assert "scikit-learn" in info["libraries"]
+    assert {"scikit-learn", "scipy", "numpy", "pandas", "joblib"} <= set(info["libraries"])
 
 
 def test_misclassification_records_never_contain_message_text() -> None:

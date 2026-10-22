@@ -24,12 +24,18 @@ prove it came from UCI.
 
 ## Evaluation and reproducibility
 
-The repository has no committed benchmark report tied to the current local
-input hashes and current split membership. Older numeric comparisons in
-workspace notes used earlier dataset versions and ignored artifacts; those
-figures are historical diagnostics, not current results, and have been removed
-from the README. The `models/` files are local ignored artifacts, so a clean
-checkout cannot independently verify their metrics. The running local API at
+The repository now includes a message-free benchmark report at
+[`docs/benchmarks/uci-synthetic-ph-diagnostic-20261022.json`](benchmarks/uci-synthetic-ph-diagnostic-20261022.json).
+It uses the verified UCI public English corpus plus tracked synthetic training
+fixtures, and evaluates the tracked synthetic Philippine holdout separately.
+The report records the exact evaluated artifact hash, source revision and
+dirty-tree flag, dependency versions, configuration, source hashes, split
+membership fingerprints, per-provenance errors, coverage, and uncertainty. It
+was generated from an uncommitted source tree; preserve the associated diff if
+reproducing that exact run. These diagnostic scores do not establish Philippine
+real-world accuracy. The `models/` files are local ignored artifacts, so a
+clean checkout cannot independently verify the artifact unless it is retrained
+and its hash matches the report. The running local API at
 `127.0.0.1:8000` reports `spam_detector_v1`, a legacy artifact with an
 uncalibrated score and unavailable training provenance. It is not evidence of
 current source performance.

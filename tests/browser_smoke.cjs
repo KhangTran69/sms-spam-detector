@@ -2,6 +2,7 @@ const { chromium } = require('playwright');
 const { spawn } = require('node:child_process');
 const fs = require('node:fs/promises');
 const net = require('node:net');
+const os = require('node:os');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
@@ -24,6 +25,66 @@ async function waitForServer(base, process) {
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
   throw new Error('local FastAPI server did not start');
+}
+
+async function stopServer(process) {
+  if (!process || process.exitCode !== null) return;
+  const exited = new Promise((resolve) => process.once('exit', resolve));
+  process.kill('SIGTERM');
+  await Promise.race([exited, new Promise((resolve) => setTimeout(resolve, 5000))]);
+  if (process.exitCode === null) {
+    process.kill('SIGKILL');
+    await exited;
+  }
+}
+
+async function trainSyntheticFixture(modelPath, python) {
+  const args = [
+    '-m', 'src.train',
+    '--data', 'data/raw/ph_supplement.csv',
+    '--supplement', 'data/raw/ph_supplement_2.csv', 'data/raw/ph_supplement_3.csv',
+    'data/raw/ph_supplement_4.csv', 'data/raw/ph_supplement_5.csv',
+    '--holdout', 'none', '--output', modelPath,
+    '--model-version', 'browser-synthetic-e2e', '--text-features', 'combined',
+  ];
+  await new Promise((resolve, reject) => {
+    const trainer = spawn(python, args, { cwd: root, stdio: 'ignore' });
+    trainer.once('error', reject);
+    trainer.once('exit', (code) => code === 0 ? resolve() : reject(new Error(`synthetic fixture training exited with ${code}`)));
+  });
+}
+
+function startDetector(port, modelPath, python) {
+  return spawn(python, [
+    '-m', 'api.cli', '--host', '127.0.0.1', '--port', String(port),
+  ], {
+    cwd: root,
+    stdio: 'ignore',
+    env: { ...process.env, SMSD_MODEL_PATH: modelPath },
+  });
+}
+
+async function assertPortConflictIsActionable(port, modelPath, python) {
+  const process = spawn(python, [
+    '-m', 'api.cli', '--host', '127.0.0.1', '--port', String(port),
+  ], {
+    cwd: root,
+    env: { ...global.process.env, SMSD_MODEL_PATH: modelPath },
+    stdio: ['ignore', 'ignore', 'pipe'],
+  });
+  let stderr = '';
+  process.stderr.setEncoding('utf8').on('data', (chunk) => { stderr += chunk; });
+  const code = await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      process.kill('SIGKILL');
+      reject(new Error('second server did not exit on the occupied port'));
+    }, 10000);
+    process.once('error', reject);
+    process.once('exit', (status) => { clearTimeout(timer); resolve(status); });
+  });
+  if (code !== 1 || !stderr.includes('port is already in use')) {
+    throw new Error(`occupied-port startup was not actionable (exit ${code}): ${stderr}`);
+  }
 }
 
 function analysis(message) {
@@ -60,15 +121,43 @@ function analysis(message) {
 }
 
 async function main() {
+  const venvPython = path.join(root, process.platform === 'win32' ? '.venv/Scripts/python.exe' : '.venv/bin/python');
+  let python = process.env.PYTHON;
+  if (!python) {
+    try { await fs.access(venvPython); python = venvPython; } catch { python = 'python'; }
+  }
   const port = await freePort();
   const base = `http://127.0.0.1:${port}`;
-  const server = spawn(process.env.PYTHON || 'python', [
-    '-m', 'uvicorn', 'api.main:app', '--host', '127.0.0.1', '--port', String(port),
-  ], { cwd: root, stdio: 'ignore', env: { ...process.env, SMSD_MODEL_PATH: path.join(root, 'missing-browser-fixture.pkl') } });
+  const fixtureDir = await fs.mkdtemp(path.join(os.tmpdir(), 'smsd-browser-fixture-'));
+  const fixtureModel = path.join(fixtureDir, 'synthetic-model.pkl');
+  let server = startDetector(port, path.join(fixtureDir, 'missing-model.pkl'), python);
   let browser;
   try {
     await waitForServer(base, server);
     browser = await chromium.launch({ headless: true });
+    const missingModelContext = await browser.newContext({ viewport: { width: 360, height: 800 }, serviceWorkers: 'block' });
+    const missingModelPage = await missingModelContext.newPage();
+    let missingModelAnalysisStatus = null;
+    await missingModelPage.route('**/*', (route) => new URL(route.request().url()).origin === base
+      ? route.continue() : route.abort());
+    missingModelPage.on('response', (response) => {
+      if (new URL(response.url()).pathname === '/analyze') missingModelAnalysisStatus = response.status();
+    });
+    await missingModelPage.goto(base, { waitUntil: 'domcontentloaded' });
+    await missingModelPage.waitForFunction(() => document.querySelector('#api-status').textContent.trim() === 'Available'
+      && document.querySelector('#readiness-status').textContent.trim() === 'Unavailable');
+    await missingModelPage.locator('#message-input').fill('Fictional test only: model unavailable response.');
+    await missingModelPage.locator('#btn-check').click();
+    await missingModelPage.waitForFunction(() => document.querySelector('#error-banner').textContent.includes('model'));
+    if (missingModelAnalysisStatus !== 503) {
+      throw new Error(`missing-model analysis should return a real API 503, saw ${missingModelAnalysisStatus}`);
+    }
+    if ((await missingModelPage.locator('#api-status').textContent()).trim() !== 'Available'
+      || (await missingModelPage.locator('#readiness-status').textContent()).trim() !== 'Unavailable') {
+      throw new Error('a model 503 incorrectly changed API reachability status');
+    }
+    await missingModelContext.close();
+
     const context = await browser.newContext({
       viewport: { width: 360, height: 800 },
       deviceScaleFactor: 1,
@@ -129,6 +218,10 @@ async function main() {
 
     await page.goto(base, { waitUntil: 'domcontentloaded' });
     console.log('browser-smoke: initial page loaded');
+    await page.locator('#readiness-status').getByText('Unavailable').waitFor();
+    if ((await page.locator('#api-status').textContent()).trim() !== 'Available') {
+      throw new Error('missing-model readiness failure was confused with API reachability');
+    }
     await page.locator('#message-input').fill('Fixture check completes before model info.');
     await page.locator('#btn-check').click();
     await page.locator('#result').waitFor({ state: 'visible' });
@@ -541,6 +634,86 @@ async function main() {
     await context.close();
     console.log('browser-smoke: interactions, privacy, and mobile checks passed');
 
+    // Exercise the actual API with a trained, tracked synthetic fixture model.
+    await stopServer(server);
+    server = null;
+    await trainSyntheticFixture(fixtureModel, python);
+    server = startDetector(port, fixtureModel, python);
+    await waitForServer(base, server);
+    await assertPortConflictIsActionable(port, fixtureModel, python);
+    const liveContext = await browser.newContext({ viewport: { width: 720, height: 900 }, serviceWorkers: 'block' });
+    const livePage = await liveContext.newPage();
+    livePage.setDefaultTimeout(10000);
+    const externalRequests = [];
+    let analysisRequests = 0;
+    let delayNextLiveAnalysis = false;
+    let liveAnalysisResponseReady = false;
+    livePage.on('request', (request) => {
+      if (new URL(request.url()).origin !== base) externalRequests.push(new URL(request.url()).origin);
+      if (new URL(request.url()).pathname === '/analyze') analysisRequests += 1;
+    });
+    await livePage.route('**/*', (route) => new URL(route.request().url()).origin === base
+      ? route.continue() : route.abort());
+    await livePage.route('**/analyze', async (route) => {
+      if (!delayNextLiveAnalysis) return route.continue();
+      delayNextLiveAnalysis = false;
+      const response = await route.fetch();
+      liveAnalysisResponseReady = true;
+      await new Promise((resolve) => setTimeout(resolve, 700));
+      try { await route.fulfill({ response }); } catch { /* the browser canceled this pending response */ }
+    });
+    await livePage.goto(base, { waitUntil: 'domcontentloaded' });
+    await livePage.waitForFunction(() => document.querySelector('#api-status').textContent.trim() === 'Available');
+    await livePage.waitForFunction(() => document.querySelector('#readiness-status').textContent.trim() === 'Ready');
+    if (!(await livePage.locator('#model-version').textContent()).includes('browser-synthetic-e2e')) {
+      throw new Error('real API browser run did not load the trained synthetic fixture model');
+    }
+    await livePage.locator('#message-input').fill('Fictional fixture message: review this test alert in the official app.');
+    await livePage.locator('#btn-check').click();
+    await livePage.locator('#result').waitFor({ state: 'visible' });
+    if (analysisRequests !== 1) throw new Error(`expected one real analysis request, saw ${analysisRequests}`);
+    if (externalRequests.length) throw new Error(`localhost-only run attempted external requests: ${externalRequests.join(', ')}`);
+
+    // Fetch a second real response, hold it at the browser boundary, then edit
+    // the input. The stale request must be canceled without rendering a result.
+    delayNextLiveAnalysis = true;
+    await livePage.locator('#message-input').fill('Fictional interrupted fixture: no response should render after edit.');
+    await livePage.locator('#btn-check').click();
+    for (let attempt = 0; attempt < 100 && !liveAnalysisResponseReady; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    if (!liveAnalysisResponseReady) throw new Error('real API did not answer the interrupted fixture request');
+    await livePage.locator('#message-input').fill('Edited while the test response is pending.');
+    await livePage.waitForTimeout(800);
+    if (analysisRequests !== 2 || !(await livePage.locator('#result').evaluate((node) => node.classList.contains('hidden')))) {
+      throw new Error('an interrupted analysis response was rendered or unexpectedly retried');
+    }
+
+    // A stopped API produces a reachability error; retrying after restart only
+    // checks service state and never resends the SMS.
+    await stopServer(server);
+    server = null;
+    await livePage.locator('#btn-retry-status').click();
+    await livePage.waitForFunction(() => document.querySelector('#api-status').textContent.trim() === 'Could not reach API');
+    server = startDetector(port, fixtureModel, python);
+    await waitForServer(base, server);
+    await livePage.locator('#btn-retry-status').click();
+    await livePage.waitForFunction(() => document.querySelector('#api-status').textContent.trim() === 'Available'
+      && document.querySelector('#readiness-status').textContent.trim() === 'Ready');
+    if (analysisRequests !== 2) throw new Error('service recovery automatically resubmitted SMS text');
+
+    // Browser page-scale emulates 200% zoom while checking the reflowed area.
+    const zoomSession = await livePage.context().newCDPSession(livePage);
+    await zoomSession.send('Emulation.setPageScaleFactor', { pageScaleFactor: 2 });
+    const zoomState = await livePage.evaluate(() => ({ scale: visualViewport.scale, width: visualViewport.width }));
+    if (zoomState.scale !== 2 || zoomState.width >= 720) throw new Error('200% browser zoom was not applied');
+    await livePage.setViewportSize({ width: 360, height: 900 });
+    if (await livePage.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)) {
+      throw new Error('live-model page overflows at the zoomed mobile width');
+    }
+    await liveContext.close();
+    console.log('browser-smoke: real-model localhost analysis and API recovery passed');
+
     // Test the actual service worker cache and offline reload in a clean context.
     const pwaContext = await browser.newContext({ viewport: { width: 360, height: 800 } });
     const offlinePage = await pwaContext.newPage();
@@ -564,8 +737,8 @@ async function main() {
     browser = null;
   } finally {
     if (browser) await browser.close();
-    server.kill('SIGTERM');
-    await new Promise((resolve) => server.once('exit', resolve));
+    await stopServer(server);
+    await fs.rm(fixtureDir, { recursive: true, force: true });
   }
 }
 

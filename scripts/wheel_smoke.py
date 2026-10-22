@@ -46,7 +46,7 @@ assert client.get("/ready").json()["error"]["code"] == "model_unavailable"
 assert client.get("/").status_code == 200
 assert client.get("/static/no-such-file").status_code == 404
 assert client.get("/static/%2e%2e%2fpyproject.toml").status_code == 404
-for name in ("app.js", "styles.css", "icon.svg"):
+for name in ("app.js", "api-client.js", "i18n.js", "privacy-preview.js", "styles.css", "icon.svg"):
     get = client.get(f"/static/{name}")
     head = client.head(f"/static/{name}")
     assert get.status_code == head.status_code == 200
