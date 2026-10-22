@@ -30,6 +30,8 @@ dev = [
 
 [project.scripts]
 smsd-serve = "api.cli:main"
+smsd-macos-service = "api.macos_service:main"
+smsd-benchmark = "src.benchmark:main"
 
 [tool.setuptools.package-data]
 # The no-build web UI ships inside the api package so `pip install .` serves it.

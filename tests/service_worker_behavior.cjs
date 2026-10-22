@@ -16,6 +16,7 @@ function createWorker({ failAsset = null, delayAsset = null, networkFails = true
     ['smsd-shell-v11', new Map([['/', new Response('previous release with privacy preview')]])],
     ['smsd-shell-v12', new Map([['/', new Response('previous release with live service status')]])],
     ['smsd-shell-v13', new Map([['/', new Response('previous release with spam signal wording')]])],
+    ['smsd-shell-v14', new Map([['/', new Response('previous release with modular frontend')]])],
   ]);
   const deleted = [];
   let skippedWaiting = false;
@@ -40,7 +41,7 @@ function createWorker({ failAsset = null, delayAsset = null, networkFails = true
     async delete(name) { deleted.push(name); return shellCaches.delete(name); },
     async keys() { return [...shellCaches.keys()]; },
     async match(request, options) {
-      assert.equal(options.cacheName, 'smsd-shell-v14');
+      assert.equal(options.cacheName, 'smsd-shell-v15');
       return shellCaches.get(options.cacheName)?.get(cacheKey(request)) || null;
     },
   };
@@ -63,7 +64,7 @@ function createWorker({ failAsset = null, delayAsset = null, networkFails = true
   vm.runInContext(source, context);
   return {
     handlers, caches, shellCaches, deleted,
-    get cacheData() { return shellCaches.get('smsd-shell-v14'); },
+    get cacheData() { return shellCaches.get('smsd-shell-v15'); },
     finishDelayedAsset() { finishDelayedAsset(); },
     get skippedWaiting() { return skippedWaiting; },
   };
@@ -77,8 +78,8 @@ function createWorker({ failAsset = null, delayAsset = null, networkFails = true
   assert.deepEqual(interrupted.deleted, [], 'failed install waits for in-flight cache writes to settle');
   interrupted.finishDelayedAsset();
   await assert.rejects(install, /static shell asset could not be cached/);
-  assert.deepEqual(interrupted.deleted, ['smsd-shell-v14']);
-  assert.equal(interrupted.shellCaches.has('smsd-shell-v14'), false, 'failed candidate cache is removed');
+  assert.deepEqual(interrupted.deleted, ['smsd-shell-v15']);
+  assert.equal(interrupted.shellCaches.has('smsd-shell-v15'), false, 'failed candidate cache is removed');
   assert.equal(await (await interrupted.shellCaches.get('smsd-shell-v13').get('/').text()), 'previous release with spam signal wording',
     'failed update leaves the previous complete release intact');
   assert.equal(interrupted.skippedWaiting, false, 'partial shell must not activate');
@@ -91,8 +92,8 @@ function createWorker({ failAsset = null, delayAsset = null, networkFails = true
   let cleanup;
   worker.handlers.activate({ waitUntil(promise) { cleanup = promise; } });
   await cleanup;
-  assert.deepEqual(worker.deleted, ['smsd-shell-v6', 'smsd-shell-v7', 'smsd-shell-v8', 'smsd-shell-v9', 'smsd-shell-v10', 'smsd-shell-v11', 'smsd-shell-v12', 'smsd-shell-v13'], 'old releases are removed only after new install completed');
-  assert.equal(worker.shellCaches.has('smsd-shell-v14'), true, 'new complete release is active after upgrade');
+  assert.deepEqual(worker.deleted, ['smsd-shell-v6', 'smsd-shell-v7', 'smsd-shell-v8', 'smsd-shell-v9', 'smsd-shell-v10', 'smsd-shell-v11', 'smsd-shell-v12', 'smsd-shell-v13', 'smsd-shell-v14'], 'old releases are removed only after new install completed');
+  assert.equal(worker.shellCaches.has('smsd-shell-v15'), true, 'new complete release is active after upgrade');
 
   let apiIntercepted = false;
   worker.handlers.fetch({
@@ -109,18 +110,18 @@ function createWorker({ failAsset = null, delayAsset = null, networkFails = true
 
   let cachedResponse;
   worker.handlers.fetch({
-    request: { method: 'GET', url: 'http://detector.test/static/app.js?v=ui14-modular-frontend-20261022' },
+    request: { method: 'GET', url: 'http://detector.test/static/app.js?v=ui15-history-store-20261022' },
     respondWith(promise) { cachedResponse = promise; },
   });
   const response = await cachedResponse;
-  assert.equal(await response.text(), 'cached:/static/app.js?v=ui14-modular-frontend-20261022');
-  assert.equal(worker.cacheData.get('/static/app.js?v=ui14-modular-frontend-20261022').status, 200,
+  assert.equal(await response.text(), 'cached:/static/app.js?v=ui15-history-store-20261022');
+  assert.equal(worker.cacheData.get('/static/app.js?v=ui15-history-store-20261022').status, 200,
     'network responses must not overwrite immutable release assets');
-  for (const asset of ['api-client.js', 'i18n.js', 'privacy-preview.js']) {
-    const request = { method: 'GET', url: `http://detector.test/static/${asset}?v=ui14-modular-frontend-20261022` };
+  for (const asset of ['api-client.js', 'i18n.js', 'privacy-preview.js', 'history-store.js', 'connection-status.js', 'result-format.js']) {
+    const request = { method: 'GET', url: `http://detector.test/static/${asset}?v=ui15-history-store-20261022` };
     let moduleResponse;
     worker.handlers.fetch({ request, respondWith(promise) { moduleResponse = promise; } });
-    assert.equal(await (await moduleResponse).text(), `cached:/static/${asset}?v=ui14-modular-frontend-20261022`);
+    assert.equal(await (await moduleResponse).text(), `cached:/static/${asset}?v=ui15-history-store-20261022`);
   }
 
   let uncachedResponse;
@@ -129,10 +130,10 @@ function createWorker({ failAsset = null, delayAsset = null, networkFails = true
     respondWith(promise) { uncachedResponse = promise; },
   });
   assert.equal(uncachedResponse, undefined, 'unknown asset versions bypass the worker');
-  worker.cacheData.delete('/static/styles.css?v=ui14-modular-frontend-20261022');
+  worker.cacheData.delete('/static/styles.css?v=ui15-history-store-20261022');
   let unavailableResponse;
   worker.handlers.fetch({
-    request: { method: 'GET', url: 'http://detector.test/static/styles.css?v=ui14-modular-frontend-20261022' },
+    request: { method: 'GET', url: 'http://detector.test/static/styles.css?v=ui15-history-store-20261022' },
     respondWith(promise) { unavailableResponse = promise; },
   });
   const unavailable = await unavailableResponse;

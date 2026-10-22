@@ -59,7 +59,7 @@ The classifier target is **spam versus ham**. A spam label can include unwanted 
   transaction alerts, delivery notices, Taglish conversation).
 - **There is no representative real Philippine dataset in this project.** The
   synthetic templates were written by the project authors and are not a random
-  sample of real traffic.
+sample of real traffic.
 - See the [README](../README.md) and [DATA_COLLECTION.md](DATA_COLLECTION.md) for
   exact current counts, dedup behavior, and provenance details.
 
@@ -69,9 +69,11 @@ No representative Philippine performance estimate is available. The tracked
 Philippine messages were written by project authors; a synthetic holdout can
 check code paths and known patterns, but does not establish performance on
 recipient messages or future scam campaigns. The local base CSV has unknown
-provenance, and no benchmark report tied to the current local data hashes is
-included in a clean checkout. See the [dataset inventory](DATASET_INVENTORY.md)
-for the workspace snapshot and why earlier metrics are not presented as current.
+provenance. A checked-in public-corpus and synthetic diagnostic report records
+its source hashes and exact evaluated artifact hash; it remains an engineering
+reproducibility example, not an estimate of Philippine field performance. See
+the [dataset inventory](DATASET_INVENTORY.md) for the workspace snapshot and
+evidence limits.
 
 When run, evaluation reports threshold-selected internal test metrics, false
 positives on legitimate categories, language/category/message-length coverage,

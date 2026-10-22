@@ -25,6 +25,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix
+from sklearn.naive_bayes import MultinomialNB
 
 from src.data import (
     DEFAULT_DATA,
@@ -137,6 +138,25 @@ def _score_interpretation(bundle: ModelBundle) -> str:
     if bundle.metadata.get("probability_calibrated") is True:
         return "calibrated spam-versus-ham score; calibration does not make it a fraud probability or establish Philippine representativeness"
     return "uncalibrated spam-versus-ham model score; not a probability"
+
+
+def _baseline_report(train_set: Dataset, test_set: Dataset, *, text_features: str, seed: int) -> dict[str, Any]:
+    """Fit the fixed MultinomialNB baseline on train groups and report the same held-out groups."""
+    baseline = make_model(MultinomialNB(), text_features=text_features)
+    baseline.fit(messages_to_frame(train_set.messages), train_set.labels)
+    bundle = ModelBundle(pipeline=baseline, threshold=0.5, metadata={"model_version": "multinomial-nb-baseline"})
+    probabilities = spam_probabilities(bundle, test_set.messages)
+    metrics = binary_metrics(test_set.labels, probabilities, 0.5)
+    metrics["campaign_bootstrap_95"] = campaign_bootstrap_intervals(test_set.frame, probabilities, 0.5, seed=seed)
+    return {
+        "name": "MultinomialNB",
+        "text_features": text_features,
+        "threshold": 0.5,
+        "fit_split": "train",
+        "at_threshold": metrics,
+        "by_data_kind": per_group_metrics(test_set.frame, probabilities, 0.5, group_columns=("data_kind",)),
+        "comparison_note": "Baseline and evaluated artifact use the same training and test groups; compare with test.at_default_0.5 for a like-for-like threshold. The candidate's selected threshold is reported separately.",
+    }
 
 
 def _threshold_diagnostic(bundle: ModelBundle, recomputed_threshold: float) -> dict[str, Any]:
@@ -562,11 +582,14 @@ def evaluate(
     )
     test_at_default = binary_metrics(test_set.labels, test_probabilities, 0.5)
     test_calibration = calibration_metrics(test_set.labels, test_probabilities)
+    baseline_mode = bundle.metadata.get("text_feature_mode")
+    baseline_mode = baseline_mode if baseline_mode in {"word", "char", "combined"} else "word"
+    baseline_result = _baseline_report(train_set, test_set, text_features=baseline_mode, seed=split.seed)
     thresholds = sorted({*KEY_THRESHOLDS, round(threshold, 4)})
     validation_sweep = threshold_sweep(val_set.labels, val_probabilities, thresholds=thresholds)
 
     results: dict[str, Any] = {
-        "report_schema_version": 1,
+        "report_schema_version": 2,
         "run": _benchmark_run_info(bundle.artifact_sha256),
         "banner": _provenance_banner(test_set),
         "model": bundle.model_info(),
@@ -613,6 +636,7 @@ def evaluate(
                 test_frame_with_length, test_probabilities, threshold, group_columns=("message_length_range",)
             ),
         },
+        "baseline": baseline_result,
         "warnings": warnings,
     }
     if stability_seeds is not None:

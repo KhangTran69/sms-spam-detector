@@ -8,8 +8,14 @@ export const API = Object.freeze({
   feedback: "/feedback",
 });
 
-export function createApiClient({ translate, setApiAvailability, setModelReadiness, hideOfflineBanner, showOfflineBanner }) {
-  const timeoutMs = 20000;
+export function createApiClient({
+  translate,
+  setApiAvailability,
+  setModelReadiness,
+  hideOfflineBanner,
+  showOfflineBanner,
+  timeoutMs = 20000,
+}) {
   let requestSequence = 0;
 
   function errorMessageFromResponse(data, response) {

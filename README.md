@@ -43,6 +43,18 @@ No data? `make demo` trains and smoke-tests a synthetic-only model. With Docker,
 train first, then run `docker compose up -d` (the model is mounted read-only; see
 [DEPLOYMENT.md](docs/DEPLOYMENT.md)).
 
+For a single reproducible training-and-report run, use `make benchmark DATA=...`
+with an explicit approved CSV and a fresh output directory. The command validates
+the selected files, trains the candidate, evaluates the same group split, and
+writes the artifact, metadata, manifest, and message-free report together. Add
+`SUPPLEMENTS="..."` or `HOLDOUT=...` to include explicit sources; it never adds
+the project synthetic fixtures implicitly. See [BENCHMARKING.md](docs/BENCHMARKING.md).
+
+On macOS, keep a server running across terminal closures with
+`make macos-install`; use `make macos-status`, `make macos-restart`,
+`make macos-stop`, or `make macos-uninstall` to manage it. The LaunchAgent stays
+bound to `127.0.0.1` and restarts after unexpected process exits.
+
 ## Evaluation status
 
 The versioned [UCI + synthetic diagnostic report](docs/benchmarks/uci-synthetic-ph-diagnostic-20261022.json)
@@ -120,12 +132,14 @@ pytest -q && ruff check . && ruff format --check . && mypy src api
 ```
 
 `make help` lists common commands. `python -m src.train --help` and
-`python -m src.evaluate --help` list every option.
+`python -m src.evaluate --help` and `python -m src.benchmark --help` list every
+option.
 
 Release checks build and install the wheel in a temporary environment outside
 the checkout with `python scripts/wheel_smoke.py`. The UI behavior suite uses a
 development-only Playwright dependency: run `npm ci`, install Chromium with
-`npx playwright install chromium`, then run `npm run test:browser`. The suite
+`npx playwright install chromium`, then run `npm run test:modules` and
+`npm run test:browser`. The suite
 checks mocked UI states and also trains a temporary model from the tracked
 synthetic Philippine fixtures to exercise real localhost analysis, missing
 model readiness, service failure/recovery, and page reflow without an external
@@ -171,8 +185,8 @@ privacy limits.
 [Privacy](docs/PRIVACY.md) · [Human review](docs/HUMAN_REVIEW.md)
 
 ```text
-src/             data validation, features, model selection, training, metrics, inference
-api/             FastAPI app (main, routes, schemas) and api/web/ single-page UI
+src/             data validation, features, model selection, training, metrics, inference, benchmark runner
+api/             FastAPI app (main, routes, schemas), macOS service helper, and api/web/ no-build UI modules
 data/raw/        tracked synthetic PH fixtures; real data and imports are git-ignored
 data/templates/  consented-collection template
 scripts/         synthetic data generation, curation, demo smoke test

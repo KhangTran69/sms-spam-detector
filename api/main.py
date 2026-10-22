@@ -384,7 +384,17 @@ submit_feedback = _routes.submit_feedback
 _append_feedback_report = _routes._append_feedback_report
 
 
-_STATIC_ASSETS = {"app.js", "api-client.js", "i18n.js", "privacy-preview.js", "styles.css", "icon.svg"}
+_STATIC_ASSETS = {
+    "app.js",
+    "api-client.js",
+    "i18n.js",
+    "privacy-preview.js",
+    "history-store.js",
+    "connection-status.js",
+    "result-format.js",
+    "styles.css",
+    "icon.svg",
+}
 
 
 @app.api_route("/static/{asset_name}", methods=["GET", "HEAD"], include_in_schema=False)
@@ -406,6 +416,9 @@ def static_asset(asset_name: str, request: Request):
         "api-client.js": "text/javascript",
         "i18n.js": "text/javascript",
         "privacy-preview.js": "text/javascript",
+        "history-store.js": "text/javascript",
+        "connection-status.js": "text/javascript",
+        "result-format.js": "text/javascript",
         "styles.css": "text/css",
         "icon.svg": "image/svg+xml",
     }[asset_name]

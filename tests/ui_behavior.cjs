@@ -46,7 +46,7 @@ const context = vm.createContext({ console, AbortController, setTimeout, clearTi
   navigator: { clipboard: { async writeText(value) { copiedClipboard = value; } } },
   localStorage: { getItem: key => storedValues.get(key) || null,
     setItem(key, value) { storedValues.set(key, String(value)); }, removeItem: key => storedValues.delete(key) },
-  window: { navigator: { onLine: true }, matchMedia: () => ({matches: false}) },
+  window: { navigator: { onLine: true }, localStorage: null, matchMedia: () => ({matches: false}) },
   document: { getElementById(id) { if (!elements.has(id)) elements.set(id, element()); return elements.get(id); },
     querySelectorAll(selector) {
       if (selector === '.example-chip') return exampleChips;
@@ -60,7 +60,8 @@ const context = vm.createContext({ console, AbortController, setTimeout, clearTi
     documentElement: element('html'),
     addEventListener() {}, createElement: tagName => element(tagName), createTextNode: text => ({ textContent: text }) } });
 const webDir = path.join(__dirname, '../api/web');
-for (const moduleName of ['api-client.js', 'i18n.js', 'privacy-preview.js']) {
+context.window.localStorage = context.localStorage;
+for (const moduleName of ['api-client.js', 'i18n.js', 'privacy-preview.js', 'history-store.js', 'connection-status.js', 'result-format.js']) {
   const moduleSource = fs.readFileSync(path.join(webDir, moduleName), 'utf8').replace(/^export /gm, '');
   vm.runInContext(moduleSource, context, { filename: moduleName });
 }
@@ -277,7 +278,7 @@ run('lang = "en"');
   assert.match(run('buildSummaryText(window.currentAnalysis)'), /Model version: result-model/);
   assert.match(run('buildSummaryText(window.currentAnalysis)'), /Decision threshold: 65%/);
   assert.match(run('buildSummaryText(window.currentAnalysis)'), /Suspicious band threshold: 35%/);
-  run('historyEnabled = true; modelInfo.model_version = "m1"; addHistory({message:"fixture", prediction:"spam", spam_probability:0.9, probability_calibrated:true, model_version:"m1", risk_band:"likely_scam"}, "single", {render:false}); var savedEntry = loadHistory()[0]');
+  run('historyStore.setEnabled(true); historyEnabled = true; modelInfo.model_version = "m1"; addHistory({message:"fixture", prediction:"spam", spam_probability:0.9, probability_calibrated:true, model_version:"m1", risk_band:"likely_scam"}, "single", {render:false}); var savedEntry = loadHistory()[0]');
   assert.equal(run('savedEntry.probability_calibrated'), true, 'history must preserve score calibration state');
   assert.equal(run('savedEntry.model_version'), 'm1', 'history must preserve model version');
   assert.match(run('scoreLabel(savedEntry)'), /calibrated spam score/);

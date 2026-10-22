@@ -117,56 +117,35 @@ each worker holds its own copy). Do not use `--reload` in production.
 
 ### Keep a local macOS server running after closing the terminal
 
-On macOS, install a LaunchAgent for the logged-in user. Create
-`~/Library/LaunchAgents/com.ph.smsd.plist`; replace `/Users/YOU/...` with the
-checkout and model paths and use the Python executable from its virtual
-environment:
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>Label</key><string>com.ph.smsd</string>
-  <key>ProgramArguments</key>
-  <array>
-    <string>/Users/YOU/.../sms-spam-detector/.venv/bin/python</string>
-    <string>-m</string><string>api.cli</string>
-    <string>--host</string><string>127.0.0.1</string>
-    <string>--port</string><string>8000</string>
-  </array>
-  <key>WorkingDirectory</key><string>/Users/YOU/.../sms-spam-detector</string>
-  <key>EnvironmentVariables</key>
-  <dict>
-    <key>SMSD_MODEL_PATH</key><string>/Users/YOU/.../sms-spam-detector/models/spam_detector_v1.pkl</string>
-    <key>PYTHONUNBUFFERED</key><string>1</string>
-  </dict>
-  <key>RunAtLoad</key><true/>
-  <key>KeepAlive</key><true/>
-  <key>ThrottleInterval</key><integer>10</integer>
-  <key>StandardOutPath</key><string>/Users/YOU/Library/Logs/ph-smsd.out.log</string>
-  <key>StandardErrorPath</key><string>/Users/YOU/Library/Logs/ph-smsd.err.log</string>
-</dict>
-</plist>
-```
-
-Load and inspect the agent with:
+From the checkout root, install the per-user LaunchAgent with the same Python
+environment used for the project:
 
 ```bash
-mkdir -p "$HOME/Library/Logs"
-launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.ph.smsd.plist"
-launchctl print "gui/$(id -u)/com.ph.smsd"
-curl -fsS http://127.0.0.1:8000/ready
+make macos-install PORT=8000
+# Optional model override:
+make macos-install PORT=8001 MODEL=/absolute/path/to/trusted-model.pkl
+make macos-status
+make macos-restart
+make macos-stop
+make macos-uninstall
 ```
 
-`KeepAlive` restarts a process that exits unexpectedly; launchd throttles rapid
-restart loops. The service starts at login and stays local to this Mac. Stop it
-with `launchctl bootout "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.ph.smsd.plist"`;
-load it again with `bootstrap` after a planned stop. Logs contain service
-diagnostics and request paths, never message bodies; keep them private and
-rotate or remove them under your normal local log-retention practice. If port
-8000 is already occupied, inspect its owner with `lsof -nP -iTCP:8000 -sTCP:LISTEN`
-and change the LaunchAgent port or stop only the verified detector process.
+The equivalent command is `.venv/bin/python -m api.macos_service <action>`.
+Install records the current checkout and Python executable in
+`~/Library/LaunchAgents/com.ph.smsd.plist`. The service starts at login, binds
+only to `127.0.0.1`, and launchd restarts it after an unexpected failure. Keep
+the checkout in place; after moving it or its virtual environment, uninstall
+and install the agent again. `status` reports whether the job is loaded, whether
+the API answers `/health`, and whether its model passes `/ready`.
+
+Message-free logs live under `~/Library/Logs/ph-smsd/`. The service writes no
+SMS text to its logs. If the configured port is occupied, the service exits
+with the actionable `api.cli` diagnostic and launchd applies its restart
+throttle. Inspect the listener with
+`lsof -nP -iTCP:8000 -sTCP:LISTEN`; stop only a process you have identified as
+this detector, or reinstall on a free port. A loaded job with unavailable API
+means startup did not complete; check `service.err.log` and run
+`.venv/bin/python -m api.macos_service status` before retrying.
 
 ### Keep a local Linux server running after closing the terminal
 
