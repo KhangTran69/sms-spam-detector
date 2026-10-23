@@ -76,8 +76,12 @@ class BatchRequest(BaseModel):
 
 class PredictResponse(BaseModel):
     prediction: str
-    probability: float
-    probability_calibrated: bool
+    probability: float = Field(
+        description="Score for the returned prediction label; use probability_calibrated to interpret it."
+    )
+    probability_calibrated: bool = Field(
+        description="Whether the spam-versus-ham score is calibrated against the artifact's training labels."
+    )
     flags: list[str]
     decision_threshold: float
     model_version: str
@@ -93,13 +97,19 @@ class Match(BaseModel):
 class AnalyzeResponse(BaseModel):
     message: str
     prediction: str
-    spam_probability: float
-    probability_calibrated: bool
-    probability: float
+    spam_probability: float = Field(
+        description="Model score for the spam label; it does not estimate probability of fraud."
+    )
+    probability_calibrated: bool = Field(
+        description="Whether the spam-versus-ham score is calibrated against the artifact's training labels."
+    )
+    probability: float = Field(description="Score for the returned prediction label; retained for compatibility.")
     decision_threshold: float
     suspicious_threshold: float
-    margin: float
-    confidence: str
+    margin: float = Field(description="Absolute distance between the spam score and the decision threshold.")
+    confidence: str = Field(
+        description="Heuristic confidence band based on threshold distance; it is not probability calibration."
+    )
     risk_band: str
     flags: list[str]
     matches: list[Match]

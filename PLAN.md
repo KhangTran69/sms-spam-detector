@@ -1,7 +1,7 @@
 # Project Plan: Philippine SMS Spam and Scam Detector
 
 ## Goal
-Build and validate a maintainable SMS classifier that identifies spam and scams while minimizing false positives on legitimate Philippine messages, especially OTPs and account alerts.
+Build and validate a maintainable spam-versus-ham SMS classifier that supports scam awareness while minimizing false positives on legitimate Philippine messages, especially OTPs and account alerts. A spam score is not a fraud probability or a finding about a sender.
 
 ## Phase 1: Prepare the dataset
 
@@ -24,18 +24,17 @@ Build and validate a maintainable SMS classifier that identifies spam and scams 
 
 ## Phase 3: Train baseline and primary models
 
-- Install dependencies from `requirements.txt` in a Python 3.11+ virtual environment.
-- Run `python -m src.train` to compare MultinomialNB with class-balanced LogisticRegression.
-- Review per-class precision, recall, F1, and especially false positives on legitimate messages.
-- Save the primary pipeline to `models/spam_detector_v1.pkl`.
-- If false positives are too high, evaluate a higher spam decision threshold using a held-out validation set; document the selected threshold and update prediction behavior consistently.
+- Install the pinned environment described in `README.md`, then import a source with known provenance using `python -m src.import_public_dataset` or the consented-data workflow.
+- Train with `python -m src.train --data <approved.csv>`; the current workflow compares class-balanced LogisticRegression and LinearSVC with a MultinomialNB baseline, selects features and calibration inside group-aware folds, and uses validation-only threshold selection.
+- Review the message-free manifest, per-class metrics, false positives on legitimate categories, calibration diagnostics, and uncertainty. Keep the final test groups out of feature, calibration, and threshold choices.
+- Use `make benchmark DATA=<approved.csv>` for an isolated artifact, metadata, manifest, and report run. The default model path and synthetic supplements are configurable; do not describe synthetic-only results as Philippine field accuracy.
 
-**Deliverable:** versioned model artifact and recorded validation metrics.
+**Deliverable:** versioned model artifact, sidecar provenance, and reproducible evaluation report.
 
 ## Phase 4: Validate Philippine scam coverage
 
-- Run `python -m src.evaluate --data data/raw/spam.csv --plot data/processed/confusion_matrix.png`.
-- Treat the three built-in Philippine prompts as synthetic diagnostics, not as a substitute for a consented labeled test set.
+- Run `python -m src.evaluate --data <approved.csv> --holdout <independent.csv> --json-out <report.json>`; add `--plot <path>` when a confusion-matrix image is useful.
+- Treat tracked Philippine fixtures and generated prompts as synthetic diagnostics, not as a substitute for a consented labeled test set.
 - Build a Philippine holdout set containing scams, legitimate OTPs, bank messages, and ordinary Tagalog/Taglish texts.
 - Measure precision and recall by message type and inspect errors for leakage, duplicates, and source bias.
 - Add new scam patterns only with representative labeled examples; avoid rules that flag legitimate messages solely because they contain a link, amount, or phone number.
@@ -44,9 +43,9 @@ Build and validate a maintainable SMS classifier that identifies spam and scams 
 
 ## Phase 5: Serve predictions through the API
 
-- Start the service with `uvicorn api.main:app --reload` after training.
-- Check `/health`, then send a request to `/predict` with a sample message.
-- Confirm response schema, uncalibrated model score, and indicator flags.
+- Start the service with `smsd-serve` (or `make serve`) after training.
+- Check `/health`, `/ready`, and `/model-info`, then send a request to `/analyze` or `/predict` with a fictional sample message.
+- Confirm the prediction, spam score, calibration indicator, thresholds, and signal flags; a calibrated spam score is not a probability of fraud.
 - Confirm empty and oversized requests receive validation errors, and missing model artifacts produce a clear service error.
 
 **Deliverable:** locally running API with verified request and response behavior.

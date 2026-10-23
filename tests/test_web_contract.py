@@ -236,9 +236,9 @@ def test_uncalibrated_scores_are_not_presented_as_probability(js, html):
     assert "uncalibrated spam model score" in js
     assert "calibrated spam score" in js
     assert "estimated scam probability" not in js.lower()
-    assert "More spam signals" in js
-    assert '"band.looks_safe": "Few spam signals"' in js
-    assert '"band.looks_safe": "Kaunti ang spam signal"' in js
+    assert "High spam score" in js
+    assert '"band.looks_safe": "Low spam score"' in js
+    assert '"band.looks_safe": "Mababa ang spam score"' in js
     assert "Looks safe" not in js + html
     assert "Mukhang ligtas" not in js + html
     assert "Spam or unwanted advertising" in js
