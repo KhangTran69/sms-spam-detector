@@ -291,8 +291,19 @@ textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 
 /* ---------- Model information ---------- */
 .model-card { border-left: 5px solid var(--primary); }
-.model-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.model-card-head h2 { margin-bottom: 8px; }
+.model-details > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  min-height: 44px;
+  cursor: pointer;
+  list-style-position: inside;
+}
+.model-details > summary:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; border-radius: 3px; }
+.model-details[open] > summary { margin-bottom: 10px; }
+.model-title { font-weight: 750; }
 .model-version {
   font-size: 13px;
   font-weight: 700;
@@ -326,6 +337,18 @@ textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
   border: 1px solid var(--amber-line);
   font-size: 13px;
 }
+.result-caveat { margin: 0 0 14px; color: var(--muted); font-size: 14px; }
+.result-details { padding-top: 12px; padding-bottom: 12px; }
+.result-details > summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  cursor: pointer;
+  font-weight: 750;
+  color: var(--primary-dark);
+}
+.result-details > summary:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; border-radius: 3px; }
+.result-details[open] > summary { margin-bottom: 10px; }
 
 /* ---------- Examples ---------- */
 .examples { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 4px 0 18px; }

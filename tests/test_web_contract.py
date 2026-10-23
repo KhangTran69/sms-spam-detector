@@ -262,12 +262,12 @@ def test_service_worker_installs_complete_static_shell_and_never_caches_api(html
     assert "await cache.put(request" not in sw, "runtime responses must not mutate an installed release"
     for path in ("/analyze", "/analyze/batch", "/predict", "/feedback", "/model-info"):
         assert f'"{path}"' in sw
-    assert "smsd-shell-v15" in sw
+    assert "smsd-shell-v16" in sw
     for asset in ("styles.css", "app.js", "api-client.js", "i18n.js", "privacy-preview.js"):
-        assert f'"/static/{asset}?v=ui15-history-store-20261022"' in sw
+        assert f'"/static/{asset}?v=ui16-model-details-20261024"' in sw
     for asset in ("history-store.js", "connection-status.js", "result-format.js"):
-        assert f'"/static/{asset}?v=ui15-history-store-20261022"' in sw
-    assert 'type="module" src="/static/app.js?v=ui15-history-store-20261022"' in html
+        assert f'"/static/{asset}?v=ui16-model-details-20261024"' in sw
+    assert 'type="module" src="/static/app.js?v=ui16-model-details-20261024"' in html
     assert 'id="single-privacy-review"' in html
     assert 'id="batch-privacy-review"' in html
     assert 'id="compare-review-a"' in html and 'id="compare-review-b"' in html
@@ -286,7 +286,9 @@ def test_safety_guidance_is_optional_and_memory_only(js, html, css):
     assert "dataset.guidanceField" in js
     assert '"guidance.intro"' in js
     assert 'id="safety-guidance"' in html
-    assert "<details" not in html, "the result remains available before expanding optional guidance"
+    assert re.search(r'<div id="safety-guidance"></div>', html), "optional guidance is created only after analysis"
+    assert '<details id="model-details"' in html
+    assert '<details id="signal-details"' in html
     assert "guidance-option" in css and "min-height: 44px" in css
     assert '"guidance.title"' in js and '"guidance.copyDone"' in js
     assert 'guidanceRecommendations(state).join("\\n")' in js
@@ -327,8 +329,17 @@ def test_app_js_handles_network_and_api_error_states(js):
 def test_index_html_has_model_status_region(html):
     for element_id in ("model-status", "model-version", "model-note", "model-thresholds"):
         assert f'id="{element_id}"' in html
-    assert 'id="model-status"' in html
-    assert re.search(r'id="model-status"[^>]*aria-live', html) or re.search(r'aria-live[^>]*id="model-status"', html)
+    assert 'id="model-details"' in html
+    assert '<details id="model-details"' in html
+    assert re.search(r'class="connection-status"[^>]*aria-live', html)
+    assert 'id="model-status" class="card model-card" role="status"' not in html
+
+
+def test_score_bands_are_ranges_not_detected_signal_counts(js, html):
+    assert '"band.likely_scam": "High spam score"' in js
+    assert '"band.suspicious": "Elevated spam score"' in js
+    assert '"band.looks_safe": "Low spam score"' in js
+    assert 'id="model-details"' in html
 
 
 def test_message_signals_are_described_as_text_patterns(html, js, css):
@@ -343,7 +354,9 @@ def test_message_signals_are_described_as_text_patterns(html, js, css):
     assert "do not show which features influenced the model’s verdict" in normalized
     assert "can appear in legitimate messages too" in normalized
     assert 'id="highlighted"' in html and 'role="group"' in html
-    assert 'id="signals"' in html and 'aria-labelledby="signals-heading"' in html
+    assert 'id="signals"' in html and 'aria-label="Detected patterns"' in html
+    assert '<details id="signal-details"' in html
+    assert 'id="result-caveat"' in html
     assert ".signal-reference" in css and "vertical-align: super" in css
     assert "Loaded fictional {kind} message" in js
     assert "Fictional {kind} example {index}" not in js

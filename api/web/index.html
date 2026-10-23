@@ -8,7 +8,7 @@
   <title>PH SMS Scam Detector</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>" />
   <link rel="manifest" href="/manifest.webmanifest" />
-  <link rel="stylesheet" href="/static/styles.css?v=ui15-history-store-20261022" />
+  <link rel="stylesheet" href="/static/styles.css?v=ui16-model-details-20261024" />
   <script>
     // Apply the saved theme before first paint to avoid a flash of the wrong theme.
     (function () {
@@ -55,21 +55,23 @@
 
   <main id="main-content" tabindex="-1">
     <!-- ============ Model information (from GET /model-info) ============ -->
-    <section id="model-status" class="card model-card" role="status" aria-live="polite" aria-atomic="true">
-      <div class="model-card-head">
-        <h2 data-i18n="model.info">Model information</h2>
-        <span id="model-version" class="model-version" data-i18n="model.loading">Loading…</span>
-      </div>
-      <p id="model-note" class="model-note">This model is trained and evaluated on synthetic Philippine
-        data; it is not proof of real-world accuracy. Treat every verdict as a hint, not a fact.</p>
-      <p id="model-thresholds" class="model-thresholds" data-i18n="model.thresholds.loading">Decision threshold and risk bands are loading from the API.</p>
+    <section id="model-status" class="card model-card">
       <div class="connection-status" aria-live="polite" aria-atomic="true">
         <span><span data-i18n="service.browserLabel">Browser reports:</span> <strong id="browser-status" data-i18n="service.checking">Checking…</strong></span>
         <span><span data-i18n="service.apiLabel">Detector API:</span> <strong id="api-status" data-i18n="service.checking">Checking…</strong></span>
         <span><span data-i18n="service.modelLabel">Model:</span> <strong id="readiness-status" data-i18n="service.checking">Checking…</strong></span>
         <button type="button" id="btn-retry-status" class="btn" data-i18n="service.retry">Retry connection</button>
       </div>
-      <p id="model-warning" class="model-warning hidden"></p>
+      <details id="model-details" class="model-details">
+        <summary>
+          <span class="model-title" data-i18n="model.info">Model information</span>
+          <span id="model-version" class="model-version" data-i18n="model.loading">Loading…</span>
+        </summary>
+        <p id="model-note" class="model-note">This model is trained and evaluated on synthetic Philippine
+          data; it is not proof of real-world accuracy. Treat every verdict as a hint, not a fact.</p>
+        <p id="model-thresholds" class="model-thresholds" data-i18n="model.thresholds.loading">Decision threshold and risk bands are loading from the API.</p>
+        <p id="model-warning" class="model-warning hidden"></p>
+      </details>
     </section>
 
     <!-- ============ Single check ============ -->
@@ -108,7 +110,7 @@
         <div id="verdict-card" class="card verdict">
           <div id="verdict-icon" class="verdict-icon" aria-hidden="true">🚨</div>
           <div class="verdict-text">
-            <div id="verdict-title" class="verdict-title" data-i18n="band.likely_scam">More spam signals</div>
+            <div id="verdict-title" class="verdict-title" data-i18n="band.likely_scam">High spam score</div>
             <div id="verdict-sub" class="verdict-sub"></div>
             <div class="verdict-actions">
               <button type="button" id="btn-copy-summary" class="btn ghost small" data-i18n="copy.summary">Copy summary</button>
@@ -116,6 +118,7 @@
             </div>
           </div>
         </div>
+        <p id="result-caveat" class="result-caveat" data-i18n="result.caveat">This is a spam score, not proof of fraud. A low score does not guarantee safety.</p>
         <p id="privacy-result-note" class="privacy-result-note hidden"></p>
 
         <div class="card">
@@ -127,20 +130,20 @@
             aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="0% model score">
             <div id="meter-marker" class="meter-marker" aria-hidden="true" style="left:0%"></div>
           </div>
-          <div class="meter-labels" aria-hidden="true"><span data-i18n="band.looks_safe">Few spam signals</span><span data-i18n="band.suspicious">Some spam signals</span><span data-i18n="band.likely_scam">More spam signals</span></div>
+          <div class="meter-labels" aria-hidden="true"><span data-i18n="band.looks_safe">Low spam score</span><span data-i18n="band.suspicious">Elevated spam score</span><span data-i18n="band.likely_scam">High spam score</span></div>
         </div>
 
         <div class="card">
-          <h2 id="signals-heading" data-i18n="signals.title">Message signals</h2>
-          <p id="signals-guidance" class="muted" data-i18n="signals.guidance">These highlights mark text patterns the detector recognizes. They do not show which features influenced the model’s verdict. Links, numbers, amounts, urgency, and brand names can appear in legitimate messages too.</p>
-          <div id="highlighted" class="highlighted" role="group" aria-label="Message text with detected text patterns" data-i18n-aria-label="signals.group" aria-describedby="signals-guidance"></div>
-          <ul id="signals" class="signals" aria-labelledby="signals-heading"></ul>
-        </div>
-
-        <div class="card">
-          <h2 data-i18n="tips.title">Safety tips</h2>
+          <h2 data-i18n="tips.title">What to do next</h2>
           <ul id="tips" class="tips"></ul>
         </div>
+
+        <details id="signal-details" class="card result-details">
+          <summary data-i18n="signals.title">View detected text patterns</summary>
+          <p id="signals-guidance" class="muted" data-i18n="signals.guidance">These highlights mark text patterns the detector recognizes. They do not show which features influenced the model’s verdict. Links, numbers, amounts, urgency, and brand names can appear in legitimate messages too.</p>
+          <div id="highlighted" class="highlighted" role="group" aria-label="Message text with detected text patterns" data-i18n-aria-label="signals.group" aria-describedby="signals-guidance"></div>
+          <ul id="signals" class="signals" aria-label="Detected patterns"></ul>
+        </details>
 
         <div id="safety-guidance"></div>
 
@@ -312,6 +315,6 @@
     <p data-i18n="footer.synthetic">Checks using synthetic Philippine data are not proof of real-world accuracy.</p>
   </footer>
 
-  <script type="module" src="/static/app.js?v=ui15-history-store-20261022"></script>
+  <script type="module" src="/static/app.js?v=ui16-model-details-20261024"></script>
 </body>
 </html>

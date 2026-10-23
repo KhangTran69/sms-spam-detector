@@ -182,7 +182,8 @@ privacy limits.
 [Reproducible benchmark reports](docs/BENCHMARKING.md) ·
 [Dataset inventory](docs/DATASET_INVENTORY.md) ·
 [Deployment](docs/DEPLOYMENT.md) · [Retraining](docs/RETRAINING.md) ·
-[Privacy](docs/PRIVACY.md) · [Human review](docs/HUMAN_REVIEW.md)
+[Privacy](docs/PRIVACY.md) · [Human review](docs/HUMAN_REVIEW.md) ·
+[Improvement execution record](docs/IMPROVEMENT_EXECUTION.md)
 
 ```text
 src/             data validation, features, model selection, training, metrics, inference, benchmark runner
