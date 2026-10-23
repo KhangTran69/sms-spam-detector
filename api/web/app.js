@@ -1,9 +1,9 @@
-import { API, createApiClient } from "./api-client.js?v=ui15-history-store-20261022";
-import { I18N } from "./i18n.js?v=ui15-history-store-20261022";
-import { applyPrivacyMasks, buildPrivacyReview, clearPrivacyReview, detectSensitiveSpans } from "./privacy-preview.js?v=ui15-history-store-20261022";
-import { createHistoryStore } from "./history-store.js?v=ui15-history-store-20261022";
-import { createConnectionStatus } from "./connection-status.js?v=ui15-history-store-20261022";
-import { createResultFormatting, normalizeModelInfo } from "./result-format.js?v=ui15-history-store-20261022";
+import { API, createApiClient } from "./api-client.js?v=ui16-model-details-20261024";
+import { I18N } from "./i18n.js?v=ui16-model-details-20261024";
+import { applyPrivacyMasks, buildPrivacyReview, clearPrivacyReview, detectSensitiveSpans } from "./privacy-preview.js?v=ui16-model-details-20261024";
+import { createHistoryStore } from "./history-store.js?v=ui16-model-details-20261024";
+import { createConnectionStatus } from "./connection-status.js?v=ui16-model-details-20261024";
+import { createResultFormatting, normalizeModelInfo } from "./result-format.js?v=ui16-model-details-20261024";
 
 /* PH SMS Scam Detector — UI logic (no build step, vanilla JS). */
 "use strict";
@@ -627,11 +627,10 @@ function renderTips(analysis) {
   const list = $("tips");
   list.replaceChildren();
   list.className = `tips${bandOf(analysis) !== "looks_safe" ? " warn" : ""}`;
-  for (const tip of buildTips(analysis)) {
-    const item = document.createElement("li");
-    item.textContent = tip;
-    list.append(item);
-  }
+  const safeBand = bandOf(analysis) === "looks_safe";
+  const item = document.createElement("li");
+  item.textContent = safeBand ? t("tips.safeSpoof") : t("tips.noReply");
+  list.append(item);
 }
 
 /* Optional user-provided context is page-memory only. A WeakMap ties answers

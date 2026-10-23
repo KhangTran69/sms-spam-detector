@@ -14,6 +14,7 @@ dataset details, measured metrics, and API examples; this directory covers the
 | [RETRAINING.md](RETRAINING.md) | Retraining cadence and triggers, validation gates, artifact versioning, reproducible splits, monitoring, incident response, and audit trail. |
 | [PRIVACY.md](PRIVACY.md) | Data minimization, no server-side message persistence, opt-in browser history, logging rules, retention, and data-subject requests. |
 | [HUMAN_REVIEW.md](HUMAN_REVIEW.md) | Consent-first review sessions, safe participant tasks, qualitative analysis, and release gates. |
+| [IMPROVEMENT_EXECUTION.md](IMPROVEMENT_EXECUTION.md) | Current baseline reproduction, proposed provisional release criteria, collection plan, UX changes, and remaining pilot work. |
 
 ## Scope of current evidence
 

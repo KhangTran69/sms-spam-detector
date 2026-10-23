@@ -262,6 +262,16 @@ run('lang = "en"');
   assert.equal(run('new Set(EXAMPLES.safe).size'), 20, 'safe examples should not be duplicated');
   assert.match(run('$("example-status").textContent'), /legitimate message 1 of 20/);
   assert.equal(run('demoChecks'), 22, 'each example click should trigger analysis');
+  run('lang = "en"; renderTips({risk_band:"likely_scam", flags:["has_url","has_money"], brands:["bdo"]})');
+  assert.equal(run('$("tips").childNodes.length'), 1, 'the main result should show one immediate next step');
+  assert.match(run('$("tips").textContent'), /Do not reply, tap links, or call the number/);
+  run('renderTips({risk_band:"looks_safe", flags:[]})');
+  assert.equal(run('$("tips").childNodes.length'), 1, 'low score results should retain one useful safety reminder');
+  assert.match(run('$("tips").textContent'), /safe-looking senders can be spoofed/);
+  run('renderTips({risk_band:"looks_safe", flags:["has_urgency"]})');
+  assert.doesNotMatch(run('$("tips").textContent'), /classic scam tactic/,
+    'a low score should not surface a conflicting scam warning as its main next step');
+  assert.match(run('t("result.caveat")'), /not proof of fraud.*does not guarantee safety/);
   run('lang = "en"; renderMeter({spam_probability:0.35,probability_calibrated:true,prediction:"ham",risk_band:"looks_safe"})');
   assert.equal(run('$("risk-meter").getAttribute("aria-label")'), 'Calibrated spam score');
   assert.match(run('$("risk-meter").getAttribute("aria-valuetext")'), /calibrated spam score/);

@@ -3,17 +3,17 @@
  */
 "use strict";
 
-const CACHE_NAME = "smsd-shell-v15";
+const CACHE_NAME = "smsd-shell-v16";
 const SHELL_ASSETS = [
   "/",
-  "/static/styles.css?v=ui15-history-store-20261022",
-  "/static/app.js?v=ui15-history-store-20261022",
-  "/static/api-client.js?v=ui15-history-store-20261022",
-  "/static/i18n.js?v=ui15-history-store-20261022",
-  "/static/privacy-preview.js?v=ui15-history-store-20261022",
-  "/static/history-store.js?v=ui15-history-store-20261022",
-  "/static/connection-status.js?v=ui15-history-store-20261022",
-  "/static/result-format.js?v=ui15-history-store-20261022",
+  "/static/styles.css?v=ui16-model-details-20261024",
+  "/static/app.js?v=ui16-model-details-20261024",
+  "/static/api-client.js?v=ui16-model-details-20261024",
+  "/static/i18n.js?v=ui16-model-details-20261024",
+  "/static/privacy-preview.js?v=ui16-model-details-20261024",
+  "/static/history-store.js?v=ui16-model-details-20261024",
+  "/static/connection-status.js?v=ui16-model-details-20261024",
+  "/static/result-format.js?v=ui16-model-details-20261024",
   "/manifest.webmanifest",
 ];
 const SHELL_REQUESTS = new Set(SHELL_ASSETS.map((asset) => {

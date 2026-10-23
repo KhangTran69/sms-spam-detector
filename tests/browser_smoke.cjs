@@ -224,6 +224,20 @@ async function main() {
 
     await page.goto(base, { waitUntil: 'domcontentloaded' });
     console.log('browser-smoke: initial page loaded');
+    const modelDetails = page.locator('#model-details');
+    if (await modelDetails.evaluate((element) => element.open)) {
+      throw new Error('model metadata should be collapsed until requested');
+    }
+    const modelDetailsSummary = page.locator('#model-details > summary');
+    await modelDetailsSummary.focus();
+    await modelDetailsSummary.press('Enter');
+    if (!(await modelDetails.evaluate((element) => element.open))) {
+      throw new Error('keyboard activation did not open model details');
+    }
+    await modelDetailsSummary.press('Space');
+    if (await modelDetails.evaluate((element) => element.open)) {
+      throw new Error('keyboard activation did not close model details');
+    }
     await page.locator('#readiness-status').getByText('Unavailable').waitFor();
     if ((await page.locator('#api-status').textContent()).trim() !== 'Available') {
       throw new Error('missing-model readiness failure was confused with API reachability');

@@ -28,11 +28,18 @@ repository.** Do not describe these steps as completed research.
 
 ## Review session
 
-- Ask participants to review a balanced, randomized set of synthetic examples:
-  likely scam, suspicious, and looks safe; include legitimate OTPs and account
-  alerts, plus scam links, prize claims, fees, impersonation, and Taglish.
+- For an initial formative round, plan 5–8 adult Filipino/Taglish SMS recipients.
+  Use a balanced, randomized set of clearly fictional examples across the UI's
+  high, elevated, and low spam score bands. Include legitimate OTPs, account
+  alerts, delivery notices, and personal Taglish alongside fictional scam
+  patterns. Do not collect real messages in this comprehension round.
 - For each example, ask: What do you think this message is? What part of the UI
   influenced you? What would you do next? Was the wording clear or too certain?
+- Before showing details, ask the participant to explain what the score means
+  and whether a low score guarantees safety. Ask where they would verify an
+  unexpected bank or delivery request and what they would do with an OTP request.
+- Check whether participants can find the text-pattern details with a keyboard
+  and whether the visible service status and retry control are clear.
 - Record only the example ID, participant pseudonym, their expected label,
   confidence, category, usability issue, and notes with no personal details.
 - Do not coach participants toward the model's answer. Keep their first label
@@ -40,6 +47,27 @@ repository.** Do not describe these steps as completed research.
 - Have two reviewers independently label any candidate real examples. Resolve
   disagreements with a documented adjudicator; keep low-confidence/ambiguous
   samples out of benchmark sets until resolved.
+
+## Provisional comprehension criteria
+
+These are proposed study criteria, not an approved production policy. Confirm
+them with the project owner before using them to make a release decision:
+
+- At least 80% of participants explain that the model estimates spam versus
+  legitimate-message patterns, not whether a sender committed fraud.
+- At least 80% say that a low score does not guarantee a message is safe.
+- At least 80% choose an independently obtained official channel to verify an
+  unexpected financial request, and say not to share an OTP or PIN.
+- No participant should mistake the score as an instruction to block, report,
+  or punish a sender. Any such misunderstanding is a blocking copy issue to
+  revise and retest.
+- Participants can open and close the model and message-pattern details with
+  keyboard controls. Record screen-reader issues separately; this quick test
+  does not replace a dedicated screen-reader review.
+
+If a criterion fails, revise the wording or layout and repeat the same tasks
+with new participants. A small formative round can find confusion; it cannot
+estimate model accuracy or establish population-wide usability.
 
 ## Analysis and release gate
 
