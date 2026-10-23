@@ -497,6 +497,16 @@ def test_predict_rejects_missing_field(client):
     assert ["body", "message"] in [detail["loc"] for detail in response.json()["error"]["details"]]
 
 
+def test_openapi_explains_score_fields(client):
+    schemas = client.get("/openapi.json").json()["components"]["schemas"]
+    predict = schemas["PredictResponse"]["properties"]
+    analyze = schemas["AnalyzeResponse"]["properties"]
+    assert "returned prediction label" in predict["probability"]["description"]
+    assert "training labels" in predict["probability_calibrated"]["description"]
+    assert "does not estimate probability of fraud" in analyze["spam_probability"]["description"]
+    assert "not probability calibration" in analyze["confidence"]["description"]
+
+
 def test_predict_rejects_non_string_message(client):
     assert_error_schema(client.post("/predict", json={"message": 123}), 422, "validation_error")
 

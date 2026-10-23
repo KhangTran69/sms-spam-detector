@@ -109,6 +109,11 @@ artifact-threshold mismatch. Data-hash and split-fingerprint warnings remain
 separate evidence of input drift; equal hashes alone do not validate a
 contradictory threshold record.
 
+The UI's low, elevated, and high spam score bands describe ranges of the
+spam-versus-ham score; they are not counts of highlighted signals or findings
+that a message is fraudulent. A low score does not guarantee that a message is
+safe.
+
 - Raising the threshold **increases precision** (fewer false alarms) and
   **decreases recall** (more missed scams). Lowering it does the opposite.
 - Choose the operating point for the deployment's cost of errors, not for the
