@@ -22,6 +22,7 @@ from __future__ import annotations
 import logging
 import os
 import threading
+import time
 from pathlib import Path
 from typing import Any
 
@@ -51,6 +52,9 @@ FEEDBACK_PATH = Path(_feedback_path) if _feedback_path else ROOT / "data" / "fee
 MAX_FEEDBACK_BYTES = 10 * 1024 * 1024
 _feedback_lock = threading.Lock()
 DEFAULT_CORS_ORIGINS = ("http://127.0.0.1:8000", "http://localhost:8000")
+PREDICTION_RATE_LIMIT = max(1, int(os.environ.get("SMSD_RATE_LIMIT_PER_MINUTE", "60")))
+_rate_lock = threading.Lock()
+_rate_windows: dict[str, tuple[int, int]] = {}
 
 SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
@@ -147,6 +151,44 @@ class RequestBodyLimitMiddleware:
             return await receive()
 
         await self.app(scope, replay_body, secure_send)
+
+
+class PredictionRateLimitMiddleware:
+    """Bound anonymous prediction traffic per connecting IP (single process)."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if (
+            scope["type"] == "http"
+            and scope.get("method") == "POST"
+            and scope.get("path") in {"/predict", "/analyze", "/analyze/batch"}
+        ):
+            client = scope.get("client")
+            key = client[0] if client else "unknown"
+            now = int(time.time())
+            retry_after = None
+            with _rate_lock:
+                start, count = _rate_windows.get(key, (now, 0))
+                if now - start >= 60:
+                    start, count = now, 0
+                if count >= PREDICTION_RATE_LIMIT:
+                    retry_after = max(1, 60 - (now - start))
+                else:
+                    _rate_windows[key] = (start, count + 1)
+                if len(_rate_windows) > 10_000:
+                    expired = [ip for ip, state in _rate_windows.items() if now - state[0] >= 60]
+                    for ip in expired:
+                        _rate_windows.pop(ip, None)
+            if retry_after is not None:
+                response = _error_response(
+                    429, "rate_limited", "Too many prediction requests; retry later.",
+                    headers={"Retry-After": str(retry_after)},
+                )
+                await response(scope, receive, send)
+                return
+        await self.app(scope, receive, send)
 
 
 def cors_origins(raw: str | None = None) -> list[str]:
@@ -323,6 +365,7 @@ from api.schemas import (  # noqa: E402,F401  (re-exported for compatibility)
 # Middleware: bounded streaming request bodies + security headers
 # ---------------------------------------------------------------------------
 app.add_middleware(RequestBodyLimitMiddleware)
+app.add_middleware(PredictionRateLimitMiddleware)
 
 
 # ---------------------------------------------------------------------------
