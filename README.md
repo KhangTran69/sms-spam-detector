@@ -84,6 +84,12 @@ real-world performance remain blocked. See the
 | `POST /analyze`, `POST /analyze/batch` | Adds risk band, highlighted signals, model version, and both risk thresholds per result; batch takes up to 50 |
 | `POST /feedback` | Optional anonymous label correction, off by default; never accepts message text |
 
+Anonymous prediction endpoints are capped at 60 requests per minute per direct
+client address by default (`SMSD_RATE_LIMIT_PER_MINUTE`). This in-process limit
+is a fallback for a single worker; multi-worker or reverse-proxy deployments
+must also enforce a shared limit at the gateway. The app does not trust
+forwarded-IP headers for identity.
+
 ## Web UI
 
 The browser UI supports single-message checks, batch checks, and **Compare
