@@ -183,7 +183,9 @@ class PredictionRateLimitMiddleware:
                         _rate_windows.pop(ip, None)
             if retry_after is not None:
                 response = _error_response(
-                    429, "rate_limited", "Too many prediction requests; retry later.",
+                    429,
+                    "rate_limited",
+                    "Too many prediction requests; retry later.",
                     headers={"Retry-After": str(retry_after)},
                 )
                 await response(scope, receive, send)
