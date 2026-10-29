@@ -19,7 +19,7 @@ UVICORN ?= .venv/bin/uvicorn
 IMAGE ?= philippine-sms-spam-detector:local
 PORT ?= 8000
 
-.PHONY: install dev-install test lint format typecheck train evaluate serve docker-build docker-run clean
+.PHONY: install dev-install test lint format typecheck train evaluate benchmark serve docker-build docker-run clean
 
 install:
 	$(PIP) install -r requirements.txt
@@ -45,6 +45,9 @@ train:
 
 evaluate:
 	$(PYTHON) -m src.evaluate
+
+benchmark:
+	$(PYTHON) -m src.benchmark
 
 serve:
 	$(UVICORN) api.main:app --host 127.0.0.1 --port $(PORT) --reload

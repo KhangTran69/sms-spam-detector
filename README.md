@@ -43,6 +43,16 @@ Time splits require valid dates for every row and fail if both classes cannot be
 
 Evaluation reports class metrics, false positives by legitimate category, threshold tradeoffs, calibration diagnostics, language/category coverage, and holdout/template overlap. Reports label each split from its declared provenance and omit SMS content from errors. The model currently reports uncalibrated scores; a score is not a probability guarantee. Do not use synthetic or unknown-provenance results as a real-world accuracy claim.
 
+### Reproduce the tracked synthetic benchmark
+
+Run `python -m src.benchmark` (or `make benchmark`) to train with seed 42 on
+the five tracked Philippine synthetic supplements and report the grouped test
+split plus the separate synthetic holdout. The JSON report includes fixture
+SHA-256 hashes, split counts, metrics, and an explicit synthetic-only banner;
+it makes no real-world performance claim. Save the report with
+`python -m src.benchmark --json-out /path/to/report.json`. The benchmark does
+not use the unverified, operator-supplied `spam.csv` or any real messages.
+
 Run `python -m src.train --help` and `python -m src.evaluate --help` for all data, threshold, split, and output options.
 
 ## Run the API and web UI
