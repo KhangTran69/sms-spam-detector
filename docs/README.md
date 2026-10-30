@@ -7,6 +7,7 @@ dataset details, measured metrics, and API examples; this directory covers the
 
 | Document | What it answers |
 |---|---|
+| [ARCHITECTURE.md](ARCHITECTURE.md) | High-level system architecture, offline ML pipeline, real-time inference flow, and feedback loops. |
 | [DATA_COLLECTION.md](DATA_COLLECTION.md) | How message data is collected, consented, masked, labeled, grouped, stored, and separated into synthetic vs. real data. |
 | [DATASET_INVENTORY.md](DATASET_INVENTORY.md) | Message-free audit of the current workspace's sources, counts, provenance, coverage, and evidence limits. |
 | [DEPLOYMENT.md](DEPLOYMENT.md) | Local setup, training, serving, Docker/compose, reverse proxy + TLS, environment variables, health/readiness, artifact mounting, rollback, and limits. |

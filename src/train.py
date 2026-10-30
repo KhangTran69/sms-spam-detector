@@ -161,6 +161,8 @@ def train(
     write_metadata: bool = True,
     metadata_output: str | Path | None = None,
     verbose: bool = True,
+    track_run: bool = False,
+    runs_dir: str | Path | None = None,
 ) -> dict[str, Any]:
     """Train and persist the primary model. Returns the saved artifact mapping."""
     dataset = load_training_dataset(
@@ -369,6 +371,9 @@ def train(
         manifest_path.write_text(
             json.dumps(jsonable(artifact["dataset_manifest"]), ensure_ascii=False, indent=2), encoding="utf-8"
         )
+    if track_run:
+        target_runs_dir = runs_dir or (ROOT / "runs")
+        log_experiment_run(artifact, runs_dir=target_runs_dir, model_path=model_path)
     if verbose:
         _print_report(
             artifact=artifact,
@@ -385,6 +390,58 @@ def train(
             model_path=model_path,
         )
     return artifact
+
+
+def log_experiment_run(
+    artifact: dict[str, Any],
+    *,
+    runs_dir: str | Path = ROOT / "runs",
+    model_path: str | Path = DEFAULT_MODEL,
+) -> Path:
+    """Record training run parameters, metrics, and dataset provenance into a JSON run log."""
+    runs_path = Path(runs_dir)
+    runs_path.mkdir(parents=True, exist_ok=True)
+
+    git_sha = None
+    try:
+        import subprocess
+
+        res = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+        if res.returncode == 0:
+            git_sha = res.stdout.strip()
+    except Exception:
+        pass
+
+    run_record = {
+        "run_id": f"run_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}_{artifact.get('model_version', 'model')}",
+        "created_at": datetime.now(UTC).isoformat(),
+        "git_commit": git_sha,
+        "model_version": artifact.get("model_version"),
+        "model_path": str(model_path),
+        "threshold": artifact.get("threshold"),
+        "training_config": artifact.get("training_config"),
+        "model_selection": artifact.get("model_selection"),
+        "metrics": {
+            "test_primary": artifact.get("metrics", {}).get("test_primary"),
+            "test_at_default": artifact.get("metrics", {}).get("test_at_default"),
+            "holdout": artifact.get("metrics", {}).get("holdout"),
+        },
+        "dataset_summary": {
+            "sources": artifact.get("data_sources"),
+            "dataset_rows": artifact.get("dataset", {}).get("rows"),
+            "data_kind_counts": artifact.get("training_data_kind_counts"),
+        },
+    }
+
+    out_file = runs_path / f"{run_record['run_id']}.json"
+    out_file.write_text(json.dumps(jsonable(run_record), indent=2, ensure_ascii=False), encoding="utf-8")
+    return out_file
 
 
 def _frame(messages: list[str]):
@@ -577,6 +634,16 @@ def _main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--lenient-data", action="store_true", help="Drop blank rows with a warning instead of failing."
     )
+    parser.add_argument(
+        "--track-run",
+        action="store_true",
+        help="Log an experiment record in JSON format to the runs directory.",
+    )
+    parser.add_argument(
+        "--runs-dir",
+        default=str(ROOT / "runs"),
+        help="Directory to record experiment runs (default: runs/).",
+    )
     args = parser.parse_args(argv)
 
     supplements, strict_supplement_paths = _parse_supplements(args)
@@ -604,6 +671,8 @@ def _main(argv: list[str] | None = None) -> int:
             threshold_policy=args.threshold_policy,
             write_metadata=not args.no_metadata,
             metadata_output=args.metadata_output,
+            track_run=args.track_run,
+            runs_dir=args.runs_dir,
         )
     except DatasetError as exc:
         print(f"data error: {exc}")

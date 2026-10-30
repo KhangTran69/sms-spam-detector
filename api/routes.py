@@ -7,6 +7,7 @@ request time instead of copying them at import.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import sys
@@ -99,8 +100,8 @@ def _append_feedback_report(report: dict[str, Any]) -> str:
 
 
 @router.post("/predict", response_model=PredictResponse, responses=_ERROR_RESPONSES, summary="Minimal verdict")
-def predict(request: PredictRequest) -> PredictResponse:
-    analysis = analyze_message(request.message, model=_state().get_model())
+async def predict(request: PredictRequest) -> PredictResponse:
+    analysis = await asyncio.to_thread(analyze_message, request.message, model=_state().get_model())
     return PredictResponse(
         prediction=analysis["prediction"],
         probability=analysis["probability"],
@@ -112,13 +113,14 @@ def predict(request: PredictRequest) -> PredictResponse:
 
 
 @router.post("/analyze", response_model=AnalyzeResponse, responses=_ERROR_RESPONSES, summary="Full analysis")
-def analyze(request: PredictRequest) -> AnalyzeResponse:
-    return AnalyzeResponse.model_validate(analyze_message(request.message, model=_state().get_model()))
+async def analyze(request: PredictRequest) -> AnalyzeResponse:
+    analysis = await asyncio.to_thread(analyze_message, request.message, model=_state().get_model())
+    return AnalyzeResponse.model_validate(analysis)
 
 
 @router.post("/analyze/batch", response_model=BatchResponse, responses=_ERROR_RESPONSES, summary="Batch analysis")
-def analyze_batch_endpoint(request: BatchRequest) -> BatchResponse:
-    results = analyze_batch(request.messages, model=_state().get_model())
+async def analyze_batch_endpoint(request: BatchRequest) -> BatchResponse:
+    results = await asyncio.to_thread(analyze_batch, request.messages, model=_state().get_model())
     first = results[0] if results else {}
     return BatchResponse(
         count=len(results),

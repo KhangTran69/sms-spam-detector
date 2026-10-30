@@ -76,13 +76,15 @@ real-world performance remain blocked. See the
 
 ## API
 
+Versioned routes are mounted at `/v1/*` with root aliases (`/*`) preserved for backwards compatibility:
+
 | Endpoint | Purpose |
 |---|---|
-| `GET /health`, `GET /ready` | Liveness; readiness (loads and validates the model) |
-| `GET /model-info` | Version, threshold, risk bands, provenance, caveats |
-| `POST /predict` | Label, score with a `probability_calibrated` indicator, flags, threshold |
-| `POST /analyze`, `POST /analyze/batch` | Adds risk band, highlighted signals, model version, and both risk thresholds per result; batch takes up to 50 |
-| `POST /feedback` | Optional anonymous label correction, off by default; never accepts message text |
+| `GET /health`, `GET /ready` (or `/v1/*`) | Liveness; readiness (loads and validates the model) |
+| `GET /model-info` (or `/v1/model-info`) | Version, threshold, risk bands, provenance, caveats |
+| `POST /predict` (or `/v1/predict`) | Label, score with a `probability_calibrated` indicator, flags, threshold |
+| `POST /analyze`, `POST /analyze/batch` (or `/v1/*`) | Adds risk band, highlighted signals, model version, and both risk thresholds per result; batch takes up to 50 |
+| `POST /feedback` (or `/v1/feedback`) | Optional anonymous label correction, off by default; never accepts message text |
 
 Anonymous prediction endpoints are capped at 60 requests per minute per direct
 client address by default (`SMSD_RATE_LIMIT_PER_MINUTE`). This in-process limit
@@ -183,6 +185,7 @@ privacy limits.
 
 ## Documentation
 
+[System architecture](docs/ARCHITECTURE.md) ·
 [Model card and limitations](docs/MODEL_CARD.md) ·
 [Data collection and consented import](docs/DATA_COLLECTION.md) ·
 [Reproducible benchmark reports](docs/BENCHMARKING.md) ·

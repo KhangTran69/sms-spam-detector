@@ -720,6 +720,23 @@ def test_structured_logging_records_requests(client, caplog):
         )
 
 
+def test_v1_versioned_routes(client):
+    health = client.get("/v1/health")
+    assert health.status_code == 200
+    assert health.json()["status"] == "ok"
+
+    model_info = client.get("/v1/model-info")
+    assert model_info.status_code == 200
+
+    predict = client.post("/v1/predict", json={"message": "Safe check message"})
+    assert predict.status_code == 200
+    assert predict.json()["prediction"] in {"ham", "spam"}
+
+    analyze = client.post("/v1/analyze", json={"message": "Safe check message"})
+    assert analyze.status_code == 200
+    assert "risk_band" in analyze.json()
+
+
 # ---------------------------------------------------------------------------
 # CORS defaults
 # ---------------------------------------------------------------------------
