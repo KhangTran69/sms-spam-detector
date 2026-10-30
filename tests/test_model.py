@@ -448,3 +448,28 @@ def test_training_provenance_comes_from_declared_rows(tmp_path, kind, expected):
     assert artifact["synthetic_training_data"] is expected
     assert set(artifact["training_data_kind_counts"]) == {kind}
     assert artifact["metrics"]["test_by_category"]
+
+
+REGRESSION_PINNED_CASES = [
+    # Canonical Spam templates
+    ("Congratulations! You won a free prize. Claim now! Call 09171234567", "spam"),
+    ("Free entry to win ₱100,000 cash. Text CLAIM to 09175551234 now!", "spam"),
+    ("Winner! Claim your free prize money now, limited offer!", "spam"),
+    ("Final notice: claim your unclaimed prize of PHP 75,000 today!", "spam"),
+    ("Account suspended. Verify at bdo-secure.xyz/login immediately.", "spam"),
+    # Canonical Ham templates
+    ("Your BDO OTP is 294831. Do not share with anyone.", "ham"),
+    ("Thanks, see you at lunch tomorrow", "ham"),
+    ("Ok po, salamat. See you at the meeting", "ham"),
+    ("Don't forget the meeting at 3pm", "ham"),
+    ("BPI: OTP 558201. Never share this code with anyone.", "ham"),
+]
+
+
+def test_model_regression_pinned_suite(trained_artifact):
+    """Verify that retrained models maintain exact expected classifications on canonical messages."""
+    _, model_path = trained_artifact
+    bundle = load_model(model_path)
+    for message, expected in REGRESSION_PINNED_CASES:
+        res = analyze_message(message, model=bundle)
+        assert res["prediction"] == expected, f"Regression failure on message: {message}"

@@ -34,6 +34,7 @@ def test_select_classifier_reports_every_candidate():
     assert result.name in names
     assert any(name.startswith("linear_svm") for name in names)
     assert any(name.startswith("logistic_regression") for name in names)
+    assert any(name.startswith("sgd_classifier") for name in names)
 
 
 def test_calibrated_model_outputs_probabilities():

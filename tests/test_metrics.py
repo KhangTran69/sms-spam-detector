@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.metrics import binary_metrics, campaign_bootstrap_intervals, select_threshold
+from src.metrics import binary_metrics, bootstrap_metrics, campaign_bootstrap_intervals, select_threshold
 
 
 def test_binary_metrics_include_wilson_intervals_with_support():
@@ -65,3 +65,14 @@ def test_campaign_bootstrap_withholds_interval_when_group_support_is_small():
     result = campaign_bootstrap_intervals(frame, [0.1, 0.9], 0.5, replicates=10)
     assert result["available"] is False
     assert "at least 10 distinct group IDs" in result["reason"]
+
+
+def test_bootstrap_metrics_computes_empirical_percentiles():
+    labels = ["spam", "spam", "ham", "ham"] * 10
+    probs = [0.9, 0.85, 0.1, 0.15] * 10
+    ci = bootstrap_metrics(labels, probs, threshold=0.5, n_bootstraps=200, seed=42)
+    assert ci["confidence_level"] == 0.95
+    assert 0.8 <= ci["f1"][0] <= ci["f1"][1] <= 1.0
+    assert 0.8 <= ci["precision"][0] <= ci["precision"][1] <= 1.0
+    assert 0.8 <= ci["recall"][0] <= ci["recall"][1] <= 1.0
+    assert 0.8 <= ci["accuracy"][0] <= ci["accuracy"][1] <= 1.0
