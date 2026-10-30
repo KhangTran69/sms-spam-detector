@@ -12,13 +12,14 @@ Everything that training, the CLI, and the API send to the model goes through
 from __future__ import annotations
 
 import html
+import os
 import re
 import unicodedata
 from collections.abc import Iterable
 from typing import Any
 
-# Hard limit shared by the API/CLI. Keeping it here avoids divergent limits.
-MAX_MESSAGE_LENGTH = 10_000
+# Hard limit shared by the API/CLI. Defaults to 10,000 characters; configurable via SMSD_MAX_MESSAGE_LENGTH.
+MAX_MESSAGE_LENGTH = int(os.environ.get("SMSD_MAX_MESSAGE_LENGTH", "10000"))
 
 # Bare domains are common in Philippine SMS ("bit.ly/x", "jtexpress.ph/track").
 # Only well-known TLDs are matched so abbreviations such as "e.g." and "U.S."
@@ -184,20 +185,96 @@ _FEATURE_KEYS = (
     "capital_ratio",
 )
 
+# Invisible, zero-width, and directional formatting characters frequently inserted to evade keyword filters.
+_INVISIBLE_CHARS_RE = re.compile(r"[\u200b-\u200f\u202a-\u202e\u2060\u3164\ufeff\ufe0f]")
+
+# Cyrillic and Greek homoglyphs used to spoof Latin characters (e.g. Cyrillic 'а' or 'о' in brand/scam names).
+_HOMOGLYPH_TABLE = str.maketrans(
+    {
+        # Cyrillic lowercase lookalikes
+        "а": "a",
+        "с": "c",
+        "е": "e",
+        "о": "o",
+        "р": "p",
+        "х": "x",
+        "у": "y",
+        "і": "i",
+        "ј": "j",
+        "ԁ": "d",
+        "ѕ": "s",
+        "ѵ": "v",
+        "ԝ": "w",
+        # Cyrillic uppercase lookalikes
+        "А": "A",
+        "В": "B",
+        "С": "C",
+        "Е": "E",
+        "Н": "H",
+        "І": "I",
+        "Ј": "J",
+        "К": "K",
+        "М": "M",
+        "О": "O",
+        "Р": "P",
+        "Ѕ": "S",
+        "Т": "T",
+        "Х": "X",
+        "Ү": "Y",
+        # Greek lowercase & uppercase lookalikes
+        "α": "a",
+        "ο": "o",
+        "ν": "v",
+        "ρ": "p",
+        "τ": "t",
+        "χ": "x",
+        "Α": "A",
+        "Β": "B",
+        "Ε": "E",
+        "Ζ": "Z",
+        "Η": "H",
+        "Ι": "I",
+        "Κ": "K",
+        "Μ": "M",
+        "Ν": "N",
+        "Ο": "O",
+        "Ρ": "P",
+        "Τ": "T",
+        "Υ": "Y",
+        "Χ": "X",
+    }
+)
+
+# Targeted SMS leetspeak substitutions commonly used by spammers.
+_LEETSPEAK_MAP = (
+    (re.compile(r"(?i)\bfr[3e][3e]\b"), "free"),
+    (re.compile(r"(?i)\bw[1i]n\b"), "win"),
+    (re.compile(r"(?i)\bcl[1i]ck\b"), "click"),
+    (re.compile(r"(?i)\bpr[1i]z[3e]\b"), "prize"),
+    (re.compile(r"(?i)\bc[4a]sh\b"), "cash"),
+    (re.compile(r"(?i)\bcl[4a][1i]m\b"), "claim"),
+    (re.compile(r"(?i)\burg[3e]nt\b"), "urgent"),
+)
+
 
 def normalize_taglish(text: str) -> str:
     """Normalize Unicode and common spelling variants without translating text.
 
     - NFKC composes full-width characters and currency glyph variants.
-    - Zero-width/BOM characters and control characters are removed (SMS input
-      frequently contains them, and they break tokenization).
+    - Zero-width, directional, and invisible formatting characters are removed.
+    - Cyrillic and Greek homoglyphs used to bypass keyword filters are mapped to Latin.
+    - Common scam/spam leetspeak terms (e.g. fr33, cl1ck, w1n) are normalized.
     - HTML entities are unescaped for messages pasted from web pages.
     - Repeated letters are squeezed from 3+ to 2 so "napakaaa" and "napakaa"
       tokenize the same, while keeping genuine Filipino words/diacritics.
     """
     text = unicodedata.normalize("NFKC", str(text))
     text = html.unescape(text)
-    text = text.replace("\u00a0", " ").replace("\u200b", "").replace("\ufeff", "")
+    text = text.replace("\u00a0", " ")
+    text = _INVISIBLE_CHARS_RE.sub("", text)
+    text = text.translate(_HOMOGLYPH_TABLE)
+    for pattern, replacement in _LEETSPEAK_MAP:
+        text = pattern.sub(replacement, text)
     text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", text)
     text = re.sub(r"([a-z])\1{2,}", r"\1\1", text, flags=re.IGNORECASE)
     return text
@@ -222,15 +299,16 @@ def _without_urls(text: str) -> str:
 def extract_features(message: str) -> dict[str, float]:
     """Extract interpretable binary and numeric message indicators."""
     message = str(message)
+    normalized = normalize_taglish(message)
+    normalized_lowered = normalized.lower()
     letters = [char for char in message if char.isalpha()]
-    lowered = message.lower()
     text_without_urls = _without_urls(message)
     return {
-        "has_url": float(bool(URL_RE.search(message))),
+        "has_url": float(bool(URL_RE.search(message) or URL_RE.search(normalized))),
         "has_phone": float(bool(PHONE_RE.search(text_without_urls))),
         "has_money": float(bool(MONEY_RE.search(text_without_urls))),
-        "has_urgency": float(bool(_URGENCY_RE.search(lowered))),
-        "has_brand": float(bool(BRAND_RE.search(message))),
+        "has_urgency": float(bool(_URGENCY_RE.search(normalized_lowered))),
+        "has_brand": float(bool(BRAND_RE.search(message) or BRAND_RE.search(normalized))),
         "message_length": float(len(message)),
         "capital_ratio": float(sum(char.isupper() for char in letters) / len(letters)) if letters else 0.0,
     }
@@ -308,3 +386,202 @@ def redact_message(message: str, *, max_length: int = 80) -> str:
     if len(text) > max_length:
         text = text[: max_length - 1].rstrip() + "…"
     return text
+
+
+_FILIPINO_STOPWORDS = frozenset(
+    {
+        "ang",
+        "mga",
+        "ng",
+        "sa",
+        "kay",
+        "si",
+        "ni",
+        "ito",
+        "iyan",
+        "iyon",
+        "dito",
+        "doon",
+        "po",
+        "opo",
+        "na",
+        "ba",
+        "pa",
+        "din",
+        "rin",
+        "ako",
+        "ikaw",
+        "ka",
+        "kami",
+        "tayo",
+        "kayo",
+        "sila",
+        "namin",
+        "natin",
+        "nila",
+        "ko",
+        "mo",
+        "niya",
+        "para",
+        "dahil",
+        "pero",
+        "kung",
+        "at",
+        "may",
+        "meron",
+        "wala",
+        "lahat",
+        "bago",
+        "pag",
+        "sana",
+        "pala",
+        "naman",
+        "lang",
+        "lamang",
+        "gusto",
+        "salamat",
+        "kamusta",
+        "kumusta",
+        "ingat",
+        "uwi",
+        "punta",
+        "kain",
+        "tulog",
+        "bahay",
+        "araw",
+        "oras",
+        "kahapon",
+        "bukas",
+        "ngayon",
+        "agad",
+        "kaagad",
+        "bilisan",
+        "huling",
+        "panalo",
+    }
+)
+
+_ENGLISH_STOPWORDS = frozenset(
+    {
+        "the",
+        "is",
+        "are",
+        "was",
+        "were",
+        "be",
+        "been",
+        "being",
+        "have",
+        "has",
+        "had",
+        "do",
+        "does",
+        "did",
+        "will",
+        "would",
+        "shall",
+        "should",
+        "may",
+        "might",
+        "must",
+        "can",
+        "could",
+        "you",
+        "your",
+        "yours",
+        "we",
+        "our",
+        "ours",
+        "they",
+        "their",
+        "them",
+        "he",
+        "she",
+        "it",
+        "his",
+        "her",
+        "its",
+        "this",
+        "that",
+        "these",
+        "those",
+        "from",
+        "with",
+        "about",
+        "into",
+        "through",
+        "during",
+        "before",
+        "after",
+        "above",
+        "below",
+        "to",
+        "in",
+        "on",
+        "at",
+        "by",
+        "for",
+        "of",
+        "and",
+        "or",
+        "but",
+        "if",
+        "because",
+        "as",
+        "until",
+        "while",
+        "here",
+        "there",
+        "when",
+        "where",
+        "why",
+        "how",
+        "all",
+        "any",
+        "both",
+        "each",
+        "few",
+        "more",
+        "most",
+        "other",
+        "some",
+        "such",
+        "no",
+        "nor",
+        "not",
+        "only",
+        "own",
+        "same",
+        "so",
+        "than",
+        "too",
+        "very",
+        "please",
+        "call",
+        "text",
+        "account",
+        "click",
+        "claim",
+        "free",
+        "winner",
+        "prize",
+        "code",
+        "congratulations",
+    }
+)
+
+
+def detect_language(text: str) -> str:
+    """Classify text into 'english', 'filipino', 'taglish', or 'unknown' using lexical markers."""
+    words = re.findall(r"\b[a-zA-ZñÑ]+\b", str(text).lower())
+    if not words:
+        return "unknown"
+    fil_hits = sum(1 for w in words if w in _FILIPINO_STOPWORDS)
+    eng_hits = sum(1 for w in words if w in _ENGLISH_STOPWORDS)
+    if fil_hits == 0 and eng_hits == 0:
+        return "english"
+    if fil_hits > 0 and eng_hits > 0:
+        return "taglish"
+    if fil_hits > 0:
+        return "filipino"
+    return "english"

@@ -23,6 +23,8 @@ import logging
 import os
 import threading
 import time
+import uuid
+from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
@@ -60,6 +62,16 @@ SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
     "Referrer-Policy": "no-referrer",
+    "Permissions-Policy": "geolocation=(), camera=(), microphone=()",
+    "Content-Security-Policy": (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data:; "
+        "connect-src 'self'; "
+        "object-src 'none'; "
+        "base-uri 'self'"
+    ),
 }
 
 _HTTP_ERROR_CODES = {
@@ -76,11 +88,56 @@ _HTTP_ERROR_CODES = {
     503: "model_unavailable",
 }
 
+RATE_LIMIT_ENDPOINTS = {"/predict", "/analyze", "/analyze/batch", "/feedback"}
+RATE_LIMIT = int(os.environ.get("SMSD_RATE_LIMIT", "0"))
+RATE_LIMIT_WINDOW = int(os.environ.get("SMSD_RATE_LIMIT_WINDOW", "60"))
+_rate_limit_lock = threading.Lock()
+_rate_limit_records: dict[str, list[float]] = defaultdict(list)
+
+
+def _client_ip(scope: dict[str, Any]) -> str:
+    for key, value in scope.get("headers", []):
+        if key.lower() == b"x-forwarded-for":
+            first_ip = value.decode("latin-1").split(",")[0].strip()
+            if first_ip:
+                return first_ip
+    client = scope.get("client")
+    if client and len(client) > 0 and client[0]:
+        return str(client[0])
+    return "127.0.0.1"
+
+
+def _check_rate_limit(ip: str, now: float | None = None) -> tuple[bool, int]:
+    limit = RATE_LIMIT
+    if limit <= 0:
+        return True, 0
+    current_time = time.time() if now is None else now
+    window = RATE_LIMIT_WINDOW
+    cutoff = current_time - window
+    with _rate_limit_lock:
+        timestamps = [t for t in _rate_limit_records.get(ip, []) if t > cutoff]
+        if len(timestamps) >= limit:
+            oldest = timestamps[0]
+            retry_after = max(1, int(oldest + window - current_time))
+            _rate_limit_records[ip] = timestamps
+            return False, retry_after
+        timestamps.append(current_time)
+        _rate_limit_records[ip] = timestamps
+        return True, 0
+
+
+def _reset_rate_limits() -> None:
+    with _rate_limit_lock:
+        _rate_limit_records.clear()
+    with _rate_lock:
+        _rate_windows.clear()
+
+
 logger = logging.getLogger("api.main")
 
 
 class RequestBodyLimitMiddleware:
-    """Bound body consumption even when Content-Length is absent or inaccurate."""
+    """Bound body consumption, enforce rate limits, security headers, request ID, and structured logging."""
 
     def __init__(self, app):
         self.app = app
@@ -90,35 +147,83 @@ class RequestBodyLimitMiddleware:
             await self.app(scope, receive, send)
             return
 
+        start_time = time.perf_counter()
+        raw_headers = scope.get("headers", [])
+        incoming_req_id = next(
+            (v.decode("latin-1").strip() for k, v in raw_headers if k.lower() == b"x-request-id" and v.strip()),
+            None,
+        )
+        request_id = incoming_req_id or uuid.uuid4().hex
+        status_code = 500
+
         async def secure_send(message):
+            nonlocal status_code
             if message["type"] == "http.response.start":
+                status_code = message.get("status", 200)
                 headers = list(message.get("headers", []))
                 present = {key.lower() for key, _ in headers}
                 for name, value in SECURITY_HEADERS.items():
                     key = name.lower().encode("latin-1")
                     if key not in present:
                         headers.append((key, value.encode("latin-1")))
+                if b"x-request-id" not in present:
+                    headers.append((b"x-request-id", request_id.encode("latin-1")))
                 message = {**message, "headers": headers}
             await send(message)
 
+        client_ip = _client_ip(scope)
+        path = scope.get("path", "")
+        method = scope.get("method", "")
+
+        # 1. Rate limiting check
+        if path in RATE_LIMIT_ENDPOINTS:
+            allowed, retry_after = _check_rate_limit(client_ip)
+            if not allowed:
+                elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
+                logger.info(
+                    '{"event": "request_completed", "request_id": "%s", "method": "%s", "path": "%s", "status": 429, "latency_ms": %.2f, "client_ip": "%s"}',
+                    request_id,
+                    method,
+                    path,
+                    elapsed_ms,
+                    client_ip,
+                )
+                await _error_response(
+                    429,
+                    "rate_limited",
+                    "Rate limit exceeded. Please try again later.",
+                    headers={"Retry-After": str(retry_after), "X-Request-ID": request_id},
+                )(scope, receive, secure_send)
+                return
+
+        # 2. Content-Length pre-check
         content_length = next(
-            (value.decode("latin-1") for key, value in scope.get("headers", []) if key.lower() == b"content-length"),
+            (value.decode("latin-1") for key, value in raw_headers if key.lower() == b"content-length"),
             None,
         )
         if content_length:
             try:
                 if int(content_length) > MAX_REQUEST_BYTES:
+                    elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
+                    logger.info(
+                        '{"event": "request_completed", "request_id": "%s", "method": "%s", "path": "%s", "status": 413, "latency_ms": %.2f, "client_ip": "%s"}',
+                        request_id,
+                        method,
+                        path,
+                        elapsed_ms,
+                        client_ip,
+                    )
                     await _error_response(
                         413,
                         "payload_too_large",
                         f"Request body is too large; the limit is {MAX_REQUEST_BYTES} bytes.",
+                        headers={"X-Request-ID": request_id},
                     )(scope, receive, secure_send)
                     return
             except ValueError:
                 pass
 
-        # Read and cap the body before calling FastAPI. Otherwise its JSON
-        # parser can turn a receive-side size exception into a generic 400.
+        # 3. Read and cap the body before calling FastAPI
         chunks: list[bytes] = []
         consumed = 0
         while True:
@@ -130,10 +235,20 @@ class RequestBodyLimitMiddleware:
             chunk = message.get("body", b"")
             consumed += len(chunk)
             if consumed > MAX_REQUEST_BYTES:
+                elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
+                logger.info(
+                    '{"event": "request_completed", "request_id": "%s", "method": "%s", "path": "%s", "status": 413, "latency_ms": %.2f, "client_ip": "%s"}',
+                    request_id,
+                    method,
+                    path,
+                    elapsed_ms,
+                    client_ip,
+                )
                 await _error_response(
                     413,
                     "payload_too_large",
                     f"Request body is too large; the limit is {MAX_REQUEST_BYTES} bytes.",
+                    headers={"X-Request-ID": request_id},
                 )(scope, receive, secure_send)
                 return
             chunks.append(chunk)
@@ -150,7 +265,19 @@ class RequestBodyLimitMiddleware:
                 return {"type": "http.request", "body": body, "more_body": False}
             return await receive()
 
-        await self.app(scope, replay_body, secure_send)
+        try:
+            await self.app(scope, replay_body, secure_send)
+        finally:
+            elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
+            logger.info(
+                '{"event": "request_completed", "request_id": "%s", "method": "%s", "path": "%s", "status": %d, "latency_ms": %.2f, "client_ip": "%s"}',
+                request_id,
+                method,
+                path,
+                status_code,
+                elapsed_ms,
+                client_ip,
+            )
 
 
 class PredictionRateLimitMiddleware:

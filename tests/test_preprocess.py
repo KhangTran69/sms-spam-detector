@@ -9,6 +9,7 @@ from src.preprocess import (
     PHONE_RE,
     URL_RE,
     clean_text,
+    detect_language,
     extract_features,
     extract_matches,
     normalize_taglish,
@@ -223,3 +224,37 @@ def test_obfuscated_urls_are_signals_with_original_offsets(url):
 def test_bare_domain_does_not_match_partial_suffix():
     assert not URL_RE.search("example.company")
     assert not URL_RE.search("example.com-extra")
+
+
+def test_anti_evasion_zero_width_and_invisible_characters():
+    text_with_invisibles = "G\u200bC\u200ca\u200ds\u200eh\u200f alert\u2060"
+    normalized = normalize_taglish(text_with_invisibles)
+    assert normalized == "GCash alert"
+    assert extract_features(text_with_invisibles)["has_brand"] == 1.0
+
+
+def test_anti_evasion_cyrillic_and_greek_homoglyphs():
+    # Cyrillic 'а' (U+0430) and 'о' (U+043E)
+    cyrillic_gcash = "GC\u0430sh promo"
+    cyrillic_bdo = "b\u0501\u043e account"
+    assert normalize_taglish(cyrillic_gcash) == "GCash promo"
+    assert extract_features(cyrillic_gcash)["has_brand"] == 1.0
+    assert extract_features(cyrillic_bdo)["has_brand"] == 1.0
+
+
+def test_anti_evasion_leetspeak_normalization():
+    leetspeak_msg = "Claim your fr33 pr1z3 now! cl1ck here to w1n c4sh"
+    cleaned = clean_text(leetspeak_msg)
+    assert "free" in cleaned
+    assert "prize" in cleaned
+    assert "click" in cleaned
+    assert "win" in cleaned
+    assert "cash" in cleaned
+    assert extract_features(leetspeak_msg)["has_urgency"] == 1.0
+
+
+def test_detect_language_heuristic():
+    assert detect_language("Your BDO OTP is 583920. Do not share.") == "english"
+    assert detect_language("Salamat po sa tulong ninyo kahapon, ingat kayo lagi.") == "filipino"
+    assert detect_language("Uwi ka na agad, ulan na here sa atin. Ingat!") == "taglish"
+    assert detect_language("12345 67890") == "unknown"

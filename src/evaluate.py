@@ -54,6 +54,7 @@ from src.metrics import (
     threshold_sweep,
 )
 from src.predict import ModelBundle, load_model, spam_probabilities
+from src.preprocess import detect_language
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_MODEL = ROOT / "models" / "spam_detector_v1.pkl"
@@ -577,6 +578,7 @@ def evaluate(
 
     test_metrics = binary_metrics(test_set.labels, test_probabilities, threshold)
     test_frame_with_length = _length_strata(test_set.frame)
+    test_frame_with_length["detected_language"] = test_frame_with_length["message"].map(detect_language)
     test_metrics["campaign_bootstrap_95"] = campaign_bootstrap_intervals(
         test_set.frame, test_probabilities, threshold, seed=split.seed
     )
@@ -628,6 +630,9 @@ def evaluate(
             ),
             "by_language": per_group_metrics(
                 test_set.frame, test_probabilities, threshold, group_columns=("language",)
+            ),
+            "by_detected_language": per_group_metrics(
+                test_frame_with_length, test_probabilities, threshold, group_columns=("detected_language",)
             ),
             "by_category": per_group_metrics(
                 test_set.frame, test_probabilities, threshold, group_columns=("category",)

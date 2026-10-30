@@ -662,6 +662,62 @@ def test_security_headers_on_success_and_error(client):
         assert response.headers["X-Content-Type-Options"] == "nosniff"
         assert response.headers["X-Frame-Options"] == "DENY"
         assert response.headers["Referrer-Policy"] == "no-referrer"
+        assert "default-src 'self'" in response.headers["Content-Security-Policy"]
+        assert "Permissions-Policy" in response.headers
+        assert "X-Request-ID" in response.headers
+
+
+def test_request_id_header_preserved(client):
+    custom_id = "test-custom-request-id-12345"
+    response = client.get("/health", headers={"X-Request-ID": custom_id})
+    assert response.headers["X-Request-ID"] == custom_id
+
+
+def test_rate_limiting_enforced(client, monkeypatch):
+    monkeypatch.setattr(api_main, "RATE_LIMIT", 3)
+    monkeypatch.setattr(api_main, "RATE_LIMIT_WINDOW", 60)
+    api_main._reset_rate_limits()
+
+    try:
+        # First 3 requests to /predict should succeed
+        for _ in range(3):
+            resp = client.post("/predict", json={"message": "Safe test message"})
+            assert resp.status_code == 200
+
+        # 4th request must be rate-limited (429)
+        throttled = client.post("/predict", json={"message": "Safe test message"})
+        assert throttled.status_code == 429
+        assert_error_schema(throttled, 429, "rate_limited")
+        assert "Retry-After" in throttled.headers
+        assert int(throttled.headers["Retry-After"]) > 0
+    finally:
+        api_main._reset_rate_limits()
+
+
+def test_rate_limiting_ignores_exempt_endpoints(client, monkeypatch):
+    monkeypatch.setattr(api_main, "RATE_LIMIT", 1)
+    monkeypatch.setattr(api_main, "RATE_LIMIT_WINDOW", 60)
+    api_main._reset_rate_limits()
+
+    try:
+        # Health check is not rate limited
+        r1 = client.get("/health")
+        r2 = client.get("/health")
+        assert r1.status_code == 200
+        assert r2.status_code == 200
+    finally:
+        api_main._reset_rate_limits()
+
+
+def test_structured_logging_records_requests(client, caplog):
+    import logging
+
+    with caplog.at_level(logging.INFO, logger="api.main"):
+        resp = client.get("/health", headers={"X-Request-ID": "logging-req-id-99"})
+        assert resp.status_code == 200
+        assert any(
+            "logging-req-id-99" in record.message and "request_completed" in record.message for record in caplog.records
+        )
 
 
 # ---------------------------------------------------------------------------

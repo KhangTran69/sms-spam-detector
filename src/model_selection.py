@@ -20,7 +20,7 @@ from typing import Any
 import numpy as np
 from sklearn.base import clone
 from sklearn.calibration import CalibratedClassifierCV
-from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.metrics import f1_score
 from sklearn.model_selection import StratifiedGroupKFold, StratifiedKFold
 from sklearn.pipeline import Pipeline
@@ -33,6 +33,7 @@ DEFAULT_THRESHOLD = 0.5
 MIN_ROBUST_F1_GAIN = 0.01
 LOGISTIC_C_GRID = (0.3, 1.0, 3.0, 10.0, 30.0)
 SVM_C_GRID = (0.03, 0.1, 0.3, 1.0)
+SGD_ALPHA_GRID = (1e-4, 1e-3, 1e-2)
 CALIBRATION_METHOD = "sigmoid"
 
 
@@ -53,6 +54,20 @@ def candidate_classifiers(seed: int) -> list[tuple[str, Any]]:
             (
                 f"linear_svm(C={c_value:g})",
                 LinearSVC(C=c_value, class_weight="balanced", max_iter=20000, random_state=seed),
+            )
+        )
+    for alpha in SGD_ALPHA_GRID:
+        candidates.append(
+            (
+                f"sgd_classifier(alpha={alpha:g})",
+                SGDClassifier(
+                    loss="log_loss",
+                    penalty="l2",
+                    alpha=alpha,
+                    class_weight="balanced",
+                    max_iter=2000,
+                    random_state=seed,
+                ),
             )
         )
     return candidates

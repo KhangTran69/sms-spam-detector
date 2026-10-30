@@ -109,6 +109,67 @@ def fbeta(precision: float, recall: float, beta: float) -> float:
     return (1 + beta_sq) * precision * recall / denominator
 
 
+def bootstrap_metrics(
+    labels: Sequence[str],
+    probabilities: Iterable[float],
+    threshold: float,
+    *,
+    n_bootstraps: int = 1000,
+    seed: int = 42,
+    alpha: float = 0.05,
+) -> dict[str, Any]:
+    """Compute empirical percentile bootstrap confidence intervals for precision, recall, F1, and accuracy.
+
+    Resamples indices with replacement to estimate sampling distributions without parametric assumptions.
+    """
+    y = _labels(labels)
+    probs = _positive_probabilities(probabilities)
+    n = len(y)
+    if n == 0:
+        raise ValueError("Cannot bootstrap empty labels/probabilities")
+
+    rng = np.random.default_rng(seed)
+    f1_list: list[float] = []
+    prec_list: list[float] = []
+    rec_list: list[float] = []
+    acc_list: list[float] = []
+
+    for _ in range(n_bootstraps):
+        idx = rng.choice(n, size=n, replace=True)
+        sample_y = y[idx]
+        sample_probs = probs[idx]
+        predicted = np.where(sample_probs >= float(threshold), "spam", "ham")
+        is_spam = sample_y == "spam"
+        is_pred = predicted == "spam"
+        tp = int(np.sum(is_spam & is_pred))
+        fp = int(np.sum(~is_spam & is_pred))
+        tn = int(np.sum(~is_spam & ~is_pred))
+        fn = int(np.sum(is_spam & ~is_pred))
+
+        prec = tp / (tp + fp) if tp + fp else 0.0
+        rec = tp / (tp + fn) if tp + fn else 0.0
+        f1_val = 2 * prec * rec / (prec + rec) if prec + rec else 0.0
+        acc = (tp + tn) / n
+
+        f1_list.append(f1_val)
+        prec_list.append(prec)
+        rec_list.append(rec)
+        acc_list.append(acc)
+
+    lower_p = (alpha / 2.0) * 100
+    upper_p = (1.0 - alpha / 2.0) * 100
+
+    return {
+        "n_bootstraps": n_bootstraps,
+        "alpha": alpha,
+        "confidence_level": 1.0 - alpha,
+        "precision": [float(np.percentile(prec_list, lower_p)), float(np.percentile(prec_list, upper_p))],
+        "recall": [float(np.percentile(rec_list, lower_p)), float(np.percentile(rec_list, upper_p))],
+        "f1": [float(np.percentile(f1_list, lower_p)), float(np.percentile(f1_list, upper_p))],
+        "accuracy": [float(np.percentile(acc_list, lower_p)), float(np.percentile(acc_list, upper_p))],
+    }
+
+
 def threshold_sweep(
     labels: Sequence[str],
     probabilities: Iterable[float],
