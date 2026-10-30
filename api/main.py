@@ -88,7 +88,16 @@ _HTTP_ERROR_CODES = {
     503: "model_unavailable",
 }
 
-RATE_LIMIT_ENDPOINTS = {"/predict", "/analyze", "/analyze/batch", "/feedback"}
+RATE_LIMIT_ENDPOINTS = {
+    "/predict",
+    "/analyze",
+    "/analyze/batch",
+    "/feedback",
+    "/v1/predict",
+    "/v1/analyze",
+    "/v1/analyze/batch",
+    "/v1/feedback",
+}
 RATE_LIMIT = int(os.environ.get("SMSD_RATE_LIMIT", "0"))
 RATE_LIMIT_WINDOW = int(os.environ.get("SMSD_RATE_LIMIT_WINDOW", "60"))
 _rate_limit_lock = threading.Lock()
@@ -290,7 +299,15 @@ class PredictionRateLimitMiddleware:
         if (
             scope["type"] == "http"
             and scope.get("method") == "POST"
-            and scope.get("path") in {"/predict", "/analyze", "/analyze/batch"}
+            and scope.get("path")
+            in {
+                "/predict",
+                "/analyze",
+                "/analyze/batch",
+                "/v1/predict",
+                "/v1/analyze",
+                "/v1/analyze/batch",
+            }
         ):
             client = scope.get("client")
             key = client[0] if client else "unknown"
@@ -546,6 +563,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 from api import routes as _routes  # noqa: E402
 
 app.include_router(_routes.router)
+app.include_router(_routes.router, prefix="/v1")
 health = _routes.health
 ready = _routes.ready
 get_model_info = _routes.get_model_info

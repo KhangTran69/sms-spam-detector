@@ -105,6 +105,6 @@ docker-run:
 		$(IMAGE)
 
 clean:
-	rm -rf .pytest_cache .ruff_cache .mypy_cache htmlcov .coverage coverage.xml
+	rm -rf .pytest_cache .ruff_cache .mypy_cache htmlcov .coverage coverage.xml build/ dist/ *.egg-info
 	find . \( -name .venv -o -name venv \) -prune -o -type d -name __pycache__ -prune -exec rm -rf {} +
 	find . \( -name .venv -o -name venv \) -prune -o -type f -name '*.py[cod]' -delete

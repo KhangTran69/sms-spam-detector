@@ -23,7 +23,7 @@ from src.predict import (
     model_info,
     predict_message,
 )
-from src.train import train
+from src.train import log_experiment_run, train
 
 SPAM = [
     "Congratulations! You won a free prize. Claim now! Call 09171234567",
@@ -473,3 +473,17 @@ def test_model_regression_pinned_suite(trained_artifact):
     for message, expected in REGRESSION_PINNED_CASES:
         res = analyze_message(message, model=bundle)
         assert res["prediction"] == expected, f"Regression failure on message: {message}"
+
+
+def test_log_experiment_run(trained_artifact, tmp_path):
+    artifact, model_path = trained_artifact
+    runs_dir = tmp_path / "runs"
+    run_file = log_experiment_run(artifact, runs_dir=runs_dir, model_path=model_path)
+
+    assert run_file.exists()
+    assert run_file.parent == runs_dir
+    data = json.loads(run_file.read_text(encoding="utf-8"))
+    assert "run_id" in data
+    assert "metrics" in data
+    assert "training_config" in data
+    assert data["model_path"] == str(model_path)
