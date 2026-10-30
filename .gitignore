@@ -27,6 +27,8 @@ dist/
 *.egg-info/
 runs/*
 !runs/.gitkeep
+benchmarks/*
+!benchmarks/.gitkeep
 .DS_Store
 
 # Synthetic, shareable Philippine pattern files stay in git; real message data stays out.

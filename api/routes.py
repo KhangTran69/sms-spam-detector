@@ -32,6 +32,7 @@ from api.schemas import (
     PredictResponse,
     ReadinessResponse,
 )
+from src.monitor import default_monitor
 from src.predict import analyze_batch, analyze_message, model_info
 
 router = APIRouter()
@@ -99,9 +100,19 @@ def _append_feedback_report(report: dict[str, Any]) -> str:
     return report_id
 
 
+@router.get(
+    "/metrics/distribution",
+    response_model=dict[str, Any],
+    summary="Prediction score distribution and covariate drift metrics",
+)
+def get_distribution_metrics() -> dict[str, Any]:
+    return default_monitor.get_metrics()
+
+
 @router.post("/predict", response_model=PredictResponse, responses=_ERROR_RESPONSES, summary="Minimal verdict")
 async def predict(request: PredictRequest) -> PredictResponse:
     analysis = await asyncio.to_thread(analyze_message, request.message, model=_state().get_model())
+    default_monitor.record(analysis["probability"], analysis["prediction"])
     return PredictResponse(
         prediction=analysis["prediction"],
         probability=analysis["probability"],
@@ -115,12 +126,15 @@ async def predict(request: PredictRequest) -> PredictResponse:
 @router.post("/analyze", response_model=AnalyzeResponse, responses=_ERROR_RESPONSES, summary="Full analysis")
 async def analyze(request: PredictRequest) -> AnalyzeResponse:
     analysis = await asyncio.to_thread(analyze_message, request.message, model=_state().get_model())
+    default_monitor.record(analysis["probability"], analysis["prediction"])
     return AnalyzeResponse.model_validate(analysis)
 
 
 @router.post("/analyze/batch", response_model=BatchResponse, responses=_ERROR_RESPONSES, summary="Batch analysis")
 async def analyze_batch_endpoint(request: BatchRequest) -> BatchResponse:
     results = await asyncio.to_thread(analyze_batch, request.messages, model=_state().get_model())
+    for item in results:
+        default_monitor.record(item["probability"], item["prediction"])
     first = results[0] if results else {}
     return BatchResponse(
         count=len(results),

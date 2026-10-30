@@ -25,7 +25,7 @@ DEMO_MODEL ?= models/demo_synthetic.pkl
 DEMO_EVALUATION ?= data/processed/demo-synthetic.json
 BENCHMARK_DIR ?= data/processed/benchmark-run
 
-.PHONY: help install dev-install package-install test lint format typecheck train evaluate benchmark demo serve macos-install macos-status macos-stop macos-restart macos-uninstall docker-build docker-run clean
+.PHONY: help install dev-install package-install test lint format typecheck train evaluate benchmark benchmark-perf demo serve macos-install macos-status macos-stop macos-restart macos-uninstall docker-build docker-run clean
 
 help:
 	@sed -n '1,25p' Makefile
@@ -61,6 +61,9 @@ evaluate:
 benchmark:
 	@test -n "$(DATA)" || { echo "Set DATA to an approved training CSV; see docs/BENCHMARKING.md" >&2; exit 2; }
 	$(PYTHON) -m src.benchmark --data "$(DATA)" --output-dir "$(BENCHMARK_DIR)" $(if $(SUPPLEMENTS),--supplement $(SUPPLEMENTS),--no-supplements) $(if $(HOLDOUT),--holdout "$(HOLDOUT)",--holdout none)
+
+benchmark-perf:
+	$(PYTHON) scripts/benchmark_performance.py
 
 demo:
 	@mkdir -p "$(dir $(DEMO_MODEL))" "$(dir $(DEMO_EVALUATION))"

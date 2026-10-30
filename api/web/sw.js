@@ -20,7 +20,26 @@ const SHELL_REQUESTS = new Set(SHELL_ASSETS.map((asset) => {
   const url = new URL(asset, self.location.origin);
   return `${url.pathname}${url.search}`;
 }));
-const NEVER_CACHE_PATHS = ["/analyze", "/analyze/batch", "/predict", "/feedback", "/model-info", "/health", "/ready"];
+const NEVER_CACHE_PATHS = [
+  "/analyze",
+  "/analyze/batch",
+  "/predict",
+  "/feedback",
+  "/model-info",
+  "/health",
+  "/ready",
+  "/metrics",
+  "/metrics/distribution",
+  "/v1/analyze",
+  "/v1/analyze/batch",
+  "/v1/predict",
+  "/v1/feedback",
+  "/v1/model-info",
+  "/v1/health",
+  "/v1/ready",
+  "/v1/metrics",
+  "/v1/metrics/distribution",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {

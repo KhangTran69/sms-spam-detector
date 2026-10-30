@@ -572,6 +572,7 @@ analyze = _routes.analyze
 analyze_batch_endpoint = _routes.analyze_batch_endpoint
 submit_feedback = _routes.submit_feedback
 _append_feedback_report = _routes._append_feedback_report
+get_distribution_metrics = _routes.get_distribution_metrics
 
 
 _STATIC_ASSETS = {

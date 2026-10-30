@@ -737,6 +737,20 @@ def test_v1_versioned_routes(client):
     assert "risk_band" in analyze.json()
 
 
+def test_distribution_metrics_endpoint(client):
+    res_root = client.get("/metrics/distribution")
+    assert res_root.status_code == 200
+    data_root = res_root.json()
+    assert "score_distribution" in data_root
+    assert "spam_ratio" in data_root
+
+    res_v1 = client.get("/v1/metrics/distribution")
+    assert res_v1.status_code == 200
+    data_v1 = res_v1.json()
+    assert "score_distribution" in data_v1
+    assert data_v1["samples_in_window"] >= 1
+
+
 # ---------------------------------------------------------------------------
 # CORS defaults
 # ---------------------------------------------------------------------------
