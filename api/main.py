@@ -105,15 +105,28 @@ _rate_limit_records: dict[str, list[float]] = defaultdict(list)
 
 
 def _client_ip(scope: dict[str, Any]) -> str:
-    for key, value in scope.get("headers", []):
-        if key.lower() == b"x-forwarded-for":
-            first_ip = value.decode("latin-1").split(",")[0].strip()
-            if first_ip:
-                return first_ip
+    # Forwarded headers are client-controlled unless a trusted proxy is
+    # explicitly configured. Keep logs consistent with the rate limiter's
+    # direct-connection identity and prevent forged values from entering logs.
     client = scope.get("client")
     if client and len(client) > 0 and client[0]:
         return str(client[0])
-    return "127.0.0.1"
+    return "unknown"
+
+
+def _request_id(scope: dict[str, Any]) -> str:
+    for key, value in scope.get("headers", []):
+        if key.lower() != b"x-request-id":
+            continue
+        candidate = value.decode("latin-1").strip()
+        if (
+            1 <= len(candidate) <= 128
+            and candidate.isascii()
+            and all(char.isalnum() or char in "-._:" for char in candidate)
+        ):
+            return candidate
+        break
+    return uuid.uuid4().hex
 
 
 def _check_rate_limit(ip: str, now: float | None = None) -> tuple[bool, int]:
@@ -158,11 +171,7 @@ class RequestBodyLimitMiddleware:
 
         start_time = time.perf_counter()
         raw_headers = scope.get("headers", [])
-        incoming_req_id = next(
-            (v.decode("latin-1").strip() for k, v in raw_headers if k.lower() == b"x-request-id" and v.strip()),
-            None,
-        )
-        request_id = incoming_req_id or uuid.uuid4().hex
+        request_id = _request_id(scope)
         status_code = 500
 
         async def secure_send(message):
