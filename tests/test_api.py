@@ -694,6 +694,25 @@ def test_rate_limiting_enforced(client, monkeypatch):
         api_main._reset_rate_limits()
 
 
+def test_client_ip_ignores_untrusted_forwarded_header():
+    scope = {
+        "headers": [(b"x-forwarded-for", b"203.0.113.45\nforged-log-entry")],
+        "client": ("192.0.2.10", 4321),
+    }
+
+    assert api_main._client_ip(scope) == "192.0.2.10"
+
+
+def test_request_id_rejects_log_control_characters():
+    scope = {"headers": [(b"x-request-id", b"trusted-id\nforged-log-entry")]}
+
+    request_id = api_main._request_id(scope)
+
+    assert request_id != "trusted-id\nforged-log-entry"
+    assert len(request_id) == 32
+    assert request_id.isascii() and request_id.isalnum()
+
+
 def test_rate_limiting_ignores_exempt_endpoints(client, monkeypatch):
     monkeypatch.setattr(api_main, "RATE_LIMIT", 1)
     monkeypatch.setattr(api_main, "RATE_LIMIT_WINDOW", 60)

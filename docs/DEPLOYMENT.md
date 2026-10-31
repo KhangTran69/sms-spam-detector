@@ -322,6 +322,7 @@ These variables are read by the application. None is a secret.
 | `SMSD_CORS_ORIGINS` | `http://127.0.0.1:8000,http://localhost:8000` | Comma-separated allowlist of browser origins. Wildcard `*` entries are ignored, and an empty/wildcard-only value falls back to the default local origins; credentials are disabled. Set your reverse-proxy origin (e.g. `https://sms.example.org`) if the UI is served from a different origin. |
 | `SMSD_FEEDBACK_ENABLED` | `false` | Enables optional anonymous label correction in non-production environments. Production mode always disables it; stale model-version reports are rejected. |
 | `SMSD_FEEDBACK_PATH` | `data/feedback/reports.jsonl` | Local JSONL queue containing selected labels, broad category, timestamp, and model version only; never SMS text. Compose stores it in the named `smsd_feedback` volume. |
+| `SMSD_RATE_LIMIT_PER_MINUTE` | `60` | In-process request limit per direct client address for anonymous prediction endpoints. It is a single-worker fallback; enforce a shared limit at the gateway for multiple workers or replicas. |
 
 - There is **no** `PORT`, log-level, or threshold environment variable. Pass
   host/port/log level to uvicorn on the command line
@@ -333,12 +334,13 @@ These variables are read by the application. None is a secret.
   `Content-Length`; it keeps the capped chunks and briefly joins them before
   dispatch, so concurrent requests can use several megabytes each. These
   limits are not env-configurable. Set matching ingress limits and
-  request/read timeouts, concurrency limits, and rate limiting at the reverse
-  proxy or gateway before exposing the API publicly. The app does not currently
-  implement rate limiting or an operational metrics endpoint.
-- The request body cap and security headers share one ASGI middleware. Keep
-  ingress request/read timeouts, concurrency limits, and rate limits configured
-  at the reverse proxy or gateway; the app does not enforce those controls.
+  request/read timeouts, concurrency limits, and a shared rate limit at the
+  reverse proxy or gateway before exposing the API publicly. The app's
+  in-process per-address prediction limit is only a single-worker fallback.
+- The request body cap and security headers share one ASGI middleware. The
+  in-process limiter is not shared across workers or instances, so configure a
+  shared gateway rate limit plus ingress request/read timeouts and concurrency
+  limits.
 - **Never put secrets in these variables or in Git.** No API keys are needed.
   TLS private keys belong in the reverse proxy's secret store, outside the
   repository and image.
@@ -399,7 +401,7 @@ server {
 
 - Redirect HTTP → HTTPS; use HSTS once you are sure TLS persists.
 - Keep `client_max_body_size` aligned with the 1 MB API cap and set sensible
-  request timeouts/rate limits at the proxy (the app does not rate-limit).
+  request timeouts and shared rate limits at the proxy.
 - Disable proxy access-log body capture and any APM body sampling; see
   [PRIVACY.md](PRIVACY.md).
 - Restrict egress from the container (it needs none at runtime).
