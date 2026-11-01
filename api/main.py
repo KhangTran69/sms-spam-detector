@@ -34,6 +34,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from api.donations import DEFAULT_DONATION_DB
 from src.predict import (
     ModelArtifactError,
     load_model,
@@ -44,6 +45,11 @@ ROOT = Path(__file__).resolve().parents[1]
 WEB_DIR = Path(__file__).resolve().parent / "web"
 MAX_REQUEST_BYTES = 1_000_000  # 1 MB cap on the raw JSON body
 FEEDBACK_ENABLED = os.environ.get("SMSD_FEEDBACK_ENABLED", "").strip().lower() in {"1", "true", "yes"}
+DONATIONS_ENABLED = os.environ.get("SMSD_DONATIONS_ENABLED", "").strip().lower() in {"1", "true", "yes"}
+DONATION_NOTICE_VERSION = "2026-11-01-v4"
+DONATIONS_OPERATOR_CONTACT = os.environ.get("SMSD_DONATIONS_OPERATOR_CONTACT", "").strip()
+DONATION_DB_PATH = Path(os.environ.get("SMSD_DONATIONS_PATH", str(DEFAULT_DONATION_DB)))
+DONATION_RATE_LIMIT_PER_MINUTE = max(1, int(os.environ.get("SMSD_DONATION_RATE_LIMIT_PER_MINUTE", "5")))
 SMSD_ENV = os.environ.get("SMSD_ENV", "development").strip().lower()
 ALLOW_LEGACY_MODEL = os.environ.get("SMSD_ALLOW_LEGACY_MODEL", "").strip().lower() in {"1", "true", "yes"}
 if SMSD_ENV == "production":
@@ -82,6 +88,7 @@ _HTTP_ERROR_CODES = {
     404: "not_found",
     405: "method_not_allowed",
     413: "payload_too_large",
+    415: "unsupported_media_type",
     422: "validation_error",
     429: "rate_limited",
     500: "internal_error",
@@ -155,6 +162,11 @@ def _reset_rate_limits() -> None:
         _rate_windows.clear()
 
 
+def _is_donation_path(path: str) -> bool:
+    canonical = path.removeprefix("/v1")
+    return canonical == "/donate" or canonical.startswith("/donate/")
+
+
 logger = logging.getLogger("api.main")
 
 
@@ -192,6 +204,9 @@ class RequestBodyLimitMiddleware:
         client_ip = _client_ip(scope)
         path = scope.get("path", "")
         method = scope.get("method", "")
+        donation_request = _is_donation_path(path)
+        log_path = "/donate" if donation_request else path
+        log_client_ip = "redacted" if donation_request else client_ip
 
         # 1. Rate limiting check
         if path in RATE_LIMIT_ENDPOINTS:
@@ -202,9 +217,9 @@ class RequestBodyLimitMiddleware:
                     '{"event": "request_completed", "request_id": "%s", "method": "%s", "path": "%s", "status": 429, "latency_ms": %.2f, "client_ip": "%s"}',
                     request_id,
                     method,
-                    path,
+                    log_path,
                     elapsed_ms,
-                    client_ip,
+                    log_client_ip,
                 )
                 await _error_response(
                     429,
@@ -227,9 +242,9 @@ class RequestBodyLimitMiddleware:
                         '{"event": "request_completed", "request_id": "%s", "method": "%s", "path": "%s", "status": 413, "latency_ms": %.2f, "client_ip": "%s"}',
                         request_id,
                         method,
-                        path,
+                        log_path,
                         elapsed_ms,
-                        client_ip,
+                        log_client_ip,
                     )
                     await _error_response(
                         413,
@@ -258,9 +273,9 @@ class RequestBodyLimitMiddleware:
                     '{"event": "request_completed", "request_id": "%s", "method": "%s", "path": "%s", "status": 413, "latency_ms": %.2f, "client_ip": "%s"}',
                     request_id,
                     method,
-                    path,
+                    log_path,
                     elapsed_ms,
-                    client_ip,
+                    log_client_ip,
                 )
                 await _error_response(
                     413,
@@ -291,42 +306,48 @@ class RequestBodyLimitMiddleware:
                 '{"event": "request_completed", "request_id": "%s", "method": "%s", "path": "%s", "status": %d, "latency_ms": %.2f, "client_ip": "%s"}',
                 request_id,
                 method,
-                path,
+                log_path,
                 status_code,
                 elapsed_ms,
-                client_ip,
+                log_client_ip,
             )
 
 
 class PredictionRateLimitMiddleware:
-    """Bound anonymous prediction traffic per connecting IP (single process)."""
+    """Bound anonymous prediction and optional donation traffic per IP."""
 
     def __init__(self, app):
         self.app = app
 
     async def __call__(self, scope, receive, send):
-        if (
-            scope["type"] == "http"
-            and scope.get("method") == "POST"
-            and scope.get("path")
-            in {
-                "/predict",
-                "/analyze",
-                "/analyze/batch",
-                "/v1/predict",
-                "/v1/analyze",
-                "/v1/analyze/batch",
-            }
+        path = scope.get("path", "")
+        method = scope.get("method")
+        is_donation = scope["type"] == "http" and _is_donation_path(path)
+        is_prediction = path in {
+            "/predict",
+            "/analyze",
+            "/analyze/batch",
+            "/v1/predict",
+            "/v1/analyze",
+            "/v1/analyze/batch",
+        }
+        if scope["type"] == "http" and (
+            (method == "POST" and is_prediction) or (method in {"POST", "DELETE"} and is_donation)
         ):
             client = scope.get("client")
-            key = client[0] if client else "unknown"
+            key = (
+                f"donation:{client[0] if client else 'unknown'}"
+                if is_donation
+                else (client[0] if client else "unknown")
+            )
+            limit = DONATION_RATE_LIMIT_PER_MINUTE if is_donation else PREDICTION_RATE_LIMIT
             now = int(time.time())
             retry_after = None
             with _rate_lock:
                 start, count = _rate_windows.get(key, (now, 0))
                 if now - start >= 60:
                     start, count = now, 0
-                if count >= PREDICTION_RATE_LIMIT:
+                if count >= limit:
                     retry_after = max(1, 60 - (now - start))
                 else:
                     _rate_windows[key] = (start, count + 1)
@@ -383,7 +404,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
     allow_credentials=False,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["Content-Type"],
 )
 
@@ -592,6 +613,9 @@ _STATIC_ASSETS = {
     "history-store.js",
     "connection-status.js",
     "result-format.js",
+    "demo-examples.js",
+    "donate.js",
+    "donate.css",
     "styles.css",
     "icon.svg",
 }
@@ -619,6 +643,9 @@ def static_asset(asset_name: str, request: Request):
         "history-store.js": "text/javascript",
         "connection-status.js": "text/javascript",
         "result-format.js": "text/javascript",
+        "demo-examples.js": "text/javascript",
+        "donate.js": "text/javascript",
+        "donate.css": "text/css",
         "styles.css": "text/css",
         "icon.svg": "image/svg+xml",
     }[asset_name]

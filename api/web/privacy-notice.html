@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="referrer" content="no-referrer" />
+  <meta name="color-scheme" content="light dark" />
+  <title>Donation privacy notice · PH SMS Spam Detector</title>
+  <link rel="stylesheet" href="/static/styles.css?v=ui18-donation-20261101" />
+</head>
+<body>
+  <a class="skip-link" href="#notice-main">Skip to privacy notice</a>
+  <header class="site-header"><div class="header-inner"><div class="brand">PH SMS Spam Detector</div><a class="btn ghost" href="/donate">Back to donation form</a></div></header>
+  <main id="notice-main" tabindex="-1">
+    <article class="card input-card donation-card">
+      <h1>Philippine SMS Spam Detector donation privacy notice</h1>
+      <p><strong>Notice version:</strong> <code>2026-11-01-v4</code><br /><strong>Effective:</strong> 1 November 2026</p>
+      <p><strong>Local service operator/contact:</strong> __DONATIONS_OPERATOR_CONTACT__</p>
+      <p>Donating is optional. The detector works without a donation. Collection is off unless the local operator enables it. The donation form accepts requests only from the same computer and is unavailable in production mode; it is not a public research service.</p>
+      <h2>Your separate choices</h2>
+      <p>To submit, you must confirm that you are authorized to share the message and consent to local storage for human review and labeling. Submit only a message sent directly to you or one you wrote. Do not submit someone else's private conversation, a live OTP, password, PIN, account credential, or full sender details.</p>
+      <p>You may separately opt in to having the message considered for future model research, including training or evaluation. Without this optional choice, the message is restricted to local review. Even with the opt-in, a message is not used automatically: the operator must verify the consent record, screen the message, obtain two independent reviews, resolve disagreements, and approve campaign/time-separated use. A donor-provided label is only a hint.</p>
+      <h2>What is stored</h2>
+      <p>The service stores the message, optional label hint and language, notice version, server-recorded UTC consent time, your consent choices, and a random withdrawal ID in local SQLite storage. The form does not ask for names, phone numbers, email addresses, account numbers, contact lists, or sender identifiers. A conservative scanner checks likely personal details, URLs, and codes before storage and again before review export. It can miss information; inspect and redact the message yourself before submitting.</p>
+      <p>The database has restrictive file permissions but is not encrypted by the application. The operator must encrypt the computer, restrict account access, protect backups, and keep the service bound to localhost without a public reverse proxy. Active messages are retained for 90 days from consent and purged on the next database access after expiry. Message text is not written to application logs, browser storage, analytics, or public reports.</p>
+      <h2>Withdrawal and use</h2>
+      <p>The page displays a random withdrawal ID and an erase action. The ID is not saved by the browser; keep it somewhere private if you may withdraw later. Withdrawal erases the message, label hint, and language. A content-free tombstone with consent version and timestamps remains until expiry. Contact the local operator about backup or downstream copies; deletion from derived models/reports may require additional review.</p>
+      <p>Submissions enter a local review queue and are never automatically used for model training or evaluation. A scanner is a best-effort aid, not proof that text is anonymous or safe to share. The operator must separately verify consent, privacy, labels, and campaign/date separation. This notice and software do not establish legal compliance; obtain appropriate privacy/legal review for the deployment.</p>
+      <p>The detector provides assistive spam-versus-ham signals, not a finding of fraud or a safety guarantee. Verify suspicious requests through trusted official channels.</p>
+      <p><a href="/">Return to the detector</a></p>
+    </article>
+  </main>
+</body>
+</html>

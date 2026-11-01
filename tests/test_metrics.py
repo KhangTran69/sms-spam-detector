@@ -56,6 +56,7 @@ def test_campaign_bootstrap_resamples_whole_groups_and_is_reproducible():
     assert first["method"].startswith("percentile cluster bootstrap")
     assert first["intervals"] == second["intervals"]
     assert first["group_count"] == 12
+    assert first["intervals"]["false_negative_rate"] == [0.0, 0.0]
 
 
 def test_campaign_bootstrap_withholds_interval_when_group_support_is_small():

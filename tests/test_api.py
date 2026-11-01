@@ -787,7 +787,7 @@ def test_cors_defaults_are_not_wildcard():
     options = getattr(cors_middleware[0], "kwargs", {})
     assert "*" not in options.get("allow_origins", [])
     assert options.get("allow_credentials") is False
-    assert set(options.get("allow_methods", [])) == {"GET", "POST"}
+    assert set(options.get("allow_methods", [])) == {"GET", "POST", "DELETE"}
     assert "Content-Type" in options.get("allow_headers", [])
 
 
@@ -834,7 +834,7 @@ def test_index_and_static_files_are_served(client):
     assert head.headers["content-length"] == str(len(script.content))
     assert head.headers["cache-control"] == "no-cache"
 
-    for module in ("api-client.js", "i18n.js", "privacy-preview.js"):
+    for module in ("api-client.js", "i18n.js", "privacy-preview.js", "demo-examples.js"):
         response = client.get(f"/static/{module}")
         assert response.status_code == 200
         assert "javascript" in response.headers["content-type"]

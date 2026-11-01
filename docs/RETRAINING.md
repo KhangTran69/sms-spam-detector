@@ -55,11 +55,11 @@ A candidate may be promoted only if **all** hold:
 
 - [ ] Training/evaluation complete with recorded seed, config, data hashes, and
       code revision.
-- [ ] Leakage checks pass: no exact-duplicate, template-family, donor, or
+- [ ] Leakage checks pass: no exact-duplicate, template-family, or
       supplement/holdout overlap between train/validation/holdout.
-- [ ] Held-out threshold sweep shows the selected precision-first operating point;
-      the `decision_threshold` stored in the bundle matches what `predict`, the
-      API, and the UI use (one source of truth in the artifact).
+- [ ] The threshold is selected from training/validation data only and the
+      `decision_threshold` stored in the bundle matches the API and UI. The
+      frozen test is evaluated once at this fixed threshold.
 - [ ] The synthetic Philippine holdout is reported **separately** and labeled
       synthetic-only; no claim of real-world performance.
 - [ ] Calibration diagnostics are within the agreed tolerance (or the limitation
@@ -102,7 +102,9 @@ a subset without review.
 ## 5. Evaluation on a separate holdout
 
 - Train/validation/holdout are disjoint by row **and** by group (template
-  family, campaign, donor). A random row split is not sufficient for
+  family/campaign). Do not retain donor or sender identifiers for grouping; a
+  campaign-only grouping cannot prove that repeated contributions from the same
+  person are independent. A random row split is not sufficient for
   generalization claims.
 - Use validation to choose thresholds and hyperparameters; touch the holdout
   once per candidate. Do not iterate against the holdout.

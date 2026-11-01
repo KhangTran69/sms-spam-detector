@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "registered_at": null,
+  "intended_use": "",
+  "dataset_sha256": "",
+  "training_dataset_sha256": "",
+  "training_membership_sha256": "",
+  "test_membership_sha256": "",
+  "model_sha256": "",
+  "model_version": "",
+  "decision_threshold": null,
+  "split_method": "chronological_campaign_holdout",
+  "campaign_overlap_checked": false,
+  "test_split_sealed": false,
+  "minimum_campaign_groups": null,
+  "coverage_rationale": "",
+  "uncertainty_rationale": "",
+  "minimum_coverage": {
+    "language": {},
+    "category": {}
+  },
+  "maximum_cluster_interval_width": {
+    "precision": null,
+    "recall": null,
+    "f1": null,
+    "false_positive_rate": null,
+    "false_negative_rate": null
+  }
+}

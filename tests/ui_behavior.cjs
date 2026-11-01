@@ -61,7 +61,7 @@ const context = vm.createContext({ console, AbortController, setTimeout, clearTi
     addEventListener() {}, createElement: tagName => element(tagName), createTextNode: text => ({ textContent: text }) } });
 const webDir = path.join(__dirname, '../api/web');
 context.window.localStorage = context.localStorage;
-for (const moduleName of ['api-client.js', 'i18n.js', 'privacy-preview.js', 'history-store.js', 'connection-status.js', 'result-format.js']) {
+for (const moduleName of ['demo-examples.js', 'api-client.js', 'i18n.js', 'privacy-preview.js', 'history-store.js', 'connection-status.js', 'result-format.js']) {
   const moduleSource = fs.readFileSync(path.join(webDir, moduleName), 'utf8').replace(/^export /gm, '');
   vm.runInContext(moduleSource, context, { filename: moduleName });
 }
@@ -80,13 +80,26 @@ assert.equal(run('EXAMPLES.safe.length'), 20, 'the safe example set must contain
 assert.equal(run('new Set(EXAMPLES.scam).size'), 20, 'scam examples must be distinct');
 assert.equal(run('new Set(EXAMPLES.safe).size'), 20, 'safe examples must be distinct');
 assert.equal(run('EXAMPLES.safe.length'), 20, 'safe examples should cycle independently');
+const scamDataset = fs.readFileSync(path.join(__dirname, '../data/raw/ph_supplement_4.csv'), 'utf8');
+const safeDataset = fs.readFileSync(path.join(__dirname, '../data/raw/ph_supplement_5.csv'), 'utf8');
+const scamExamples = Array.from(run('EXAMPLES.scam'));
+const safeExamples = Array.from(run('EXAMPLES.safe'));
+assert.ok(scamExamples.every(message => scamDataset.includes(message)), 'spam examples must come from the tracked synthetic PH spam fixture');
+assert.ok(safeExamples.every(message => safeDataset.includes(message)), 'legitimate examples must come from the tracked synthetic PH ham fixture');
+for (const message of [...scamExamples, ...safeExamples]) {
+  assert.doesNotMatch(message, /(?:\+?63|0)9[\d\s().-]{7,}\d/, 'demo examples must not expose phone numbers');
+  assert.doesNotMatch(message, /\b[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}\b/, 'demo examples must not expose email addresses');
+  assert.doesNotMatch(message, /\b\d{5,}\b/, 'demo examples must not include unmasked identifier-like number runs');
+  const hosts = Array.from(message.matchAll(/(?:https?:\/\/)?([A-Za-z0-9.-]+\.[A-Za-z]{2,})(?=\/|\b)/g), match => match[1].toLowerCase());
+  assert.ok(hosts.every(host => host === 'example.com'), 'demo links must use the reserved example.com domain');
+}
 assert.equal(run('FALLBACK_MODEL_INFO.bands.likely_scam'), 0.5, 'fallback scam band matches the built-in API threshold');
 assert.equal(run('FALLBACK_MODEL_INFO.suspicious_threshold'), 0.25, 'fallback suspicious band matches the built-in API threshold');
 assert.equal(run(`csvCell(${JSON.stringify('a, b "quoted"')})`), '"a, b ""quoted"""', 'CSV must escape quotes and delimiters');
 assert.equal(run('csvCell("=SUM(1,1)")'), '"\'=SUM(1,1)"', 'formula-like text must be exported as text');
 assert.equal(run('csvCell("  @SUM(1,1)")'), '"\'  @SUM(1,1)"', 'leading whitespace must not bypass formula protection');
 assert.equal(run(`csvCell(${JSON.stringify('\uFEFF=1+1')})`), '"\'\uFEFF=1+1"', 'Unicode BOM must not bypass formula protection');
-assert.match(run('t("examples.status", {kind: t("examples.scamKind"), index: 1, total: 20})'), /Loaded fictional spam message 1 of 20/);
+assert.match(run('t("examples.status", {kind: t("examples.scamKind"), index: 1, total: 20})'), /Loaded synthetic spam training example 1 of 20/);
 const privacyFixture = '😀 OTP is 123456. Call 0917-123-4567 or email user@example.test. Reference no: TX-12345; amount ₱500 on 2026-10-21.';
 const privacySpans = Array.from(run(`detectSensitiveSpans(${JSON.stringify(privacyFixture)})`), span => ({
   type: span.type,
@@ -252,15 +265,15 @@ run('lang = "en"');
     'repeated scam clicks should load a different example');
   assert.equal(run('EXAMPLES.scam.length'), 20, 'the scam example set should contain 20 messages');
   assert.equal(run('new Set(EXAMPLES.scam).size'), 20, 'scam examples should not be duplicated');
-  assert.match(run('$("example-status").textContent'), /spam message 2 of 20/);
+  assert.match(run('$("example-status").textContent'), /spam training example 2 of 20/);
   for (let index = 0; index < 18; index += 1) exampleChips[0].listeners.click();
-  assert.match(run('$("example-status").textContent'), /spam message 20 of 20/);
+  assert.match(run('$("example-status").textContent'), /spam training example 20 of 20/);
   exampleChips[0].listeners.click();
-  assert.match(run('$("example-status").textContent'), /spam message 1 of 20/, 'spam examples should wrap around');
+  assert.match(run('$("example-status").textContent'), /spam training example 1 of 20/, 'spam examples should wrap around');
   exampleChips[1].listeners.click();
   assert.equal(run('EXAMPLES.safe.length'), 20, 'the safe example set should contain 20 messages');
   assert.equal(run('new Set(EXAMPLES.safe).size'), 20, 'safe examples should not be duplicated');
-  assert.match(run('$("example-status").textContent'), /legitimate message 1 of 20/);
+  assert.match(run('$("example-status").textContent'), /legitimate training example 1 of 20/);
   assert.equal(run('demoChecks'), 22, 'each example click should trigger analysis');
   run('lang = "en"; renderTips({risk_band:"likely_scam", flags:["has_url","has_money"], brands:["bdo"]})');
   assert.equal(run('$("tips").childNodes.length'), 1, 'the main result should show one immediate next step');

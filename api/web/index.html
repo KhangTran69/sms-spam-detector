@@ -8,7 +8,7 @@
   <title>PH SMS Scam Detector</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>" />
   <link rel="manifest" href="/manifest.webmanifest" />
-  <link rel="stylesheet" href="/static/styles.css?v=ui16-model-details-20261024" />
+  <link rel="stylesheet" href="/static/styles.css?v=ui19-synthetic-examples-20261101" />
   <script>
     // Apply the saved theme before first paint to avoid a flash of the wrong theme.
     (function () {
@@ -82,8 +82,8 @@
           aria-describedby="message-help char-count"
           data-i18n-placeholder="check.placeholder"
           placeholder="e.g. Bank notice: Your account review is due. Visit bank-help.example to read more."></textarea>
-        <p id="message-help" class="hint" data-i18n="check.help">At most 10,000 characters. Messages are analysed in memory and are
-          never stored on the server.</p>
+        <p id="message-help" class="hint" data-i18n="check.help">At most 10,000 characters. Ordinary checks are analysed in memory and are
+          not stored on the server. Optional donation is separate and requires consent.</p>
         <div class="privacy-actions">
           <button type="button" id="btn-privacy-review" class="btn secondary" data-i18n="privacy.review">Review sensitive details</button>
           <span class="hint" data-i18n="privacy.optional">Optional: review and mask details before analysis.</span>
@@ -103,7 +103,7 @@
         <span class="examples-label" data-i18n="examples.label">Try an example:</span>
         <button type="button" class="example-chip scam" data-example="scam"><span aria-hidden="true">🚨</span> <span data-i18n="examples.scam">Spam example</span></button>
         <button type="button" class="example-chip safe" data-example="safe"><span aria-hidden="true">✅</span> <span data-i18n="examples.safe">Legitimate example</span></button>
-        <span id="example-status" class="example-status" role="status" aria-live="polite" data-i18n="examples.note">Fictional demo examples only. Click either button again to cycle through more messages.</span>
+        <span id="example-status" class="example-status" role="status" aria-live="polite" data-i18n="examples.note">Examples come from synthetic PH training fixtures—not real inbox messages or proof of accuracy. Click again to cycle through more.</span>
       </div>
 
       <div id="result" class="result hidden" role="status" aria-live="polite" aria-label="Analysis result" data-i18n-aria-label="result.aria">
@@ -300,7 +300,7 @@
           <label for="history-optin" data-i18n="history.optin">Save my checks in this browser</label>
         </div>
         <p id="history-privacy" class="hint" data-i18n="history.privacy">Off by default. When on, the last 50 checks are stored only in
-          this browser's localStorage — message text is never sent to or stored on the server. Turn it off
+          this browser's localStorage — ordinary checks are not stored on the server. Optional donation is separate and requires consent. Turn history off
           to delete saved history from this browser.</p>
         <p id="history-status" class="hint history-status" role="status" aria-live="polite"></p>
         <ul id="history-list" class="history-list" aria-label="Saved checks" data-i18n-aria-label="history.list"></ul>
@@ -313,8 +313,9 @@
     <p data-i18n="footer.disclaimer">Heuristic aid, not a guarantee. Verify money or account messages through the official app or hotline —
       and never share OTPs or PINs.</p>
     <p data-i18n="footer.synthetic">Checks using synthetic Philippine data are not proof of real-world accuracy.</p>
+    <p><a id="donate-link" href="/donate" hidden data-i18n="footer.donate">Optional message donation</a></p>
   </footer>
 
-  <script type="module" src="/static/app.js?v=ui16-model-details-20261024"></script>
+  <script type="module" src="/static/app.js?v=ui19-synthetic-examples-20261101"></script>
 </body>
 </html>

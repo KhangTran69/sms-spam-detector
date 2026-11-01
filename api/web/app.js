@@ -1,9 +1,10 @@
-import { API, createApiClient } from "./api-client.js?v=ui16-model-details-20261024";
-import { I18N } from "./i18n.js?v=ui16-model-details-20261024";
-import { applyPrivacyMasks, buildPrivacyReview, clearPrivacyReview, detectSensitiveSpans } from "./privacy-preview.js?v=ui16-model-details-20261024";
-import { createHistoryStore } from "./history-store.js?v=ui16-model-details-20261024";
-import { createConnectionStatus } from "./connection-status.js?v=ui16-model-details-20261024";
-import { createResultFormatting, normalizeModelInfo } from "./result-format.js?v=ui16-model-details-20261024";
+import { API, createApiClient } from "./api-client.js?v=ui19-synthetic-examples-20261101";
+import { I18N } from "./i18n.js?v=ui19-synthetic-examples-20261101";
+import { applyPrivacyMasks, buildPrivacyReview, clearPrivacyReview, detectSensitiveSpans } from "./privacy-preview.js?v=ui19-synthetic-examples-20261101";
+import { createHistoryStore } from "./history-store.js?v=ui19-synthetic-examples-20261101";
+import { createConnectionStatus } from "./connection-status.js?v=ui19-synthetic-examples-20261101";
+import { createResultFormatting, normalizeModelInfo } from "./result-format.js?v=ui19-synthetic-examples-20261101";
+import { EXAMPLES } from "./demo-examples.js?v=ui19-synthetic-examples-20261101";
 
 /* PH SMS Scam Detector — UI logic (no build step, vanilla JS). */
 "use strict";
@@ -206,52 +207,6 @@ const BRANDS = {
   iphone: "iPhone", cebuana: "Cebuana Lhuillier",
 };
 
-const EXAMPLES = {
-  scam: [
-    "BDO ALERT: Your account access will be suspended today. Confirm your details at bdo-verify.example to keep it active.",
-    "Nanalo ka ng [AMOUNT]! I-claim agad sa prize-claim.example bago mag-expire ang promo.",
-    "Delivery notice: May kulang na [AMOUNT] fee. Bayaran ngayon sa parcel-pay.example para ma-release ang package.",
-    "GCash security check: May unusual activity. I-verify ang wallet mo sa gcash-review.example ngayon.",
-    "Work from home! Earn [AMOUNT] kada araw. Send [ID] and a registration fee today to reserve your slot.",
-    "SIM registration failed. I-update ang details mo sa sim-update.example within 2 hours para hindi ma-disable ang number.",
-    "Maya: May pending reward ka. Confirm your wallet at maya-bonus.example before midnight.",
-    "Pre-approved loan offer! Pay a [AMOUNT] processing fee at mabilis-loan.example to release funds today.",
-    "Guaranteed daily investment returns daw! Register at kita-now.example habang may slots pa.",
-    "May ayuda ka raw na naghihintay. Submit your account details at ayuda-claim.example ngayong araw.",
-    "Final warning: Your online account will close tonight. Restore access at secure-login.example.",
-    "GCash payment failed. Re-enter your MPIN at gcash-fix.example para ma-refund ang [AMOUNT].",
-    "Customs notice: Pay the missing parcel tax at release-package.example or your delivery will be returned.",
-    "Your [AMOUNT] refund is ready. Add your card number at refund-center.example to receive it.",
-    "Lucky winner ka! Send [CODE] to prize-desk.example to claim your mystery gift.",
-    "Hiring urgent: No experience needed. Deposit [AMOUNT] at work-slot.example to secure the job.",
-    "May suspicious charge daw sa account mo. Verify agad sa account-check.example para ma-block ito.",
-    "UnionBank notice: Your profile needs updating. Continue at ub-profile.example within 30 minutes.",
-    "Your e-wallet will be deactivated. I-confirm ang PIN mo sa wallet-restore.example ngayon.",
-    "Subscription payment declined. Update billing details at renew-now.example to avoid losing access.",
-  ],
-  safe: [
-    "Your one-time code is [CODE]. Never share it with anyone, even someone claiming to be from your bank.",
-    "BDO: Your transfer was completed. If you don't recognize it, check your account using the official app.",
-    "Your parcel is out for delivery today. Track it in the official courier app. No payment is due by SMS.",
-    "Meralco reminder: Your bill is ready. Please check the amount and due date in the official app.",
-    "Reminder: Parent meeting is on Friday at 3 PM in the school library. Salamat po!",
-    "Uy, kita tayo after class? I can bring the notes from yesterday. Message me when you're nearby.",
-    "BPI: A purchase was approved for [AMOUNT]. Review recent activity in the official app if needed.",
-    "GCash: You received [AMOUNT]. Open the app directly to review your balance and transaction history.",
-    "Maya: Your cash-in is complete. Please check the transaction in your Maya app.",
-    "J&T Express: Your parcel is out for delivery. No extra payment is needed for this shipment.",
-    "Maynilad: Your latest bill is available. Check the due date through the official customer portal.",
-    "Class is moved to Room 204 tomorrow. Pakisabi na rin sa group. Salamat!",
-    "Team reminder: Our weekly check-in starts at 10 AM. Please bring your project updates.",
-    "Your salary has been credited to your payroll account. Check your bank's official app for details.",
-    "Nasa sakayan na ako. Dadaan ako sa tindahan, may kailangan ka ba?",
-    "Doctor appointment reminder: Your visit is scheduled for Thursday afternoon. Call the clinic using its saved contact if you need to reschedule.",
-    "Your subscription renewal was successful. Manage your plan in the service's official app.",
-    "Card payment approved for [AMOUNT]. If this wasn't you, contact your bank using the number on your card.",
-    "Your package was delivered to the pickup counter. Bring your claim slip when you collect it.",
-    "This week's member promo is available in the official store app. No need to reply to this message.",
-  ],
-};
 const EXAMPLE_INDEX = { scam: -1, safe: -1 };
 
 let modelInfo = normalizeModelInfo(FALLBACK_MODEL_INFO, validFraction);
@@ -461,6 +416,17 @@ async function loadModelInfo() {
   }
   renderActiveModelInfo();
   if (currentComparison) renderComparison(currentComparison.results);
+}
+
+async function updateDonationLink() {
+  const link = $("donate-link");
+  if (!link) return;
+  try {
+    const response = await fetch("/donate", { method: "HEAD", cache: "no-store" });
+    link.hidden = !response.ok;
+  } catch {
+    link.hidden = true;
+  }
 }
 
 async function refreshServiceStatus() {
@@ -1960,6 +1926,7 @@ document.addEventListener("DOMContentLoaded", () => {
   renderModelInfo();
   refreshServiceStatus();
   loadModelInfo();
+  updateDonationLink();
   initComparison();
   initServiceWorker();
 });

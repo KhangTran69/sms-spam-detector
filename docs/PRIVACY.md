@@ -14,11 +14,19 @@ accounts, so privacy is a first-class design constraint.
   Comparison summary copying is explicit and copies model context and derived
   results, not the original SMS bodies. Do not enter messages unless you are
   comfortable sending them to the operator of this detector.
-- **No server-side message persistence.** The application does not write message
-  text to a database, file, cache, feedback queue, or analytics system. A
-  separate, operator-enabled feedback action stores only the user's selected
-  expected label, broad category, and model version; it has no message-text
-  field.
+- **Prediction and analysis endpoints do not persist messages.** They do not
+  write message text to a database, file, cache, feedback queue, or analytics
+  system. A separate, operator-enabled feedback action stores only selected
+  labels/category/model version and has no message-text field.
+- **Optional, consent-gated donation is a separate storage exception.** It stays
+  disabled unless the operator explicitly enables it and configures a visible
+  contact. Requests are loopback-only and the intake is unavailable in
+  production mode; do not expose it through a reverse proxy. After
+  version-matched consent, a PII scan, and a donor's explicit submit, it stores
+  the donation in local SQLite for up to 90 days. It is not enabled by the
+  default app configuration and does not change prediction requests. See
+  [DONATION_INTAKE.md](DONATION_INTAKE.md) and the
+  [versioned privacy notice](privacy-notice.md).
 - The model artifact is static; it does not learn from or retain requests.
 - Restarting the process is sufficient to erase all in-memory state.
 
@@ -30,8 +38,11 @@ accounts, so privacy is a first-class design constraint.
 - Do not add "debug logging" of requests in production. If a logging framework
   captures request bodies by default, disable it.
 - Reverse proxies (nginx, Caddy, cloud load balancers) must also be configured
-  not to log request bodies. Access logs containing URLs are acceptable, but
-  `/predict` and `/analyze` carry data in the body — do not switch them to GET.
+  not to log request bodies. Donation withdrawal IDs are sent in a JSON body,
+  not a URL path; the supported local `smsd-serve` command disables Uvicorn
+  access logs, and application logs keep donation routes as `/donate` with the
+  client address redacted. `/predict` and `/analyze` carry data in the body —
+  do not switch them to GET.
 - Never send production messages to third-party error trackers/APMs. If you must
   use one, scrub bodies and headers centrally.
 - Batch endpoint: do not log the batch either. Error payloads are generic and do
@@ -56,7 +67,7 @@ The bundled web UI (`api/web/`) can keep recent checks in the browser's
   devices.
 - **Incognito/private windows** do not persist `localStorage` beyond the session.
 
-The language and two-state light/dark theme preferences are also stored in browser `localStorage` and contain no SMS text. The interface service worker caches only the static app shell (HTML, versioned CSS/JavaScript, and manifest) for offline reload. A new worker activates only after the complete shell has cached successfully; if an update is interrupted, the previous active worker remains available. It never handles POST requests or caches `/analyze`, `/analyze/batch`, `/predict`, `/feedback`, or `/model-info`; new analysis still requires a network connection. The app checks for service-worker updates on normal visits and clears superseded shell caches after activation. Browser-managed service-worker and cache data can be removed by clearing this site's stored data in browser settings.
+The language and two-state light/dark theme preferences are also stored in browser `localStorage` and contain no SMS text. The interface service worker caches only static HTML/CSS/JavaScript assets for offline reload. Donation forms/notices and all runtime API routes are excluded from shell caching; it never handles POST requests, and new donations require an explicit online submission. It never caches `/analyze`, `/analyze/batch`, `/predict`, `/feedback`, `/model-info`, `/donate`, or `/privacy-notice`; new analysis still requires a network connection. The app checks for service-worker updates on normal visits and clears superseded shell caches after activation. Browser-managed service-worker and cache data can be removed by clearing this site's stored data in browser settings.
 
 **Copy summary** writes the displayed result, including the message text, to the user's clipboard only after the user clicks the button. **Download CSV** generates a file locally in the browser and includes batch message text; the file is outside the app's control after download. Users should review it before sharing and delete it when no longer needed.
 CSV fields are quoted and embedded quotation marks escaped. Message cells that could be interpreted as spreadsheet formulas (including values with leading whitespace/control characters followed by `=`, `+`, `-`, or `@`) are prefixed as text before export. This is a convenience safeguard; review downloaded files before opening them in spreadsheet software.
@@ -140,8 +151,9 @@ history is being stored in the browser and clear it; see the UI's history panel.
 
 ## 6. Data-subject requests and retention
 
-Because the server does not store messages, it holds no per-user message data to
-export or delete. The residual copies are:
+Prediction/analysis requests are processed in memory only. If donation intake is
+enabled, the local operator also holds the explicitly donated record until
+withdrawal or the 90-day expiry. The residual copies are:
 
 | Location | What | How to handle a deletion request |
 |---|---|---|
@@ -149,11 +161,16 @@ export or delete. The residual copies are:
 | Server/proxy logs | must be message-free by policy | verify; if a body leaked, rotate/delete the log and record an incident |
 | User's browser `localStorage` | opt-in history, user-controlled | "Clear history" button; it never leaves the browser |
 | Feedback queue | labels/category/model version only | archive or delete `data/feedback/reports.jsonl` under the operator's retention policy |
-| Retraining datasets (if any) | masked real data held locally | delete matching donor rows using the consent-log pseudonym, record deletion, retrain artifacts if required |
+| Donation SQLite (if enabled) | consented text, optional hint/language, notice version/time, opaque ID | use the withdrawal ID; deletion erases text and hint, then vacuums the local database |
+| Donation exports/backups | private review-stage data | delete matching rows and backups on withdrawal/expiry; regenerate any derived approved datasets and artifacts |
+| Retraining datasets (if any) | independently reviewed, masked real data held locally | delete matching donor rows using the restricted consent register; rebuild affected artifacts if required |
 
 Retention:
 
-- API traffic: no stored messages → no retention clock.
+- Prediction/analysis API traffic: no stored messages → no retention clock.
+- Donations: 90 days from consent. Expired records are purged on the next
+  donation database access; an idle service may keep expired bytes until it is
+  next accessed. Backups are controlled and deleted by the local operator.
 - Logs: keep the minimum (e.g. 30 days) and never include message bodies.
 - Consented datasets: keep only while needed for the current model; revisit at
   least annually, delete stale/withdrawn data, and document the decision in the
@@ -181,7 +198,12 @@ Retention:
 ## 8. Operator checklist
 
 - [ ] Request bodies are not logged anywhere (app, proxy, APM)
-- [ ] No message data is persisted by the service
+- [ ] Prediction and analysis messages are not persisted by the service
+- [ ] Donation intake remains disabled unless there is a reviewed purpose,
+      suitable lawful basis, visible operator contact, retention plan, and
+      access-controlled local host; never expose it publicly
+- [ ] The donation database, exports, and backups are access-controlled,
+      excluded from Git/cloud sync, and erased on withdrawal or expiry
 - [ ] Browser history is opt-in and clearable; users on shared devices are warned
 - [ ] Model and data artifacts are git-ignored; repository contains no personal
       messages or secrets

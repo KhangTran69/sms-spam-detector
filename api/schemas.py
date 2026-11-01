@@ -147,6 +147,35 @@ class FeedbackResponse(BaseModel):
     message: str
 
 
+class DonationRequest(BaseModel):
+    """Explicitly consented local contribution; hints are not verified labels."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    message: MessageText
+    label_hint: Literal["ham", "spam"] | None = None
+    language: str | None = Field(default=None, min_length=2, max_length=16, pattern=r"^[A-Za-z][A-Za-z0-9_-]*$")
+    consent: bool
+    authorized_to_share: bool
+    model_research_consent: bool = False
+    notice_version: str = Field(..., min_length=1, max_length=64)
+
+
+class DonationWithdrawalRequest(BaseModel):
+    """Withdrawal capability is sent in a body so server access logs cannot capture it in a URL."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    record_id: str = Field(..., min_length=1, max_length=64)
+
+
+class DonationResponse(BaseModel):
+    status: Literal["received"]
+    record_id: str
+    retention_days: int
+    notice_version: str
+
+
 _ERROR_RESPONSES: dict[int | str, dict[str, Any]] = {
     422: {"model": ErrorResponse, "description": "Request validation failed"},
     413: {"model": ErrorResponse, "description": "Request body too large"},

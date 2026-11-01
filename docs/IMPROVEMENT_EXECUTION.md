@@ -63,29 +63,21 @@ feature, calibration, or threshold change was made from this run.
 
 ## 2. Proposed release criteria (provisional)
 
-The following numbers are starting points for owner review, not approved policy
-or claims that the current model passes:
+The release criteria must be approved and registered before the final test is
+opened. Do not use fixed example counts as a universal sufficiency rule. Set
+minimum language/category coverage and maximum uncertainty widths from the
+intended use, expected false-positive and false-negative costs, and the
+effective number of independent campaign groups. Explain why each threshold is
+adequate for the specific decision. The evaluator's two-group floor only
+allows cluster calculations; it is not evidence of adequate support. Report
+per-class/category/language sample counts and missingness, confusion counts,
+and campaign-cluster uncertainty. If the registered criteria are unmet, report
+readiness blockers rather than a performance claim.
 
-- Before making a Philippine performance claim, obtain at least 300 consented,
-  independently labeled ham messages in each critical category: OTP,
-  bank/e-wallet alert, and delivery. Include at least 50 per language in any
-  language/category cell reported; require 300 examples per class and language
-  before making a language-specific performance claim.
-- Include at least 10 independent donor/campaign groups for each reported
-  category or language slice. Keep donors and campaigns disjoint across
-  development and final evaluation; use a later collection period for the
-  final set when reliable dates exist.
-- For candidate review, require the upper 95% Wilson bound on false-positive
-  rate to be at most 5% in each critical legitimate category and the lower
-  95% bound on spam recall to be at least 80% overall and in any language for
-  which a claim is made. These are proposed tradeoffs and need owner approval.
-- Require calibration checks on the frozen evaluation data and report Brier
-  score, calibration error, intervals, and sample counts. Do not use the
-  calibrated score as a fraud probability.
-- Compare candidates and the incumbent on identical development splits.
-  Propose a maximum 2 percentage-point false-positive-rate regression in each
-  critical category, with uncertainty reported; any exception needs explicit
-  owner review before the final holdout is opened.
+Compare candidates and the incumbent on identical development splits; set any
+false-positive or recall tolerances explicitly with an uncertainty rationale.
+Do not tune on the frozen test or use a calibrated spam/ham score as a fraud
+probability.
 - Keep operational gates from docs/RETRAINING.md: no message-body logging or
   server-side message persistence, successful /ready, known artifact
   provenance, and a verified rollback path.
@@ -100,13 +92,15 @@ not exist.
 
 ## 3. Collection and labeling plan
 
-The existing intake and labeling process in docs/DATA_COLLECTION.md is the
-source of truth. It already requires a documented consent scope, revocable
-consent, separate consent records, pseudonymous donor/campaign groups,
-de-identification before storage, a local preflight, two independent labels,
-adjudication of disagreements, and deletion of derived artifacts after
-withdrawal or retention expiry. The current importer treats consent flags as
-operator attestations; it cannot prove consent or catch every identifier.
+The intake and labeling process in docs/DATA_COLLECTION.md is the source of
+truth. It requires separate consent choices, a restricted consent register,
+de-identification review, two independent labels, an independent adjudicator
+for disagreements, campaign/template grouping, a local preflight, and
+withdrawal/retention handling. Consent fields are operator attestations; they
+cannot prove consent or catch every identifier. The group code must not encode
+or derive from donor or sender identifiers. Campaign separation therefore does
+not establish independent contributors; disclose this limitation rather than
+claiming donor-level separation.
 
 Proposed coverage matrix:
 
@@ -122,11 +116,13 @@ channels. Reviewers label independently before discussion; a third reviewer
 adjudicates disagreements. Preserve an ambiguous label state and exclude
 unresolved examples from training and evaluation.
 
-Create the final evaluation set before experiments. Use a pseudonymous split
-group that prevents either donor or campaign overlap; when both relationships
-connect records, keep the connected group together. Freeze the final set,
-store it under the same access and deletion controls as its source, and do not
-use its errors to tune features, calibration, or thresholds.
+Create the final evaluation set before experiments. Use campaign/template
+groups and chronological separation, then freeze the final set under an
+independent custodian. Do not retain donor/sender IDs to derive groups. Because
+contributor-level linkage is not available, campaign groups cannot guarantee
+that all messages from one contributor are isolated; document this limitation
+and avoid claims of independent contributors. Do not use final-test errors to
+tune features, calibration, or thresholds.
 
 Human actions still required: approve the consent text, retention period,
 coverage and release targets; appoint a data steward, labelers, and adjudicator;
@@ -159,20 +155,23 @@ provenance, and thresholds are under a separate collapsed disclosure. Browser
 and model readiness plus the retry control remain visible. Batch and comparison
 views retain their detailed independent results.
 
-The human-review protocol now contains a short comprehension script and
-provisional success criteria. No participant sessions have occurred; report
-the criteria as prepared, not validated. Automated browser checks cover opening
-and closing model details by keyboard, mobile reflow, missing-model behavior,
-and API recovery. Manual screen-reader review and participant comprehension
-testing remain outstanding.
+The human-review protocol contains a comprehension script and questions for a
+future owner-approved review. No participant sessions have occurred; the
+questions are prepared, not validated, and no passing percentage is set.
+Automated browser checks cover opening and closing model details by keyboard,
+mobile reflow, missing-model behavior, and API recovery. Manual screen-reader
+review and participant comprehension testing remain outstanding.
 
 ## 6. Limited pilot and rollback readiness
 
-No public deployment or participant recruitment is authorized by this plan.
-The proposed first pilot is a local, moderated usability study using fictional
-fixtures only, after owner approval of recruitment and consent materials. It
-does not test predictive accuracy. A later field pilot requires the consented
-data gates above, a privacy review, an approved owner, and a named operator.
+No public deployment, participant recruitment, or real-message collection is
+authorized by this plan. The disposable synthetic rehearsal described in
+`evaluation.md` checks the software workflow only. It is not a human study,
+consented participant data, or predictive evidence. The pre-collection
+go/no-go handoff in `DATA_COLLECTION.md` is authoritative; collection stays
+disabled until the project owner signs it after qualified privacy/legal review.
+Any future usability session using fictional examples is a separate owner
+decision and cannot be treated as a model evaluation.
 
 For any later pilot:
 
@@ -198,17 +197,12 @@ Each start returned /ready=ready and the expected model version from
 /model-info. This verifies path selection and startup readiness only; it is
 not a production rollback or an evaluation of either artifact's accuracy.
 
-The proposed initial pilot is a two-week local, moderated usability round with
-5–8 adult volunteers, subject to owner approval of recruitment and consent
-materials. Use fictional fixtures only; do not submit private participant SMS.
-Entry criteria are an approved script, accessible build, successful readiness
-and rollback checks, and an observer trained to record task outcomes without
-message content. Success means the provisional comprehension criteria in
-docs/HUMAN_REVIEW.md are met, service recovery works, and no private data is
-collected. Stop for a privacy exposure, a participant interpreting the score
-as a guarantee or instruction to punish a sender, or a service issue that
-breaches the runbook limits. Any repeat of the study after copy changes uses
-new participants.
+No initial participant count, study duration, or pass threshold is proposed
+here. Before any human session, the project owner and qualified reviewer must
+approve its purpose, recruitment, consent, script, decision rule, and data
+handling. For a future real-message study, they must justify and register
+coverage and uncertainty criteria before the sealed test is opened. Do not
+collect messages or claim model performance based on the synthetic rehearsal.
 
 The app does not currently provide aggregate telemetry. For a future pilot,
 the operator must prepare message-free counters for request totals, p50/p95
@@ -233,15 +227,17 @@ Validation completed on 2026-10-24:
 - git diff --check passed. The UCI import, baseline candidate, and report are
   in ignored paths; no SMS data or model artifact was added to Git.
 
-Still required before any real-world claim or field pilot:
+Still required before any real-message collection or real-world claim:
 
-1. Owner approval of provisional release and comprehension criteria.
-2. Approved consent text, collection authority, secure storage, and retention.
-3. Consented, de-identified messages with independently adjudicated labels and
-   campaign/donor separation.
-4. A development set and a frozen, later-period final evaluation set with
-   adequate category and language support.
-5. Participant comprehension sessions and a manual assistive-technology
-   review.
-6. A locally exercised rollback using known artifact versions, followed by
-   owner approval before any live pilot.
+1. A signed owner go/no-go record after qualified privacy/legal review that
+   resolves the controller/contact, lawful basis, access, retention, withdrawal
+   and derived-artifact handling, backup deletion, and incident process.
+2. Named and trained data steward, two independent labelers, adjudicator, and
+   separate sealed-test custodian, with access and blinding controls.
+3. Active purpose-specific consent, independently adjudicated labels,
+   campaign/time separation, and documented limits on contributor-level
+   independence.
+4. Owner- and reviewer-justified coverage and uncertainty criteria registered
+   before the sealed test is opened; this project sets no sample-size target.
+5. Manual screen-reader review and any separately approved usability review.
+6. A locally exercised rollback and a named operator before any service pilot.

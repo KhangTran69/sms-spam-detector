@@ -19,6 +19,9 @@ import api
 import api.main as main
 import api.macos_service
 import src.benchmark
+import src.public_evaluation
+import src.consented_split
+import src.consented_rehearsal
 from sklearn.linear_model import LogisticRegression
 from src.features import make_model, messages_to_frame
 from src.predict import ModelBundle
@@ -29,7 +32,10 @@ assert "site-packages" in str(site)
 assert Path(os.environ["SMSD_SOURCE_ROOT"]).resolve() not in Path(api.__file__).resolve().parents
 assert (Path(sys.executable).parent / "smsd-benchmark").is_file()
 assert (Path(sys.executable).parent / "smsd-macos-service").is_file()
-for asset in ("index.html", "styles.css", "app.js", "sw.js", "manifest.webmanifest", "icon.svg", "history-store.js", "connection-status.js", "result-format.js"):
+assert (Path(sys.executable).parent / "smsd-evaluate-public").is_file()
+assert (Path(sys.executable).parent / "smsd-split-consented").is_file()
+assert (Path(sys.executable).parent / "smsd-consented-rehearsal").is_file()
+for asset in ("index.html", "styles.css", "app.js", "sw.js", "manifest.webmanifest", "icon.svg", "history-store.js", "connection-status.js", "result-format.js", "demo-examples.js", "donate.html", "donate.js", "donate.css", "privacy-notice.html"):
     assert (main.WEB_DIR / asset).is_file(), asset
 html = (main.WEB_DIR / "index.html").read_text()
 assert 'id="tab-compare"' in html and 'id="panel-compare"' in html
@@ -49,9 +55,11 @@ assert client.get("/ready").status_code == 503
 print("wheel-smoke: missing-model readiness", flush=True)
 assert client.get("/ready").json()["error"]["code"] == "model_unavailable"
 assert client.get("/").status_code == 200
+assert client.get("/donate").status_code == 404, "donations must be disabled by default"
+assert client.get("/privacy-notice").status_code == 200
 assert client.get("/static/no-such-file").status_code == 404
 assert client.get("/static/%2e%2e%2fpyproject.toml").status_code == 404
-for name in ("app.js", "api-client.js", "i18n.js", "privacy-preview.js", "history-store.js", "connection-status.js", "result-format.js", "styles.css", "icon.svg"):
+for name in ("app.js", "api-client.js", "i18n.js", "privacy-preview.js", "history-store.js", "connection-status.js", "result-format.js", "demo-examples.js", "donate.js", "donate.css", "styles.css", "icon.svg"):
     get = client.get(f"/static/{name}")
     head = client.head(f"/static/{name}")
     assert get.status_code == head.status_code == 200

@@ -8,22 +8,31 @@ request time instead of copying them at import.
 from __future__ import annotations
 
 import asyncio
+import html
+import ipaddress
 import json
 import os
+import re
 import sys
 import uuid
 from datetime import UTC, datetime
 from types import ModuleType
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse, Response
+from pydantic import ValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from api.donations import RETENTION_DAYS, create_donation, delete_donation
 from api.schemas import (
     _ERROR_RESPONSES,
     AnalyzeResponse,
     BatchRequest,
     BatchResponse,
+    DonationRequest,
+    DonationResponse,
+    DonationWithdrawalRequest,
     ErrorResponse,
     FeedbackRequest,
     FeedbackResponse,
@@ -34,6 +43,7 @@ from api.schemas import (
 )
 from src.monitor import default_monitor
 from src.predict import analyze_batch, analyze_message, model_info
+from src.privacy.scrub import detect_pii
 
 router = APIRouter()
 
@@ -177,3 +187,198 @@ def submit_feedback(request: FeedbackRequest) -> FeedbackResponse:
         report_id=report_id,
         message="Thanks. The report contains labels and model metadata only; no SMS text was sent.",
     )
+
+
+def _donation_error(
+    status_code: int,
+    code: str,
+    message: str,
+    details: list[dict[str, Any]] | None = None,
+) -> JSONResponse:
+    response = _state()._error_response(status_code, code, message, details)
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+def _donations_enabled() -> bool:
+    return bool(_state().DONATIONS_ENABLED and _state().DONATIONS_OPERATOR_CONTACT.strip())
+
+
+def _donation_request_is_local(request: Request) -> bool:
+    """Restrict the optional unauthenticated intake to a local development host."""
+    if _state().SMSD_ENV == "production" or request.client is None:
+        return False
+    try:
+        address = ipaddress.ip_address(request.client.host.split("%", maxsplit=1)[0])
+    except ValueError:
+        return False
+    return address.is_loopback or (
+        isinstance(address, ipaddress.IPv6Address)
+        and address.ipv4_mapped is not None
+        and address.ipv4_mapped.is_loopback
+    )
+
+
+def _render_notice_contact(response: Response, *, fallback: str) -> Response:
+    if response.status_code >= 400:
+        return response
+    body = getattr(response, "body", b"")
+    contact = _state().DONATIONS_OPERATOR_CONTACT.strip() or fallback
+    rendered = body.replace(b"__DONATIONS_OPERATOR_CONTACT__", html.escape(contact).encode("utf-8"))
+    headers = {key: value for key, value in response.headers.items() if key.lower() != "content-length"}
+    return Response(content=rendered, media_type="text/html", headers=headers)
+
+
+@router.api_route("/donate", methods=["GET", "HEAD"], include_in_schema=False)
+def donation_form(request: Request) -> Response:
+    if not _donations_enabled() or not _donation_request_is_local(request):
+        raise StarletteHTTPException(status_code=404, detail="Donation collection is disabled by the operator.")
+    if request.method == "HEAD":
+        return Response(content=b"", media_type="text/html", headers={"Cache-Control": "no-store"})
+    response = _render_notice_contact(
+        _state()._ui_asset_response("donate.html", media_type="text/html"),
+        fallback="Local service operator (contact not configured)",
+    )
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@router.get("/privacy-notice", include_in_schema=False)
+def donation_privacy_notice() -> Response:
+    response = _render_notice_contact(
+        _state()._ui_asset_response("privacy-notice.html", media_type="text/html"),
+        fallback="Local service operator (contact not configured)",
+    )
+    response.headers["Cache-Control"] = "no-cache"
+    return response
+
+
+@router.post(
+    "/donate",
+    response_model=DonationResponse,
+    status_code=201,
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {"application/json": {"schema": DonationRequest.model_json_schema()}},
+        }
+    },
+    summary="Submit an explicitly consented message for local human review",
+)
+async def donate(request: Request) -> Response:
+    """Store only after explicit version-matched consent and conservative PII scan."""
+    if not _donations_enabled() or not _donation_request_is_local(request):
+        raise StarletteHTTPException(status_code=404, detail="Donation collection is disabled by the operator.")
+    content_type = request.headers.get("content-type", "").split(";", maxsplit=1)[0].strip().lower()
+    if content_type != "application/json":
+        return _donation_error(415, "unsupported_media_type", "Submit the donation as application/json.")
+    try:
+        payload_data = await request.json()
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return _donation_error(400, "invalid_json", "The request body must contain valid JSON.")
+    details: list[dict[str, Any]]
+    try:
+        payload = DonationRequest.model_validate(payload_data)
+    except ValidationError as exc:
+        details = [
+            {
+                "loc": [str(part) for part in error.get("loc", ())],
+                "msg": str(error.get("msg", "Invalid value")),
+                "type": str(error.get("type", "value_error")),
+            }
+            for error in exc.errors(include_input=False)
+        ]
+        return _donation_error(422, "validation_error", "Check the donation fields and try again.", details)
+    if not payload.consent:
+        return _donation_error(400, "consent_required", "Explicit consent is required before a donation can be saved.")
+    if not payload.authorized_to_share:
+        return _donation_error(
+            400,
+            "sharing_authorization_required",
+            "Confirm that you are authorized to share this message before submitting it.",
+        )
+    if payload.notice_version != _state().DONATION_NOTICE_VERSION:
+        return _donation_error(
+            409,
+            "notice_version_mismatch",
+            "Review the current privacy notice and submit again if you still consent.",
+        )
+
+    spans = detect_pii(payload.message)
+    if spans:
+        details = [
+            {"start": span.start, "end": span.end, "category": span.category, "value": span.value} for span in spans
+        ]
+        return _donation_error(
+            422,
+            "pii_detected",
+            "Remove or redact the flagged personal details, then choose Submit again.",
+            details,
+        )
+    try:
+        record_id = create_donation(
+            _state().DONATION_DB_PATH,
+            message=payload.message,
+            label_hint=payload.label_hint,
+            language=payload.language,
+            notice_version=_state().DONATION_NOTICE_VERSION,
+            review_consent=payload.consent,
+            authorized_to_share=payload.authorized_to_share,
+            model_research_consent=payload.model_research_consent,
+        )
+    except (OSError, RuntimeError, ValueError) as exc:
+        _state().logger.error("Could not save local donation (%s)", type(exc).__name__)
+        return _donation_error(503, "donation_unavailable", "Local donation storage is temporarily unavailable.")
+    result = DonationResponse(
+        status="received",
+        record_id=record_id,
+        retention_days=RETENTION_DAYS,
+        notice_version=_state().DONATION_NOTICE_VERSION,
+    )
+    return JSONResponse(
+        status_code=201,
+        content=result.model_dump(),
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@router.delete(
+    "/donate",
+    include_in_schema=True,
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {"application/json": {"schema": DonationWithdrawalRequest.model_json_schema()}},
+        }
+    },
+    summary="Withdraw and erase a local donation",
+)
+async def withdraw_donation(request: Request) -> Response:
+    if not _donations_enabled() or not _donation_request_is_local(request):
+        raise StarletteHTTPException(status_code=404, detail="Donation collection is disabled by the operator.")
+    content_type = request.headers.get("content-type", "").split(";", maxsplit=1)[0].strip().lower()
+    if content_type != "application/json":
+        return _donation_error(415, "unsupported_media_type", "Submit the withdrawal as application/json.")
+    try:
+        payload_data = await request.json()
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return _donation_error(400, "invalid_json", "The request body must contain valid JSON.")
+    try:
+        payload = DonationWithdrawalRequest.model_validate(payload_data)
+    except ValidationError as exc:
+        details = [
+            {
+                "loc": [str(part) for part in error.get("loc", ())],
+                "msg": str(error.get("msg", "Invalid value")),
+                "type": str(error.get("type", "value_error")),
+            }
+            for error in exc.errors(include_input=False)
+        ]
+        return _donation_error(422, "validation_error", "Check the withdrawal field and try again.", details)
+    try:
+        if re.fullmatch(r"[a-f0-9]{32}", payload.record_id):
+            delete_donation(_state().DONATION_DB_PATH, payload.record_id)
+    except (OSError, RuntimeError) as exc:
+        _state().logger.error("Could not withdraw local donation (%s)", type(exc).__name__)
+        return _donation_error(503, "donation_unavailable", "Local donation storage is temporarily unavailable.")
+    return JSONResponse(status_code=200, content={"status": "withdrawn"}, headers={"Cache-Control": "no-store"})

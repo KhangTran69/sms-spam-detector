@@ -1,7 +1,7 @@
-"""Normalize the UCI SMS Spam Collection into the project's CSV schema.
+"""Normalize operator-supplied public SMS datasets into project-local schemas.
 
-The input is supplied by the operator; this command does not download data.
-Imported messages are written only below ignored ``data/raw/`` storage.
+UCI inputs are written below ignored ``data/raw/``; Kaggle SMS inputs are
+normalized below ignored ``data/external/``. This command does not download.
 """
 
 from __future__ import annotations
@@ -12,6 +12,7 @@ from pathlib import Path
 import pandas as pd
 
 from src.data import ROOT, DatasetError, _normalize_labels
+from src.public_datasets import import_kaggle_ph_dataset, import_kaggle_tagalog_dataset
 
 UCI_LICENSE = "CC BY 4.0"
 UCI_URL = "https://archive.ics.uci.edu/dataset/228/sms+spam+collection"
@@ -72,15 +73,37 @@ def import_dataset(input_path: str | Path, output_path: str | Path, *, input_for
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input", required=True, help="Operator-provided UCI TSV or compatible labeled CSV")
+    parser.add_argument("--input", required=True, help="Operator-provided UCI or Kaggle CSV")
+    parser.add_argument("--source", choices=("uci", "kaggle-ph", "kaggle-tagalog"), default="uci")
     parser.add_argument(
         "--output",
-        default=str(ROOT / "data" / "raw" / "imported" / "uci_sms_spam.csv"),
-        help="Ignored output path below data/raw (default: data/raw/imported/uci_sms_spam.csv)",
+        default=None,
+        help="Ignored output path (UCI defaults to data/raw/imported; Kaggle corpora to data/external)",
     )
     parser.add_argument("--format", choices=("auto", "csv", "uci-tsv"), default="auto")
     args = parser.parse_args(argv)
-    import_dataset(args.input, args.output, input_format=args.format)
+    if args.source in {"kaggle-ph", "kaggle-tagalog"}:
+        if args.source == "kaggle-ph":
+            output = args.output or str(ROOT / "data" / "external" / "ph-spam-marketing-sms.csv")
+            import_function = import_kaggle_ph_dataset
+            dataset_label = "Kaggle PH SMS"
+        else:
+            output = args.output or str(ROOT / "data" / "external" / "tagalog-sms.csv")
+            import_function = import_kaggle_tagalog_dataset
+            dataset_label = "Kaggle Tagalog-SMS"
+        try:
+            normalized, report = import_function(args.input, output)
+        except DatasetError as exc:
+            parser.error(str(exc))
+        print(
+            f"Normalized {dataset_label} rows: {report['rows_loaded']}; "
+            f"excluded: {report['blank_or_redacted_excluded']}; "
+            f"unknown category: {report['unknown_category_rows']}; "
+            f"duplicates: {report['duplicates_removed']}; output: {normalized}"
+        )
+        return 0
+    output = args.output or str(ROOT / "data" / "raw" / "imported" / "uci_sms_spam.csv")
+    import_dataset(args.input, output, input_format=args.format)
     print(f"Imported public dataset; license: {UCI_LICENSE}; source: {UCI_URL}")
     return 0
 

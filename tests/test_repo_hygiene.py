@@ -36,7 +36,9 @@ REQUIRED_FILES = [
     ".github/workflows/ci.yml",
     "docs/README.md",
     "docs/DATA_COLLECTION.md",
+    "docs/DONATION_INTAKE.md",
     "docs/DATASET_INVENTORY.md",
+    "docs/evaluation.md",
     "docs/DEPLOYMENT.md",
     "docs/MODEL_CARD.md",
     "docs/RETRAINING.md",
@@ -54,6 +56,9 @@ MAKEFILE_TARGETS = [
     "typecheck",
     "train",
     "evaluate",
+    "datasets",
+    "eval",
+    "rehearse-consented",
     "serve",
     "docker-build",
     "docker-run",
@@ -335,10 +340,13 @@ def test_gitignore_keeps_docs_tests_tracked_and_artifacts_ignored() -> None:
         "models/spam_detector_v1.pkl",
         "models/spam_detector_v1.joblib",
         "data/raw/spam.csv",
+        "data/external/ph-spam-marketing-sms.zip",
+        "data/donations/donations.sqlite3",
         "data/feedback/reports.jsonl",
         ".env",
     ):
         assert _is_git_ignored(path), f".gitignore should ignore {path}"
+    assert not _is_git_ignored("data/external/README.md")
     assert not _is_git_ignored("data/templates/consented_ph_sms_template.csv")
     assert not _is_git_ignored("data/raw/ph_supplement_4.csv")
     assert not _is_git_ignored("data/raw/ph_supplement_5.csv")
@@ -370,7 +378,7 @@ def test_docs_state_synthetic_only_and_privacy_limits() -> None:
     assert "dataset_inventory.md" in model_card, "model card metrics source must link the dated evaluation inventory"
 
     privacy = _doc("docs/PRIVACY.md").lower()
-    assert "no server-side message persistence" in privacy
+    assert "prediction/analysis requests are processed in memory only" in privacy
     assert "localstorage" in privacy
     assert "opt-in" in privacy
 
@@ -385,6 +393,99 @@ def test_docs_state_synthetic_only_and_privacy_limits() -> None:
     assert "rollback" in retraining
     assert "holdout" in retraining
     assert "monitor" in retraining
+
+
+def test_consent_study_handoff_has_roles_and_no_invented_sample_target() -> None:
+    handoff = _doc("docs/DATA_COLLECTION.md").lower()
+    for role in (
+        "project owner",
+        "qualified privacy/legal reviewer",
+        "data steward",
+        "two independent labelers",
+        "sealed-test custodian",
+    ):
+        assert role in handoff
+    assert "does not prove contributors are independent" in handoff
+    assert "before any sealed test is opened" in handoff
+
+    execution = _doc("docs/IMPROVEMENT_EXECUTION.md").lower()
+    assert "this project sets no sample-size target" in execution
+    assert not re.search(r"\b5\s*[–-]\s*8\b", execution)
+
+
+def test_public_kaggle_evaluation_is_attributed_and_explicitly_limited() -> None:
+    evaluation = _doc("docs/evaluation.md").lower()
+    assert "scottleechua/ph-spam-marketing-sms-w-timestamps" in evaluation
+    assert "cc by 4.0" in evaluation
+    assert "single inbox" in evaluation
+    assert "not representative" in evaluation
+    assert "onzero0/tagalog-sms" in evaluation
+    assert "cc0" in evaluation
+    assert "sender field" in evaluation
+    assert "bwandoWando".lower() in evaluation
+    assert "notanne1305" in evaluation
+    assert "data103_filipino_spam_detection" in evaluation
+    assert "blocked" in evaluation
+    assert "cc by-nc-sa 4.0" in evaluation
+    assert "bsd 3-clause" in evaluation
+    assert "downstream license compatibility" in evaluation
+    assert "make datasets" in evaluation
+    assert "make eval" in evaluation
+    assert "reports/eval/" in evaluation
+
+    external = _doc("data/external/README.md").lower()
+    assert "scott lee chua" in external
+    assert "one person's inbox" in external
+    assert "tagalog-sms" in external
+    assert "intentionally discards the sender field" in external
+    assert "root has no license file" in external
+    assert "blocked" in external
+    assert "cc by-nc-sa 4.0" in external
+    assert "bsd 3-clause" in external
+    assert "space-level mit" in external
+
+    readme = _doc("README.md").lower()
+    assert "cc by 4.0" in readme and "kaggle" in readme
+    assert "dataset=tagalog-sms" in readme
+    assert "docs/evaluation.md" in readme
+    model_card = _doc("docs/MODEL_CARD.md").lower()
+    assert "kaggle" in model_card
+    assert "ph corpus is present locally" in model_card
+    assert "tagalog-sms has not yet been fetched" in model_card
+    assert "onzero0/tagalog-sms" in model_card
+    assert "cc0" in model_card
+    assert "raw local downloads must still be treated as sensitive" in model_card
+
+
+def test_donation_collection_docs_cover_consent_retention_privacy_and_dpa() -> None:
+    collection = _doc("docs/DONATION_INTAKE.md").lower()
+    for term in (
+        "smsd_donations_enabled",
+        "smsd_donations_operator_contact",
+        "2026-11-01-v4",
+        "90 days",
+        "withdraw",
+        "pending_review",
+        "eligible_for_modeling",
+        "data privacy act of 2012",
+        "public availability is not consent",
+        "scraping public pages is not automatically exempt",
+        "data103_filipino_spam_detection",
+    ):
+        assert term in collection
+    assert "privacy-notice.md" in collection
+    assert "make export-donations" in collection
+    assert "outside the repository" in collection
+
+    notice = _doc("docs/privacy-notice.md").lower()
+    assert "2026-11-01-v4" in notice
+    assert "90 days" in notice
+    assert "withdrawal" in notice
+    assert "optional" in notice
+
+    privacy = _doc("docs/PRIVACY.md").lower()
+    assert "prediction and analysis endpoints" in privacy
+    assert "optional, consent-gated donation" in privacy
 
 
 def test_no_obvious_secrets_committed() -> None:

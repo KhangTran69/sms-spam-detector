@@ -42,7 +42,7 @@ def test_cli_warns_about_missing_model_but_keeps_ui_available(monkeypatch, tmp_p
     probe.close()
 
     assert cli.main(["--host", "127.0.0.1", "--port", str(port), "--reload"]) == 0
-    assert calls == [(("api.main:app",), {"host": "127.0.0.1", "port": port, "reload": True})]
+    assert calls == [(("api.main:app",), {"host": "127.0.0.1", "port": port, "reload": True, "access_log": False})]
     error = capsys.readouterr().err
     assert str(missing_model) in error
     assert "web UI and health endpoint will start" in error

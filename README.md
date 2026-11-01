@@ -8,9 +8,11 @@ probability that a message is a scam. The service is FastAPI with a no-build web
 
 ![Demo: checking a single message, a batch, and the Taglish dark theme](docs/images/demo.gif)
 
-> **Evidence limit:** every Philippine message in this repository is synthetic,
-> and the public UCI corpus is English. Scores below are engineering checks, not
-> real-world accuracy. The tool is assistive only: do not block, report, or
+> **Evidence limit:** every Philippine message tracked in this repository is synthetic,
+> and the public UCI corpus is English. A public one-person Philippine inbox
+> has been retrieved locally (1,664 normalized rows) but has not been evaluated
+> and is not representative. Existing scores are
+> engineering checks, not real-world accuracy. The tool is assistive only: do not block, report, or
 > penalize anyone based on a prediction. Full limitations:
 > [docs/MODEL_CARD.md §4](docs/MODEL_CARD.md#4-evaluation-and-the-synthetic-only-caveat).
 
@@ -69,6 +71,26 @@ real-world performance remain blocked. See the
 [dataset inventory](docs/DATASET_INVENTORY.md) and
 [benchmark runbook](docs/BENCHMARKING.md).
 
+The [PH Spam + Marketing SMS dataset](https://www.kaggle.com/datasets/scottleechua/ph-spam-marketing-sms-w-timestamps)
+(CC BY 4.0 per its [publisher README](https://github.com/scottleechua/data/tree/main/spam-and-marketing-sms)) and [Tagalog-SMS](https://www.kaggle.com/datasets/onzero0/tagalog-sms)
+(CC0 per Kaggle metadata) are available for local diagnostics. The PH inbox was
+retrieved locally (8,895 raw rows; 1,664 normalized labeled rows) but has not
+been evaluated. Each corpus is a single person's inbox, not a representative
+Philippine sample. Use `make datasets` to fetch the first
+corpus directly from its public GitHub CSV (no Kaggle credentials required), or
+`make datasets DATASET=tagalog-sms` for the Kaggle-hosted second corpus
+(Kaggle credentials required), followed by
+`make eval DATA=... MODEL=...`; results remain separate from each other, synthetic data,
+and consented data. Tagalog-SMS raw downloads contain sender metadata; its
+normalizer drops that column, but the raw file must remain protected and local.
+The merged Hugging Face
+Filipino corpus remains blocked: its Space-level MIT tag coexists with CC BY
+4.0, CC BY-NC-SA 4.0, and BSD 3-Clause source terms, and the merged message
+rights and compatible reuse basis are unresolved. See
+[evaluation methodology](docs/evaluation.md) for attribution, report fields,
+and limits. Other supplied resources and their reuse/suitability findings are
+listed in [the external-data inventory](data/external/README.md).
+
 | | |
 |---|---|
 | ![Likely spam result](docs/images/02-likely-scam.png) | ![Looks safe result](docs/images/03-looks-safe.png) |
@@ -85,12 +107,23 @@ Versioned routes are mounted at `/v1/*` with root aliases (`/*`) preserved for b
 | `POST /predict` (or `/v1/predict`) | Label, score with a `probability_calibrated` indicator, flags, threshold |
 | `POST /analyze`, `POST /analyze/batch` (or `/v1/*`) | Adds risk band, highlighted signals, model version, and both risk thresholds per result; batch takes up to 50 |
 | `POST /feedback` (or `/v1/feedback`) | Optional anonymous label correction, off by default; never accepts message text |
+| `GET /donate`, `POST /donate`, `DELETE /donate` (JSON withdrawal ID), `GET /privacy-notice` | Separate local donation workflow; disabled by default, loopback-only, unavailable in production, consent-gated, and PII-screened |
 
 Anonymous prediction endpoints are capped at 60 requests per minute per direct
 client address by default (`SMSD_RATE_LIMIT_PER_MINUTE`). This in-process limit
 is a fallback for a single worker; multi-worker or reverse-proxy deployments
 must also enforce a shared limit at the gateway. The app does not trust
 forwarded-IP headers for identity.
+
+Donation intake is separate from ordinary prediction and analysis, which remain
+memory-only. It has no authentication, accepts only loopback clients, and is
+unavailable in production mode. Do not expose it through a public reverse proxy.
+Configure `SMSD_DONATIONS_ENABLED=1` and
+`SMSD_DONATIONS_OPERATOR_CONTACT` only for a reviewed, protected local workflow.
+Accepted records are kept in local SQLite for up to 90 days and require explicit
+withdrawal or human review; they are not automatically used as model labels.
+See the [collection operator guide](docs/DONATION_INTAKE.md) and
+[versioned privacy notice](docs/privacy-notice.md).
 
 ## Web UI
 
@@ -103,10 +136,13 @@ have the same model version, the same known calibration state, and valid scores;
 otherwise it says they cannot be compared directly. A lower score is not a
 safety guarantee. Comparison inputs and results are not added to history.
 
-Fictional OTP, delivery, and bank/e-wallet comparison pairs are examples in the
-UI only. They use placeholders and reserved `.example` domains and are not
-training or evaluation data. The existing history feature remains opt-in and
-browser-local.
+Single-message demo examples are curated from tracked synthetic Philippine
+training fixtures in `ph_supplement_4.csv` and `ph_supplement_5.csv`. They use
+masked values and only the reserved `example.com` domain; they are fictional,
+not real inbox messages, and their results are not performance evidence.
+Separate OTP, delivery, and bank/e-wallet comparison pairs are fictional UI-only
+examples and are not training or evaluation data. The existing history feature
+remains opt-in and browser-local.
 
 The optional **Privacy Preview** runs in the browser before analysis. It suggests
 possible Philippine phone numbers, email addresses, context-labeled verification
@@ -156,49 +192,74 @@ of an in-flight analysis response. The temporary artifact is deleted after the
 run. Automated keyboard, layout, and contrast checks do not replace manual
 screen-reader testing.
 
-## Adding consented Philippine messages
+## Preparing consented Philippine data
 
-No consented Philippine messages are currently included. Use the blank
-[intake template](data/templates/consented_ph_sms_template.csv) only in an
-approved encrypted workspace, verify revocable consent and its permitted use,
-redact personal details, and have two reviewers label each message with an
-independent adjudicator for disagreements. Keep consent records separate from
-message data, apply a retention deadline, and remove derived artifacts when
-consent is withdrawn. Run the local-only preflight before using a batch:
+No independently reviewed, consented Philippine corpus or trained model
+artifact is available yet. The optional donation form is separate from
+prediction, disabled by default, local-only, and unavailable in production.
+Donations are only a pending-review queue; the application never adds them to
+training automatically. Do not solicit or contact participants as part of this
+project change.
+
+To exercise the technical path without real data, run `make rehearse-consented`.
+It generates fictional submissions, blind reviews, development/test splits, a
+temporary model, and one synthetic evaluation; it prints aggregate diagnostics
+only and removes all temporary files. The results are not consented participant
+data or evidence of Philippine detector performance.
+
+The approved workflow requires explicit review/sharing and model-research
+consent, manual PII review, two blind independent spam/ham and scam reviews,
+and independent adjudication of disagreements. Keep the consent register
+separate from messages and use campaign/template groups without donor or sender
+identifiers. Validate and split only in private local storage:
 
 ```bash
-python -m src.consented_data /secure/workspace/consented_batch.csv --purpose training
-python -m src.import_consented \
-  --input /secure/workspace/consented_batch.csv \
-  --purpose training \
-  --output-dir /secure/workspace/approved
+.venv/bin/python -m src.consented_data /secure/inbox/approved-reviewed.csv --purpose training
+.venv/bin/python -m src.consented_data /secure/inbox/approved-reviewed.csv --purpose evaluation
+make split-consented \
+  DATA=/secure/inbox/approved-reviewed.csv \
+  DEVELOPMENT_DIR=/secure/development \
+  EVALUATION_DIR=/secure/sealed-test
 ```
 
-The importer rechecks the same schema and rules against the exact input it
-writes. Header matching is case-insensitive and treats spaces as underscores;
-label aliases such as `legitimate`/`legit` and `scam` normalize to `ham` and
-`spam`. Both commands report aggregate counts and row/rule codes only; they
-cannot prove consent or detect every identifier. Keep a campaign-separated
-evaluation batch out of training and threshold selection. See
-[docs/DATA_COLLECTION.md](docs/DATA_COLLECTION.md) for the full workflow and
-privacy limits.
+Train on development data only; register a hash-bound evaluation plan before a
+separate custodian opens the chronological campaign-separated test file. The
+evaluator blocks with a content-free readiness report when model provenance,
+consent, review, coverage, or uncertainty requirements fail. See
+[DATA_COLLECTION.md](docs/DATA_COLLECTION.md) and
+[evaluation.md](docs/evaluation.md) for the full process and limitations. The
+workflow does not establish legal compliance; obtain qualified privacy/legal
+review before operating collection.
+
+Before collecting any real message, the project owner must sign the
+pre-collection go/no-go record after qualified privacy/legal review. Resolve
+controller/contact, lawful basis, access, retention, withdrawal, backup
+deletion, and incident handling; name the data steward, two blind labelers, and
+sealed-test custodian. Campaign grouping limits template leakage but cannot
+prove contributor-level independence. This repository sets no study
+sample-size target; the owner and reviewer must justify and register coverage
+and uncertainty criteria before the sealed test is opened.
 
 ## Documentation
 
 [System architecture](docs/ARCHITECTURE.md) ·
 [Model card and limitations](docs/MODEL_CARD.md) ·
 [Data collection and consented import](docs/DATA_COLLECTION.md) ·
+[Local donation intake](docs/DONATION_INTAKE.md) ·
+[Donor privacy notice](docs/privacy-notice.md) ·
 [Reproducible benchmark reports](docs/BENCHMARKING.md) ·
+[Evaluation datasets and consented holdout](docs/evaluation.md) ·
 [Dataset inventory](docs/DATASET_INVENTORY.md) ·
 [Deployment](docs/DEPLOYMENT.md) · [Retraining](docs/RETRAINING.md) ·
 [Privacy](docs/PRIVACY.md) · [Human review](docs/HUMAN_REVIEW.md) ·
-[Improvement execution record](docs/IMPROVEMENT_EXECUTION.md)
+[Improvement execution record](docs/IMPROVEMENT_EXECUTION.md) ·
+[Consent-study rehearsal](docs/evaluation.md#consented-philippine-evaluation-gate)
 
 ```text
 src/             data validation, features, model selection, training, metrics, inference, benchmark runner
 api/             FastAPI app (main, routes, schemas), macOS service helper, and api/web/ no-build UI modules
 data/raw/        tracked synthetic PH fixtures; real data and imports are git-ignored
 data/templates/  consented-collection template
-scripts/         synthetic data generation, curation, demo smoke test
+scripts/         synthetic data generation, curation, demo, package smoke test
 docs/            model card, data, deployment, privacy, retraining, review
 ```

@@ -24,7 +24,12 @@ PRIVACY_JS = ROOT / "api" / "web" / "privacy-preview.js"
 HISTORY_JS = ROOT / "api" / "web" / "history-store.js"
 CONNECTION_JS = ROOT / "api" / "web" / "connection-status.js"
 RESULT_FORMAT_JS = ROOT / "api" / "web" / "result-format.js"
+DEMO_EXAMPLES_JS = ROOT / "api" / "web" / "demo-examples.js"
 API_CLIENT_JS = ROOT / "api" / "web" / "api-client.js"
+DONATE_HTML = ROOT / "api" / "web" / "donate.html"
+DONATE_JS = ROOT / "api" / "web" / "donate.js"
+PRIVACY_NOTICE_HTML = ROOT / "api" / "web" / "privacy-notice.html"
+WEB_MANIFEST = ROOT / "api" / "web" / "manifest.webmanifest"
 STYLES_CSS = ROOT / "api" / "web" / "styles.css"
 
 
@@ -42,7 +47,16 @@ def html() -> str:
 def js() -> str:
     return "\n".join(
         path.read_text(encoding="utf-8")
-        for path in (APP_JS, API_CLIENT_JS, I18N_JS, PRIVACY_JS, HISTORY_JS, CONNECTION_JS, RESULT_FORMAT_JS)
+        for path in (
+            APP_JS,
+            API_CLIENT_JS,
+            I18N_JS,
+            PRIVACY_JS,
+            HISTORY_JS,
+            CONNECTION_JS,
+            RESULT_FORMAT_JS,
+            DEMO_EXAMPLES_JS,
+        )
     )
 
 
@@ -60,7 +74,9 @@ def html_ids(html: str) -> set[str]:
 
 
 def api_routes(api_source: str) -> set[str]:
-    return set(re.findall(r'@(?:app|router)\.(?:get|post|put|patch|delete)\(\s*["\']([^"\']+)["\']', api_source))
+    return set(
+        re.findall(r'@(?:app|router)\.(?:api_route|get|post|put|patch|delete)\(\s*["\']([^"\']+)["\']', api_source)
+    )
 
 
 def js_endpoint_paths(js: str) -> set[str]:
@@ -80,6 +96,10 @@ def test_web_assets_exist():
         HISTORY_JS,
         CONNECTION_JS,
         RESULT_FORMAT_JS,
+        DEMO_EXAMPLES_JS,
+        DONATE_HTML,
+        DONATE_JS,
+        PRIVACY_NOTICE_HTML,
         STYLES_CSS,
     ):
         assert path.is_file(), f"missing web asset: {path}"
@@ -135,7 +155,8 @@ def test_history_is_opt_in_and_privacy_preserving(js, html):
     assert "history-optin" in html and "history-optin" in js
     normalized = collapse_whitespace(html)
     assert "Off by default" in normalized
-    assert "never sent to or stored on the server" in normalized or "never stored on the server" in normalized
+    assert "ordinary checks are not stored on the server" in normalized.lower()
+    assert "optional donation is separate and requires consent" in normalized.lower()
 
 
 def test_all_dom_ids_used_by_app_js_exist_in_index_html(js, html):
@@ -230,15 +251,16 @@ def test_feedback_is_operator_opt_in_and_never_sends_message_text(api_source, js
     feedback_handler = js.split("async function submitFeedback(event)", 1)[1].split("/* ---------- History", 1)[0]
     assert "analysis.message" not in feedback_handler
     assert "message:" not in feedback_handler
+    assert '"feedback.spam": "Spam o advertising na hindi hiningi"' in js
 
 
 def test_uncalibrated_scores_are_not_presented_as_probability(js, html):
     assert "uncalibrated spam model score" in js
     assert "calibrated spam score" in js
     assert "estimated scam probability" not in js.lower()
-    assert "High spam score" in js
-    assert '"band.looks_safe": "Low spam score"' in js
-    assert '"band.looks_safe": "Mababa ang spam score"' in js
+    assert "Many spam signals detected" in js
+    assert '"band.looks_safe": "Few spam signals detected"' in js
+    assert '"band.looks_safe": "Kaunti ang spam signal na nakita"' in js
     assert "Looks safe" not in js + html
     assert "Mukhang ligtas" not in js + html
     assert "Spam or unwanted advertising" in js
@@ -262,15 +284,27 @@ def test_service_worker_installs_complete_static_shell_and_never_caches_api(html
     assert "await cache.put(request" not in sw, "runtime responses must not mutate an installed release"
     for path in ("/analyze", "/analyze/batch", "/predict", "/feedback", "/model-info"):
         assert f'"{path}"' in sw
-    assert "smsd-shell-v16" in sw
-    for asset in ("styles.css", "app.js", "api-client.js", "i18n.js", "privacy-preview.js"):
-        assert f'"/static/{asset}?v=ui16-model-details-20261024"' in sw
-    for asset in ("history-store.js", "connection-status.js", "result-format.js"):
-        assert f'"/static/{asset}?v=ui16-model-details-20261024"' in sw
-    assert 'type="module" src="/static/app.js?v=ui16-model-details-20261024"' in html
+    assert "smsd-shell-v23" in sw
+    for asset in ("styles.css", "app.js"):
+        assert f'"/static/{asset}?v=ui19-synthetic-examples-20261101"' in sw
+    for asset in (
+        "api-client.js",
+        "i18n.js",
+        "privacy-preview.js",
+        "history-store.js",
+        "connection-status.js",
+        "result-format.js",
+    ):
+        assert f'"/static/{asset}?v=ui19-synthetic-examples-20261101"' in sw
+    assert '"/static/donate.js?v=donate-v5"' in sw
+    assert '"/static/donate.css?v=donate-v5"' in sw
+    assert '"/donate"' in sw and '"/privacy-notice"' in sw
+    assert '"/static/demo-examples.js?v=ui19-synthetic-examples-20261101"' in sw
+    assert 'type="module" src="/static/app.js?v=ui19-synthetic-examples-20261101"' in html
     assert 'id="single-privacy-review"' in html
     assert 'id="batch-privacy-review"' in html
     assert 'id="compare-review-a"' in html and 'id="compare-review-b"' in html
+    assert 'id="donate-link"' in html
     assert "detectSensitiveSpans" in js and "applyPrivacyMasks" in js
 
 
@@ -292,6 +326,37 @@ def test_safety_guidance_is_optional_and_memory_only(js, html, css):
     assert "guidance-option" in css and "min-height: 44px" in css
     assert '"guidance.title"' in js and '"guidance.copyDone"' in js
     assert 'guidanceRecommendations(state).join("\\n")' in js
+
+
+def test_donation_page_requires_versioned_consent_and_has_no_persistence():
+    page = DONATE_HTML.read_text(encoding="utf-8")
+    script = DONATE_JS.read_text(encoding="utf-8")
+    notice = PRIVACY_NOTICE_HTML.read_text(encoding="utf-8")
+    assert 'id="donation-consent"' in page and "required" in page
+    assert 'id="donation-authorized"' in page and "required" in page
+    assert (
+        'id="donation-research-consent"' in page
+        and "required" not in page.split('id="donation-research-consent"', 1)[1].split("/>", 1)[0]
+    )
+    assert 'href="/privacy-notice"' in page
+    assert 'id="donation-pii-findings"' in page and 'role="alert"' in page
+    assert 'id="donation-withdraw"' in page
+    assert 'method: "POST"' in script or 'method: "post"' in script
+    assert 'cache: "no-store"' in script
+    assert "localStorage" not in script and "sessionStorage" not in script
+    assert "innerHTML" not in script
+    assert "2026-11-01-v4" in page + script + notice
+    assert "model research" in page.lower() and "review-only" in page.lower()
+    assert 'method: "DELETE"' in script
+    assert "JSON.stringify({ record_id: recordId })" in script
+    assert "`/donate/${" not in script, "withdrawal capability must not appear in the request URL"
+
+
+def test_web_manifest_describes_the_separate_consent_gated_donation_exception():
+    manifest = WEB_MANIFEST.read_text(encoding="utf-8")
+    assert "ordinary checks" in manifest.lower()
+    assert "separate" in manifest.lower() and "explicit consent" in manifest.lower()
+    assert "never stored on a server" not in manifest.lower()
 
 
 def test_compare_tab_reuses_batch_endpoint_and_resets_stale_state(js, html):
@@ -335,10 +400,10 @@ def test_index_html_has_model_status_region(html):
     assert 'id="model-status" class="card model-card" role="status"' not in html
 
 
-def test_score_bands_are_ranges_not_detected_signal_counts(js, html):
-    assert '"band.likely_scam": "High spam score"' in js
-    assert '"band.suspicious": "Elevated spam score"' in js
-    assert '"band.looks_safe": "Low spam score"' in js
+def test_score_bands_use_cautious_spam_signal_terminology(js, html):
+    assert '"band.likely_scam": "Many spam signals detected"' in js
+    assert '"band.suspicious": "Some spam signals detected"' in js
+    assert '"band.looks_safe": "Few spam signals detected"' in js
     assert 'id="model-details"' in html
 
 
@@ -358,7 +423,8 @@ def test_message_signals_are_described_as_text_patterns(html, js, css):
     assert '<details id="signal-details"' in html
     assert 'id="result-caveat"' in html
     assert ".signal-reference" in css and "vertical-align: super" in css
-    assert "Loaded fictional {kind} message" in js
+    assert "Loaded synthetic {kind} training example" in js
+    assert 'from "./demo-examples.js?' in js
     assert "Fictional {kind} example {index}" not in js
     assert 'register("/sw.js", { updateViaCache: "none" })' in js
     for explanation in (

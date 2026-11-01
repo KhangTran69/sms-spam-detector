@@ -1,19 +1,22 @@
 /* PH SMS Scam Detector service worker — atomic, static-only offline shell.
- * SMS messages and API responses are never written to Cache Storage.
+ * Submitted SMS messages and API responses are never written to Cache Storage.
  */
 "use strict";
 
-const CACHE_NAME = "smsd-shell-v16";
+const CACHE_NAME = "smsd-shell-v23";
 const SHELL_ASSETS = [
   "/",
-  "/static/styles.css?v=ui16-model-details-20261024",
-  "/static/app.js?v=ui16-model-details-20261024",
-  "/static/api-client.js?v=ui16-model-details-20261024",
-  "/static/i18n.js?v=ui16-model-details-20261024",
-  "/static/privacy-preview.js?v=ui16-model-details-20261024",
-  "/static/history-store.js?v=ui16-model-details-20261024",
-  "/static/connection-status.js?v=ui16-model-details-20261024",
-  "/static/result-format.js?v=ui16-model-details-20261024",
+  "/static/styles.css?v=ui19-synthetic-examples-20261101",
+  "/static/app.js?v=ui19-synthetic-examples-20261101",
+  "/static/api-client.js?v=ui19-synthetic-examples-20261101",
+  "/static/i18n.js?v=ui19-synthetic-examples-20261101",
+  "/static/privacy-preview.js?v=ui19-synthetic-examples-20261101",
+  "/static/history-store.js?v=ui19-synthetic-examples-20261101",
+  "/static/connection-status.js?v=ui19-synthetic-examples-20261101",
+  "/static/result-format.js?v=ui19-synthetic-examples-20261101",
+  "/static/demo-examples.js?v=ui19-synthetic-examples-20261101",
+  "/static/donate.js?v=donate-v5",
+  "/static/donate.css?v=donate-v5",
   "/manifest.webmanifest",
 ];
 const SHELL_REQUESTS = new Set(SHELL_ASSETS.map((asset) => {
@@ -25,6 +28,8 @@ const NEVER_CACHE_PATHS = [
   "/analyze/batch",
   "/predict",
   "/feedback",
+  "/donate",
+  "/privacy-notice",
   "/model-info",
   "/health",
   "/ready",

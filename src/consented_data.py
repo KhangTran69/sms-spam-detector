@@ -20,11 +20,12 @@ from typing import Any
 
 import pandas as pd
 
-from src.dataset_schema import LABEL_ALIASES
+from src.dataset_schema import LABEL_ALIASES, _normalized_message_key, make_group_key
 from src.preprocess import MONEY_RE, PHONE_RE, URL_RE
 
 REQUIRED_COLUMNS = (
     "label",
+    "scam_assessment",
     "message",
     "data_kind",
     "source",
@@ -34,19 +35,31 @@ REQUIRED_COLUMNS = (
     "consent_record_id",
     "consent_verified",
     "consent_active",
+    "review_consent",
+    "model_research_consent",
+    "authorized_to_share",
     "consent_scope",
     "consent_version",
     "consent_date",
     "retention_until",
     "reviewer_a_id",
     "reviewer_a_label",
+    "reviewer_a_scam_assessment",
+    "reviewer_a_label_confidence",
     "reviewer_b_id",
     "reviewer_b_label",
+    "reviewer_b_scam_assessment",
+    "reviewer_b_label_confidence",
     "adjudicator_id",
     "adjudicated_label",
+    "adjudicated_scam_assessment",
+    "adjudicated_label_confidence",
+    "review_status",
 )
-CONSENT_SCOPES = {"training", "evaluation", "training_and_evaluation"}
+CONSENT_SCOPES = {"training", "evaluation", "training_and_evaluation", "model_research"}
 OPTIONAL_COLUMNS = {"received_at", "labeling_confidence"}
+SCAM_ASSESSMENTS = {"suspected", "not_suspected", "unclear"}
+REVIEW_CONFIDENCE = {"low", "medium", "high"}
 SAFE_ID = re.compile(r"^[a-z0-9][a-z0-9._-]{2,63}$", re.IGNORECASE)
 SAFE_CODE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,31}$", re.IGNORECASE)
 EMAIL_RE = re.compile(r"(?i)(?<![\w.+-])[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
@@ -167,12 +180,16 @@ def validate_batch(
         raise ValueError("The intake CSV has no data rows.")
     if set(normalized) - set(REQUIRED_COLUMNS) - OPTIONAL_COLUMNS:
         raise ValueError("The intake CSV has unsupported columns; remove fields not listed in the intake template.")
+    if purpose == "evaluation" and "received_at" not in normalized:
+        raise ValueError("Evaluation intake requires received_at dates for chronological campaign holdout.")
 
     findings: list[Finding] = []
     label_counts: dict[str, int] = {}
     language_counts: dict[str, int] = {}
     category_counts: dict[str, int] = {}
     group_ids: set[str] = set()
+    message_keys: set[str] = set()
+    template_groups: dict[str, list[tuple[int, str]]] = {}
 
     for row_offset, (_, row) in enumerate(frame.iterrows()):
         row_number = row_offset + 2
@@ -188,6 +205,12 @@ def validate_batch(
             findings.append(Finding(row_number, "blank_message"))
         else:
             findings.extend(_content_findings(values["message"], row_number))
+            message_key = _normalized_message_key(values["message"])
+            if message_key in message_keys:
+                findings.append(Finding(row_number, "duplicate_message_before_split"))
+            message_keys.add(message_key)
+            template_key = make_group_key(values["message"], category=values["category"])
+            template_groups.setdefault(template_key, []).append((row_number, values["group"].casefold()))
 
         for field in ("source", "group", "consent_record_id", "reviewer_a_id", "reviewer_b_id"):
             if not _is_safe_id(values[field]):
@@ -204,11 +227,25 @@ def validate_batch(
             findings.append(Finding(row_number, "consent_not_verified_against_register"))
         if not _is_true(values["consent_active"]):
             findings.append(Finding(row_number, "consent_inactive_or_revoked"))
+        if not _is_true(values["review_consent"]):
+            findings.append(Finding(row_number, "review_consent_missing"))
+        if not _is_true(values["authorized_to_share"]):
+            findings.append(Finding(row_number, "sharing_authorization_missing"))
+        if purpose is not None and not _is_true(values["model_research_consent"]):
+            findings.append(Finding(row_number, "model_research_consent_missing"))
         if values["consent_scope"].lower() not in CONSENT_SCOPES:
             findings.append(Finding(row_number, "consent_scope_missing_or_invalid"))
-        elif purpose == "training" and values["consent_scope"].lower() == "evaluation":
+        elif purpose == "training" and values["consent_scope"].lower() not in {
+            "training",
+            "training_and_evaluation",
+            "model_research",
+        }:
             findings.append(Finding(row_number, "consent_does_not_cover_training"))
-        elif purpose == "evaluation" and values["consent_scope"].lower() == "training":
+        elif purpose == "evaluation" and values["consent_scope"].lower() not in {
+            "evaluation",
+            "training_and_evaluation",
+            "model_research",
+        }:
             findings.append(Finding(row_number, "consent_does_not_cover_evaluation"))
         if not SAFE_CODE.fullmatch(values["consent_version"]):
             findings.append(Finding(row_number, "consent_version_missing"))
@@ -218,7 +255,9 @@ def validate_batch(
         retention_until = _valid_iso_date(values["retention_until"])
         if retention_until is None or retention_until < today:
             findings.append(Finding(row_number, "retention_expired_or_invalid"))
-        if (
+        if purpose == "evaluation" and not values.get("received_at", ""):
+            findings.append(Finding(row_number, "received_at_required_for_evaluation"))
+        elif (
             "received_at" in values
             and values["received_at"]
             and pd.isna(pd.to_datetime(values["received_at"], errors="coerce", utc=True))
@@ -231,6 +270,20 @@ def validate_batch(
                 confidence = -1.0
             if not 0.0 <= confidence <= 1.0:
                 findings.append(Finding(row_number, "labeling_confidence_invalid"))
+
+        reviewer_confidence = (
+            values["reviewer_a_label_confidence"].lower(),
+            values["reviewer_b_label_confidence"].lower(),
+        )
+        if any(confidence not in REVIEW_CONFIDENCE for confidence in reviewer_confidence):
+            findings.append(Finding(row_number, "reviewer_confidence_invalid"))
+        final_confidence = values["adjudicated_label_confidence"].lower()
+        if final_confidence not in REVIEW_CONFIDENCE:
+            findings.append(Finding(row_number, "label_confidence_invalid"))
+        elif final_confidence == "low":
+            findings.append(Finding(row_number, "low_confidence_review"))
+        if values["review_status"].lower() != "adjudicated":
+            findings.append(Finding(row_number, "review_not_adjudicated"))
 
         reviewer_a = _norm_label(values["reviewer_a_label"])
         reviewer_b = _norm_label(values["reviewer_b_label"])
@@ -250,6 +303,26 @@ def validate_batch(
         elif reviewer_a != reviewer_b and adjudicated not in {reviewer_a, reviewer_b}:
             findings.append(Finding(row_number, "unresolved_label_disagreement"))
 
+        scam_a = values["reviewer_a_scam_assessment"].lower()
+        scam_b = values["reviewer_b_scam_assessment"].lower()
+        scam_final = values["adjudicated_scam_assessment"].lower()
+        scam_row = values["scam_assessment"].lower()
+        for assessment in (scam_a, scam_b, scam_final, scam_row):
+            if assessment not in SCAM_ASSESSMENTS:
+                findings.append(Finding(row_number, "invalid_scam_assessment"))
+                break
+        if all(assessment in SCAM_ASSESSMENTS for assessment in (scam_a, scam_b, scam_final, scam_row)):
+            if scam_row != scam_final:
+                findings.append(Finding(row_number, "scam_assessment_must_match_adjudication"))
+            if scam_a == scam_b and scam_final != scam_a:
+                findings.append(Finding(row_number, "scam_adjudication_must_match_agreeing_reviewers"))
+            elif scam_a != scam_b and (
+                not values["adjudicator_id"]
+                or values["adjudicator_id"].casefold()
+                in {values["reviewer_a_id"].casefold(), values["reviewer_b_id"].casefold()}
+            ):
+                findings.append(Finding(row_number, "independent_scam_adjudicator_required"))
+
         for field in ("language", "category"):
             value = values[field] or "unknown"
             target = language_counts if field == "language" else category_counts
@@ -257,6 +330,15 @@ def validate_batch(
                 findings.append(Finding(row_number, f"invalid_or_non_categorical_{field}"))
                 value = "unknown"
             target[value] = target.get(value, 0) + 1
+
+    # Campaign IDs are operator-supplied and can accidentally split a single
+    # message-template family. Keep the diagnostic content-free while blocking
+    # these near-duplicates from crossing campaign/time partitions.
+    for template_rows in template_groups.values():
+        if len({group for _, group in template_rows}) > 1:
+            findings.extend(
+                Finding(row_number, "near_duplicate_template_spans_campaign_groups") for row_number, _ in template_rows
+            )
 
     # Deduplicate identical row/rule reports without including offending values.
     unique_findings = tuple(sorted(set(findings), key=lambda item: (item.row, item.rule)))

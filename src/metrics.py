@@ -360,15 +360,20 @@ def campaign_bootstrap_intervals(
         }
     row_indices = [np.flatnonzero(groups == group) for group in group_values]
     rng = np.random.default_rng(seed)
-    samples: dict[str, list[float]] = {name: [] for name in ("precision", "recall", "f1", "false_positive_rate")}
+    samples: dict[str, list[float]] = {
+        name: [] for name in ("precision", "recall", "f1", "false_positive_rate", "false_negative_rate")
+    }
     for _ in range(replicates):
         chosen = rng.integers(0, len(row_indices), size=len(row_indices))
         indices = np.concatenate([row_indices[index] for index in chosen])
         values = binary_metrics(labels[indices].tolist(), probs[indices], threshold)
-        for name in samples:
+        for name in ("precision", "recall", "f1", "false_positive_rate"):
             samples[name].append(float(values[name]))
+        if values["support_spam"]:
+            samples["false_negative_rate"].append(float(values["fn"] / values["support_spam"]))
     intervals = {
-        name: [float(np.quantile(values, 0.025)), float(np.quantile(values, 0.975))] for name, values in samples.items()
+        name: None if not values else [float(np.quantile(values, 0.025)), float(np.quantile(values, 0.975))]
+        for name, values in samples.items()
     }
     return {
         "available": True,
@@ -379,6 +384,7 @@ def campaign_bootstrap_intervals(
         "seed": seed,
         "confidence_level": 0.95,
         "intervals": intervals,
+        "valid_replicates": {name: len(values) for name, values in samples.items()},
         "note": "Group validity depends on source metadata; template families may not be independent real campaigns.",
     }
 

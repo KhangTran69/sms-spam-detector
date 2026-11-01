@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="referrer" content="no-referrer" />
+  <meta name="color-scheme" content="light dark" />
+  <title>Optional message donation · PH SMS Spam Detector</title>
+  <link rel="stylesheet" href="/static/styles.css?v=ui18-donation-20261101" />
+  <link rel="stylesheet" href="/static/donate.css?v=donate-v5" />
+  <script type="module" src="/static/donate.js?v=donate-v5"></script>
+</head>
+<body>
+  <a class="skip-link" href="#donation-main">Skip to donation form</a>
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand"><span class="brand-icon" aria-hidden="true">🛡️</span> PH SMS Spam Detector</div>
+      <a class="btn ghost" href="/">Back to detector</a>
+    </div>
+  </header>
+  <main id="donation-main" tabindex="-1">
+    <section class="card input-card donation-card" aria-labelledby="donation-title">
+      <h1 id="donation-title">Optional message donation</h1>
+      <p>Service operator contact: <strong>__DONATIONS_OPERATOR_CONTACT__</strong></p>
+      <p>Help reviewers study spam and legitimate messages. Donating is optional and is not needed to use the detector.</p>
+      <p>Submit only messages sent directly to you or messages you wrote and are authorized to share. Do not submit someone else's private conversation, live OTPs, passwords, PINs, account credentials, or full sender details. The local service checks for likely personal information, including URLs; it can miss details, so redact anything you do not want to share.</p>
+      <form id="donation-form" novalidate>
+        <label for="donation-message">Message text</label>
+        <textarea id="donation-message" rows="6" maxlength="10000" required aria-describedby="donation-message-help"></textarea>
+        <p id="donation-message-help" class="hint">Up to 10,000 characters. If a detail is flagged, edit it here and submit again yourself.</p>
+
+        <label for="donation-label-hint">Optional label hint</label>
+        <select id="donation-label-hint">
+          <option value="">No hint</option>
+          <option value="spam">Spam signal</option>
+          <option value="ham">Legitimate / ham</option>
+        </select>
+        <p class="hint">This is only your suggestion. It is not a verified label.</p>
+
+        <label for="donation-language">Optional language</label>
+        <select id="donation-language">
+          <option value="">Not sure</option>
+          <option value="en">English</option>
+          <option value="fil">Filipino</option>
+          <option value="tl">Tagalog</option>
+          <option value="tl-en">Taglish</option>
+          <option value="other">Other / mixed</option>
+        </select>
+
+        <fieldset class="donation-purpose">
+          <legend>Choose how this message may be used</legend>
+          <input type="checkbox" id="donation-consent" required aria-describedby="donation-consent-help" />
+          <label for="donation-consent">I have read the <a href="/privacy-notice" target="_blank" rel="noopener">privacy notice (version 2026-11-01-v4)</a> and consent to store this message locally for human review and labeling.</label>
+          <p id="donation-consent-help" class="hint">This required choice only allows local review. It does not automatically add the message to a dataset.</p>
+
+          <input type="checkbox" id="donation-authorized" required aria-describedby="donation-authorized-help" />
+          <label for="donation-authorized">I am authorized to share this message. It was sent directly to me or I wrote it, and it is not someone else's private conversation.</label>
+          <p id="donation-authorized-help" class="hint">Never submit live OTPs, passwords, PINs, account credentials, or full sender details.</p>
+
+          <input type="checkbox" id="donation-research-consent" aria-describedby="donation-research-help" />
+          <label for="donation-research-consent">Optional: I separately consent to this message being considered for future model research, including training or evaluation, after independent review and approval.</label>
+          <p id="donation-research-help" class="hint">Leave unchecked for review-only handling. This choice is not required and does not guarantee inclusion or use.</p>
+        </fieldset>
+        <p class="hint">The server records this notice version and a consent timestamp. Messages expire after 90 days. You can withdraw after submission using the withdrawal ID below.</p>
+
+        <ul id="donation-pii-findings" class="donation-findings" role="alert" aria-live="assertive" aria-label="Personal details to review" hidden></ul>
+        <p id="donation-status" class="donation-status" role="status" aria-live="polite" aria-atomic="true"></p>
+        <div class="buttons donation-actions">
+          <button type="submit" id="donation-submit" class="btn primary">Submit for local review</button>
+        </div>
+      </form>
+      <section class="donation-withdrawal" aria-labelledby="donation-withdrawal-title">
+        <h2 id="donation-withdrawal-title">Withdraw a donation</h2>
+        <p id="donation-withdrawal-help" class="hint">After submission, copy or note the withdrawal ID shown here. It stays only in this page and is not saved by the browser. To withdraw later, return to this page and enter the ID you kept somewhere private.</p>
+        <form id="donation-withdrawal-form" class="donation-actions">
+          <label for="donation-withdrawal-id">Withdrawal ID</label>
+          <input id="donation-withdrawal-id" type="text" minlength="32" maxlength="32" pattern="[a-f0-9]{32}" autocomplete="off" autocapitalize="off" spellcheck="false" required aria-describedby="donation-withdrawal-help" />
+          <button type="submit" id="donation-withdraw" class="btn ghost danger">Withdraw and erase</button>
+        </form>
+      </section>
+      <p class="hint">No message is submitted until you press the button. The service does not retry automatically. Verify suspicious requests through trusted official channels.</p>
+    </section>
+  </main>
+  <footer class="site-footer"><p>Local collection is operator-enabled and off by default.</p></footer>
+</body>
+</html>
