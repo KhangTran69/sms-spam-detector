@@ -59,14 +59,18 @@ bound to `127.0.0.1` and restarts after unexpected process exits.
 
 ## Evaluation status
 
-The versioned [UCI + synthetic diagnostic report](docs/benchmarks/uci-synthetic-ph-diagnostic-20261022.json)
+The historical [UCI + synthetic diagnostic report](docs/benchmarks/uci-synthetic-ph-diagnostic-20261022.json)
 records the exact model and input hashes, configuration, split fingerprints,
-dependencies, coverage, errors, and uncertainty. Its public English corpus
-results and tracked synthetic Philippine fixture results are separated; the
-separate Philippine holdout is synthetic only. The report is an engineering
-reproducibility check, not evidence of real-world Philippine reliability. It
-was generated from a working tree with uncommitted changes (`source_tree_clean`
-is false). No consented Philippine messages are available, so claims about
+dependencies, coverage, errors, and uncertainty; it was generated from a
+working tree with uncommitted changes (`source_tree_clean` is false). A clean
+run on current `main` is recorded in the [clean-main report](docs/benchmarks/clean-main-6ac6a795-20261101.json)
+and its [near-duplicate audit](docs/benchmarks/clean-main-6ac6a795-20261101-near-duplicate-audit.json).
+The clean run separates public English corpus results from tracked synthetic
+fixtures and uses a synthetic-only holdout. Its grouped split has no exact,
+normalized, or group overlap, but a heuristic screen found 14 high-similarity
+candidate pairs across internal splits; see the audit for details. Both
+reports are engineering diagnostics, not evidence of real-world Philippine
+reliability. No consented Philippine messages are available, so claims about
 real-world performance remain blocked. See the
 [dataset inventory](docs/DATASET_INVENTORY.md) and
 [benchmark runbook](docs/BENCHMARKING.md).

@@ -111,3 +111,26 @@ text and local paths, but source hashes and aggregate metrics still derive from
 private data. The command refuses to overwrite existing candidate or report
 files. Its report schema is versioned; retain the artifact and manifest next to
 the report when reproducing a result.
+
+## Clean main reproduction (2026-11-01)
+
+The [clean-main report](benchmarks/clean-main-6ac6a795-20261101.json) reproduces
+commit `6ac6a795cce2d23b91796a0a9ca95844d2d565c4` with Python 3.13.3, the pinned
+UCI archive and extracted-file hashes, five tracked synthetic supplements, and
+the tracked synthetic holdout. It records the dependency versions, dataset
+hashes, split fingerprint, class-specific results, fixed-threshold baseline,
+and uncertainty. This is a public-plus-synthetic diagnostic, not a Philippine
+field-accuracy estimate.
+
+The [near-duplicate audit](benchmarks/clean-main-6ac6a795-20261101-near-duplicate-audit.json)
+records zero exact or normalized duplicates and zero template-group overlap,
+including zero overlap with the 69 holdout groups. A separate screen required
+both a TF-IDF character 3–5-gram cosine similarity of at least 0.90 and a
+case-folded SequenceMatcher sequence ratio of at least 0.90. It found 14
+high-similarity candidate pairs across internal splits (6 train/validation and
+8 train/test); all pairs shared a label and came from the public corpus. The
+screen found no pair with cosine
+similarity of at least 0.80 between training rows and the synthetic holdout.
+The internal pairs are possible template-leakage candidates rather than
+confirmed duplicates. Group disjointness alone does not rule out near-duplicate
+leakage; read the diagnostic scores with that limit.
