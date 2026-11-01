@@ -1,0 +1,121 @@
+{
+  "artifact_sha256": {
+    "benchmark_report": "bfa1407368322e8dedf3c8de0f2388f5aad12a73d9271c8373b82581a35c61d3",
+    "candidate_manifest": "5f5d55de413407a1f9d8ef59304606dc048ea6a36c1d029b3cb1ff52931ff34d",
+    "candidate_metadata": "5f990c85c545404b7e65948c401b5e84f120ba5827613ec74caf99267ec57897",
+    "candidate_model": "acdb751700adc17509c9464c91b1b561969f4d4b6468e1bf800554e8bb3f20c6"
+  },
+  "benchmark_report": "clean-main-6ac6a795-20261101.json",
+  "benchmark_report_sha256": "bfa1407368322e8dedf3c8de0f2388f5aad12a73d9271c8373b82581a35c61d3",
+  "dataset_inputs": [
+    {
+      "role": "base",
+      "rows_loaded": 5157,
+      "sha256": "18d69dd0eaefced609c353220af15b0ac4beebccdd1d9732a7e804dfe3a05ef3"
+    },
+    {
+      "role": "supplement",
+      "rows_loaded": 128,
+      "sha256": "e2551477919b8def8f87cb8c03f47630b399b26e132f99ddb60974fa43146d00"
+    },
+    {
+      "role": "supplement",
+      "rows_loaded": 141,
+      "sha256": "fc421a56d05211bc74422f5fe00936de3401eec5ccbf7ecaccaf60a55804324e"
+    },
+    {
+      "role": "supplement",
+      "rows_loaded": 52,
+      "sha256": "638d4992e5cccf9168dfaea85e01fb0bf78361182fa8014bf051488e873dffd2"
+    },
+    {
+      "role": "supplement",
+      "rows_loaded": 42,
+      "sha256": "1695232f09c55ae852dda75eeee019c525dbdf3eef32dd316ff5f47cb5b1dd91"
+    },
+    {
+      "role": "supplement",
+      "rows_loaded": 150,
+      "sha256": "a58a8352670b96385d1ae6ec9e78d7e8d1fb7678ddca96c222b76a61a74690d7"
+    }
+  ],
+  "holdout_leakage_check": {
+    "exact_message_overlap": 0,
+    "holdout_template_family_count": 69,
+    "normalized_message_overlap": 0,
+    "template_family_overlap": 0,
+    "template_family_overlap_ratio": 0.0
+  },
+  "internal_split": {
+    "base_exact_and_normalized_duplicates_removed_before_split": 415,
+    "group_overlap_count": 0,
+    "method": "stratified_group_kfold",
+    "row_membership_fingerprint": "08cd1d8daa1860cf336148f11479e1cb026cd81ec791150eef43bacddb30de24",
+    "seed": 42
+  },
+  "interpretation": "The split report confirms disjoint group identifiers and zero exact/normalized duplicate overlap, while the heuristic scan finds high-similarity public-message candidates across internal splits. Reported diagnostic scores should be read with this limitation and are not Philippine field-accuracy evidence.",
+  "libraries": {
+    "fastapi": "0.156.0",
+    "joblib": "1.6.0",
+    "matplotlib": "3.11.2",
+    "numpy": "2.5.4",
+    "pandas": "3.0.6",
+    "pydantic": "2.14.1",
+    "pydantic-core": "2.50.1",
+    "scikit-learn": "1.9.1",
+    "scipy": "1.18.1",
+    "starlette": "1.9.0",
+    "threadpoolctl": "3.7.0",
+    "uvicorn": "0.54.0"
+  },
+  "near_duplicate_candidate_audit": {
+    "candidate_pair_data_kind": "public",
+    "candidate_pair_labels_agreed": true,
+    "holdout_comparison_scope": "all 5,670 training rows against 264 synthetic holdout rows",
+    "holdout_cosine_screen_threshold": 0.8,
+    "holdout_max_cosine_similarity": 0.7532013783061869,
+    "method": "Candidate pairs required both thresholds: TF-IDF char_wb 3-5 character n-gram cosine similarity >= 0.90 and case-folded difflib SequenceMatcher ratio >= 0.90.",
+    "pair_counts": {
+      "all_training_rows_synthetic_holdout": 0,
+      "train_test": 8,
+      "train_validation": 6,
+      "validation_test": 0
+    },
+    "pair_counts_are_unique_pairs": true,
+    "raw_messages_or_row_ids_included": false,
+    "status": "heuristic exploratory audit; candidate similarity is not proof of leakage"
+  },
+  "python_version": "3.13.3",
+  "reproduction_command": [
+    ".venv/bin/python",
+    "-m",
+    "src.benchmark",
+    "--data",
+    "data/raw/imported/uci_sms_spam.csv",
+    "--supplement",
+    "data/raw/ph_supplement.csv",
+    "data/raw/ph_supplement_2.csv",
+    "data/raw/ph_supplement_3.csv",
+    "data/raw/ph_supplement_4.csv",
+    "data/raw/ph_supplement_5.csv",
+    "--holdout",
+    "data/raw/ph_holdout.csv",
+    "--output-dir",
+    "data/processed/clean-main-6ac6a79-20261101-clean",
+    "--model-version",
+    "clean-main-6ac6a79-20261101-clean"
+  ],
+  "run_id": "clean-main-6ac6a79-20261101-clean",
+  "schema_version": 1,
+  "software_provenance": {
+    "historical_report_sha256": "854358311c19e56e9969665d1d7a69fe610523269e2eefa094868c19c3f6d95e",
+    "python_constraints_sha256": "93da7aadc7ff5ca975239e68d50e199e1e50fce633128dd8511d84265750cab5",
+    "requirements_sha256": "a76f3fa570844d71084475e8d3bdfeca0700a84d3c457109f81407298694910d"
+  },
+  "source_revision": "6ac6a795cce2d23b91796a0a9ca95844d2d565c4",
+  "source_tree_clean_at_run": true,
+  "uci_public_source": {
+    "archive_sha256": "1587ea43e58e82b14ff1f5425c88e17f8496bfcdb67a583dbff9eefaf9963ce3",
+    "extracted_tsv_sha256": "7d039a24a6083ed9ef0f806ebad56bbb976e3aeb8de05669173bfdc4996c239d"
+  }
+}
