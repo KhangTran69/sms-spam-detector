@@ -9,6 +9,9 @@ node_modules/
 data/raw/*
 !data/raw/.gitkeep
 !data/raw/README.md
+data/external/*
+!data/external/README.md
+data/donations/*
 data/processed/*
 !data/processed/.gitkeep
 data/feedback/*

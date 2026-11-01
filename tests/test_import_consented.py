@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+import stat
 from datetime import date
 
 import pandas as pd
@@ -29,13 +31,25 @@ def _valid_rows() -> list[dict[str, str]]:
         "consent_record_id": "consent_001",
         "consent_verified": "true",
         "consent_active": "true",
+        "review_consent": "true",
+        "model_research_consent": "true",
+        "authorized_to_share": "true",
         "consent_scope": "training_and_evaluation",
         "consent_version": "v1",
         "consent_date": "2026-01-15",
         "retention_until": "2027-01-15",
+        "received_at": "2026-01-14T12:00:00Z",
+        "scam_assessment": "not_suspected",
         "reviewer_a_id": "reviewer_a",
         "reviewer_b_id": "reviewer_b",
         "adjudicator_id": "",
+        "reviewer_a_scam_assessment": "not_suspected",
+        "reviewer_a_label_confidence": "high",
+        "reviewer_b_scam_assessment": "not_suspected",
+        "reviewer_b_label_confidence": "high",
+        "adjudicated_scam_assessment": "not_suspected",
+        "adjudicated_label_confidence": "high",
+        "review_status": "adjudicated",
     }
     return [
         {
@@ -55,6 +69,10 @@ def _valid_rows() -> list[dict[str, str]]:
             "reviewer_a_label": "spam",
             "reviewer_b_label": "spam",
             "adjudicated_label": "spam",
+            "scam_assessment": "suspected",
+            "reviewer_a_scam_assessment": "suspected",
+            "reviewer_b_scam_assessment": "suspected",
+            "adjudicated_scam_assessment": "suspected",
         },
     ]
 
@@ -73,6 +91,9 @@ def test_importer_uses_shared_schema_and_outputs_loader_compatible_file(tmp_path
     assert set(dataset.frame["group"]) == {"campaign_safe_01", "campaign_scam_02"}
     assert "private_participant_batch.csv" not in str(result)
     assert rows[0]["message"] not in str(result)
+    if os.name == "posix":
+        assert stat.S_IMODE(output.stat().st_mode) == 0o700
+        assert stat.S_IMODE(imported.stat().st_mode) == 0o600
 
 
 def test_preflight_normalized_headers_and_label_aliases_import_end_to_end(tmp_path) -> None:
@@ -172,6 +193,15 @@ def test_training_loader_rechecks_consent_even_when_import_is_bypassed(tmp_path)
 
     with pytest.raises(DatasetError, match="consent_inactive_or_revoked"):
         load_dataset(source, require_both_classes=False, min_class_count=0)
+
+
+def test_final_evaluation_loader_requires_evaluation_consent_scope(tmp_path) -> None:
+    row = _valid_rows()[0]
+    row["consent_scope"] = "training"
+    source, _ = _fixture(tmp_path, [row])
+
+    with pytest.raises(DatasetError, match="consent_does_not_cover_evaluation"):
+        load_dataset(source, role="holdout", require_both_classes=False, min_class_count=0)
 
 
 def test_training_loader_rejects_consent_without_review_metadata(tmp_path) -> None:

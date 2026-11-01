@@ -97,7 +97,9 @@ def main(argv: list[str] | None = None) -> int:
         raise
 
     try:
-        uvicorn.run("api.main:app", host=args.host, port=args.port, reload=args.reload)
+        # The application emits structured, content-free request summaries.
+        # Disable Uvicorn access logs to keep one consistent, sanitized log stream.
+        uvicorn.run("api.main:app", host=args.host, port=args.port, reload=args.reload, access_log=False)
     except OSError as error:
         if error.errno in {48, 98, 10048}:
             print(

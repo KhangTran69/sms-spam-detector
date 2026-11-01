@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import re
 import unicodedata
 from pathlib import Path
@@ -37,7 +38,15 @@ LABEL_ALIASES = {
     "1": "spam",
 }
 
-METADATA_COLUMNS = ("source", "category", "language", "labeling_confidence", "group", "received_at", "data_kind")
+METADATA_COLUMNS = (
+    "source",
+    "category",
+    "language",
+    "labeling_confidence",
+    "group",
+    "received_at",
+    "data_kind",
+)
 CANONICAL_COLUMNS = ("message", "label", *METADATA_COLUMNS, "source_file")
 DEFAULT_VAL_SIZE = 0.15
 DEFAULT_TEST_SIZE = 0.15
@@ -61,18 +70,21 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _read_csv(path: Path) -> pd.DataFrame:
+def _read_csv_snapshot(path: Path) -> tuple[bytes, pd.DataFrame]:
+    """Read CSV bytes once so parsing and the recorded hash refer to one snapshot."""
     try:
         if not path.exists():
             raise DatasetError("Dataset file not found. Pass an existing CSV or update the configured path.")
         if path.is_dir():
             raise DatasetError("Dataset path is a directory; pass an individual CSV file instead.")
-        if path.stat().st_size == 0:
+        content = path.read_bytes()
+        if not content:
             raise DatasetError("Dataset file is empty. Provide a CSV with at least a header and rows.")
         try:
-            return pd.read_csv(path, encoding="utf-8-sig", dtype=str, keep_default_na=False)
+            frame = pd.read_csv(io.BytesIO(content), encoding="utf-8-sig", dtype=str, keep_default_na=False)
         except UnicodeDecodeError:
-            return pd.read_csv(path, encoding="latin-1", dtype=str, keep_default_na=False)
+            frame = pd.read_csv(io.BytesIO(content), encoding="latin-1", dtype=str, keep_default_na=False)
+        return content, frame
     except pd.errors.EmptyDataError:
         raise DatasetError("Dataset has no readable CSV header or rows.") from None
     except pd.errors.ParserError:
@@ -81,6 +93,10 @@ def _read_csv(path: Path) -> pd.DataFrame:
         raise
     except OSError:
         raise DatasetError("Dataset cannot be accessed.") from None
+
+
+def _read_csv(path: Path) -> pd.DataFrame:
+    return _read_csv_snapshot(path)[1]
 
 
 def _column_lookup(df: pd.DataFrame, path: Path | None = None) -> dict[str, str]:

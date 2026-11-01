@@ -1,7 +1,7 @@
 {
   "name": "PH SMS Scam Detector",
   "short_name": "Scam Checker",
-  "description": "Check whether an SMS looks like a Philippine scam or spam. Messages are analysed in memory and never stored on a server.",
+  "description": "Check spam signals in an SMS. Ordinary checks are processed in memory; separate local message donations require explicit consent.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

@@ -1,409 +1,298 @@
-# Data Collection and Labeling
+# Consented data collection and labeling
 
-This document defines how SMS data may enter the project. It applies to the
-synthetic files currently in `data/raw/` and, more importantly, to any real
-Philippine messages added later.
+This guide covers future collection and research use of Philippine SMS data.
+The optional donation flow is separate from prediction, disabled by default,
+loopback-only, and unavailable in production mode. Submission never triggers
+training or evaluation. See [DONATION_INTAKE.md](DONATION_INTAKE.md) for local
+operator setup and [privacy-notice.md](privacy-notice.md) for the current
+donor-facing notice (`2026-11-01-v4`).
 
-> **Status:** no representative real Philippine messages have been collected. For scope and
-> limitations see [MODEL_CARD.md §4](MODEL_CARD.md#4-evaluation-and-the-synthetic-only-caveat).
+## Pre-collection governance handoff
 
-The UCI record lists the English SMS Spam Collection (5,574 historical
-messages) under CC BY 4.0. That is the supported public source for a new
-attributed import; the existing local base remains `unknown` until its source
-is verified. Importing another mirror adds no unique messages after
-deduplication. See [data/raw/README.md](../data/raw/README.md) for the import
-command and attribution details. Other public data is added only after its
-license, collection method, and SMS domain are verified.
+**No real-message collection is approved by this repository change.** Keep
+`SMSD_DONATIONS_ENABLED` unset until the project owner completes and signs one
+pre-collection go/no-go record after qualified privacy/legal review. The record
+must resolve every item below; an empty or deferred item means no-go.
 
-## 1. Principles
-
-1. **Consent and lawful basis first.** Do not collect a message without a clear
-   basis: informed consent from the person who received/sent it, or a documented
-   legal basis approved by whoever owns the deployment. Consent must be
-   specific (SMS research / model improvement), recorded, and revocable.
-2. **Data minimization.** Collect only the fields needed. Never ask donors for
-   bank details, OTPs, full account numbers, or identity documents.
-3. **No live OTPs or active codes.** A message containing a still-valid one-time
-   code must not be collected or stored; wait until it has expired or mask it.
-4. **Separate synthetic from real.** Synthetic templates and real messages use
-   different files, metadata (`source`), and evaluation reporting. Never mix
-   them silently.
-5. **Real data stays local.** Real message text never goes to Git, never goes
-   into notebooks that are committed, and never into issue trackers or chat.
-
-## 2. Consent workflow
-
-For any non-synthetic donation:
-
-1. Explain purpose (training/benchmarking an assistive spam classifier), what is
-   stored, who can access it, retention period, and how to withdraw.
-2. Record consent in a separate consent log (not in the message CSV): donor
-   pseudonym, date, scope, channel, version of the consent text, withdrawal
-   status. Keep the consent log out of Git.
-3. Assign a donor/group pseudonym so messages can be removed on request.
-4. On withdrawal, delete the donor's rows (or re-run the masking job) and
-   regenerate any derived artifacts; record the deletion in the audit log.
-
-Operational sequence: obtain and version the consent text before collection;
-store unmasked exports only in an encrypted, access-controlled location outside
-this repository; mask and run the automated PII scan before creating a CSV;
-have two reviewers label independently and quarantine disagreements; assign a
-campaign/donor pseudonym shared only by rows that must remain in one split;
-then copy only the masked, reviewed CSV into a restricted evaluation workspace.
-Set a deletion date at collection time, review access periodically, and delete
-the raw export, masked rows, backups, and derived model/evaluation artifacts
-when consent is withdrawn or retention expires. Keep the consent mapping and
-deletion log separately from message data. Record only aggregate counts in
-public reports. `source_file` and `group` metadata must never contain names,
-phone numbers, or other direct identifiers. Opaque donor/campaign pseudonyms
-may appear in the restricted CSV for split isolation, but must not appear in
-public reports; the loader's reports retain group counts and fingerprints only.
-
-### Local intake preflight
-
-Start from the blank [consented SMS intake template](../data/templates/consented_ph_sms_template.csv)
-in an encrypted workspace outside Git. Keep the reversible consent mapping and
-withdrawal log in a separate restricted register. The CSV's `consent_record_id`
-must be an opaque pseudonym from that register; `group` must be a separate
-donor/campaign pseudonym used for split isolation. Do not put names, phones,
-emails, or account identifiers in either value. Record only the consent version,
-scope, consent date, and retention deadline needed to confirm eligibility.
-The training manifest replaces local paths with a role plus source-hash prefix;
-the full hash is retained for integrity and reproducibility checks.
-
-After two reviewers independently label each row, fill in both reviewer IDs
-and labels plus the adjudicated label. If reviewers disagree, a third,
-independent `adjudicator_id` is required. Cross-check `consent_verified` and
-`consent_active` against the restricted register before setting them to `true`;
-these columns are an operator attestation, not proof that consent exists.
-Choose `consent_scope` as `training`, `evaluation`, or
-`training_and_evaluation`. Never include a live OTP. Mask URLs as `URLTOKEN`,
-phone numbers as `PHONETOKEN`, email addresses as `EMAILTOKEN`, and personal or
-account numbers as the appropriate tokens before running preflight.
-
-Run the local validator from the repository root using the protected CSV path:
-
-```bash
-python -m src.consented_data /secure/workspace/consented_batch.csv --purpose training
-```
-
-It reports row totals, label/language/category counts, group count, and only
-CSV row numbers plus rule codes for failures. It does not print SMS text or
-matched values. A pass catches common residual phones, emails, URLs, long
-numeric codes, consent that does not cover the selected use, missing/revoked/
-expired consent declarations, incomplete review, and unsafe identifiers. It
-cannot reliably detect names or prove that consent or masking is genuine.
-Manually review the batch and verify the consent register before importing it.
-A failing intake exits non-zero. Keep real CSVs outside the repository in the
-encrypted workspace whenever possible. If a temporary local copy must sit
-inside the checkout, use an ignored `data/raw/` path and verify it with
-`git check-ignore -v <path>` and `git status --ignored --short` before any
-commit. Never pass real data to public CI.
-
-For an approved batch, run the importer with the same purpose and a protected
-output directory:
-
-```bash
-python -m src.import_consented \
-  --input /secure/workspace/consented_batch.csv \
-  --purpose training \
-  --output-dir /secure/workspace/approved
-```
-
-The importer repeats the same validation against one in-memory snapshot of the
-input and writes that validated frame. It refuses a batch with any finding;
-review disagreements must be adjudicated before import. It prints only an
-opaque output filename, counts, and the input hash. Use `--purpose evaluation`
-for a frozen evaluation batch. Evaluation consent must cover that use and the
-batch must contain both labels. Do not add an evaluation batch as a training
-supplement.
-
-After preflight, use the checked CSV only from its protected location and write
-all outputs to a protected candidate directory. For a training batch, pass the
-approved base and consented supplement explicitly and keep the candidate
-separate from the serving artifact:
-
-```bash
-python -m src.train \
-  --data /secure/workspace/base.csv \
-  --supplement /secure/workspace/consented_training.csv \
-  --output /secure/workspace/candidates/consented-candidate.pkl
-```
-
-For a frozen evaluation batch, preflight it with `--purpose evaluation`, then
-evaluate it once against the candidate without using it for threshold selection:
-
-```bash
-python -m src.evaluate \
-  --data /secure/workspace/base.csv \
-  --supplement /secure/workspace/consented_training.csv \
-  --model /secure/workspace/candidates/consented-candidate.pkl \
-  --holdout /secure/workspace/consented_holdout.csv \
-  --plot none \
-  --json-out /secure/workspace/reports/consented-evaluation.json
-```
-
-Use generic, non-identifying directory and file names. Candidate artifacts,
-reports, plots, and their backups can contain learned or aggregate information
-from the private source; restrict access and apply the same retention/deletion
-schedule. Do not point training at the serving artifact path or promote a
-candidate on training success alone.
-
-When a participant withdraws or retention expires, use the opaque
-`consent_record_id` to remove their rows from every training and holdout source
-in the protected workspace; regenerate splits, candidate artifacts, manifests,
-plots, evaluation JSON, and backups from the remaining approved data. Record
-only the withdrawal date, deleted source identifiers, and derived-artifact
-versions in the separate audit log—never copy the withdrawn message into that
-log. Re-run preflight and leakage checks after deletion. Do not delete just the
-CSV row while leaving a model or report trained from it in service.
-
-Do not rely on "publicly posted" as consent for re-publishing someone's private
-messages. Do not scrape private groups or inboxes.
-
-## 3. De-identification and masking
-
-Before a message is written to any dataset file, replace personal data. Prefer
-replacement tokens over deletion so text patterns stay intact:
-
-| Data | Replacement |
+| Role | Required decision or control before collection |
 |---|---|
-| Names, usernames, email addresses | `PERSONTOKEN` / `EMAILTOKEN` |
-| Mobile / landline numbers | `PHONETOKEN` (keep a masked last-2 marker only if needed for grouping, e.g. `PHONETOKEN_89`) |
-| URLs / short links | `URLTOKEN` (keep the scheme only if it matters) |
-| Exact amounts tied to a person | `MONEYTOKEN` when the amount could identify a transaction |
-| Account / card / reference numbers | `ACCOUNTTOKEN` |
-| Addresses, landmarks, barangay + house details | `ADDRESSTOKEN` |
-| OTP / verification codes | `CODETOKEN` (never keep the live code) |
-| Device identifiers, IMEI, IP | `DEVICETOKEN` |
-| Dates of birth, government IDs | remove or `IDTOKEN` |
+| Project owner | State the study question, intended use, eligible contributors, recruitment and consent process, controller identity/contact, lawful-basis decision, access list, collection window, approved notice, retention periods for source/export/splits/model/reports, withdrawal handling for derived artifacts, backup deletion, incident owner and escalation path, and release decision. Appoint a separate sealed-test custodian. |
+| Qualified privacy/legal reviewer | Review controller/processor roles, lawful basis, notice, proportionality, minimization, safeguards, data-subject rights, retention/deletion, any assessment/registration/notification duties, withdrawal, backups, and incident handling under applicable Philippine requirements. Record unresolved legal questions; do not treat this software as a compliance finding. |
+| Data steward | Keep the consent/withdrawal register separate and access-controlled; verify each message's active purpose-specific consent, sharing authorization, expiry, and withdrawal status; manually screen PII; assign opaque campaign groups; track deletion through exports, splits, backups, and any derived model; keep a content-free audit trail. |
+| Two independent labelers | Follow confidentiality and conflict-of-interest instructions; receive separate randomized sheets with masked messages only; label without donor hints, each other's judgments, model scores, or predictions; return first-pass annotations before discussion. A third independent adjudicator resolves disagreements. |
+| Sealed-test custodian | Restrict test-file access from training and threshold selection; retain it until the plan and exact model/development hashes are registered; authorize one evaluation attempt and preserve its attempt record. |
 
-Rules:
+The go/no-go record must name owners and dates for access review, withdrawal
+requests, backup deletion, expiry/purge, and incident triage. The application
+cannot verify a separate consent register, enforce reviewer blinding,
+authenticate human roles, prove contributor independence, or prove the test was
+previously unseen. Campaign grouping avoids sender identifiers and limits
+template leakage, but it does not prove contributors are independent.
 
-- Mask `message` **before** it is stored, not at training time.
-- Run a second automated pass (regex for PH phone numbers, emails, URLs, long
-  digit runs) and a manual spot-check of every newly added batch.
-- Keep the reversible mapping (if any) encrypted and outside the dataset repo;
-  normally there is no need for one.
-- Screenshots/source exports are raw personal data: store them in the same
-  protected location as the unmasked text and delete them after masking.
+This handoff specifies no participant, message, or campaign sample-size target.
+Before any sealed test is opened, the owner and qualified reviewer must justify
+the study size, language/category coverage, effective independent-campaign
+count, and acceptable uncertainty intervals for the intended use and error
+costs, then register those criteria in the evaluation plan. No repository
+default establishes adequate evidence.
 
-## 4. Labeling protocol
+## Evidence status
 
-Label each message as `spam` (scam/spam/unsolicited) or `ham`
-(legitimate/transactional/personal), then record how sure the labeler was.
+No representative real Philippine corpus has been collected; no independently
+labeled, consented Philippine corpus or trained model artifact is currently
+available for this workflow. The local PH Spam + Marketing SMS
+snapshot is a public one-person inbox with 1,664 normalized labeled rows; it is
+not consented research data and cannot establish representative Philippine
+performance. The supplied ZIP and CSV are the same snapshot and must be counted
+once. Supplied EDA notebooks are untrusted artifacts and must not be executed.
+See [DATASET_INVENTORY.md](DATASET_INVENTORY.md) and
+[`data/external/README.md`](../data/external/README.md) for source status.
 
-**Labeling checklist**
+## 1. Consent and privacy boundaries
 
-1. Read the full message, including sender ID if available (sender IDs are not
-   stored; capture a generic category such as "bank sender ID" in `notes`).
-2. Decide `spam` when the message is unsolicited and/or attempts to defraud:
-   prizes, impersonation, credential/OTP phishing, fake fees, job/investment
-   lures, threat/urgency to act. Decide `ham` for legitimate OTPs, transaction
-   alerts, delivery notices, bills, appointment reminders, and personal texts.
-3. Watch the hard cases: legitimate bank alerts often contain a link, an amount,
-   urgency word ("expires", "now"), and a brand name. A link/amount/phone alone
-   is **not** spam. If it is plausibly legitimate but suspicious, label `ham`
-   with low confidence rather than inflating the spam class.
-4. Avoid inferring intent from who the sender is alone; use content.
-5. Two-person labeling for any new batch: independent first pass, then resolve
-   disagreements by discussion; record the resolution.
+Before enabling the local form, an operator must identify themselves and a
+contact route, review the actual purpose and legal basis, assess the host and
+access controls, and obtain qualified privacy/legal advice where needed. The
+software does not establish legal compliance. Keep the service on localhost;
+do not put it behind a public reverse proxy, expose it to a network, or deploy
+the intake.
 
-**Confidence scale** (stored in `labeling_confidence`, 0.0–1.0):
+The versioned notice asks for separate affirmative choices:
 
-| Value | Meaning |
-|---|---|
-| `0.95`–`1.00` | Obvious; both labelers agree without discussion |
-| `0.80`–`0.94` | Clear pattern; minor ambiguity (sender, context) |
-| `0.60`–`0.79` | Plausible but uncertain; keep for error analysis, down-weight if it conflicts |
-| `< 0.60` | Do not use for training/evaluation; move to a review queue |
+- authorization to share a message sent directly to the submitter or written
+  by them;
+- consent to local human review and labeling;
+- an optional, separate choice to consider it for future model research,
+  including training or evaluation.
 
-Also record `labeler` (pseudonym), `labeled_at` (ISO date), and `labeling_notes`
-for ambiguous cases. Do not silently fix labels after the fact; append a new
-label record/version and note why.
+Never solicit someone else's private conversation, a live OTP, password, PIN,
+credential, complete sender details, contact list, or account number. The form
+does not ask for names, phone numbers, email addresses, or sender identifiers.
+Likely PII screening runs before database storage, in storage validation, and
+again before export. It is conservative but incomplete; donors must inspect and
+redact flagged text themselves. URLs remain research signals and are flagged
+for donor review. No scanner proves that data is anonymous or safe to share.
 
-The current training loader reads `labeling_confidence` as metadata for analysis
-but does **not** weight examples by it. Keep low-confidence rows out of training
-(§4) rather than assuming the model will discount them. `labeler`, `labeled_at`,
-and `labeling_notes` remain in the CSV for provenance/audit; the loader does not
-use them for training.
+SQLite storage lives locally with restrictive permissions and a 90-day active
+retention period. The host operator remains responsible for full-disk
+encryption, account access, physical security, backup deletion, and avoiding
+cloud-synced folders. The application does not encrypt the database. Withdrawal
+erases message and label fields and retains only a content-free tombstone for
+the stated period. A separate consent register links opaque consent tokens to
+the relevant withdrawal process; keep it separately protected and never put
+names or contact identifiers in the research CSV.
 
-## 5. CSV schema
+The form is only an intake queue. Exported donations have blank target labels,
+`pending_review` status, and `eligible_for_modeling=false`. The research
+pipeline never consumes submissions automatically. A separate operator must
+verify active consent, research scope, retention, and authorization against the
+restricted register, then obtain independent labels before a row can pass
+preflight.
 
-Required columns:
+### Data Privacy Act considerations
 
-| Column | Type | Rules |
-|---|---|---|
-| `label` | string | `spam` or `ham` (loader also accepts `legit`, `scam` and Kaggle `v1`; prefer canonical values). |
-| `message` | string | Masked text, UTF-8, non-empty, no leading/trailing junk. |
+The Philippine Data Privacy Act of 2012 (Republic Act No. 10173), its
+Implementing Rules and Regulations, and National Privacy Commission (NPC)
+issuances may apply. Before operating collection, assess controller/processor
+roles, purpose and lawful basis, transparency, proportionality, safeguards,
+retention and disposal, rights requests, breach response, and any applicable
+registration or notification duties. Do not infer that this repository's
+technical controls make a collection compliant. Public availability is not
+consent; scraping public pages is not automatically exempt from data-protection
+requirements. Dataset license and privacy basis are separate questions.
 
-Optional columns (recommended for real data; ignored by the trainer except for
-grouping/analysis):
+Primary official references: [Republic Act No. 10173 (Official Gazette)](https://officialgazette.gov.ph/2012/15/republic-act-no-10173),
+[DPA Implementing Rules and Regulations (NPC)](https://privacy.gov.ph/implementing-rules%20regulations-data-privacy-act-2012/),
+[NPC Circular No. 2023-04, Guidelines on Consent](https://privacy.gov.ph/wp-content/uploads/2023/11/NPC-Circular-No.-2023-04_Guidelines-on-Consent_07Nov2023.pdf),
+[NPC data-subject rights](https://privacy.gov.ph/data-subject-rights/),
+[NPC right to erasure or blocking](https://privacy.gov.ph/right-to-erasure-or-blocking/),
+and [NPC Advisory No. 2026-01 on publicly available personal data](https://privacy.gov.ph/wp-content/uploads/2026/04/SGD_A_1.pdf).
+These references are not legal advice. The operator must resolve applicability
+and deployment-specific questions with qualified counsel or a privacy officer.
 
-| Column | Type | Purpose |
-|---|---|---|
-| `source` | string | Provenance code, e.g. `uci`, `synthetic_template`, `consented_batch_2026q4`. |
-| `category` | string | Semantic code, e.g. `prize_scam`, `bank_impersonation`, `otp_legit`, `delivery`; use `unknown` if unsure. |
-| `language` | string | Code such as `en`, `tl`, `taglish`, or `mixed`; use `unknown` if unsure. |
-| `labeling_confidence` | float | `0.0`–`1.0` per the scale above. |
-| `labeler` | string | Pseudonym of the labeler. |
-| `labeled_at` | string | ISO-8601 date. |
-| `group` / `template_family` | string | Campaign/template grouping (see §6); rows in the same group must not straddle splits. |
-| `received_at` | ISO-8601 timestamp | Optional for group splits; required for `--split-by time`, which reserves newest campaign groups for validation/test. Use only date precision needed. |
-| `notes` | string | Short, non-PII diagnostic note. |
-| `data_kind` | string | `public`, `consented`, `synthetic`, or `unknown` provenance class. |
-| `dataset_id` / `dataset_version` | string | Source dataset identifier and version. |
-| `license` | string | License or usage terms for the source dataset. |
-| `collection_period` | string | Known collection period; write `unknown` when unavailable. |
+## 2. Schema and independent labeling
 
-The loader maps the first recognized alias for each optional field:
-`source`/`data_source`, `category`/`message_type`/`type`/`scam_type`,
-`language`/`lang`, `labeling_confidence`/`label_confidence`/`confidence`,
-`group`/`template_family`/`campaign`/`family`, and
-`received_at`/`message_date`/`received_date`/`timestamp`/`date`. `labeler`, `labeled_at`, and
-`notes` are kept in the file for provenance but are not used by training.
+Use the exact header in
+[`data/templates/consented_ph_sms_template.csv`](../data/templates/consented_ph_sms_template.csv).
+The message file contains minimized research metadata; the reversible consent
+mapping stays in a separate restricted register.
 
-The source-level fields `dataset_id`, `dataset_version`, `license`, and
-`collection_period` must be constant within each file. Training writes a
-message-free manifest next to the model metadata with source hashes, input and
-retained row counts, duplicate counts, labels, language/category coverage,
-provenance declarations, and the split fingerprint. Missing source details
-remain unknown rather than inferred from filenames.
+Keep these concepts distinct:
 
-Requirements:
+- `label`: the detector's spam/ham target. `spam` may include unsolicited
+  advertising and does not itself mean fraud; `ham` means a message a recipient
+  would reasonably expect or want.
+- `scam_assessment`: a separate `suspected`, `not_suspected`, or `unclear`
+  assessment. It is not a finding of criminal conduct.
+- `category`, `language`, and `received_at`: controlled category/language codes
+  and the least precise reliable date needed for time-separated analysis. Use
+  `unknown` when uncertain; do not invent timestamps.
+- `reviewer_a_*` and `reviewer_b_*`: separate first-pass decisions and
+  confidence (`low`, `medium`, `high`). Both reviewers must be different
+  people. Neither sees the other's labels, donor hint, model prediction, score,
+  or explanation.
+- `adjudicated_*` and `review_status`: final target and scam assessment after
+  independent review. Disagreement requires a third reviewer who did not make
+  either first-pass decision. Low-confidence, unresolved, withdrawn, expired,
+  or privacy-flagged rows are excluded.
+- `consent_record_id`, `consent_version`, `consent_scope`, `consent_date`,
+  `retention_until`, `consent_verified`, `consent_active`, `review_consent`,
+  `model_research_consent`, and `authorized_to_share`: minimal consent
+  declarations checked against the separate register. These fields are
+  attestations, not proof by themselves.
+- `group`: an opaque campaign/template-family grouping code. It must not encode
+  or derive from donor, sender, phone, or other direct identifiers. A group
+  exists to prevent related campaigns/templates from crossing a split; it is
+  not a donor ID. Keep any restricted mapping needed to support withdrawal
+  outside the research file.
 
-- Same header for supplement files; a file that has only `label,message` is
-  valid.
-- One message per row; do not put multiple messages in one cell.
-- Do not add extra index columns (an unnamed `Unnamed: 0` column is harmless but
-  avoid it).
-- Encoding UTF-8; `₱`, `ñ`, and other Philippine characters must survive. The
-  loader falls back to latin-1 for legacy Kaggle exports, but new files must be
-  UTF-8.
-- Keep the base corpus (`data/raw/spam.csv`) separate from Philippine files.
+Donor-provided hints are never ground truth. Two reviewers label the same
+masked message independently while blind to model output. A third independent
+adjudicator resolves disagreement; preserve both original judgments and the
+final decision. Follow the practical workflow in
+[`HUMAN_REVIEW.md`](HUMAN_REVIEW.md). Do not recruit or contact participants as
+part of repository development.
 
-The current training loader requires both classes across the full dataset,
-rejects blank/duplicate problems with actionable errors, and drops exact
-duplicate messages after merging. See `src/train.py` / `src/data.py` and the
-README for the current CLI.
+## 3. Local validation and review queue
 
-## 6. Template families and campaign grouping
+Start with the blank template in an encrypted workspace outside Git. Use an
+opaque `consent_record_id` from the separate register and a distinct campaign
+group. Never use a donor/sender identifier or a hash of one to build groups.
+Record only the consent scope, notice version, dates, controlled category and
+language, independent reviews, and adjudication needed for the stated purpose.
 
-Scam messages come in near-identical variants ("template families") and
-campaigns. Treat each family/campaign as a **group**:
+Run privacy-safe preflight against the private CSV:
 
-- Set `group` (or `template_family`) to a stable identifier, e.g.
-  `parcel_fee_lbc_2026q3` or `synthetic_prize_gma`.
-- All rows from one group go to **one** split (train/validation/holdout). The
-  trainer uses grouped splitting so the same template never appears on both
-  sides; a holdout that overlaps training template families is flagged in the
-  evaluation report, and those scores must be treated as optimistic.
-- For synthetic templates, one template family = one synthetic campaign, even if
-  wording variants exist. Do not claim independence between variants.
-- Real messages from the same donor or same sender campaign should share a
-  group so donor/sender style does not leak across splits.
-- For temporal evaluation, record a trustworthy `received_at` date and run
-  `python -m src.train --split-by time`. The newest campaign groups become the
-  test set, the next-newest become validation, and older groups train the model.
-  Every row needs a valid timestamp, groups remain indivisible, and the split
-  fails instead of silently becoming random if both labels cannot be represented.
-  Do not fabricate dates for synthetic templates or mix synthetic dates into a
-  real temporal benchmark.
+```bash
+.venv/bin/python -m src.consented_data /secure/workspace/batch.csv --purpose training
+.venv/bin/python -m src.consented_data /secure/workspace/batch.csv --purpose evaluation
+```
 
-If grouping metadata is missing for real data, add it before training. When
-`group` is absent the loader derives a template-family signature from the message
-text (folding in `category` when present); that is a safety net, not a substitute
-for curated campaign/donor groups. Never evaluate on random splits of the same
-family and report the result as generalization to new scams.
+The validator reports aggregate counts and CSV row numbers/rule codes only; it
+never echoes SMS text or matched PII. It requires active, verified consent,
+sharing authorization, model-research permission for research use, two
+independent labels, adjudication, dates for evaluation, and both target classes
+for evaluation. It rejects exact and detected template-family duplicates that
+span campaign groups. It cannot prove the consent register is genuine, detect
+all PII, or ensure that reviewers followed blinding instructions. Resolve all
+findings manually and revalidate.
 
-## 7. Synthetic vs. real data separation
+The donation export is a review staging queue, not a dataset:
 
-| | Synthetic (tracked) | Real (never tracked) |
-|---|---|---|
-| Location | `data/raw/ph_supplement*.csv`, `data/raw/ph_holdout.csv` | a protected local path / private store |
-| Git | allowed (template text only, no personal data) | **never** — `data/raw/*` is git-ignored except the whitelisted synthetic CSVs |
-| `source` | `synthetic_template` | donor/pseudonym or `real_holdout` |
-| Reporting | clearly labeled synthetic; never described as real-world performance | report only aggregate metrics; no message excerpts in public docs |
-| Splits | grouped by template family | grouped by donor/campaign; keep a real holdout completely held out |
+```bash
+make export-donations OUTPUT=/secure/workspace/review-staging.csv
+```
 
-Do not tune thresholds or prompts on the synthetic holdout and then present the
-same file as an unbiased test. Pick the threshold on a validation split, then
-report once on the held-out synthetic set and (when it exists) the real holdout.
+It omits withdrawn/expired or newly PII-flagged submissions, removes donor hints
+and model outputs, and cannot be used directly for training or evaluation. Two
+reviewers label it outside the application; an operator then verifies consent
+and fills the full reviewed-data template. Never commit raw or reviewed real
+messages or pass them to CI.
 
-## 8. Adding a supplement or holdout
+## 4. Leakage-resistant split and sealed test
 
-1. Pick the destination: `ph_supplement*.csv` (training) or `ph_holdout.csv`
-   (evaluation only). They must stay disjoint; tests enforce this.
-2. Mask every message first (§3). Add metadata columns (§5).
-3. Add both classes: a supplement with only scams teaches the model that any
-   link/amount/brand is spam, which is exactly the failure we must avoid. Add
-   legitimate OTPs, bank transaction alerts, delivery notices, bills, and
-   ordinary Taglish as `ham`.
-4. Group the rows by template family; extend an existing family rather than
-   creating near-duplicates.
-5. Do not copy the three diagnostic examples from the project brief into any
-   data file; they are leakage guards and are asserted absent.
-6. For a holdout: keep it completely out of training and threshold tuning; record
-   `source`, `category`, `language`, and confidence; aim for balance across
-   scam categories and legitimate message types.
-7. Run the data tests: `python -m pytest tests/test_data.py -q`.
-8. Retrain *after* the holdout is frozen; evaluate separately. Never evaluate on
-   data used to choose thresholds and report it as held-out.
-9. Update this document and the README dataset section with provenance, counts,
-   and known sampling bias. Do not publish performance numbers from synthetic
-   data without the synthetic-only caveat.
+Only an approved, independently reviewed, consented batch with active
+`model_research` scope (or equivalent explicit training-and-evaluation scope),
+all required consent choices, valid `received_at` values, and both spam/ham
+labels may enter this workflow. The batch must be approved for both development
+and final evaluation. The split command preflights both purposes, rejects
+duplicates/template families that span campaign IDs, then holds whole campaign
+groups chronologically. It writes the development CSV and final evaluation CSV
+to **separate private directories**, plus a content-free hash and membership
+manifest next to the development file:
 
-### Importing consented messages
+```bash
+make split-consented \
+  DATA=/secure/inbox/approved-reviewed.csv \
+  DEVELOPMENT_DIR=/secure/development \
+  EVALUATION_DIR=/secure/sealed-test
+```
 
-Use the exact columns in `data/templates/consented_ph_sms_template.csv`. Set
-`data_kind=consented`; provide consent verification, active status, purpose
-scope, a retention deadline, two independent labels, and an adjudicated label.
-For a disagreement, use a third reviewer who is not either original reviewer.
-Use opaque pseudonyms for consent records, reviewers, and campaign groups.
-Never put message excerpts in identifiers or free-text metadata.
+The development file contains older training and validation groups. The
+trainer makes its own chronological train/validation split from that file and
+selects the threshold on validation only. The newest group-separated file is
+the sealed test. Train the candidate without the default external holdout:
 
-Run `src.consented_data` to review aggregate validation findings, then run
-`src.import_consented` with the same `--purpose` to validate and write the
-approved batch. The importer does not silently discard disagreement rows. See
-the commands above; both tools share the same rules and never return message
-values. After import, train only with a `training` batch. Keep an `evaluation`
-batch frozen, campaign-separated, and out of threshold selection.
+```bash
+.venv/bin/python -m src.train \
+  --data /secure/development/consented-development-<hash>.csv \
+  --holdout none --split-by time --threshold-policy validation \
+  --output /secure/candidate/model.pkl
+```
 
-### Regenerating synthetic data
+No one involved in training or feature/threshold decisions should inspect the
+sealed message file. A separate custodian should retain access and reveal it
+only for the one registered evaluation. Software cannot prove that the test
+was not previously viewed; the manifest states this limitation. If a genuinely
+separate custodian is unavailable, do not describe the test as sealed or
+independent.
 
-`python scripts/curate_supplements.py data/raw/ph_supplement_2.csv` dedupes and
-caps template families. `python scripts/generate_synthetic_ph.py --train-out
-data/raw/ph_supplement_5.csv --holdout-out data/raw/ph_holdout.csv` rebuilds
-the generated rows deterministically. Training and holdout families are
-disjoint, and `tests/test_synthetic_ph.py` checks separation and balance.
+Before evaluation, register an analyst-authored plan using
+[`templates/consented-evaluation-plan.json`](templates/consented-evaluation-plan.json).
+Fill in exact model/data hashes, development and test membership fingerprints,
+fixed model version and validation-selected threshold, intended use, minimum
+language/category coverage, campaign-group requirement, and maximum acceptable
+campaign-cluster interval widths. Record specific rationales before the test
+file is opened. There is no universal row-count target: set criteria from the
+intended use, error costs, effective independent campaign count, and the
+precision needed in uncertainty intervals. The code's two-group floor is only
+the mathematical minimum for cluster calculations, not evidence of adequacy.
 
-## 9. Storage, access, and retention
+The evaluation command requires the exact development file, model artifact,
+sealed evaluation file, and plan. It verifies model provenance, threshold
+selection policy, hashes, membership, chronology, group isolation, duplicates,
+coverage, and uncertainty gates. If a gate fails or no trained artifact exists,
+it writes only a private readiness report and no performance headline:
 
-- **Raw/unmasked** real messages: encrypted at rest, access limited to named
-  maintainers, local only, never in cloud Git/notebook services. Keep a shared
-  access log.
-- **Masked** datasets: still sensitive; store in the same protected location.
-  Do not upload to public hubs.
-- **Retention:** keep the minimum needed. A default of 12 months after the last
-  training run, or 30 days for messages not accepted into a dataset, is
-  reasonable — record the chosen period in the deployment runbook and revisit
-  annually.
-- **Deletion:** deleting rows from the source file is not enough; regenerated
-  model artifacts may retain traces. Record deletions, retrain only if needed,
-  and document the residual risk. For data-subject requests see
-  [PRIVACY.md](PRIVACY.md).
-- **Backups:** encrypted, access-controlled, same retention rules. Do not back
-  up to shared/public storage.
+```bash
+make eval \
+  DATA=/secure/sealed-test/consented-evaluation-<hash>.csv \
+  TRAINING_DATA=/secure/development/consented-development-<hash>.csv \
+  MODEL=/secure/candidate/model.pkl \
+  EVALUATION_PLAN=/secure/registered-plan.json \
+  OUTPUT_DIR=/secure/reports
+```
 
-## 10. Checklist for a new data batch
+Keep both inputs, plan, manifest, report, model, backups, and any derived
+artifacts in protected local storage. Reports contain aggregate metrics and
+content-free fingerprints only, but small subgroup results can still disclose
+sensitive information. Set and enforce retention/deletion rules for source
+files, backups, and derived artifacts before collection begins.
 
-- [ ] Consent/legal basis recorded (real data only)
-- [ ] Masking pass + manual spot-check done; no live OTPs
-- [ ] Required/optional columns correct; UTF-8; one message per row
-- [ ] Labeling done with confidence, labeler, date; disagreements resolved
-- [ ] Grouped by template family / campaign / donor
-- [ ] Supplement vs. holdout destination is correct and disjoint from other files
-- [ ] No PII or secrets in the file
-- [ ] File classification (synthetic vs. real) recorded in `source` and docs
-- [ ] Data tests pass; retrain/evaluate plan agreed
-- [ ] Known sampling bias and provenance written down
+## 5. Official data handling, retention, and limits
+
+Keep public, synthetic, consented, and UCI results separate; never combine them
+into a single headline. Public availability and dataset licensing do not
+constitute donor consent. The local one-person public inbox is not a substitute
+for consented collection or a representative evaluation. See
+[`evaluation.md`](evaluation.md) for public source decisions and the current
+benchmark status.
+
+The donation queue retains active submissions for 90 days from consent and
+purges them on the next database access. The operator must delete backups on
+the same schedule. For research-approved records, select and document the
+shortest necessary retention period before collecting them; assess withdrawal
+and expiry against source files, splits, models, reports, and backups. A
+withdrawal can require rebuilding derived artifacts; the operator must document
+what can and cannot be removed. Do not state that deleting a source row
+automatically removes learned influence from an existing model.
+
+## 6. Batch checklist
+
+- [ ] Approved purpose, lawful basis, notice version, contact, access control,
+      retention, deletion, and backup plan documented by the owner and
+      qualified privacy/legal reviewer.
+- [ ] Submitter is authorized; explicit review, sharing, and research choices
+      verified against the separate consent register.
+- [ ] No live codes, credentials, full sender details, names, contact details,
+      or unmasked likely PII; manual privacy review completed.
+- [ ] Two blind independent spam/ham and scam reviews, confidence, and any
+      independent adjudication recorded.
+- [ ] Campaign/template grouping uses no donor/sender identifier; dates are
+      valid and as coarse as the temporal design permits.
+- [ ] Exact/near duplicate checks and chronological group split pass; the
+      sealed test remains with an independent custodian.
+- [ ] Evaluation plan, coverage, uncertainty tolerances, and intended use were
+      recorded before the final test is opened.
+- [ ] Reports remain private, content-free, separated by evidence source, and
+      carry source/model hashes and limitations.

@@ -54,13 +54,19 @@ async function trainSyntheticFixture(modelPath, python) {
   });
 }
 
-function startDetector(port, modelPath, python) {
+function startDetector(port, modelPath, python, donationPath = null) {
   return spawn(python, [
     '-m', 'api.cli', '--host', '127.0.0.1', '--port', String(port),
   ], {
     cwd: root,
     stdio: 'ignore',
-    env: { ...process.env, SMSD_MODEL_PATH: modelPath },
+    env: {
+      ...process.env,
+      SMSD_MODEL_PATH: modelPath,
+      SMSD_DONATIONS_ENABLED: donationPath ? '1' : '0',
+      SMSD_DONATIONS_OPERATOR_CONTACT: donationPath ? 'Synthetic browser test operator' : '',
+      SMSD_DONATIONS_PATH: donationPath || path.join(os.tmpdir(), 'smsd-donations-disabled.sqlite3'),
+    },
   });
 }
 
@@ -130,10 +136,13 @@ async function main() {
   const base = `http://127.0.0.1:${port}`;
   const fixtureDir = await fs.mkdtemp(path.join(os.tmpdir(), 'smsd-browser-fixture-'));
   const fixtureModel = path.join(fixtureDir, 'synthetic-model.pkl');
+  const donationDatabase = path.join(fixtureDir, 'donations.sqlite3');
   let server = startDetector(port, path.join(fixtureDir, 'missing-model.pkl'), python);
   let browser;
   try {
     await waitForServer(base, server);
+    if ((await fetch(`${base}/donate`)).status !== 404) throw new Error('donation collection must be disabled by default');
+    if ((await fetch(`${base}/privacy-notice`)).status !== 200) throw new Error('versioned privacy notice did not load');
     browser = await chromium.launch({ headless: true });
     const missingModelContext = await browser.newContext({ viewport: { width: 360, height: 800 }, serviceWorkers: 'block' });
     const missingModelPage = await missingModelContext.newPage();
@@ -727,12 +736,119 @@ async function main() {
     server = null;
     await livePage.locator('#btn-retry-status').click();
     await livePage.waitForFunction(() => document.querySelector('#api-status').textContent.trim() === 'Could not reach API');
-    server = startDetector(port, fixtureModel, python);
+    server = startDetector(port, fixtureModel, python, donationDatabase);
     await waitForServer(base, server);
     await livePage.locator('#btn-retry-status').click();
     await livePage.waitForFunction(() => document.querySelector('#api-status').textContent.trim() === 'Available'
       && document.querySelector('#readiness-status').textContent.trim() === 'Ready');
     if (analysisRequests !== 2) throw new Error('service recovery automatically resubmitted SMS text');
+
+    const donationPage = await liveContext.newPage();
+    donationPage.setDefaultTimeout(10000);
+    const donationRequests = [];
+    donationPage.on('request', (request) => {
+      if (new URL(request.url()).pathname.startsWith('/donate')) donationRequests.push(request);
+    });
+    await donationPage.route('**/*', (route) => new URL(route.request().url()).origin === base
+      ? route.continue() : route.abort());
+    await donationPage.goto(`${base}/donate`, { waitUntil: 'domcontentloaded' });
+    await donationPage.setViewportSize({ width: 360, height: 800 });
+    if (await donationPage.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)) {
+      throw new Error('donation form overflows a 360px mobile viewport');
+    }
+    const donationMessage = donationPage.locator('#donation-message');
+    const donationConsent = donationPage.locator('#donation-consent');
+    const donationAuthorization = donationPage.locator('#donation-authorized');
+    await donationMessage.fill('Fictional fixture: please review this message at https://bit.ly/example-link');
+    await donationPage.locator('#donation-submit').click();
+    if (donationRequests.filter((request) => request.method() === 'POST').length) {
+      throw new Error('donation was sent without explicit consent');
+    }
+    await donationConsent.focus();
+    await donationPage.keyboard.press('Space');
+    if (!(await donationConsent.isChecked())) throw new Error('keyboard could not grant explicit donation consent');
+    await donationPage.locator('#donation-submit').click();
+    if (donationRequests.filter((request) => request.method() === 'POST').length) {
+      throw new Error('donation was sent without sharing authorization');
+    }
+    await donationAuthorization.focus();
+    await donationPage.keyboard.press('Space');
+    if (!(await donationAuthorization.isChecked())) throw new Error('keyboard could not confirm sharing authorization');
+    await donationPage.locator('#donation-submit').click();
+    await donationPage.locator('#donation-pii-findings li').waitFor({ state: 'visible' });
+    if (!(await donationPage.locator('#donation-pii-findings').textContent()).includes('https://bit.ly/example-link')) {
+      throw new Error('PII warning did not render the exact flagged URL for manual redaction');
+    }
+    if (donationRequests.filter((request) => request.method() === 'POST').length !== 1) {
+      throw new Error('PII rejection caused more than one explicit donation request');
+    }
+    await donationMessage.fill('Fictional fixture: a message I received that has been reviewed and redacted.');
+    let abortOneSubmission = true;
+    await donationPage.route('**/donate', async (route) => {
+      if (route.request().method() === 'POST' && abortOneSubmission) {
+        abortOneSubmission = false;
+        await route.abort('failed');
+      } else {
+        await route.continue();
+      }
+    });
+    await donationPage.locator('#donation-submit').click();
+    await donationPage.waitForFunction(() => document.querySelector('#donation-status').textContent.includes('not automatically resent'));
+    await donationPage.waitForTimeout(250);
+    if (donationRequests.filter((request) => request.method() === 'POST').length !== 2) {
+      throw new Error('failed donation was automatically retried');
+    }
+    await donationPage.locator('#donation-submit').click();
+    await donationPage.waitForFunction(() => document.querySelector('#donation-status').textContent.includes('Received for local review'));
+    if (donationRequests.filter((request) => request.method() === 'POST').length !== 3) {
+      throw new Error('manual retry did not produce exactly one new donation request');
+    }
+    if (await donationPage.locator('#donation-message').inputValue()) {
+      throw new Error('accepted message remained in the donation form after submission');
+    }
+    const savedWithdrawalId = await donationPage.locator('#donation-withdrawal-id').inputValue();
+    if (!/^[a-f0-9]{32}$/.test(savedWithdrawalId)) throw new Error('withdrawal ID was not displayed for donor control');
+    for (const selector of ['#donation-consent', '#donation-authorized', '#donation-research-consent']) {
+      if (await donationPage.locator(selector).isChecked()) {
+        throw new Error('donation consent choices remained selected after successful submission');
+      }
+    }
+    await donationMessage.fill('Second synthetic fixture for the donation form reset check.');
+    await donationConsent.check();
+    await donationAuthorization.check();
+    let abortSecondSubmission = true;
+    await donationPage.route('**/donate', async (route) => {
+      if (route.request().method() === 'POST' && abortSecondSubmission) {
+        abortSecondSubmission = false;
+        await route.abort('failed');
+      } else {
+        await route.continue();
+      }
+    });
+    await donationPage.locator('#donation-submit').click();
+    await donationPage.waitForFunction(() => document.querySelector('#donation-status').textContent.includes('not automatically resent'));
+    if (await donationPage.locator('#donation-withdrawal-id').inputValue()) {
+      throw new Error('a failed new donation left an older withdrawal ID visible');
+    }
+    if (donationRequests.filter((request) => request.method() === 'POST').length !== 4) {
+      throw new Error('a failed new donation was retried or generated an unexpected request');
+    }
+    await donationPage.reload({ waitUntil: 'domcontentloaded' });
+    await donationPage.locator('#donation-withdrawal-id').fill(savedWithdrawalId);
+    await donationPage.locator('#donation-withdraw').click();
+    await donationPage.waitForFunction(() => document.querySelector('#donation-status').textContent.includes('Withdrawn'));
+    const withdrawalRequest = donationRequests.find((request) => request.method() === 'DELETE');
+    if (!withdrawalRequest) {
+      throw new Error('donation withdrawal did not call the delete endpoint');
+    }
+    if (new URL(withdrawalRequest.url()).pathname !== '/donate') {
+      throw new Error('withdrawal ID was exposed in the request URL');
+    }
+    if (await donationPage.evaluate(() => Object.keys(localStorage).some((key) => /donat/i.test(key)))) {
+      throw new Error('donation content or ID was persisted in browser storage');
+    }
+    await donationPage.close();
+    console.log('browser-smoke: disabled donation route, explicit consent, PII correction, manual retry, and withdrawal passed');
 
     // Browser page-scale emulates 200% zoom while checking the reflowed area.
     const zoomSession = await livePage.context().newCDPSession(livePage);

@@ -20,6 +20,7 @@ import pandas as pd
 
 from src.consented_data import _read_intake_csv, normalize_intake_columns, validate_batch
 from src.data import LABEL_ALIASES, ROOT, DatasetError
+from src.privacy.storage import ensure_private_directory
 
 TEMPLATE = ROOT / "data" / "templates" / "consented_ph_sms_template.csv"
 CONSENTED_DIR = ROOT / "data" / "raw" / "consented"
@@ -78,7 +79,9 @@ def import_consented(
     digest = hashlib.sha256(input_bytes).hexdigest()[:16]
     output_dir = Path(output_dir)
     try:
-        output_dir.mkdir(parents=True, exist_ok=True)
+        output_dir = ensure_private_directory(output_dir)
+    except ValueError as exc:
+        raise DatasetError(str(exc)) from None
     except OSError:
         raise DatasetError("Protected output directory cannot be created.") from None
     destination = output_dir / f"{normalized_purpose}_{digest}.csv"

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 
 import pandas as pd
@@ -131,6 +132,15 @@ def test_exact_duplicates_are_removed_before_split(tmp_path):
     assert len(dataset) == 3
     assert any("duplicate" in warning for warning in dataset.warnings)
     assert dataset.records[0].duplicates_removed == 1
+
+
+def test_dataset_record_hash_matches_the_bytes_used_for_parsing(tmp_path):
+    path = write_csv(tmp_path / "snapshot.csv", [("ham", "one"), ("spam", "two")])
+
+    dataset = load_dataset(path, min_class_count=0)
+
+    assert dataset.records[0].sha256 == hashlib.sha256(path.read_bytes()).hexdigest()
+    assert dataset.messages == ["one", "two"]
 
 
 def test_missing_class_rejected(tmp_path):

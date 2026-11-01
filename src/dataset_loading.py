@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import math
 from collections.abc import Iterable
 from dataclasses import dataclass, field
@@ -34,6 +35,7 @@ from src.dataset_schema import (  # noqa: F401
     _normalize_labels,
     _normalized_message_key,
     _read_csv,
+    _read_csv_snapshot,
     _resolve_message_and_label_columns,
     _resolve_metadata_columns,
     _sha256,
@@ -136,11 +138,8 @@ def _load_one(
 ) -> Dataset:
     path = Path(path)
     source_label = _source_label(role)
-    df = _read_csv(path)
-    try:
-        source_hash = _sha256(path)
-    except OSError:
-        raise DatasetError(f"{source_label} cannot be hashed; keep the input available during preflight.") from None
+    content, df = _read_csv_snapshot(path)
+    source_hash = hashlib.sha256(content).hexdigest()
     if df.empty:
         raise DatasetError(f"{source_label} has columns but no data rows.")
     lookup = _column_lookup(df, path)

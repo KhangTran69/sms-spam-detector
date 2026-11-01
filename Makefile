@@ -9,6 +9,10 @@
 #   make train          train and save models/spam_detector_v1.pkl
 #   make evaluate       held-out evaluation + threshold sweep + PH holdout
 #   make benchmark      validate, train, and report in one isolated output directory
+#   make datasets       download and normalize an approved Kaggle corpus locally
+#   make eval           evaluate a model on a normalized external CSV
+#   make split-consented create private development and sealed evaluation CSVs
+#   make rehearse-consented run a disposable synthetic consent/evaluation rehearsal
 #   make demo           train/evaluate using tracked synthetic fixtures only
 #   make serve          run the FastAPI service with reload
 #   make macos-install  install persistent per-user macOS service
@@ -24,8 +28,10 @@ PORT ?= 8000
 DEMO_MODEL ?= models/demo_synthetic.pkl
 DEMO_EVALUATION ?= data/processed/demo-synthetic.json
 BENCHMARK_DIR ?= data/processed/benchmark-run
+OPERATING_FPR ?= 0.05
+DATASET ?= ph-spam-marketing-sms
 
-.PHONY: help install dev-install package-install test lint format typecheck train evaluate benchmark benchmark-perf demo serve macos-install macos-status macos-stop macos-restart macos-uninstall docker-build docker-run clean
+.PHONY: help install dev-install package-install test lint format typecheck train evaluate datasets eval split-consented rehearse-consented export-donations benchmark benchmark-perf demo serve macos-install macos-status macos-stop macos-restart macos-uninstall docker-build docker-run clean
 
 help:
 	@sed -n '1,25p' Makefile
@@ -57,6 +63,26 @@ train:
 
 evaluate:
 	$(PYTHON) -m src.evaluate
+
+datasets:
+	PYTHONPATH="$(CURDIR)" $(PYTHON) scripts/download_datasets.py --dataset "$(DATASET)"
+
+eval:
+	@test -n "$(DATA)" || { echo "Set DATA to a normalized CSV; keep consented files in protected local storage" >&2; exit 2; }
+	$(PYTHON) -m src.public_evaluation --dataset "$(DATA)" $(if $(MODEL),--model "$(MODEL)",) $(if $(OUTPUT_DIR),--output-dir "$(OUTPUT_DIR)",) $(if $(EVALUATION_PLAN),--evaluation-plan "$(EVALUATION_PLAN)",) $(if $(TRAINING_DATA),--training-data "$(TRAINING_DATA)",) --operating-fpr "$(OPERATING_FPR)"
+
+split-consented:
+	@test -n "$(DATA)" || { echo "Set DATA to a private consented intake CSV" >&2; exit 2; }
+	@test -n "$(DEVELOPMENT_DIR)" || { echo "Set DEVELOPMENT_DIR to a new private directory for development data" >&2; exit 2; }
+	@test -n "$(EVALUATION_DIR)" || { echo "Set EVALUATION_DIR to a separate private directory controlled by the test custodian" >&2; exit 2; }
+	$(PYTHON) -m src.consented_split --input "$(DATA)" --development-output-dir "$(DEVELOPMENT_DIR)" --evaluation-output-dir "$(EVALUATION_DIR)" $(if $(VALIDATION_SIZE),--validation-size "$(VALIDATION_SIZE)",) $(if $(TEST_SIZE),--test-size "$(TEST_SIZE)",)
+
+rehearse-consented:
+	$(PYTHON) -m src.consented_rehearsal
+
+export-donations:
+	@test -n "$(OUTPUT)" || { echo "Set OUTPUT to a private, new CSV path outside the repository (or under ignored data/donations/)" >&2; exit 2; }
+	$(PYTHON) scripts/export_donations.py $(if $(DATABASE),--database "$(DATABASE)",) --output "$(OUTPUT)"
 
 benchmark:
 	@test -n "$(DATA)" || { echo "Set DATA to an approved training CSV; see docs/BENCHMARKING.md" >&2; exit 2; }

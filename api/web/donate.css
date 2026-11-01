@@ -1,0 +1,21 @@
+.donation-card { max-width: 720px; margin: 28px auto; }
+.donation-card h1 { margin-top: 0; }
+.donation-card select { display: block; width: 100%; min-height: 44px; margin: 6px 0 10px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); }
+.donation-withdrawal { margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--line); }
+.donation-withdrawal h2 { margin: 0 0 8px; font-size: 1.2rem; }
+.donation-withdrawal input { display: block; width: 100%; min-height: 44px; margin: 6px 0 10px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); font: inherit; }
+.donation-purpose { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 8px 10px; margin: 18px 0 10px; padding: 0; border: 0; }
+.donation-purpose legend { grid-column: 1 / -1; margin-bottom: 8px; font-weight: 700; }
+.donation-purpose input { width: 20px; min-height: 20px; margin: 2px 0 0; accent-color: var(--accent); }
+.donation-purpose label { align-self: start; }
+.donation-purpose .hint { grid-column: 2; margin: -4px 0 8px; }
+.donation-findings { margin: 12px 0 0; padding: 12px 12px 12px 36px; border-inline-start: 4px solid var(--amber); border-radius: 6px; background: var(--surface-2); color: var(--text); overflow-wrap: anywhere; }
+.donation-findings li { padding: 4px 0; }
+.donation-status { min-height: 1.5em; color: var(--text); font-weight: 600; }
+.donation-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.donation-actions .btn { min-height: 44px; }
+@media (max-width: 640px) {
+  .donation-card { margin: 14px auto; }
+  .donation-actions { display: grid; grid-template-columns: 1fr; }
+  .donation-actions .btn { width: 100%; }
+}

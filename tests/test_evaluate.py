@@ -4,16 +4,19 @@ import hashlib
 from types import SimpleNamespace
 
 import pandas as pd
+import pytest
 
-from src.data import Dataset, FileRecord
+from src.data import Dataset, DatasetError, FileRecord
 from src.evaluate import (
     _benchmark_run_info,
     _data_hash_warnings,
     _errors,
     _length_strata,
     _provenance_banner,
+    _require_gated_consent_holdout,
     _score_interpretation,
     _threshold_diagnostic,
+    evaluate,
 )
 from src.predict import ModelBundle
 
@@ -67,6 +70,38 @@ def test_evaluation_banner_reflects_declared_provenance() -> None:
     assert "SYNTHETIC" in _provenance_banner(synthetic)
     assert "UNVERIFIED" in _provenance_banner(unknown)
     assert "PUBLIC-CORPUS" in _provenance_banner(public)
+
+
+def test_legacy_evaluator_blocks_consent_holdout_metrics() -> None:
+    consented_holdout = Dataset(pd.DataFrame({"data_kind": ["consented"]}))
+
+    with pytest.raises(DatasetError, match="src.public_evaluation"):
+        _require_gated_consent_holdout(consented_holdout)
+
+
+def test_legacy_evaluator_allows_nonconsented_diagnostics() -> None:
+    public_holdout = Dataset(pd.DataFrame({"data_kind": ["public"]}))
+
+    _require_gated_consent_holdout(public_holdout)
+    _require_gated_consent_holdout(None)
+
+
+def test_legacy_evaluator_blocks_consent_data_in_its_internal_splits(monkeypatch) -> None:
+    consented_training = Dataset(pd.DataFrame({"data_kind": ["consented"]}))
+    monkeypatch.setattr(
+        "src.evaluate.load_model",
+        lambda *args, **kwargs: SimpleNamespace(threshold=0.5, metadata={}),
+    )
+    monkeypatch.setattr("src.evaluate.load_holdout", lambda *args, **kwargs: None)
+    monkeypatch.setattr("src.evaluate.load_training_dataset", lambda *args, **kwargs: consented_training)
+    monkeypatch.setattr("src.evaluate._split_from_artifact", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        "src.evaluate.split_dataset",
+        lambda *args, **kwargs: pytest.fail("legacy evaluation continued past consented training input"),
+    )
+
+    with pytest.raises(DatasetError, match="src.public_evaluation"):
+        evaluate(holdout_path=None, plot_path=None, verbose=False)
 
 
 def test_message_length_metrics_use_documented_codepoint_ranges() -> None:

@@ -127,6 +127,24 @@ def _provenance_banner(dataset: Dataset) -> str:
     return "CONSENTED-DATA BENCHMARK — REPRESENTATIVENESS NOT ESTABLISHED"
 
 
+def _require_gated_consent_holdout(holdout: Dataset | None) -> None:
+    """Prevent the legacy report path from bypassing consented-test gates."""
+    if holdout is not None and "consented" in set(holdout.frame["data_kind"].astype(str)):
+        raise DatasetError(
+            "Consented final holdouts require the hash-bound readiness gate; "
+            "use python -m src.public_evaluation with the registered evaluation plan."
+        )
+
+
+def _require_gated_consent_training_data(dataset: Dataset) -> None:
+    """Keep consented rows out of the legacy evaluator's internal test split."""
+    if "consented" in set(dataset.frame["data_kind"].astype(str)):
+        raise DatasetError(
+            "Consented training-split inputs require the hash-bound consent evaluation gate; "
+            "use python -m src.public_evaluation with the registered evaluation plan."
+        )
+
+
 def _coverage_counts(frame: Any, column: str) -> dict[str, int]:
     if column not in frame:
         return {"unknown": len(frame)}
@@ -484,6 +502,8 @@ def evaluate(
 ) -> dict[str, Any]:
     """Evaluate the artifact; returns a JSON-safe metrics dictionary."""
     bundle = load_model(model_path, identify_artifact=True)
+    holdout = load_holdout(holdout_path, strict=True)
+    _require_gated_consent_holdout(holdout)
     threshold = bundle.threshold
     dataset = load_training_dataset(
         data_path,
@@ -491,6 +511,7 @@ def evaluate(
         strict_data=strict_data,
         strict_supplement_paths=strict_supplement_paths,
     )
+    _require_gated_consent_training_data(dataset)
     split = _split_from_artifact(
         bundle, dataset, {"val_size": val_size, "test_size": test_size, "seed": seed, "split_by": split_by}
     )
@@ -669,10 +690,7 @@ def evaluate(
             false_negative_cost=config.get("false_negative_cost"),
         )
 
-    holdout: Dataset | None = None
     holdout_probabilities: list[float] = []
-    if holdout_path is not None:
-        holdout = load_holdout(holdout_path, strict=True)
     if holdout is not None:
         leakage = group_leakage_report(dataset, holdout)
         if leakage["template_family_overlap"]:

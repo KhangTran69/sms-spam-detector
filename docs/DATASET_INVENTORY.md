@@ -1,9 +1,12 @@
-# Dataset inventory (local workspace audit, 2026-10-21)
+# Dataset inventory (count snapshot 2026-10-21; source review updated 2026-11-01)
 
 This is a message-free count and provenance snapshot from one developer
-workspace. The base CSV and model artifacts are ignored by Git and are not
+workspace. Counts reflect the 2026-10-21 workspace; source status was updated
+on 2026-11-01. The base CSV and model artifacts are ignored by Git and are not
 distributed. Counts are computed after exact and normalized duplicate removal.
-No real Philippine messages or new public dataset were added in this audit.
+The PH Spam + Marketing SMS raw CSV was fetched locally on 2026-11-01 after
+this count snapshot; it remains ignored, private, and unevaluated. No real or
+public Philippine SMS data was added to Git.
 
 | Source | Role / rows | Labels | Provenance and limitations |
 |---|---:|---|---|
@@ -16,6 +19,8 @@ No real Philippine messages or new public dataset were added in this audit.
 | Combined training input | 5,672 retained | ham 4,754; spam 918 | 5,159 unknown-provenance and 513 synthetic rows. Languages: unknown 5,428; English 132; Taglish 76; Filipino (`tl`) 36. Category is unknown for 5,287 rows; remaining categories have small supports. |
 | `data/raw/ph_holdout.csv` | 264 | ham 124; spam 140 | Synthetic diagnostic only. All 264 rows marked synthetic; languages: English 149, Taglish 91, Filipino (`tl`) 24. SHA-256: `ec5ff937c0e2b55e160fa45cb5639b8afd9b1d86c481c230dd3213608a16ac51`. Current exact/normalized message and derived/explicit group overlap checks against training are zero. |
 | Public UCI SMS Spam Collection | Not present in this workspace | — | UCI lists the historical English corpus under CC BY 4.0. It is not Philippine data; importing it requires the operator to obtain the source and preserve attribution. See the official [UCI record](https://archive.ics.uci.edu/dataset/228/sms%2Bspam%2Bcollection). |
+| PH Spam + Marketing SMS (w/ timestamps) | 8,895 raw rows fetched locally; 1,664 unique labeled rows after normalization; not evaluated | `spam`, `ads`, `gov`, `notifs`, and `OTP` source categories; normalized to spam/ham | Publisher documentation says CC BY 4.0. This is one person's inbox, not a representative sample. No model evaluation results exist yet; see [evaluation.md](evaluation.md) and [data/external/README.md](../data/external/README.md). |
+| Tagalog-SMS | CC0 local downloader added; not fetched in this workspace | — | Kaggle metadata identifies CC0: Public Domain. The raw personal-inbox export includes sender metadata; normalization drops the sender field. Privacy concerns remain, and the corpus is not representative Philippine traffic. See [data/external/README.md](../data/external/README.md). |
 
 The project does not state a separate license for its synthetic CSV content.
 Do not infer redistribution rights from the synthetic label. The local
@@ -54,3 +59,11 @@ one requires consented, de-identified Philippine messages with independently
 reviewed labels, adequate legitimate OTP/bank/delivery/bill/everyday examples,
 scam campaigns held out by campaign and time, and an untouched evaluation set.
 Keep that set out of model selection, calibration, and threshold tuning.
+
+For the local-only workflow, run `make datasets` for PH Spam + Marketing SMS
+(public publisher CSV; no Kaggle credentials needed) or
+`make datasets DATASET=tagalog-sms` (Kaggle credentials required), then evaluate that
+corpus's own normalized file with `make eval DATA=... MODEL=...`. Public,
+synthetic, and consented examples cannot be combined into a single evaluation
+report. The PH and Tagalog-SMS evaluations have not been run and have no published
+performance numbers.
