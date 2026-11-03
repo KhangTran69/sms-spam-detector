@@ -16,7 +16,9 @@ async function freePort() {
 }
 
 async function waitForServer(base, process) {
-  for (let attempt = 0; attempt < 50; attempt += 1) {
+  const startupTimeoutMs = 30_000;
+  const deadline = Date.now() + startupTimeoutMs;
+  while (Date.now() < deadline) {
     if (process.exitCode !== null) throw new Error(`uvicorn exited early with ${process.exitCode}`);
     try {
       const response = await fetch(`${base}/health`);
@@ -24,7 +26,7 @@ async function waitForServer(base, process) {
     } catch { /* retry while the local server starts */ }
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
-  throw new Error('local FastAPI server did not start');
+  throw new Error(`local FastAPI server did not start within ${startupTimeoutMs}ms`);
 }
 
 async function stopServer(process) {
