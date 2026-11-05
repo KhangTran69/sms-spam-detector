@@ -88,7 +88,9 @@ make export-donations DATABASE=/secure/local/donations.sqlite3 OUTPUT=/secure/lo
 The command prints aggregate counts only, refuses to overwrite, and refuses a
 destination inside tracked repository paths. It omits withdrawn, expired,
 unauthorized, and newly PII-flagged rows. File and directory permissions are
-restricted where the filesystem supports POSIX modes. The CSV is a **review
+restricted where the filesystem supports POSIX modes. Formula-like values are
+prefixed as text in the CSV so spreadsheet software does not evaluate donated
+messages as formulas. The CSV is a **review
 staging export**, not a model dataset: `label` is blank, `review_status` is
 `pending_review`, no donor label hint or model prediction is included, and
 `eligible_for_modeling=false`. It cannot be loaded as training/evaluation
