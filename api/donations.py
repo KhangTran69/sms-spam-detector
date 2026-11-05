@@ -59,6 +59,19 @@ def _secure_parent(path: Path) -> None:
     ensure_private_directory(path.parent)
 
 
+def _spreadsheet_safe_cell(value: object) -> str:
+    """Keep untrusted CSV values from being evaluated as spreadsheet formulas."""
+    text = "" if value is None else str(value)
+    formula_candidate = text.lstrip()
+    while formula_candidate.startswith("\ufeff"):
+        formula_candidate = formula_candidate[1:].lstrip()
+    if formula_candidate and ord(formula_candidate[0]) < 0x20:
+        return "'" + text
+    if formula_candidate.startswith(("=", "+", "-", "@")):
+        return "'" + text
+    return text
+
+
 def _validated_database_path(path: Path) -> Path:
     database = Path(path).expanduser().resolve()
     repository = ROOT.resolve()
@@ -267,29 +280,28 @@ def export_donations(path: Path, output: Path) -> dict[str, int]:
         if detect_pii(message, strict=True):
             pii_blocked += 1
             continue
-        writer.writerow(
-            {
-                "label": "",  # No donor hint is treated as verified ground truth.
-                "message": message,
-                "source": "donation_intake",
-                "category": "unknown",
-                "language": language or "unknown",
-                "received_at": "",
-                "data_kind": "consented",
-                "dataset_id": "local-consented-donation",
-                "dataset_version": SCHEMA_VERSION,
-                "license": "consented-private",
-                "record_id": record_id,
-                "review_status": "pending_review",
-                "eligible_for_modeling": "false",
-                "review_consent": str(bool(review_consent)).lower(),
-                "model_research_consent": str(bool(model_research_consent)).lower(),
-                "authorized_to_share": str(bool(authorized_to_share)).lower(),
-                "consent_notice_version": notice_version,
-                "consented_at": consented_at,
-                "expires_at": expires_at,
-            }
-        )
+        row = {
+            "label": "",  # No donor hint is treated as verified ground truth.
+            "message": message,
+            "source": "donation_intake",
+            "category": "unknown",
+            "language": language or "unknown",
+            "received_at": "",
+            "data_kind": "consented",
+            "dataset_id": "local-consented-donation",
+            "dataset_version": SCHEMA_VERSION,
+            "license": "consented-private",
+            "record_id": record_id,
+            "review_status": "pending_review",
+            "eligible_for_modeling": "false",
+            "review_consent": str(bool(review_consent)).lower(),
+            "model_research_consent": str(bool(model_research_consent)).lower(),
+            "authorized_to_share": str(bool(authorized_to_share)).lower(),
+            "consent_notice_version": notice_version,
+            "consented_at": consented_at,
+            "expires_at": expires_at,
+        }
+        writer.writerow({key: _spreadsheet_safe_cell(value) for key, value in row.items()})
         exported += 1
     try:
         descriptor = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
