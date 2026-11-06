@@ -47,6 +47,24 @@ make datasets DATASET=tagalog-sms
 make eval DATA=data/external/tagalog-sms.csv MODEL=models/spam_detector_v1.pkl
 ```
 
+For a local, one-inbox diagnostic, screen and redact likely identifiers in
+memory before scoring:
+
+```bash
+make eval \
+  DATA=data/external/ph-spam-marketing-sms.csv \
+  MODEL=models/spam_detector_v1.pkl \
+  REDACT_PII=1
+```
+
+This reuses the normalized-dataset validator, `src/privacy.scrub`, and the
+existing content-free report writer. Phone numbers, email addresses, likely
+account/ID numbers, and OTP values are redacted in memory; URLs remain intact
+as possible smishing signals. Reports contain only aggregate screening counts,
+not the original or redacted message text. The source CSV hash still identifies
+the original input. Do not use this transformation for sealed consented tests,
+because it changes the test input; that path rejects `REDACT_PII=1`.
+
 `make datasets` needs network access but no Kaggle credentials. Tagalog-SMS
 requires `KAGGLE_USERNAME` and `KAGGLE_KEY`. The downloader stores the source
 CSV, normalized CSV, and message-free metadata under the git-ignored
@@ -94,6 +112,29 @@ requires approved, independently labeled data; campaign and date separation;
 adequate legitimate-message coverage; uncertainty estimates; and an untouched
 evaluation set. See [DATA_COLLECTION.md](DATA_COLLECTION.md) for the consent,
 labeling, privacy, and withdrawal process.
+
+In the 2026-11-06 workspace check, the normalized PH public inbox file was
+present, but the default model bundle and its sidecar were absent. No model
+scoring was run and no performance metrics were generated. A local diagnostic
+will produce only a blocked readiness report until an available model passes
+the artifact integrity checks.
+
+## Evidence and headline guards
+
+`python scripts/check_quality_gate.py MODEL.metadata.json --min-f1 0.90`
+continues to apply the F1 floor to the model's internal test. Add
+`--require-real-holdout` when the gate must also require one held-out source
+whose metadata classifies as `consented`, licensed `public_licensed`, or
+licensed English `public_english`. It exits with status 2 when provenance is
+missing, synthetic, mixed, unknown, or public without a recognized license.
+The class is reported explicitly; `public_english` means licensed,
+English-language public evidence, not Philippine performance. A licensed
+public inbox is at most a diagnostic on that particular inbox and does not
+establish consent or representativeness.
+
+`make check-headlines` scans Markdown headings and the website title/H1 for
+unsupported performance claims. It reports only file and line locations, never
+the headline text. The same guard runs in the Python test suite.
 
 ## Consented Philippine evaluation gate
 

@@ -94,6 +94,13 @@ resources remain out of scope or blocked due to data-task mismatch or unresolved
 reuse terms. See [evaluation.md](evaluation.md) and the
 [external-data inventory](../data/external/README.md).
 
+In the 2026-11-06 workspace check, the normalized PH inbox file was present but
+the default model bundle and metadata sidecar were absent. No model scoring or
+new performance metrics were produced. The diagnostic is available when an
+integrity-checked model artifact is supplied; optional in-memory PII redaction is for
+exploratory public/synthetic runs only and cannot be used on a sealed consented
+test.
+
 When run, evaluation reports threshold-selected internal test metrics, false
 positives on legitimate categories, language/category/message-length coverage,
 and uncertainty. These describe only the input data and split recorded in that
