@@ -42,7 +42,7 @@ The classifier target is **spam versus ham**. A spam label can include unwanted 
 |---|---|---|---|
 | `data/raw/spam.csv` | Operator-supplied English-style base file; its source/license are unknown until verified | Merged into training when present | No (git-ignored) |
 | Verified UCI SMS Spam Collection | Public historical English SMS corpus, 5,574 rows, CC BY 4.0; importer does not download it | Supported import; not added by this change | No |
-| PH Spam + Marketing SMS (w/ timestamps) | Public Philippine SMS inbox; publisher identifies CC BY 4.0. One contributor's inbox, with some categories redacted | Fetched locally on 2026-11-01; sender column omitted by normalization; **not yet evaluated** | No |
+| PH Spam + Marketing SMS (w/ timestamps) | Public Philippine SMS inbox; publisher identifies CC BY 4.0. One contributor's inbox, with some categories redacted | Fetched locally on 2026-11-01; sender column omitted by normalization; a local, group-isolated internal split diagnostic is recorded below | No |
 | [Tagalog-SMS](https://www.kaggle.com/datasets/onzero0/tagalog-sms) | Kaggle metadata reports CC0; one contributor's inbox includes sender metadata, which normalized output omits; raw local download remains sensitive | Approved local-only downloader and evaluation path; **not yet downloaded or evaluated** | No |
 | `data/raw/ph_supplement.csv`, `_2.csv`, `_3.csv`, `_4.csv`, `_5.csv` | **Synthetic**, developer-authored Philippine scam and legitimate examples. `_2` was deduped and capped at 2 rows per template family (311 → 141). `_5` adds 129 generated rows from 20 families (`scripts/generate_synthetic_ph.py`) | 513 rows merged into training: ham 237, spam 276 | Yes (synthetic text only) |
 | `data/raw/ph_holdout.csv` | **Synthetic** holdout: 264 rows (ham 124, spam 140), 23 generated families plus 46 earlier hand-written rows | Evaluation only, never training. Current exact/normalized message and group overlap checks report zero; style overlap remains possible | Yes |
@@ -51,8 +51,8 @@ The classifier target is **spam versus ham**. A spam label can include unwanted 
 > **All tracked Philippine data in this repository is still synthetic.** A
 > one-person PH Spam + Marketing SMS inbox snapshot (CC BY 4.0) is now stored
 > locally outside Git; Tagalog-SMS (CC0 per Kaggle metadata) has a local
-> download/evaluation path but has not been fetched. The PH snapshot has not
-> been evaluated; a declared license does not
+> download/evaluation path but has not been fetched. The PH snapshot has a
+> hash-bound internal split diagnostic, but a declared license does not
 > settle privacy rights in message content or sender metadata. Rebalancing,
 > deduplication, and a larger holdout make the pipeline checks less fragile.
 > They do not make holdout scores evidence of real-world accuracy: one author
@@ -76,40 +76,77 @@ No representative Philippine performance estimate is available. The tracked
 Philippine messages were written by project authors; a synthetic holdout can
 check code paths and known patterns, but does not establish performance on
 recipient messages or future scam campaigns. The local base CSV has unknown
-provenance. A checked-in public-corpus and synthetic diagnostic report records
-its source hashes and exact evaluated artifact hash; it remains an engineering
-reproducibility example, not an estimate of Philippine field performance. See
-the [dataset inventory](DATASET_INVENTORY.md) for the workspace snapshot and
-evidence limits.
+provenance. The separate UCI and synthetic report records its source hashes and
+exact evaluated artifact hash; it is an engineering reproducibility example,
+not an estimate of Philippine field performance. See the
+[dataset inventory](DATASET_INVENTORY.md) for workspace counts and evidence
+limits.
+
+### Public one-person inbox diagnostic (2026-11-06)
+
+The local normalized [PH Spam + Marketing SMS corpus](https://www.kaggle.com/datasets/scottleechua/ph-spam-marketing-sms-w-timestamps)
+was evaluated with a group-isolated internal split. The model was trained from
+the same corpus; this is not an independent-corpus holdout, a consented study,
+or evidence of representative Philippine performance. The dataset has 1,664
+rows (65 ham, 1,599 spam) and 1,321 derived groups. Group leakage across the
+train/validation/test partitions was zero, but those groups cannot prove
+campaign or contributor independence. All language labels are unknown.
+
+| Test diagnostic | Result |
+|---|---:|
+| Test support | 238 (228 spam, 10 ham) |
+| Decision threshold | 0.85, selected using validation only |
+| Spam precision | 99.54% (Wilson 95% interval: 97.46%–99.92%) |
+| Spam recall | 95.61% (Wilson 95% interval: 92.12%–97.60%) |
+| Spam F1 | 97.54% |
+| Accuracy | 95.38% |
+| False positives / false-positive rate | 1 / 10 ham (10.00%; Wilson 95% interval: 1.79%–40.42%) |
+| Missed spam / false-negative rate | 10 / 228 spam (4.39%; complementary Wilson interval: 2.40%–7.88%) |
+
+The single false positive among only ten ham examples makes the false-positive
+estimate especially uncertain. The intervals are marginal Wilson intervals,
+not campaign-cluster intervals or population bounds. Test categories were `ads`
+(126), `spam` (102), `gov` (9), and `notifs` (1); all 238 test rows had
+unknown language. Calibration diagnostics describe fit to this corpus's
+spam/ham labels and do not estimate fraud probability or guarantee safety.
+
+The content-free [versioned diagnostic report](benchmarks/ph-public-inbox-diagnostic-20261106.json)
+records the normalized dataset SHA-256, exact model artifact SHA-256, split
+fingerprint, configuration, and aggregate metrics. The local artifact itself
+is ignored by Git and is not distributed. The run used source revision
+`4e05ffacc1e5872858e0d91e88ddedf15a8a7b10`; the artifact metadata did not
+capture working-tree status, so a clean-tree reproduction cannot be claimed.
 
 The project supports downloading and evaluating the licensed
 [PH Spam + Marketing SMS corpus](https://www.kaggle.com/datasets/scottleechua/ph-spam-marketing-sms-w-timestamps)
 and [Tagalog-SMS](https://www.kaggle.com/datasets/onzero0/tagalog-sms)
-locally. The PH corpus is present locally but neither it nor Tagalog-SMS has
-been benchmarked here; Tagalog-SMS has not yet been fetched. The Tagalog-SMS
-normalizer removes its sender field; raw local downloads must still be treated
-as sensitive. Either inbox could support conclusions only about that
-particular corpus, not representative Philippine performance. Other submitted
-resources remain out of scope or blocked due to data-task mismatch or unresolved
-reuse terms. See [evaluation.md](evaluation.md) and the
+locally. Tagalog-SMS has not been fetched or evaluated; its normalizer removes
+the sender field, and raw local downloads must still be treated as sensitive.
+Either inbox can support conclusions only about that particular corpus, not
+representative Philippine performance. Other submitted resources remain out of
+scope or blocked due to data-task mismatch or unresolved reuse terms. See
+[evaluation.md](evaluation.md) and the
 [external-data inventory](../data/external/README.md).
 
-In the 2026-11-06 workspace check, the normalized PH inbox file was present but
-the default model bundle and metadata sidecar were absent. No model scoring or
-new performance metrics were produced. The diagnostic is available when an
-integrity-checked model artifact is supplied; optional in-memory PII redaction is for
-exploratory public/synthetic runs only and cannot be used on a sealed consented
-test.
+The research artifact for this local diagnostic is not the default model
+bundle and is not included in the repository. It has no independent held-out
+source and therefore does not pass the separate `--require-real-holdout` gate.
+Optional in-memory PII redaction is for exploratory public/synthetic runs only
+and cannot be used on a sealed consented test.
 
-When run, evaluation reports threshold-selected internal test metrics, false
-positives on legitimate categories, language/category/message-length coverage,
-and uncertainty. These describe only the input data and split recorded in that
-run. A synthetic holdout is reported separately. Do not use it to select
-features, calibrate the model, or tune a threshold.
+When evaluation runs, it reports threshold-selected internal test metrics,
+false positives on legitimate categories, language/category/message-length
+coverage, and uncertainty. These describe only the input data and split
+recorded in that run. A synthetic holdout is reported separately. Do not use
+it to select features, calibrate the model, or tune a threshold.
 
 ### Metrics source
 
-The local workspace snapshot and evaluation limits are recorded in [DATASET_INVENTORY.md](DATASET_INVENTORY.md). Model artifacts are ignored local files; their metadata is authoritative only for the exact artifact that was loaded. No real Philippine traffic has been evaluated.
+The local workspace snapshot and evaluation limits are recorded in
+[DATASET_INVENTORY.md](DATASET_INVENTORY.md). Model artifacts are ignored local
+files; their metadata is authoritative only for the exact artifact that was
+loaded. The public-inbox diagnostic above is not a consented study or a
+representative estimate of real Philippine traffic.
 
 ### Optional transformer ensemble research spike
 

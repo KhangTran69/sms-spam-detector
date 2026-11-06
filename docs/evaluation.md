@@ -9,7 +9,7 @@ establish representative Philippine real-world accuracy.
 | Dataset | Status | What its evaluation could support |
 |---|---|---|
 | Public UCI SMS Spam Collection | English corpus, CC BY 4.0; current project benchmark reports it separately from synthetic data | Reproducibility and behavior on this historical English corpus only |
-| [PH Spam + Marketing SMS (w/ timestamps)](https://www.kaggle.com/datasets/scottleechua/ph-spam-marketing-sms-w-timestamps) | Retrieved locally; 1,664 normalized unique labeled rows from the 8,895-row raw snapshot; CC BY 4.0 per [publisher documentation](https://github.com/scottleechua/data/tree/main/spam-and-marketing-sms); **not yet evaluated** | At most a diagnostic on a single inbox belonging to one person; it is not representative of the Philippine population |
+| [PH Spam + Marketing SMS (w/ timestamps)](https://www.kaggle.com/datasets/scottleechua/ph-spam-marketing-sms-w-timestamps) | Retrieved locally; 1,664 normalized unique labeled rows from the 8,895-row raw snapshot; CC BY 4.0 per [publisher documentation](https://github.com/scottleechua/data/tree/main/spam-and-marketing-sms); an internal group-isolated split diagnostic is recorded in the [dated report](benchmarks/ph-public-inbox-diagnostic-20261106.json) | At most a diagnostic on a single inbox belonging to one person; it is not an independent-corpus holdout or representative of the Philippine population |
 | [Tagalog-SMS](https://www.kaggle.com/datasets/onzero0/tagalog-sms) | Kaggle metadata reports CC0: Public Domain; local downloader omits the sender field from normalized rows; **not yet downloaded or evaluated** | At most a diagnostic on one person's inbox. The CC0 label does not resolve privacy rights in the message content, and this is not representative Philippine traffic |
 | [`DATA103_filipino_spam_detection`](https://huggingface.co/spaces/ferds003/DATA103_filipino_spam_detection) | **Blocked**: the Space declares MIT, while its README describes a merge of a CC BY 4.0 Kaggle source, a CC BY-NC-SA 4.0 Kaggle source, and a GitHub repository with BSD 3-Clause terms. The message-level provenance, authorization, and downstream license compatibility are unresolved. | No ingestion or evaluation until source owners document compatible reuse terms and a suitable privacy basis for every constituent corpus |
 | [Philippine Spam/Scam SMS by BwandoWando](https://www.kaggle.com/datasets/bwandowando/philippine-spam-sms-messages) | CC BY-NC-SA 4.0; not approved for this dataset workflow | No ingestion until license compatibility and privacy basis are reviewed |
@@ -103,21 +103,27 @@ publish private reports or attach them to CI artifacts.
 
 ## Status and interpretation
 
-No new benchmark on the PH or Tagalog-SMS corpus has been run in the current
-repository change. Do not infer measured results from
-the dataset listing or from the synthetic fixtures. The public UCI and synthetic
-results in the versioned engineering diagnostic remain separate. None establish
-performance on current Philippine messages. A defensible real-world evaluation
-requires approved, independently labeled data; campaign and date separation;
-adequate legitimate-message coverage; uncertainty estimates; and an untouched
-evaluation set. See [DATA_COLLECTION.md](DATA_COLLECTION.md) for the consent,
-labeling, privacy, and withdrawal process.
+The PH inbox diagnostic is an internal split of one licensed public inbox, not
+an independent-corpus or consented-data evaluation. Its hash-bound artifact,
+dataset, split, configuration, metrics, and uncertainty are in the dated
+[machine-readable report](benchmarks/ph-public-inbox-diagnostic-20261106.json).
+The test partition contains 228 spam and only 10 ham examples; all language
+labels are unknown, and its Wilson intervals are marginal rather than
+campaign-cluster intervals. These values describe this split only. The public
+UCI and synthetic results in the versioned engineering diagnostic remain
+separate. None establish performance on current Philippine messages. A
+defensible field evaluation requires approved, independently labeled data;
+campaign and date separation; adequate legitimate-message coverage; justified
+uncertainty criteria; and an untouched evaluation set. See
+[DATA_COLLECTION.md](DATA_COLLECTION.md) for the consent, labeling, privacy,
+and withdrawal process.
 
-In the 2026-11-06 workspace check, the normalized PH public inbox file was
-present, but the default model bundle and its sidecar were absent. No model
-scoring was run and no performance metrics were generated. A local diagnostic
-will produce only a blocked readiness report until an available model passes
-the artifact integrity checks.
+For the 2026-11-06 diagnostic, an integrity-checked local research artifact
+was trained from the normalized PH inbox and scored on its internal test
+partition. The artifact is ignored by Git and is not present in a clean
+checkout. Its metadata records the exact model and normalized dataset hashes
+and split fingerprint, but does not record working-tree status. The run is not
+an independent-corpus holdout; it does not satisfy the consented-data gate.
 
 ## Evidence and headline guards
 
@@ -230,9 +236,9 @@ yields a content-free readiness report and no performance metrics. This local
 guard is not tamper-proof: the custodian and study protocol must prevent access
 to copies, deletion of the marker, and manual bypass.
 
-No trained model artifact or independently labeled consented Philippine
-corpus is currently available, so this workflow is ready for approved data
-intake but blocked from a consented performance result. The local 1,664-row
-public one-person inbox is not consented, is not representative, and has not
-been evaluated. No public or synthetic score establishes real-world Philippine
-accuracy.
+No independently labeled consented Philippine corpus is currently available,
+so this workflow is ready for approved data intake but blocked from a consented
+performance result. The local 1,664-row public one-person inbox has an internal
+group-split diagnostic, but it is not consented, is not representative, and is
+not an independent-corpus holdout. No public or synthetic score establishes
+real-world Philippine accuracy.

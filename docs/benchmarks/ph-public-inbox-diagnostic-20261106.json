@@ -1,0 +1,131 @@
+{
+  "report_schema_version": 1,
+  "report_id": "ph-public-inbox-internal-group-split-2026-11-06",
+  "model_metadata_created_at": "2026-11-06T15:40:45Z",
+  "evidence_class": "public_licensed",
+  "model": {
+    "model_version": "ph-public-inbox-research-20261106",
+    "artifact_sha256": "b839caa6c7ffd019237e6e11e04a6179c99fb07020e2fafadcfd0baef3bb1a97",
+    "artifact_hash_verified_against_bytes": true,
+    "artifact_in_repository": false,
+    "source_revision": "4e05ffacc1e5872858e0d91e88ddedf15a8a7b10",
+    "source_revision_basis": "resolved from local Git history at the metadata creation time; not recorded in the model sidecar",
+    "working_tree_status": "not_recorded",
+    "recorded_runtime_versions": {
+      "python": "3.11.15",
+      "scikit_learn": "1.9.1"
+    }
+  },
+  "dataset": {
+    "dataset_id": "ph-spam-marketing-sms-w-timestamps",
+    "dataset_version": "snapshot-2026-11-01",
+    "source_url": "https://www.kaggle.com/datasets/scottleechua/ph-spam-marketing-sms-w-timestamps",
+    "license": "CC BY 4.0",
+    "normalized_csv_sha256": "724d272d6c22bea9331ef701647d4e2eb8ea4fd55a64e0ad3b6a0d05780ff62f",
+    "normalized_rows": 1664,
+    "class_counts": {
+      "ham": 65,
+      "spam": 1599
+    },
+    "group_count": 1321,
+    "language_counts": {
+      "unknown": 1664
+    },
+    "category_counts": {
+      "ads": 870,
+      "spam": 729,
+      "gov": 55,
+      "notifs": 10
+    }
+  },
+  "configuration": {
+    "data_role": "base",
+    "supplement_count": 0,
+    "split_by": "group",
+    "split_method": "stratified_group_kfold",
+    "random_state": 42,
+    "validation_fraction": 0.15,
+    "test_fraction": 0.15,
+    "threshold_policy": "validation",
+    "decision_threshold": 0.85,
+    "threshold_selected_on_test": false
+  },
+  "split": {
+    "membership_fingerprint": "2322119d984d8c1011fa791f9eb996e549fe8e86034290da63217e15d121d029",
+    "membership_fingerprint_version": "row-membership-v1",
+    "sizes": {
+      "train": 1188,
+      "validation": 238,
+      "test": 238
+    },
+    "group_sizes": {
+      "train": 949,
+      "validation": 182,
+      "test": 190
+    },
+    "group_leakage": 0,
+    "external_holdout_evaluated": false
+  },
+  "test_metrics": {
+    "support": 238,
+    "class_support": {
+      "ham": 10,
+      "spam": 228
+    },
+    "confusion_matrix": {
+      "true_spam_predicted_spam": 218,
+      "ham_predicted_spam": 1,
+      "true_ham_predicted_ham": 9,
+      "spam_predicted_ham": 10
+    },
+    "spam_precision": 0.9954337899543378,
+    "spam_recall": 0.956140350877193,
+    "spam_f1": 0.9753914988814317,
+    "accuracy": 0.9537815126050421,
+    "false_positive_rate": 0.1,
+    "false_negative_rate": 0.043859649122807015,
+    "wilson_95_percent_intervals": {
+      "precision": [
+        0.9745929844405687,
+        0.9991934965329097
+      ],
+      "recall": [
+        0.9211602678177345,
+        0.9760045492862973
+      ],
+      "false_positive_rate": [
+        0.017876213095072896,
+        0.4041500267952385
+      ],
+      "false_negative_rate_complement_of_recall_interval": [
+        0.02399545071370271,
+        0.07883973218226547
+      ]
+    },
+    "calibration": {
+      "brier_score": 0.01160624913658663,
+      "log_loss": 0.059776803451095394,
+      "expected_calibration_error": 0.00800481428246583,
+      "max_calibration_error": 0.10377494089660533
+    },
+    "category_support": {
+      "ads": 126,
+      "spam": 102,
+      "gov": 9,
+      "notifs": 1
+    },
+    "language_support": {
+      "unknown": 238
+    }
+  },
+  "limitations": [
+    "The same one-person public inbox supplied training, validation, and the internal test partition; this is not an independent-corpus holdout.",
+    "The dataset is not consented participant data and is not representative of Philippine SMS traffic.",
+    "Group separation reports no shared derived group IDs across splits; it does not establish campaign or contributor independence.",
+    "Only 10 ham examples appear in the test partition; the false-positive-rate interval is wide.",
+    "Wilson intervals are marginal binomial intervals, not campaign-cluster intervals or population bounds.",
+    "All language labels are unknown, limiting language-specific conclusions.",
+    "The artifact metadata does not record working-tree status; the report does not claim a clean-tree reproduction.",
+    "Calibration values refer only to spam/ham labels in this dataset, not fraud probability or safety guarantees."
+  ]
+}

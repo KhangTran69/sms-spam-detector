@@ -9,9 +9,10 @@ Verify suspicious requests through trusted official channels.
 
 > **Evidence limit:** every Philippine message tracked in this repository is synthetic,
 > and the public UCI corpus is English. A public one-person Philippine inbox
-> has been retrieved locally (1,664 normalized rows) but has not been evaluated
-> and is not representative. Existing scores are
-> engineering checks, not real-world accuracy. The tool is assistive only: do not block, report, or
+> has been evaluated in a group-isolated internal test split (1,664 normalized
+> rows; 10 ham and 228 spam test examples), but it is not an independent corpus
+> holdout, consented data, or representative. This diagnostic is not real-world
+> accuracy. The tool is assistive only: do not block, report, or
 > penalize anyone based on a prediction. Full limitations:
 > [docs/MODEL_CARD.md §4](docs/MODEL_CARD.md#4-evaluation-and-the-synthetic-only-caveat).
 
@@ -40,10 +41,12 @@ real-holdout promotion gate in the [model card](docs/MODEL_CARD.md).
 The versioned [UCI and synthetic diagnostic report](docs/benchmarks/uci-synthetic-ph-diagnostic-20261022.json)
 separates public English results from synthetic Philippine fixture checks. It
 was generated from a dirty source tree and is an engineering reproducibility
-example, not real-world accuracy. The local Philippine public inbox remains
-unevaluated; it represents one person's messages, not Philippine traffic. No
-consented Philippine messages or real-world performance estimate are available.
-See [evaluation methods and data status](docs/evaluation.md) and the
+example, not real-world accuracy. The local Philippine public inbox is from
+one contributor and is not representative traffic. Its hash-bound internal
+group-split diagnostic is recorded in the [benchmark report](docs/benchmarks/ph-public-inbox-diagnostic-20261106.json)
+and [model card](docs/MODEL_CARD.md#4-evaluation-and-the-synthetic-only-caveat).
+It is not an independent corpus holdout or a consented Philippine performance
+estimate. See [evaluation methods and data status](docs/evaluation.md) and the
 [dataset inventory](docs/DATASET_INVENTORY.md). The reproducible clean-main
 run and its near-duplicate audit are documented in the
 [benchmark runbook](docs/BENCHMARKING.md).
