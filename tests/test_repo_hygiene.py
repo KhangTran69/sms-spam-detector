@@ -260,8 +260,8 @@ def test_readme_preserves_evidence_limit_and_required_sections() -> None:
 
     expected = (
         "**Evidence limit:** every Philippine message tracked in this repository is synthetic, and the public UCI corpus is English. "
-        "A public one-person Philippine inbox has been retrieved locally (1,664 normalized rows) but has not been evaluated and is not representative. "
-        "Existing scores are engineering checks, not real-world accuracy. The tool is assistive only: do not block, report, or penalize anyone based on a prediction. "
+        "A public one-person Philippine inbox has been evaluated in a group-isolated internal test split (1,664 normalized rows; 10 ham and 228 spam test examples), but it is not an independent corpus holdout, consented data, or representative. "
+        "This diagnostic is not real-world accuracy. The tool is assistive only: do not block, report, or penalize anyone based on a prediction. "
         "Full limitations: [docs/MODEL_CARD.md §4](docs/MODEL_CARD.md#4-evaluation-and-the-synthetic-only-caveat)."
     )
     quote_lines: list[str] = []
@@ -425,7 +425,8 @@ def test_docs_state_synthetic_only_and_privacy_limits() -> None:
 
     model_card = _doc("docs/MODEL_CARD.md").lower()
     assert "synthetic" in model_card
-    assert "no real philippine traffic has been evaluated" in model_card
+    assert "no representative philippine performance estimate is available" in model_card
+    assert "public one-person inbox diagnostic" in model_card
     assert "assistive" in model_card
     assert re.search(r"no\W+representative\W+real\W+philippine", model_card)
     assert "dataset_inventory.md" in model_card, "model card metrics source must link the dated evaluation inventory"
@@ -504,8 +505,8 @@ def test_public_kaggle_evaluation_is_attributed_and_explicitly_limited() -> None
     assert "dataset=tagalog-sms" in evaluation
     model_card = _doc("docs/MODEL_CARD.md").lower()
     assert "kaggle" in model_card
-    assert "ph corpus is present locally" in model_card
-    assert "tagalog-sms has not yet been fetched" in model_card
+    assert "group-isolated internal split diagnostic" in model_card
+    assert "tagalog-sms has not been fetched or evaluated" in model_card
     assert "onzero0/tagalog-sms" in model_card
     assert "cc0" in model_card
     assert "raw local downloads must still be treated as sensitive" in model_card
