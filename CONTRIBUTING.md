@@ -71,6 +71,11 @@ npm run test:browser
 make test
 ```
 
+Python tests collect coverage for `src/` and `api/`; browser and Node smoke
+checks remain separate. The enforced 78% floor is a ratchet: raise it whenever
+coverage improves, and do not lower it without a specific justification in the
+pull request.
+
 To auto-format code with `ruff`:
 ```bash
 ruff format .
