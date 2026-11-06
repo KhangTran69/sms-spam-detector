@@ -30,6 +30,11 @@ server runs in the foreground and stops with Ctrl-C. For full training,
 production setup, or a persistent macOS service, see
 [deployment](docs/DEPLOYMENT.md).
 
+An optional, local-only XLM-RoBERTa ensemble research spike is documented in
+the [benchmark runbook](docs/BENCHMARKING.md#optional-local-transformer-spike).
+It is disabled unless configured by the operator and has not passed the
+real-holdout promotion gate in the [model card](docs/MODEL_CARD.md).
+
 ## Evaluation
 
 The versioned [UCI and synthetic diagnostic report](docs/benchmarks/uci-synthetic-ph-diagnostic-20261022.json)
@@ -51,9 +56,9 @@ backwards compatibility. Interactive API documentation is at `/docs`.
 | Endpoint | Purpose |
 |---|---|
 | `GET /health`, `GET /ready` | Liveness and model readiness |
-| `GET /model-info` | Model version, thresholds, provenance, and caveats |
-| `POST /predict` | Spam/ham label, score, calibration flag, and signals |
-| `POST /analyze`, `POST /analyze/batch` | Risk band and highlighted text patterns; batch supports up to 50 messages |
+| `GET /model-info` | Model version, thresholds, provenance, caveats, and optional ensemble configuration status |
+| `POST /predict` | Spam/ham label, score, calibration flag, signals, and selected `model_path` |
+| `POST /analyze`, `POST /analyze/batch` | Risk band, highlighted text patterns, and per-result `model_path`; batch supports up to 50 messages |
 | `POST /feedback` | Optional correction labels; disabled by default and never accepts SMS text |
 | `GET /donate`, `POST /donate`, `DELETE /donate` | Separate consented local intake; disabled by default |
 

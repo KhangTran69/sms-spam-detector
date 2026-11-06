@@ -1,0 +1,5 @@
+# Optional CPU transformer spike pins; base constraints remain unchanged.
+accelerate==1.10.1
+safetensors==0.6.2
+torch==2.8.0
+transformers==4.56.2

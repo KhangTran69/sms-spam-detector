@@ -2,7 +2,7 @@
 
 Version: see `GET /model-info` (`model_version`, `artifact_schema_version`,
 `trained_at`) and the sidecar for the configured artifact. Owner: repository
-maintainers. Last reviewed: 2026-11-01.
+maintainers. Last reviewed: 2026-11-06.
 
 ## 1. What this model is
 
@@ -110,6 +110,47 @@ features, calibrate the model, or tune a threshold.
 ### Metrics source
 
 The local workspace snapshot and evaluation limits are recorded in [DATASET_INVENTORY.md](DATASET_INVENTORY.md). Model artifacts are ignored local files; their metadata is authoritative only for the exact artifact that was loaded. No real Philippine traffic has been evaluated.
+
+### Optional transformer ensemble research spike
+
+The production/default inference path remains the calibrated linear TF-IDF
+model. A local transformer ensemble is an opt-in engineering spike and is off
+unless the operator configures `SMSD_TRANSFORMER_MODEL_PATH` and the linear
+bundle marks its spam score as calibrated. The current
+loader accepts local XLM-RoBERTa sequence-classification artifacts only; it
+does not download weights. `SMSD_TRANSFORMER_CONFIDENCE_BAND` defaults to
+`0.10` and routes a message only when
+`abs(linear_spam_score - decision_threshold) < band`. If the linear score is
+uncalibrated, or if it falls outside the band, the message uses the linear
+path. The API reports the selected route as `model_path: "linear"` or
+`model_path: "ensemble"` on each result.
+
+The linear threshold is used only to decide whether to route a message. The
+transformer uses its own decision threshold selected from validation data.
+Routed responses identify the transformer by a prefix of its verified content
+hash in `model_version`. This does not recalibrate the transformer output.
+When the transformer supplies a result,
+`probability_calibrated` is false. Its score is a model score for the spam/ham
+label, not a fraud probability or safety guarantee. The linear-only p95
+regression check compares the default inference path with the prior direct
+linear call; no default latency budget is imposed on the optional transformer.
+
+The fine-tuning path reuses the existing group-aware split, trains on the
+training groups, uses validation groups for trainer evaluation and for
+selecting a separate transformer decision threshold, and keeps the test groups
+sealed. Threshold selection does not calibrate the transformer scores.
+Synthetic-only training requires
+`--allow-synthetic-demo`; any output that contains synthetic training examples
+is marked `demo_quality`. No transformer weights, real-holdout comparison, or
+promotion result is included in this repository change.
+
+**Promotion is blocked.** There is no registered minimum improvement margin
+for the Task 5 real holdout, and this workspace did not produce a permitted
+transformer-versus-linear holdout comparison. The project owner must predeclare
+that margin and the comparison procedure, then evaluate both models against
+the same approved, hash-bound real holdout before considering any default
+change. Do not infer model quality from synthetic fixture tests or latency
+checks.
 
 ## 5. Thresholds, precision, and confidence
 

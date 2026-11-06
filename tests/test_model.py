@@ -175,7 +175,9 @@ def test_analyze_message_contract_and_threshold_consistency(trained_artifact):
         "matches",
         "brands",
         "model_version",
+        "model_path",
     }
+    assert result["model_path"] == "linear"
     assert result["decision_threshold"] == pytest.approx(bundle.threshold)
     assert result["suspicious_threshold"] == pytest.approx(bundle.suspicious_threshold)
     assert result["probability_calibrated"] is True

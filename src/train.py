@@ -67,6 +67,7 @@ from src.model_selection import (
     select_classifier,
 )
 from src.predict import ARTIFACT_SCHEMA_VERSION, DEFAULT_MODEL, ModelBundle, spam_probabilities
+from src.transformer_training import TransformerTrainingError, fine_tune_transformer, validate_transformer_plan
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_TARGET_PRECISION = 0.95
@@ -164,6 +165,11 @@ def train(
     verbose: bool = True,
     track_run: bool = False,
     runs_dir: str | Path | None = None,
+    ensemble: bool = False,
+    transformer_base_model: str | Path | None = None,
+    transformer_output: str | Path | None = None,
+    allow_synthetic_demo: bool = False,
+    transformer_epochs: float = 2.0,
 ) -> dict[str, Any]:
     """Train and persist the primary model. Returns the saved artifact mapping."""
     dataset = load_training_dataset(
@@ -173,6 +179,14 @@ def train(
         strict_supplement_paths=strict_supplement_paths,
     )
     split = grouped_splits(dataset, val_size=val_size, test_size=test_size, seed=random_state, split_by=split_by)
+    if ensemble:
+        if transformer_base_model is None or transformer_output is None:
+            raise TransformerTrainingError(
+                "--ensemble requires both --transformer-base-model and --transformer-output."
+            )
+        validate_transformer_plan(dataset, split, allow_synthetic_demo=allow_synthetic_demo)
+    elif transformer_base_model is not None or transformer_output is not None or allow_synthetic_demo:
+        raise TransformerTrainingError("Transformer options require --ensemble.")
     train_set, val_set, test_set = split_dataset(dataset, split)
     for split_name, split_dataset_value in (("train", train_set), ("validation", val_set), ("test", test_set)):
         small_classes = {
@@ -323,6 +337,7 @@ def train(
             "text_features": text_features,
             "threshold_policy": threshold_policy,
             "strict_data": strict_data,
+            "transformer_ensemble_requested": ensemble,
         },
         "data_sources": [record.as_dict() for record in dataset.records],
         "holdout_source": holdout.records[0].as_dict() if holdout and holdout.records else None,
@@ -358,6 +373,21 @@ def train(
         "warnings": [str(warning) for warning in warnings],
         "model": primary,
     }
+
+    if ensemble:
+        # This uses the exact Split instance above. The fine-tuner receives only
+        # train and validation rows; test remains sealed and untouched.
+        artifact["transformer_training"] = fine_tune_transformer(
+            dataset,
+            split,
+            base_model_path=transformer_base_model or "",
+            output_dir=transformer_output or "",
+            allow_synthetic_demo=allow_synthetic_demo,
+            seed=random_state,
+            epochs=transformer_epochs,
+            target_precision=target_precision,
+            min_recall=min_recall,
+        )
 
     model_path = Path(model_path)
     model_path.parent.mkdir(parents=True, exist_ok=True)
@@ -598,6 +628,21 @@ def _main(argv: list[str] | None = None) -> int:
     parser.add_argument("--no-metadata", action="store_true", help="Do not write the JSON metadata sidecar.")
     parser.add_argument("--model-version", default=None, help="Human-readable artifact version label.")
     parser.add_argument(
+        "--ensemble",
+        action="store_true",
+        help="Also fine-tune the optional local transformer on the same group-aware split; off by default.",
+    )
+    parser.add_argument(
+        "--transformer-base-model", default=None, help="Existing local transformer checkpoint directory."
+    )
+    parser.add_argument("--transformer-output", default=None, help="New directory for the fine-tuned local model.")
+    parser.add_argument(
+        "--allow-synthetic-demo",
+        action="store_true",
+        help="Allow synthetic-only transformer training and label its output demo-quality.",
+    )
+    parser.add_argument("--transformer-epochs", type=float, default=2.0, help="Transformer fine-tuning epochs.")
+    parser.add_argument(
         "--text-features",
         choices=TEXT_FEATURE_MODES,
         default="combined",
@@ -689,8 +734,13 @@ def _main(argv: list[str] | None = None) -> int:
             metadata_output=args.metadata_output,
             track_run=args.track_run,
             runs_dir=args.runs_dir,
+            ensemble=args.ensemble,
+            transformer_base_model=args.transformer_base_model,
+            transformer_output=args.transformer_output,
+            allow_synthetic_demo=args.allow_synthetic_demo,
+            transformer_epochs=args.transformer_epochs,
         )
-    except DatasetError as exc:
+    except (DatasetError, TransformerTrainingError) as exc:
         print(f"data error: {exc}")
         return 2
     return 0
