@@ -61,16 +61,21 @@ python -m src.evaluate              # held-out metrics, threshold sweep, synthet
 - The artifact is a joblib-serialized **bundle** (model pipeline + decision
   threshold + label mapping + training config + data-source hashes + version
   metadata + metrics), with a human-readable
-  `models/spam_detector_v1.metadata.json` sidecar. `models/` is git-ignored —
-  artifacts travel through a registry/volume, not Git.
+  `models/spam_detector_v1.metadata.json` sidecar. After serialization, the
+  trainer hashes the exact bundle bytes and writes `artifact_sha256` to that
+  sidecar. The loader checks the digest before deserialization and deserializes
+  the same bytes it checked. A mismatch fails readiness. Older bundles with a
+  missing sidecar or missing hash still load with a warning; malformed sidecars
+  and mismatches fail closed. `models/` is git-ignored — artifacts travel
+  through a registry/volume, not Git.
 - `joblib.load()` can execute code from a malicious pickle. Load artifacts only
-  from a trusted build/release process; do not accept model uploads. Optionally
-  pin the expected model SHA-256 with `SMSD_MODEL_SHA256` (for example,
-  `shasum -a 256 models/spam_detector_v1.pkl`). The expected digest must come
-  from a trusted channel; this check is not a signature or provenance system.
-  When configured, the loader hashes and deserializes the same in-memory bytes,
-  avoiding a verify-then-reopen race. It still does not authenticate or make a
-  malicious pickle safe.
+  from a trusted build/release process; do not accept model uploads. The
+  sidecar is a consistency check, not a trust anchor: an attacker able to
+  replace both files can replace the hash too. For an independent pin, set
+  `SMSD_MODEL_SHA256` to a trusted 64-character digest (for example,
+  `shasum -a 256 models/spam_detector_v1.pkl`). The release workflow below
+  provides keyless signatures and attestations for published wheel/model
+  files. Neither hashes nor signatures make a malicious pickle safe.
 - Feature version 2.2.0 adds optional char/combined TF-IDF modes without
   changing 2.1.0 word-only preprocessing. The loader accepts that prior mode
   only after checking fitted vectorizer settings and input columns; a version
@@ -95,6 +100,51 @@ python -m src.evaluate              # held-out metrics, threshold sweep, synthet
   is not the configured fallback.
 - For the authoritative current CLI flags run `python -m src.train --help` and
   `python -m src.evaluate --help`.
+
+### Verify and publish signed release artifacts
+
+The release workflow runs only when a published GitHub release uses a `v*` tag.
+Before publishing the release, attach the model bundle and its same-stem
+`.metadata.json` sidecar (for example,
+`spam_detector_v1.pkl` and `spam_detector_v1.metadata.json`) to a draft release.
+The workflow checks their hash without deserializing the model, builds the wheel
+from the tagged source, then creates GitHub provenance attestations and keyless
+Sigstore signatures for the wheel, model bundle, and sidecar. The signature
+bundles are attached to the release. The Sigstore action also re-uploads and
+signs GitHub's generated source archives when release signing is enabled. The
+workflow skips a wheel upload on retry only when the existing release asset has
+the same SHA-256; a same-name asset with different bytes fails closed. The
+workflow file must already exist on the repository's default branch for GitHub
+to run a release-triggered workflow.
+
+Only attach a model approved for public release. A signature binds exact file
+bytes to the repository workflow and tag; it does not establish the model's
+training-data provenance, privacy approval, calibration, or performance. The
+model bundle is supplied as a release asset because model files and training
+data are intentionally not committed to Git. The GitHub attestation for that
+model records that the release workflow processed the submitted bytes; it does
+not prove how the model was trained.
+
+After downloading the wheel/model/sidecar and their `.sigstore.json` bundles,
+verify each Sigstore signature and GitHub attestation. Replace `vX.Y.Z` with
+the published tag:
+
+```bash
+RELEASE_TAG=vX.Y.Z
+WORKFLOW_IDENTITY="https://github.com/KhangTran69/sms-spam-detector/.github/workflows/release-provenance.yml@refs/tags/${RELEASE_TAG}"
+
+for artifact in ./*.whl ./*.pkl ./*.metadata.json; do
+  cosign verify-blob "$artifact" \
+    --bundle "${artifact}.sigstore.json" \
+    --certificate-identity "$WORKFLOW_IDENTITY" \
+    --certificate-oidc-issuer https://token.actions.githubusercontent.com
+  gh attestation verify "$artifact" --repo KhangTran69/sms-spam-detector
+done
+```
+
+These checks authenticate the artifact against the GitHub workflow identity
+and release tag. Review the tag and workflow changes before trusting a verified
+pickle; verification does not neutralize pickle code execution.
 
 ## 3. Serve locally
 
@@ -342,7 +392,8 @@ commit them.
 | `SMSD_ENV` | `development` | Set to `production` to reject legacy bare-pipeline artifacts at readiness and inference and force anonymous feedback off. |
 | `SMSD_ALLOW_LEGACY_MODEL` | `false` | Explicit development-only override for a legacy artifact while `SMSD_ENV=production`; avoid using it for deployed traffic. |
 | `SMSD_MODEL_PATH` | `models/spam_detector_v1.pkl` (repo-relative, resolved from the project root; `/app/models/spam_detector_v1.pkl` in the container) | Path to the joblib model bundle to load. Must be readable by the runtime user; mount `models/` read-only. |
-| `SMSD_MODEL_SHA256` | unset | Optional 64-character expected SHA-256 for the exact model file, checked before deserialization. Use a trusted digest; see the pickle warning above. |
+| `SMSD_MODEL_METADATA_PATH` | Adjacent `.metadata.json` path | Optional custom metadata sidecar path. When set, that sidecar and its `artifact_sha256` are required. |
+| `SMSD_MODEL_SHA256` | unset | Optional independent 64-character expected SHA-256 for the exact model file, checked before deserialization in addition to the sidecar. Use a trusted digest; see the pickle warning above. |
 | `SMSD_CORS_ORIGINS` | `http://127.0.0.1:8000,http://localhost:8000` | Comma-separated allowlist of browser origins. Wildcard `*` entries are ignored, and an empty/wildcard-only value falls back to the default local origins; credentials are disabled. Set your reverse-proxy origin (e.g. `https://sms.example.org`) if the UI is served from a different origin. |
 | `SMSD_FEEDBACK_ENABLED` | `false` | Enables optional anonymous label correction in non-production environments. Production mode always disables it; stale model-version reports are rejected. |
 | `SMSD_FEEDBACK_PATH` | `data/feedback/reports.jsonl` | Local JSONL queue containing selected labels, broad category, timestamp, and model version only; never SMS text. Compose stores it in the named `smsd_feedback` volume. |
