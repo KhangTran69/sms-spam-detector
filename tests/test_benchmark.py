@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from argparse import Namespace
 
 import pandas as pd
@@ -7,6 +8,7 @@ import pandas as pd
 from src.benchmark import _commands, main
 from src.data import Dataset
 from src.evaluate import _baseline_report
+from src.predict import ModelBundle, _score_message, analyze_message, spam_probabilities
 
 
 def test_benchmark_commands_are_explicit_and_do_not_default_to_hidden_supplements(tmp_path) -> None:
@@ -83,3 +85,42 @@ def test_report_includes_same_split_multinomial_baseline_without_message_text() 
     assert report["by_data_kind"][0]["data_kind"] == "synthetic"
     assert report["by_data_kind"][0]["support"] == 2
     assert "ordinary meeting" not in str(report)
+
+
+def test_linear_only_p95_latency_stays_within_baseline_noise():
+    class FixedPipeline:
+        classes_ = ["ham", "spam"]
+
+        def predict_proba(self, frame):
+            return [[0.6, 0.4] for _ in range(len(frame))]
+
+    bundle = ModelBundle(
+        pipeline=FixedPipeline(),
+        threshold=0.5,
+        metadata={"model_version": "synthetic-latency-fixture", "probability_calibrated": True},
+    )
+    message = "Synthetic latency fixture https://example.test/inert"
+
+    def legacy_linear_path():
+        probability = spam_probabilities(bundle, [message])[0]
+        return _score_message(message, probability, bundle)
+
+    for _ in range(5):
+        legacy_linear_path()
+        analyze_message(message, model=bundle)
+
+    baseline_ms: list[float] = []
+    default_ms: list[float] = []
+    for _ in range(100):
+        started = time.perf_counter()
+        legacy_linear_path()
+        baseline_ms.append((time.perf_counter() - started) * 1000)
+
+        started = time.perf_counter()
+        result = analyze_message(message, model=bundle)
+        default_ms.append((time.perf_counter() - started) * 1000)
+        assert result["model_path"] == "linear"
+
+    baseline_p95 = sorted(baseline_ms)[94]
+    default_p95 = sorted(default_ms)[94]
+    assert default_p95 <= baseline_p95 + 5.0

@@ -1,4 +1,4 @@
-"""Sidecar hash checks for serialized model artifacts.
+"""Hash checks for serialized model artifacts and local checkpoint trees.
 
 This module uses only the standard library so release tooling can validate a
 model bundle without deserializing its pickle payload.
@@ -83,6 +83,29 @@ def verify_artifact_sidecar(
     if sidecar_digest.lower() != digest:
         raise ArtifactIntegrityError("Model sidecar SHA-256 mismatch; refusing to deserialize the artifact.")
     return digest, None
+
+
+def directory_sha256(directory: str | Path, *, excluded_paths: tuple[str, ...] = ()) -> str:
+    """Hash a directory's relative paths, sizes, and bytes in stable order."""
+    root = Path(directory)
+    if not root.exists() or not root.is_dir():
+        raise ArtifactIntegrityError("Checkpoint path must be an existing directory.")
+
+    digest = hashlib.sha256()
+    excluded = set(excluded_paths)
+    files = sorted(path for path in root.rglob("*") if path.is_file())
+    for path in files:
+        relative_path = path.relative_to(root).as_posix()
+        if relative_path in excluded:
+            continue
+        relative = relative_path.encode("utf-8")
+        digest.update(len(relative).to_bytes(4, "big"))
+        digest.update(relative)
+        digest.update(path.stat().st_size.to_bytes(8, "big"))
+        with path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+    return digest.hexdigest()
 
 
 if __name__ == "__main__":

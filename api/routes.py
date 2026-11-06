@@ -52,6 +52,12 @@ def _state() -> ModuleType:
     return sys.modules["api.main"]
 
 
+def _record_linear_monitor(analysis: dict[str, Any]) -> None:
+    """Keep the calibrated linear score baseline separate from raw transformer scores."""
+    if analysis.get("model_path", "linear") == "linear":
+        default_monitor.record(analysis["probability"], analysis["prediction"])
+
+
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
@@ -85,7 +91,16 @@ def ready() -> ReadinessResponse:
 )
 def get_model_info() -> dict[str, Any]:
     info = _state()._json_safe(model_info(model=_state().get_model()))
-    info["feedback_enabled"] = _state().FEEDBACK_ENABLED
+    ensemble_configured = _state().TRANSFORMER_MODEL_PATH is not None
+    info["feedback_enabled"] = _state().FEEDBACK_ENABLED and not ensemble_configured
+    info["feedback_disabled_for_ensemble"] = _state().FEEDBACK_ENABLED and ensemble_configured
+    info["ensemble_configured"] = ensemble_configured
+    info["ensemble_checkpoint_directory_available"] = bool(
+        _state().TRANSFORMER_MODEL_PATH is not None and _state().TRANSFORMER_MODEL_PATH.is_dir()
+    )
+    info["ensemble_confidence_band"] = (
+        _state().TRANSFORMER_CONFIDENCE_BAND if _state().TRANSFORMER_MODEL_PATH is not None else None
+    )
     return info
 
 
@@ -121,8 +136,14 @@ def get_distribution_metrics() -> dict[str, Any]:
 
 @router.post("/predict", response_model=PredictResponse, responses=_ERROR_RESPONSES, summary="Minimal verdict")
 async def predict(request: PredictRequest) -> PredictResponse:
-    analysis = await asyncio.to_thread(analyze_message, request.message, model=_state().get_model())
-    default_monitor.record(analysis["probability"], analysis["prediction"])
+    analysis = await asyncio.to_thread(
+        analyze_message,
+        request.message,
+        model=_state().get_model(),
+        transformer_model_path=_state().TRANSFORMER_MODEL_PATH,
+        confidence_band=_state().TRANSFORMER_CONFIDENCE_BAND,
+    )
+    _record_linear_monitor(analysis)
     return PredictResponse(
         prediction=analysis["prediction"],
         probability=analysis["probability"],
@@ -130,27 +151,41 @@ async def predict(request: PredictRequest) -> PredictResponse:
         flags=analysis["flags"],
         decision_threshold=analysis["decision_threshold"],
         model_version=analysis["model_version"],
+        model_path=analysis["model_path"],
     )
 
 
 @router.post("/analyze", response_model=AnalyzeResponse, responses=_ERROR_RESPONSES, summary="Full analysis")
 async def analyze(request: PredictRequest) -> AnalyzeResponse:
-    analysis = await asyncio.to_thread(analyze_message, request.message, model=_state().get_model())
-    default_monitor.record(analysis["probability"], analysis["prediction"])
+    analysis = await asyncio.to_thread(
+        analyze_message,
+        request.message,
+        model=_state().get_model(),
+        transformer_model_path=_state().TRANSFORMER_MODEL_PATH,
+        confidence_band=_state().TRANSFORMER_CONFIDENCE_BAND,
+    )
+    _record_linear_monitor(analysis)
     return AnalyzeResponse.model_validate(analysis)
 
 
 @router.post("/analyze/batch", response_model=BatchResponse, responses=_ERROR_RESPONSES, summary="Batch analysis")
 async def analyze_batch_endpoint(request: BatchRequest) -> BatchResponse:
-    results = await asyncio.to_thread(analyze_batch, request.messages, model=_state().get_model())
+    results = await asyncio.to_thread(
+        analyze_batch,
+        request.messages,
+        model=_state().get_model(),
+        transformer_model_path=_state().TRANSFORMER_MODEL_PATH,
+        confidence_band=_state().TRANSFORMER_CONFIDENCE_BAND,
+    )
     for item in results:
-        default_monitor.record(item["probability"], item["prediction"])
+        _record_linear_monitor(item)
     first = results[0] if results else {}
     return BatchResponse(
         count=len(results),
         results=[AnalyzeResponse.model_validate(item) for item in results],
         model_version=first.get("model_version", "unknown"),
         decision_threshold=float(first.get("decision_threshold", 0.5)),
+        metadata_scope="first_result",
     )
 
 
@@ -161,7 +196,16 @@ async def analyze_batch_endpoint(request: BatchRequest) -> BatchResponse:
     summary="Submit anonymous label feedback (message text is not accepted)",
 )
 def submit_feedback(request: FeedbackRequest) -> FeedbackResponse:
-    if _state().SMSD_ENV == "production" or not _state().FEEDBACK_ENABLED:
+    if (
+        _state().SMSD_ENV == "production"
+        or not _state().FEEDBACK_ENABLED
+        or _state().TRANSFORMER_MODEL_PATH is not None
+    ):
+        if _state().TRANSFORMER_MODEL_PATH is not None and _state().FEEDBACK_ENABLED:
+            raise StarletteHTTPException(
+                status_code=404,
+                detail="Anonymous feedback is disabled while the optional ensemble is configured because the route cannot be attributed.",
+            )
         raise StarletteHTTPException(status_code=404, detail="Anonymous feedback is disabled by the operator.")
     model = _state().get_model()
     current_version = _state()._model_version(model)

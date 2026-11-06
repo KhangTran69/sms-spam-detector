@@ -394,6 +394,8 @@ commit them.
 | `SMSD_MODEL_PATH` | `models/spam_detector_v1.pkl` (repo-relative, resolved from the project root; `/app/models/spam_detector_v1.pkl` in the container) | Path to the joblib model bundle to load. Must be readable by the runtime user; mount `models/` read-only. |
 | `SMSD_MODEL_METADATA_PATH` | Adjacent `.metadata.json` path | Optional custom metadata sidecar path. When set, that sidecar and its `artifact_sha256` are required. |
 | `SMSD_MODEL_SHA256` | unset | Optional independent 64-character expected SHA-256 for the exact model file, checked before deserialization in addition to the sidecar. Use a trusted digest; see the pickle warning above. |
+| `SMSD_TRANSFORMER_MODEL_PATH` | unset | Optional path to an existing local XLM-RoBERTa sequence-classification directory. Unset keeps the service linear-only. The server loads it on CPU and never downloads weights. |
+| `SMSD_TRANSFORMER_CONFIDENCE_BAND` | `0.10` | Finite value in `[0, 0.5]`; only a calibrated linear score strictly within this distance of the artifact threshold is routed to the optional local transformer. Routed decisions use that transformer's validation-selected threshold from `smsd-provenance.json`. |
 | `SMSD_CORS_ORIGINS` | `http://127.0.0.1:8000,http://localhost:8000` | Comma-separated allowlist of browser origins. Wildcard `*` entries are ignored, and an empty/wildcard-only value falls back to the default local origins; credentials are disabled. Set your reverse-proxy origin (e.g. `https://sms.example.org`) if the UI is served from a different origin. |
 | `SMSD_FEEDBACK_ENABLED` | `false` | Enables optional anonymous label correction in non-production environments. Production mode always disables it; stale model-version reports are rejected. |
 | `SMSD_FEEDBACK_PATH` | `data/feedback/reports.jsonl` | Local JSONL queue containing selected labels, broad category, timestamp, and model version only; never SMS text. Compose stores it in the named `smsd_feedback` volume. |
@@ -402,10 +404,11 @@ commit them.
 | `SMSD_RATE_LIMIT_WINDOW` | `60` | Window in seconds for the optional `SMSD_RATE_LIMIT` limit. |
 | `SMSD_REDIS_URL` | unset | Optional Redis connection URL for limits shared across workers and replicas. Treat URLs containing credentials as secrets. Install the Python `redis` extra outside Docker. Startup connection failure falls back to per-process memory; request-time failure allows the request and retries Redis on later requests. |
 
-- There is **no** `PORT`, log-level, or threshold environment variable. Pass
+- There is **no** `PORT`, log-level, or prediction decision-threshold environment variable. Pass
   host/port/log level to uvicorn on the command line
-  (`uvicorn api.main:app --host 0.0.0.0 --port 8000 --log-level info`). Thresholds
-  come from the artifact (`GET /model-info`).
+  (`uvicorn api.main:app --host 0.0.0.0 --port 8000 --log-level info`). Prediction
+  thresholds come from the linear artifact (`GET /model-info`); the separate
+  transformer routing band is optional and does not change that decision threshold.
 - Request limits are constants: max message length 10,000 chars, batch 1–50
   messages and 200,000 chars total, request body ≤ 1 MB. The ASGI middleware
   reads streamed bodies before JSON parsing and enforces the cap without

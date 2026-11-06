@@ -55,6 +55,22 @@ flowchart TD
     EVAL --> RUNS
 ```
 
+By default, `src.predict` uses the calibrated linear bundle only and does not
+load PyTorch or Transformers. An operator can opt into a local XLM-RoBERTa
+checkpoint with `SMSD_TRANSFORMER_MODEL_PATH`; only messages inside the
+configured band around the linear threshold are routed there. The model is
+loaded lazily from local files, and each result identifies `model_path` as
+`linear` or `ensemble`.
+Transformer-routed decisions use the checkpoint's validation-selected
+threshold, and their raw scores are marked uncalibrated. The checkpoint's
+content hash is checked before loading and identifies transformer-routed
+results. The request text remains in memory on the same server and is not
+logged or sent to a remote model service.
+Only calibrated linear results enter the existing linear score-distribution
+monitor; transformer scores are not mixed into that baseline.
+For mixed-route batch responses, top-level model metadata applies to the first
+result only; inspect each result's `model_path`, `model_version`, and threshold.
+
 ---
 
 ## 2. Real-Time Inference & Serving Architecture
