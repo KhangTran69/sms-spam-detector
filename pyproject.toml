@@ -47,7 +47,9 @@ exclude = ["tests*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-ra"
+# Coverage ratchet: start at the measured baseline, then raise this floor when
+# coverage improves. Lower it only with a specific justification in the PR.
+addopts = "-ra --cov=src --cov=api --cov-report=term-missing --cov-fail-under=78"
 # CI has no data/raw/spam.csv and no models/* artifact (both git-ignored, except
 # the synthetic Philippine CSVs). Tests must skip or synthesize their own data
 # instead of depending on those paths.

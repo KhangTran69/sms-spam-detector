@@ -238,7 +238,7 @@ def test_pyproject_configures_pytest_ruff_and_mypy() -> None:
 
     pytest_options = config["tool"]["pytest"]["ini_options"]
     assert pytest_options["testpaths"] == ["tests"]
-    assert pytest_options["addopts"] == "-ra"
+    assert pytest_options["addopts"] == "-ra --cov=src --cov=api --cov-report=term-missing --cov-fail-under=78"
 
     ruff = config["tool"]["ruff"]
     assert ruff["target-version"] == "py311"
