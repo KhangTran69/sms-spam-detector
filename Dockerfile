@@ -27,6 +27,9 @@ COPY requirements.txt ./
 COPY constraints/ ./constraints/
 ARG PYTHON_VERSION
 RUN pip install --no-cache-dir -r requirements.txt -c "constraints/py${PYTHON_VERSION}.txt"
+# Include the small optional Redis adapter so the Compose redis profile can use
+# the same image; non-container package installs can omit the redis extra.
+RUN pip install --no-cache-dir "redis>=5,<6" -c "constraints/py${PYTHON_VERSION}.txt"
 
 # ---------- runtime: minimal image, non-root ----------
 FROM python:${PYTHON_VERSION}-slim AS runtime

@@ -18,6 +18,7 @@ from fastapi.testclient import TestClient
 from sklearn.base import BaseEstimator, ClassifierMixin
 
 import api.main as api_main
+from api.rate_limiter import RedisRateLimiter
 from src.features import make_model, messages_to_frame
 from src.predict import ModelBundle, load_model
 
@@ -726,6 +727,27 @@ def test_rate_limiting_ignores_exempt_endpoints(client, monkeypatch):
         assert r2.status_code == 200
     finally:
         api_main._reset_rate_limits()
+
+
+def test_redis_rate_limiter_preserves_prediction_429_contract(client, monkeypatch):
+    class CountingRedisStub:
+        def __init__(self):
+            self.counts: dict[str, int] = {}
+
+        def eval(self, _script, _key_count, key, _window_ms, _limit, _member):
+            self.counts[key] = self.counts.get(key, 0) + 1
+            return (1, 0) if self.counts[key] == 1 else (0, 30)
+
+    monkeypatch.setattr(api_main, "PREDICTION_RATE_LIMIT", 1)
+    monkeypatch.setattr(api_main, "RATE_LIMIT", 0)
+    monkeypatch.setattr(api_main, "RATE_LIMITER", RedisRateLimiter(CountingRedisStub()))
+
+    first = client.post("/predict", json={"message": "Synthetic test message"})
+    second = client.post("/v1/predict", json={"message": "Synthetic test message"})
+
+    assert first.status_code == 200
+    assert_error_schema(second, 429, "rate_limited")
+    assert second.headers["Retry-After"] == "30"
 
 
 def test_structured_logging_records_requests(client, caplog):

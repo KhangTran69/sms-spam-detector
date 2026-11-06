@@ -300,6 +300,28 @@ docker compose logs -f api
 docker compose down            # add -v only if you know what you are deleting
 ```
 
+The default Compose setup uses the process-local limiter. To share limits across
+multiple API workers or replicas, start the optional Redis profile:
+
+```bash
+docker compose --profile redis up -d --wait redis
+SMSD_REDIS_URL=redis://redis:6379/0 docker compose --profile redis up -d --wait api
+docker compose --profile redis ps
+```
+
+The profile's Redis service has no published host port and disables disk
+persistence; it stores only expiring rate-limit counters. For a non-container
+install, add the optional client with `python -m pip install -e ".[redis]"` and
+set `SMSD_REDIS_URL` to a reachable Redis URL. Keep any URL credentials in a
+secret store or local environment, never in Git. If Redis is unavailable at
+startup, the API logs a content-free fallback event and uses its process-local
+limiter until the API process restarts. If Redis fails during a request, that
+request fails open and the limiter logs a content-free warning counter; it
+tries Redis again on the next request. During either failure mode, limits are
+not shared between workers. Redis keys contain a SHA-256 digest of the direct
+client address and short-lived counters only; SMS content is never sent to
+Redis.
+
 `docker-compose.yml` binds the port to loopback, mounts `./models:/app/models:ro`,
 sets model/CORS/feedback environment variables, uses `restart: unless-stopped`, runs the same
 `/health` healthcheck, drops all Linux capabilities with
@@ -311,7 +333,9 @@ incompatible — check the mount path and `SMSD_MODEL_PATH`.
 
 ## 5. Environment variables
 
-These variables are read by the application. None is a secret.
+These variables are read by the application. Keep `SMSD_REDIS_URL` credentials
+and reverse-proxy private keys in a secret store or local environment; do not
+commit them.
 
 | Variable | Default | Meaning |
 |---|---|---|
@@ -322,7 +346,10 @@ These variables are read by the application. None is a secret.
 | `SMSD_CORS_ORIGINS` | `http://127.0.0.1:8000,http://localhost:8000` | Comma-separated allowlist of browser origins. Wildcard `*` entries are ignored, and an empty/wildcard-only value falls back to the default local origins; credentials are disabled. Set your reverse-proxy origin (e.g. `https://sms.example.org`) if the UI is served from a different origin. |
 | `SMSD_FEEDBACK_ENABLED` | `false` | Enables optional anonymous label correction in non-production environments. Production mode always disables it; stale model-version reports are rejected. |
 | `SMSD_FEEDBACK_PATH` | `data/feedback/reports.jsonl` | Local JSONL queue containing selected labels, broad category, timestamp, and model version only; never SMS text. Compose stores it in the named `smsd_feedback` volume. |
-| `SMSD_RATE_LIMIT_PER_MINUTE` | `60` | In-process request limit per direct client address for anonymous prediction endpoints. It is a single-worker fallback; enforce a shared limit at the gateway for multiple workers or replicas. |
+| `SMSD_RATE_LIMIT_PER_MINUTE` | `60` | Sliding-window limit per direct client address across anonymous prediction endpoints. Uses Redis when `SMSD_REDIS_URL` is set and healthy; otherwise it is process-local. |
+| `SMSD_RATE_LIMIT` | `0` | Optional additional per-address limit shared by the request-body middleware for prediction and feedback routes. Zero disables this legacy limit. |
+| `SMSD_RATE_LIMIT_WINDOW` | `60` | Window in seconds for the optional `SMSD_RATE_LIMIT` limit. |
+| `SMSD_REDIS_URL` | unset | Optional Redis connection URL for limits shared across workers and replicas. Treat URLs containing credentials as secrets. Install the Python `redis` extra outside Docker. Startup connection failure falls back to per-process memory; request-time failure allows the request and retries Redis on later requests. |
 
 - There is **no** `PORT`, log-level, or threshold environment variable. Pass
   host/port/log level to uvicorn on the command line
@@ -334,16 +361,14 @@ These variables are read by the application. None is a secret.
   `Content-Length`; it keeps the capped chunks and briefly joins them before
   dispatch, so concurrent requests can use several megabytes each. These
   limits are not env-configurable. Set matching ingress limits and
-  request/read timeouts, concurrency limits, and a shared rate limit at the
-  reverse proxy or gateway before exposing the API publicly. The app's
-  in-process per-address prediction limit is only a single-worker fallback.
-- The request body cap and security headers share one ASGI middleware. The
-  in-process limiter is not shared across workers or instances, so configure a
-  shared gateway rate limit plus ingress request/read timeouts and concurrency
-  limits.
-- **Never put secrets in these variables or in Git.** No API keys are needed.
-  TLS private keys belong in the reverse proxy's secret store, outside the
-  repository and image.
+  request/read timeouts and concurrency limits before exposing the API
+  publicly. Use Redis or a gateway rate limit to share limits across workers.
+- The request body cap and security headers share one ASGI middleware. Without
+  a healthy Redis backend, the in-process limiter is not shared across workers
+  or instances, so configure a shared gateway rate limit plus ingress
+  request/read timeouts and concurrency limits for public deployments.
+- No third-party API keys are needed. TLS private keys belong in the reverse
+  proxy's secret store, outside the repository and image.
 
 ## 6. Health and readiness
 

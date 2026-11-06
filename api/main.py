@@ -19,12 +19,12 @@ Design notes
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import threading
 import time
 import uuid
-from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
@@ -35,6 +35,7 @@ from fastapi.responses import JSONResponse, Response
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from api.donations import DEFAULT_DONATION_DB
+from api.rate_limiter import RateLimiter, RedisRateLimiter, create_rate_limiter
 from src.predict import (
     ModelArtifactError,
     load_model,
@@ -61,8 +62,6 @@ MAX_FEEDBACK_BYTES = 10 * 1024 * 1024
 _feedback_lock = threading.Lock()
 DEFAULT_CORS_ORIGINS = ("http://127.0.0.1:8000", "http://localhost:8000")
 PREDICTION_RATE_LIMIT = max(1, int(os.environ.get("SMSD_RATE_LIMIT_PER_MINUTE", "60")))
-_rate_lock = threading.Lock()
-_rate_windows: dict[str, tuple[int, int]] = {}
 
 SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
@@ -106,9 +105,7 @@ RATE_LIMIT_ENDPOINTS = {
     "/v1/feedback",
 }
 RATE_LIMIT = int(os.environ.get("SMSD_RATE_LIMIT", "0"))
-RATE_LIMIT_WINDOW = int(os.environ.get("SMSD_RATE_LIMIT_WINDOW", "60"))
-_rate_limit_lock = threading.Lock()
-_rate_limit_records: dict[str, list[float]] = defaultdict(list)
+RATE_LIMIT_WINDOW = max(1, int(os.environ.get("SMSD_RATE_LIMIT_WINDOW", "60")))
 
 
 def _client_ip(scope: dict[str, Any]) -> str:
@@ -137,29 +134,24 @@ def _request_id(scope: dict[str, Any]) -> str:
 
 
 def _check_rate_limit(ip: str, now: float | None = None) -> tuple[bool, int]:
-    limit = RATE_LIMIT
-    if limit <= 0:
-        return True, 0
-    current_time = time.time() if now is None else now
-    window = RATE_LIMIT_WINDOW
-    cutoff = current_time - window
-    with _rate_limit_lock:
-        timestamps = [t for t in _rate_limit_records.get(ip, []) if t > cutoff]
-        if len(timestamps) >= limit:
-            oldest = timestamps[0]
-            retry_after = max(1, int(oldest + window - current_time))
-            _rate_limit_records[ip] = timestamps
-            return False, retry_after
-        timestamps.append(current_time)
-        _rate_limit_records[ip] = timestamps
-        return True, 0
+    """Compatibility wrapper for the optional legacy global endpoint limit."""
+    return RATE_LIMITER.check("legacy", ip, RATE_LIMIT, RATE_LIMIT_WINDOW, now)
 
 
 def _reset_rate_limits() -> None:
-    with _rate_limit_lock:
-        _rate_limit_records.clear()
-    with _rate_lock:
-        _rate_windows.clear()
+    RATE_LIMITER.reset()
+
+
+async def _check_rate_limiter(
+    endpoint: str,
+    identity: str,
+    limit: int,
+    window_seconds: int,
+) -> tuple[bool, int]:
+    limiter = RATE_LIMITER
+    if isinstance(limiter, RedisRateLimiter):
+        return await asyncio.to_thread(limiter.check, endpoint, identity, limit, window_seconds)
+    return limiter.check(endpoint, identity, limit, window_seconds)
 
 
 def _is_donation_path(path: str) -> bool:
@@ -168,6 +160,7 @@ def _is_donation_path(path: str) -> bool:
 
 
 logger = logging.getLogger("api.main")
+RATE_LIMITER: RateLimiter = create_rate_limiter()
 
 
 class RequestBodyLimitMiddleware:
@@ -210,7 +203,7 @@ class RequestBodyLimitMiddleware:
 
         # 1. Rate limiting check
         if path in RATE_LIMIT_ENDPOINTS:
-            allowed, retry_after = _check_rate_limit(client_ip)
+            allowed, retry_after = await _check_rate_limiter("legacy", client_ip, RATE_LIMIT, RATE_LIMIT_WINDOW)
             if not allowed:
                 elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
                 logger.info(
@@ -334,28 +327,11 @@ class PredictionRateLimitMiddleware:
         if scope["type"] == "http" and (
             (method == "POST" and is_prediction) or (method in {"POST", "DELETE"} and is_donation)
         ):
-            client = scope.get("client")
-            key = (
-                f"donation:{client[0] if client else 'unknown'}"
-                if is_donation
-                else (client[0] if client else "unknown")
-            )
+            identity = _client_ip(scope)
+            endpoint = "donation" if is_donation else "prediction"
             limit = DONATION_RATE_LIMIT_PER_MINUTE if is_donation else PREDICTION_RATE_LIMIT
-            now = int(time.time())
-            retry_after = None
-            with _rate_lock:
-                start, count = _rate_windows.get(key, (now, 0))
-                if now - start >= 60:
-                    start, count = now, 0
-                if count >= limit:
-                    retry_after = max(1, 60 - (now - start))
-                else:
-                    _rate_windows[key] = (start, count + 1)
-                if len(_rate_windows) > 10_000:
-                    expired = [ip for ip, state in _rate_windows.items() if now - state[0] >= 60]
-                    for ip in expired:
-                        _rate_windows.pop(ip, None)
-            if retry_after is not None:
+            allowed, retry_after = await _check_rate_limiter(endpoint, identity, limit, 60)
+            if not allowed:
                 response = _error_response(
                     429,
                     "rate_limited",

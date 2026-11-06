@@ -59,7 +59,7 @@ flowchart TD
 
 ## 2. Real-Time Inference & Serving Architecture
 
-The online serving subsystem is built with **FastAPI** and **Starlette**, packaged in a container running as a non-root user (`smsd`). It enforces defence-in-depth security policies, per-IP rate limiting, request size limits, and asynchronous offloading for CPU-bound scikit-learn models.
+The online serving subsystem is built with **FastAPI** and **Starlette**, packaged in a container running as a non-root user (`smsd`). It enforces defence-in-depth security policies, request size limits, and asynchronous offloading for CPU-bound scikit-learn models. Rate limits use an in-memory sliding window by default or an optional Redis-backed shared window for multiple workers and replicas.
 
 ```mermaid
 flowchart TD
@@ -68,7 +68,7 @@ flowchart TD
     subgraph Edge & Middleware Stack
         CORS["CORS Middleware<br/>(Explicit SMSD_CORS_ORIGINS allowlist)"]
         SEC["Security Headers & CSP<br/>(default-src 'self', script-src 'self')"]
-        RL["Rate Limiter Middleware<br/>(slowapi / In-memory sliding window)"]
+        RL["Rate Limiter Middleware<br/>(Redis shared window / in-memory fallback)"]
         SZ["Request Body Limit<br/>(max_length=1600 per message)"]
         LOG["Structured JSON Logging<br/>(Latency, status, request_id — NO PII)"]
     end
