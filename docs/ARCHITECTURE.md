@@ -152,3 +152,29 @@ sequenceDiagram
    - Per-IP rate limiting guards against brute-force harvesting or denial-of-service.
    - Text rendering on the frontend strictly utilizes `textContent` and parameterized DOM construction to eliminate cross-site scripting (XSS).
 4. **Reproducible Experiment Logs**: Every model training invocation produces immutable artifacts: `.joblib` model bundle, `.metadata.json` model card & metric breakdown, `.manifest.json` dataset provenance hashes, and run records under `runs/`.
+
+## 5. Web interface, examples, and repository map
+
+The no-build web UI in `api/web/` supports single-message, batch, and comparison
+checks. Comparison uses the existing batch endpoint and analyzes each message
+independently. A score difference is shown only when both results have the same
+model version, known matching calibration state, and valid scores; a lower
+score does not promise safety. Privacy Preview, opt-in browser history, and the
+Message Safety Checklist are described in [PRIVACY.md](PRIVACY.md).
+
+The single-message demo examples are curated from tracked synthetic Philippine
+fixtures (`ph_supplement_4.csv` and `ph_supplement_5.csv`), use masked values
+and reserved `example.com` domains, and are fictional rather than real inbox
+messages or performance evidence. Comparison examples are fictional UI-only
+content. For evidence limits, see [MODEL_CARD.md](MODEL_CARD.md).
+
+Repository map:
+
+| Path | Responsibility |
+|---|---|
+| `src/` | Dataset validation, preprocessing, feature selection, training, evaluation, and inference |
+| `api/` | FastAPI service, macOS helper, and packaged static web UI |
+| `data/raw/` | Tracked synthetic Philippine fixtures; real data and imports are ignored |
+| `data/templates/` | Consent and collection templates |
+| `scripts/` | Dataset and synthetic-data tooling, demos, and packaging checks |
+| `docs/` | Architecture, deployment, evaluation, privacy, and governance guidance |
