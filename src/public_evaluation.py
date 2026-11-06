@@ -11,6 +11,7 @@ import platform
 import re
 import subprocess
 import uuid
+from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -23,6 +24,7 @@ from src.dataset_loading import Dataset, group_leakage_report, load_dataset
 from src.dataset_schema import make_group_key
 from src.metrics import binary_metrics, calibration_metrics, campaign_bootstrap_intervals, jsonable, per_group_metrics
 from src.predict import ModelArtifactError, load_model, spam_probabilities
+from src.privacy.scrub import detect_pii, redact
 from src.privacy.storage import ensure_private_directory
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -103,6 +105,42 @@ def _breakdowns(dataset: Dataset, probabilities: list[float], threshold: float) 
     return jsonable(result)
 
 
+def _pii_redaction_status(enabled: bool) -> dict[str, Any]:
+    return {
+        "enabled": enabled,
+        "screening_performed": enabled,
+        "rows_with_findings": 0,
+        "rows_redacted": 0,
+        "findings_by_category": {},
+        "url_spans_retained": True,
+    }
+
+
+def _redact_pii_in_memory(dataset: Dataset) -> dict[str, Any]:
+    """Screen and redact likely identifiers without writing message content."""
+    category_counts: Counter[str] = Counter()
+    rows_with_findings = 0
+    rows_redacted = 0
+    for index, message in enumerate(dataset.messages):
+        spans = detect_pii(message, strict=True)
+        if not spans:
+            continue
+        rows_with_findings += 1
+        category_counts.update(span.category for span in spans)
+        sanitized = redact(message, strict=True)
+        if sanitized != message:
+            dataset.frame.at[index, "message"] = sanitized
+            rows_redacted += 1
+    return {
+        "enabled": True,
+        "screening_performed": True,
+        "rows_with_findings": rows_with_findings,
+        "rows_redacted": rows_redacted,
+        "findings_by_category": dict(sorted(category_counts.items())),
+        "url_spans_retained": True,
+    }
+
+
 def _operating_threshold(labels: list[str], probabilities: list[float], max_fpr: float) -> dict[str, Any]:
     ham_count = labels.count("ham")
     if ham_count == 0:
@@ -166,6 +204,17 @@ def _markdown(report: dict[str, Any]) -> str:
             or "none"
         )
 
+    pii = report["privacy"]["pii_redaction"]
+    pii_summary = (
+        f"- Enabled; {pii['rows_with_findings']} row(s) contained detected PII and {pii['rows_redacted']} row(s) were redacted in memory."
+        if pii["enabled"]
+        else "- Disabled; message text was evaluated as provided in the validated local file."
+    )
+    if pii["enabled"]:
+        pii_summary += (
+            f" Findings by category: `{pii['findings_by_category']}`. URLs remain intact as smishing signals."
+        )
+
     lines = [
         f"# Evaluation: {dataset['name']}",
         "",
@@ -213,6 +262,10 @@ def _markdown(report: dict[str, Any]) -> str:
         f"- Languages: {coverage_items('language')}",
         f"- Categories: {coverage_items('category')}",
         "",
+        "## PII screening",
+        "",
+        pii_summary,
+        "",
         "Verify suspicious requests through trusted official channels. Do not use a low spam score as proof that a message is safe.",
         "",
     ]
@@ -223,6 +276,12 @@ def _readiness_markdown(report: dict[str, Any]) -> str:
     dataset = report["dataset"]
     model = report["model"]
     blockers = "\n".join(f"- `{reason}`" for reason in report["readiness"]["blockers"])
+    pii = report["privacy"]["pii_redaction"]
+    pii_status = (
+        f"Enabled; {pii['rows_with_findings']} row(s) had findings and {pii['rows_redacted']} row(s) were redacted in memory."
+        if pii["enabled"]
+        else "Disabled."
+    )
     return "\n".join(
         [
             f"# Evaluation readiness: {dataset['name']}",
@@ -237,6 +296,10 @@ def _readiness_markdown(report: dict[str, Any]) -> str:
             "## Blockers",
             "",
             blockers,
+            "",
+            "## PII screening",
+            "",
+            pii_status,
             "",
             "A passing dataset preflight is not an evaluation result. Resolve every blocker, verify consent scope and withdrawal status, independently adjudicated labels, campaign/date separation, artifact provenance, and pre-registered uncertainty and coverage criteria. Do not report representativeness from a one-person inbox or synthetic fixtures.",
             "",
@@ -365,6 +428,7 @@ def _evaluation_readiness_report(
     evaluation_plan_sha256: str | None = None,
     dataset_sha256: str | None = None,
     dataset_kind: str | None = None,
+    pii_redaction: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     dataset_hash = dataset_sha256 or _sha256(dataset_file)
     labels = dataset.labels
@@ -397,6 +461,7 @@ def _evaluation_readiness_report(
                 "evaluation_membership_sha256": _membership_fingerprint(dataset_hash, len(dataset)),
             },
             "model": {"status": resolved_model_status, "sha256": model_hash, "version": None},
+            "privacy": {"pii_redaction": pii_redaction or _pii_redaction_status(False)},
             "evaluation_plan": {"sha256": evaluation_plan_sha256} if evaluation_plan_sha256 else None,
             "run": {
                 **_run_metadata(),
@@ -717,6 +782,7 @@ def evaluate_public_dataset(
     evaluation_plan_path: str | Path | None = None,
     training_data_path: str | Path | None = None,
     synthetic_rehearsal: bool = False,
+    redact_pii: bool = False,
 ) -> dict[str, Any]:
     """Evaluate the given model on one dataset and write content-free reports."""
     if not 0.0 <= operating_fpr <= 1.0:
@@ -726,6 +792,11 @@ def evaluate_public_dataset(
     dataset = load_dataset(dataset_file, role="holdout", require_both_classes=False, min_class_count=0)
     dataset_hash = dataset.records[0].sha256 if dataset.records else _sha256(dataset_file)
     source_kind = _dataset_kind(dataset)
+    if redact_pii and source_kind == "consented":
+        raise ValueError(
+            "In-memory PII redaction is not allowed for consented evaluation because it changes the sealed test input."
+        )
+    pii_redaction = _redact_pii_in_memory(dataset) if redact_pii else _pii_redaction_status(False)
     if synthetic_rehearsal and source_kind != "consented":
         raise ValueError("Synthetic rehearsal labeling is only available for a consent-gated synthetic fixture.")
     kind = "synthetic_rehearsal" if synthetic_rehearsal else source_kind
@@ -778,6 +849,7 @@ def evaluate_public_dataset(
             model_status="missing" if "model_artifact_missing" in blockers else "unverified",
             dataset_sha256=dataset_hash,
             dataset_kind=kind,
+            pii_redaction=pii_redaction,
         )
         _write_reports(readiness, output_dir)
         return readiness
@@ -793,6 +865,7 @@ def evaluate_public_dataset(
             model_status="unavailable",
             dataset_sha256=dataset_hash,
             dataset_kind=kind,
+            pii_redaction=pii_redaction,
         )
         _write_reports(readiness, output_dir)
         return readiness
@@ -985,6 +1058,7 @@ def evaluate_public_dataset(
             **_run_metadata(),
             "configuration": {
                 "decision_threshold": float(bundle.threshold),
+                "redact_pii_in_memory": redact_pii,
                 "operating_false_positive_rate_bound": operating_fpr if not requires_consent_gate else None,
                 "calibration_bins": CALIBRATION_BINS,
                 "uncertainty_method": (
@@ -1031,6 +1105,7 @@ def evaluate_public_dataset(
         ),
         "evaluation_plan": evaluation_plan,
         "split_inputs": split_diagnostics if requires_consent_gate else None,
+        "privacy": {"pii_redaction": pii_redaction},
         "breakdowns": _breakdowns(dataset, probabilities, bundle.threshold),
         "limitations": [
             "This report describes only the supplied dataset and is not evidence of representative Philippine real-world accuracy.",
@@ -1067,6 +1142,11 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="Exact consented development CSV used to train the model; required for consented evaluation.",
     )
+    parser.add_argument(
+        "--redact-pii",
+        action="store_true",
+        help="Screen and redact likely identifiers in memory before non-consented diagnostic scoring; URLs stay intact.",
+    )
     args = parser.parse_args(argv)
     model_path = args.model
     if model_path is None:
@@ -1080,6 +1160,7 @@ def main(argv: list[str] | None = None) -> int:
         operating_fpr=args.operating_fpr,
         evaluation_plan_path=args.evaluation_plan,
         training_data_path=args.training_data,
+        redact_pii=args.redact_pii,
     )
     if report["status"] == "blocked":
         print(

@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,6 +7,9 @@ name = "philippine-sms-spam-detector"
 version = "2.0.0"
 description = "TF-IDF SMS spam/scam classifier with a FastAPI service and a no-build web UI"
 readme = "README.md"
+license = "MIT"
+# Setuptools 77+ rejects License :: classifiers alongside SPDX license expressions.
+license-files = ["LICENSE"]
 requires-python = ">=3.11"
 dependencies = [
     "numpy>=1.24,<3",
@@ -26,6 +29,9 @@ dev = [
     "pytest>=7.4,<10",
     "httpx>=0.24,<1",
     "pytest-cov>=4.1,<8",
+]
+redis = [
+    "redis>=5,<6",
 ]
 
 [project.scripts]

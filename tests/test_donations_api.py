@@ -223,6 +223,7 @@ def test_donation_rate_limit_uses_existing_middleware(tmp_path):
     assert first.status_code == 201
     assert second.status_code == 429
     assert second.json()["error"]["code"] == "rate_limited"
+    assert int(second.headers["Retry-After"]) > 0
 
 
 def test_v1_donation_alias_uses_the_same_rate_limit(tmp_path):

@@ -7,6 +7,7 @@
 #
 # These are exact transitive pins, NOT minimum requirements. They reproduce the
 # environment in which the training/evaluation runs and test suite were verified.
+# The optional `redis` client is pinned below for reproducible shared-limiter installs.
 # CI installs with pip (no constraints file) and exercises the bounded ranges in
 # requirements.txt on Python 3.11 and 3.12; regenerate this file with
 # `.venv/bin/pip freeze > constraints.txt` after a verified environment change.
@@ -42,6 +43,7 @@ pluggy==1.7.0
 pydantic==2.14.1
 pydantic_core==2.50.1
 Pygments==2.21.0
+redis==5.2.1
 pyparsing==3.3.3
 pytest==9.1.1
 python-dateutil==2.9.0.post0

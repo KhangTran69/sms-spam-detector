@@ -28,6 +28,7 @@ services:
       SMSD_ENV: production
       SMSD_FEEDBACK_ENABLED: ${SMSD_FEEDBACK_ENABLED:-false}
       SMSD_FEEDBACK_PATH: /app/data/feedback/reports.jsonl
+      SMSD_REDIS_URL: ${SMSD_REDIS_URL:-}
       # Comma-separated browser origins allowed by CORS. The bundled UI is
       # same-origin; add your reverse-proxy origin (https://...) if you host it
       # elsewhere.
@@ -58,6 +59,26 @@ services:
         reservations:
           cpus: "0.25"
           memory: 256M
+
+  redis:
+    image: redis:7-alpine
+    profiles: [redis]
+    user: redis
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    # No host port is published; only the API service can reach this counter store.
+    expose:
+      - "6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
 
 volumes:
   smsd_feedback:

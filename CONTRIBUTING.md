@@ -120,3 +120,5 @@ Real Philippine messages can **only** be added under strict revocable consent:
    - Ensure the regression suite (`tests/test_model.py`) remains intact without regressions on canonical templates.
 4. **Documentation**:
    - Update relevant documents under `docs/` (such as `docs/ARCHITECTURE.md`, `docs/MODEL_CARD.md`, or `README.md`) if interfaces, configuration flags, or dependencies change.
+
+Licensed under the MIT License; see [LICENSE](LICENSE). Bundled datasets retain their own licenses — see [docs/DATASET_INVENTORY.md](docs/DATASET_INVENTORY.md).

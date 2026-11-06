@@ -9,6 +9,7 @@
 # Replicate the exact verified Python 3.13 environment with:
 #   pip install -r requirements.txt -c constraints.txt
 # (constraints.txt records `pip freeze` from the verified Python 3.13 venv.)
+# Optional shared multi-worker rate limiting: install with `pip install -e ".[redis]"`.
 
 numpy>=1.24,<3
 pandas>=2.0,<4

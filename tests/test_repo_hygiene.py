@@ -6,8 +6,8 @@ model/service stay consistent with each other (bounded dependencies, non-root
 container, CI quality gates, no committed secrets) and that the documentation
 keeps the synthetic-only evidence caveat.
 
-They intentionally do not assert on measured metrics or on README content: the
-Lead owns the README and its numbers change whenever the artifact is retrained.
+They verify evidence wording and repository links without asserting measured
+metrics, which change whenever the artifact is retrained.
 """
 
 from __future__ import annotations
@@ -254,6 +254,59 @@ def test_pyproject_configures_pytest_ruff_and_mypy() -> None:
     assert mypy["warn_unused_ignores"] is True
 
 
+def test_readme_preserves_evidence_limit_and_required_sections() -> None:
+    readme = _text("README.md")
+    assert len(readme.splitlines()) <= 160
+
+    expected = (
+        "**Evidence limit:** every Philippine message tracked in this repository is synthetic, and the public UCI corpus is English. "
+        "A public one-person Philippine inbox has been retrieved locally (1,664 normalized rows) but has not been evaluated and is not representative. "
+        "Existing scores are engineering checks, not real-world accuracy. The tool is assistive only: do not block, report, or penalize anyone based on a prediction. "
+        "Full limitations: [docs/MODEL_CARD.md §4](docs/MODEL_CARD.md#4-evaluation-and-the-synthetic-only-caveat)."
+    )
+    quote_lines: list[str] = []
+    in_evidence_quote = False
+    for line in readme.splitlines():
+        if line.startswith("> **Evidence limit:**"):
+            in_evidence_quote = True
+        if in_evidence_quote:
+            if not line.startswith(">"):
+                break
+            quote_lines.append(line[2:] if line.startswith("> ") else line[1:])
+    assert quote_lines
+    assert " ".join(" ".join(quote_lines).split()) == " ".join(expected.split())
+
+    for required in ("## Quickstart", "## API", "## Evaluation", "docs/README.md"):
+        assert required in readme
+
+
+def test_readme_local_file_links_resolve() -> None:
+    readme = _text("README.md")
+    for target in re.findall(r"\]\(([^)]+)\)", readme):
+        if target.startswith(("https://", "http://", "mailto:")):
+            continue
+        local_path = target.split("#", 1)[0]
+        if local_path:
+            assert (ROOT / local_path).is_file(), f"README link target is missing: {local_path}"
+
+
+def test_project_declares_mit_license_and_dataset_terms() -> None:
+    config = tomllib.loads(_text("pyproject.toml"))
+    assert config["project"]["license"] == "MIT"
+    assert config["project"]["license-files"] == ["LICENSE"]
+    assert "License :: OSI Approved :: MIT License" not in config["project"].get("classifiers", [])
+    assert any(requirement.startswith("setuptools>=77") for requirement in config["build-system"]["requires"])
+
+    license_text = _text("LICENSE")
+    assert license_text.startswith("MIT License")
+    assert "Permission is hereby granted, free of charge" in license_text
+    assert 'THE SOFTWARE IS PROVIDED "AS IS"' in license_text
+
+    notice = "Licensed under the MIT License; see [LICENSE](LICENSE). Bundled datasets retain their own licenses"
+    assert notice in _text("README.md")
+    assert notice in _text("CONTRIBUTING.md")
+
+
 def test_dockerfile_is_nonroot_and_has_stdlib_healthcheck() -> None:
     dockerfile = _text("Dockerfile")
 
@@ -445,9 +498,10 @@ def test_public_kaggle_evaluation_is_attributed_and_explicitly_limited() -> None
     assert "space-level mit" in external
 
     readme = _doc("README.md").lower()
-    assert "cc by 4.0" in readme and "kaggle" in readme
-    assert "dataset=tagalog-sms" in readme
     assert "docs/evaluation.md" in readme
+    assert "docs/dataset_inventory.md" in readme
+    assert "cc by 4.0" in evaluation
+    assert "dataset=tagalog-sms" in evaluation
     model_card = _doc("docs/MODEL_CARD.md").lower()
     assert "kaggle" in model_card
     assert "ph corpus is present locally" in model_card

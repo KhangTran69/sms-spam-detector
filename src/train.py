@@ -18,6 +18,7 @@ Pipeline:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import platform
 from collections.abc import Iterable
@@ -360,13 +361,27 @@ def train(
 
     model_path = Path(model_path)
     model_path.parent.mkdir(parents=True, exist_ok=True)
+    default_sidecar = model_path.with_suffix(".metadata.json")
+    sidecar = Path(metadata_output) if metadata_output else default_sidecar
+    manifest_path = model_path.with_suffix(".manifest.json")
+    if not write_metadata:
+        # A stale hash beside a newly written bundle would make it unloadable.
+        # Remove derived metadata before replacing the model, so an interrupted
+        # metadata-free run cannot leave an old digest attached to new bytes.
+        sidecar.unlink(missing_ok=True)
+        default_sidecar.unlink(missing_ok=True)
+        manifest_path.unlink(missing_ok=True)
+    elif sidecar != default_sidecar:
+        # Custom sidecars require SMSD_MODEL_METADATA_PATH; remove any old
+        # adjacent digest so default loader configuration cannot see a stale one.
+        default_sidecar.unlink(missing_ok=True)
     joblib.dump(artifact, model_path, compress=3)
+    artifact_sha256 = hashlib.sha256(model_path.read_bytes()).hexdigest()
+    artifact["artifact_sha256"] = artifact_sha256
     if write_metadata:
-        sidecar = Path(metadata_output) if metadata_output else model_path.with_suffix(".metadata.json")
         payload = {key: value for key, value in artifact.items() if key != "model"}
         sidecar.parent.mkdir(parents=True, exist_ok=True)
         sidecar.write_text(json.dumps(jsonable(payload), ensure_ascii=False, indent=2), encoding="utf-8")
-        manifest_path = model_path.with_suffix(".manifest.json")
         manifest_path.parent.mkdir(parents=True, exist_ok=True)
         manifest_path.write_text(
             json.dumps(jsonable(artifact["dataset_manifest"]), ensure_ascii=False, indent=2), encoding="utf-8"
@@ -424,6 +439,7 @@ def log_experiment_run(
         "git_commit": git_sha,
         "model_version": artifact.get("model_version"),
         "model_path": str(model_path),
+        "model_sha256": artifact.get("artifact_sha256"),
         "threshold": artifact.get("threshold"),
         "training_config": artifact.get("training_config"),
         "model_selection": artifact.get("model_selection"),

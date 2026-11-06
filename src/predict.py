@@ -10,7 +10,6 @@ an old deployment cannot crash silently.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import io
 import json
 import os
@@ -24,6 +23,7 @@ import joblib
 import sklearn
 from sklearn.pipeline import Pipeline
 
+from src.artifact_integrity import ArtifactIntegrityError, verify_artifact_sidecar
 from src.features import FEATURE_COLUMNS, FEATURE_VERSION, messages_to_frame, pipeline_feature_signature
 from src.metrics import jsonable
 from src.preprocess import MAX_MESSAGE_LENGTH, extract_features, extract_matches
@@ -218,26 +218,32 @@ def load_model(path: str | Path | None = None, *, identify_artifact: bool = Fals
     if artifact_path.is_dir():
         raise ModelArtifactError(f"Model path {artifact_path} is a directory; pass the .pkl bundle file.")
     expected_sha256 = os.environ.get("SMSD_MODEL_SHA256", "").strip().lower()
-    model_bytes: bytes | None = None
-    artifact_sha256: str | None = None
-    if expected_sha256 or identify_artifact:
-        if expected_sha256 and (
-            len(expected_sha256) != 64 or any(character not in "0123456789abcdef" for character in expected_sha256)
-        ):
-            raise ModelArtifactError("SMSD_MODEL_SHA256 must be a 64-character hexadecimal SHA-256 digest.")
-        try:
-            model_bytes = artifact_path.read_bytes()
-        except OSError as exc:
-            raise ModelArtifactError(
-                f"Could not verify model artifact {artifact_path} ({type(exc).__name__})."
-            ) from exc
-        artifact_sha256 = hashlib.sha256(model_bytes).hexdigest()
-        if expected_sha256 and artifact_sha256 != expected_sha256:
-            raise ModelArtifactError(f"Model artifact SHA-256 mismatch for {artifact_path}.")
+    if expected_sha256 and (
+        len(expected_sha256) != 64 or any(character not in "0123456789abcdef" for character in expected_sha256)
+    ):
+        raise ModelArtifactError("SMSD_MODEL_SHA256 must be a 64-character hexadecimal SHA-256 digest.")
+    try:
+        model_bytes = artifact_path.read_bytes()
+    except OSError as exc:
+        raise ModelArtifactError(f"Could not verify model artifact {artifact_path} ({type(exc).__name__}).") from exc
+
+    metadata_path_value = os.environ.get("SMSD_MODEL_METADATA_PATH", "").strip()
+    metadata_path = Path(metadata_path_value) if metadata_path_value else None
+    try:
+        artifact_sha256, integrity_warning = verify_artifact_sidecar(
+            artifact_path,
+            model_bytes,
+            metadata_path,
+            require_hash=bool(metadata_path_value),
+        )
+    except ArtifactIntegrityError as exc:
+        raise ModelArtifactError(str(exc)) from exc
+    if expected_sha256 and artifact_sha256 != expected_sha256:
+        raise ModelArtifactError(f"Model artifact SHA-256 mismatch for {artifact_path}.")
     try:
         # Deserialize the exact immutable byte sequence whose digest was
         # checked; hashing the path and reopening it would leave a TOCTOU gap.
-        artifact = joblib.load(io.BytesIO(model_bytes)) if model_bytes is not None else joblib.load(artifact_path)
+        artifact = joblib.load(io.BytesIO(model_bytes))
     except Exception as exc:  # joblib/pickle can raise many exception types
         raise ModelArtifactError(
             f"Could not read model artifact {artifact_path} ({type(exc).__name__}: {exc}). "
@@ -271,13 +277,17 @@ def load_model(path: str | Path | None = None, *, identify_artifact: bool = Fals
             threshold = LEGACY_THRESHOLD
         suspicious = artifact.get("suspicious_threshold")
         warnings = metadata.setdefault("warnings", [])
-        if isinstance(warnings, list):
-            artifact_sklearn = metadata.get("sklearn_version")
-            if artifact_sklearn and str(artifact_sklearn) != sklearn.__version__:
-                warnings.append(
-                    f"Artifact was trained with scikit-learn {artifact_sklearn}; running {sklearn.__version__}. "
-                    "Verify predictions after any dependency upgrade."
-                )
+        if not isinstance(warnings, list):
+            warnings = []
+            metadata["warnings"] = warnings
+        if integrity_warning:
+            warnings.append(integrity_warning)
+        artifact_sklearn = metadata.get("sklearn_version")
+        if artifact_sklearn and str(artifact_sklearn) != sklearn.__version__:
+            warnings.append(
+                f"Artifact was trained with scikit-learn {artifact_sklearn}; running {sklearn.__version__}. "
+                "Verify predictions after any dependency upgrade."
+            )
         _validate_pipeline(pipeline, artifact_path)
         signature = pipeline_feature_signature(pipeline)
         compatibility_warning = _validate_feature_version(feature_version, signature, artifact_path)
@@ -298,20 +308,24 @@ def load_model(path: str | Path | None = None, *, identify_artifact: bool = Fals
     if hasattr(artifact, "predict_proba"):
         # Backward compatibility: a bare pipeline has no threshold/metadata.
         _validate_pipeline(artifact, artifact_path)
+        legacy_warnings = [
+            "Legacy artifact without threshold/metadata; using a 0.5 threshold. "
+            "Retrain with python -m src.train to record data provenance and a tuned threshold."
+        ]
+        if integrity_warning:
+            legacy_warnings.append(integrity_warning)
+        legacy_metadata = {
+            "artifact_schema_version": 1,
+            "model_version": artifact_path.stem,
+            "data_sources": [],
+            "synthetic_training_data": None,
+            "warnings": legacy_warnings,
+        }
         return ModelBundle(
             pipeline=artifact,
             threshold=LEGACY_THRESHOLD,
             suspicious_threshold=round(LEGACY_THRESHOLD / 2.0, 4),
-            metadata={
-                "artifact_schema_version": 1,
-                "model_version": artifact_path.stem,
-                "data_sources": [],
-                "synthetic_training_data": None,
-                "warnings": [
-                    "Legacy artifact without threshold/metadata; using a 0.5 threshold. "
-                    "Retrain with python -m src.train to record data provenance and a tuned threshold."
-                ],
-            },
+            metadata=legacy_metadata,
             path=artifact_path,
             legacy=True,
             artifact_sha256=artifact_sha256,

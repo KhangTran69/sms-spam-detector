@@ -11,8 +11,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 APP_SMOKE = r"""
 import os
+import hashlib
+import json
 import re
 import sys
+import tempfile
 from pathlib import Path
 from fastapi.testclient import TestClient
 import api
@@ -25,6 +28,7 @@ import src.consented_rehearsal
 from sklearn.linear_model import LogisticRegression
 from src.features import make_model, messages_to_frame
 from src.predict import ModelBundle
+from src.artifact_integrity import verify_artifact_sidecar
 
 # Prove imports and assets came from the installed wheel while outside its checkout.
 site = Path(api.__file__).resolve().parent.parent
@@ -35,6 +39,14 @@ assert (Path(sys.executable).parent / "smsd-macos-service").is_file()
 assert (Path(sys.executable).parent / "smsd-evaluate-public").is_file()
 assert (Path(sys.executable).parent / "smsd-split-consented").is_file()
 assert (Path(sys.executable).parent / "smsd-consented-rehearsal").is_file()
+with tempfile.TemporaryDirectory(prefix="smsd-integrity-smoke-") as temp_dir:
+    model_path = Path(temp_dir) / "fixture.pkl"
+    model_bytes = b"synthetic wheel smoke fixture"
+    model_path.write_bytes(model_bytes)
+    model_path.with_suffix(".metadata.json").write_text(
+        json.dumps({"artifact_sha256": hashlib.sha256(model_bytes).hexdigest()}), encoding="utf-8"
+    )
+    assert verify_artifact_sidecar(model_path, model_bytes) == (hashlib.sha256(model_bytes).hexdigest(), None)
 for asset in ("index.html", "styles.css", "app.js", "sw.js", "manifest.webmanifest", "icon.svg", "history-store.js", "connection-status.js", "result-format.js", "demo-examples.js", "donate.html", "donate.js", "donate.css", "privacy-notice.html"):
     assert (main.WEB_DIR / asset).is_file(), asset
 html = (main.WEB_DIR / "index.html").read_text()

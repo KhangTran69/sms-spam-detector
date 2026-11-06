@@ -2,6 +2,7 @@
 #
 #   make install        install runtime dependencies
 #   make dev-install    install runtime + dev/CI tooling
+#   make redis-install  install optional shared rate-limit client
 #   make test           run the pytest suite
 #   make lint           ruff lint + format check
 #   make format         apply ruff formatting
@@ -31,7 +32,7 @@ BENCHMARK_DIR ?= data/processed/benchmark-run
 OPERATING_FPR ?= 0.05
 DATASET ?= ph-spam-marketing-sms
 
-.PHONY: help install dev-install package-install test lint format typecheck train evaluate datasets eval split-consented rehearse-consented export-donations benchmark benchmark-perf demo serve macos-install macos-status macos-stop macos-restart macos-uninstall docker-build docker-run clean
+.PHONY: help install dev-install package-install redis-install test lint format typecheck check-headlines train evaluate datasets eval split-consented rehearse-consented export-donations benchmark benchmark-perf demo serve macos-install macos-status macos-stop macos-restart macos-uninstall docker-build docker-run clean
 
 help:
 	@sed -n '1,25p' Makefile
@@ -44,6 +45,9 @@ dev-install:
 
 package-install:
 	$(PIP) install -e ".[dev]"
+
+redis-install:
+	$(PIP) install -e ".[redis]"
 
 test:
 	$(PYTHON) -m pytest -q
@@ -69,7 +73,10 @@ datasets:
 
 eval:
 	@test -n "$(DATA)" || { echo "Set DATA to a normalized CSV; keep consented files in protected local storage" >&2; exit 2; }
-	$(PYTHON) -m src.public_evaluation --dataset "$(DATA)" $(if $(MODEL),--model "$(MODEL)",) $(if $(OUTPUT_DIR),--output-dir "$(OUTPUT_DIR)",) $(if $(EVALUATION_PLAN),--evaluation-plan "$(EVALUATION_PLAN)",) $(if $(TRAINING_DATA),--training-data "$(TRAINING_DATA)",) --operating-fpr "$(OPERATING_FPR)"
+	$(PYTHON) -m src.public_evaluation --dataset "$(DATA)" $(if $(MODEL),--model "$(MODEL)",) $(if $(OUTPUT_DIR),--output-dir "$(OUTPUT_DIR)",) $(if $(EVALUATION_PLAN),--evaluation-plan "$(EVALUATION_PLAN)",) $(if $(TRAINING_DATA),--training-data "$(TRAINING_DATA)",) $(if $(filter 1,$(REDACT_PII)),--redact-pii,) --operating-fpr "$(OPERATING_FPR)"
+
+check-headlines:
+	$(PYTHON) scripts/check_headline_claims.py
 
 split-consented:
 	@test -n "$(DATA)" || { echo "Set DATA to a private consented intake CSV" >&2; exit 2; }
