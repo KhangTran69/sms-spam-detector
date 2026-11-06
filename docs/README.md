@@ -13,7 +13,7 @@ evidence status, and API examples; this directory covers the
 | [privacy-notice.md](privacy-notice.md) | Versioned donor-facing notice shown before an optional donation. |
 | [DATASET_INVENTORY.md](DATASET_INVENTORY.md) | Message-free audit of the current workspace's sources, counts, provenance, coverage, and evidence limits. |
 | [evaluation.md](evaluation.md) | Public corpus status, disposable end-to-end synthetic rehearsal, consented evaluation plan, one-shot sealed-test gates, and interpretation limits. |
-| [BENCHMARKING.md](BENCHMARKING.md) | Reproducible training/evaluation commands and the dated UCI/synthetic benchmark and near-duplicate audit. |
+| [BENCHMARKING.md](BENCHMARKING.md) | Reproducible training/evaluation commands, the dated UCI/synthetic benchmark, near-duplicate audit, and optional transformer research workflow. |
 | [DEPLOYMENT.md](DEPLOYMENT.md) | Local setup, training, serving, Docker/compose, reverse proxy + TLS, environment variables, health/readiness, artifact mounting, rollback, and limits. |
 | [MODEL_CARD.md](MODEL_CARD.md) | What the model is and is not for, training data provenance, evaluation caveats, threshold/confidence guidance, known failure modes, fairness, and ethics. |
 | [RETRAINING.md](RETRAINING.md) | Retraining cadence and triggers, validation gates, artifact versioning, reproducible splits, monitoring, incident response, and audit trail. |

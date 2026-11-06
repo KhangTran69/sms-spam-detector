@@ -33,6 +33,12 @@ dev = [
 redis = [
     "redis>=5,<6",
 ]
+transform = [
+    "torch>=2.8,<3",
+    "transformers>=4.56,<5",
+    "accelerate>=1.10,<2",
+    "safetensors>=0.6,<1",
+]
 
 [project.scripts]
 smsd-serve = "api.cli:main"

@@ -134,3 +134,84 @@ similarity of at least 0.80 between training rows and the synthetic holdout.
 The internal pairs are possible template-leakage candidates rather than
 confirmed duplicates. Group disjointness alone does not rule out near-duplicate
 leakage; read the diagnostic scores with that limit.
+
+## Optional local transformer spike
+
+The transformer is an opt-in research path. The default installation, default
+training command, and default API continue to use the linear TF-IDF model. The
+local loader supports XLM-RoBERTa sequence-classification artifacts only and
+never downloads a checkpoint. Obtain and review any base checkpoint separately
+before supplying its local directory.
+
+Install the optional stack for the active Python minor version; the three
+constraint files pin the same compatibility set for Python 3.11, 3.12, and
+3.13; the optional stack was not installed for this repository validation run:
+
+```bash
+python -m pip install -e ".[transform]" -c constraints/transform-py3.11.txt
+```
+
+Replace the constraints filename with `transform-py3.12.txt` or
+`transform-py3.13.txt` for those interpreters. The base `.[dev]` install does
+not install PyTorch, Transformers, or Accelerate.
+
+The source-tree training CLI accepts only explicit local data and model paths.
+For the combined linear-plus-transformer workflow, name approved non-synthetic
+training data, disable implicit supplements, and do not pass any sealed test
+file as training input:
+
+```bash
+python -m src.train \
+  --data /protected/path/approved-training.csv \
+  --no-supplements --holdout none \
+  --output /protected/path/linear-candidate.pkl \
+  --ensemble \
+  --transformer-base-model /protected/path/xlm-roberta-base \
+  --transformer-output /protected/path/xlm-roberta-smsd-candidate
+```
+
+The transformer receives the exact group-aware split created for the linear
+candidate. It trains on training groups and uses validation groups for the
+Trainer's epoch evaluation and to select its own precision-first decision
+threshold; it does not receive the test rows. This threshold selection does
+not calibrate the transformer's raw scores. The independent
+`scripts/finetune_transformer.py` command follows the same split and provenance
+checks. Synthetic-only runs fail unless `--allow-synthetic-demo` is explicit;
+synthetic output and mixed synthetic output are marked `demo_quality`. Unknown
+provenance is rejected, including when the synthetic-demo flag is supplied.
+The output provenance file records the base-checkpoint hash and a hash of the
+trained model/tokenizer files (excluding the provenance file itself), plus
+source hashes, versions, and split membership fingerprint. It contains no
+message text.
+
+To route uncertain API predictions, set both server-side environment variables
+before startup:
+
+```bash
+SMSD_TRANSFORMER_MODEL_PATH=/protected/path/xlm-roberta-smsd-candidate \
+SMSD_TRANSFORMER_CONFIDENCE_BAND=0.10 \
+make serve
+```
+
+Only messages for which `abs(linear_spam_score - linear_decision_threshold) < band`
+are sent to the local transformer when the linear artifact marks its score as
+calibrated. If the linear score is uncalibrated, all results remain linear.
+Other out-of-band results also remain linear. Each API result
+contains `model_path`; transformer-routed results have
+`probability_calibrated: false` and identify the transformer artifact using a
+prefix of its verified content hash in `model_version`. The transformer's
+separate decision threshold was selected on validation data; its score has not
+been calibrated. The linear decision threshold remains unchanged. These commands do
+not generate a transformer test or holdout accuracy report. Anonymous
+correction feedback is disabled while the optional transformer is configured,
+because the feedback contract cannot identify which inference route produced
+the result. The default linear latency regression test is automated; optional
+ensemble latency is documented but has no enforced budget.
+
+**No promotion decision is currently possible.** The Task 5 real-holdout
+comparison has not been run, and no minimum improvement margin was registered
+in advance. The model card leaves that margin intentionally unset. The
+ensemble must remain disabled until the project owner registers the comparison
+procedure and minimum margin, and an authorized run evaluates both candidates
+against the same approved, hash-bound real holdout. Synthetic checks, local
+plumbing tests, and public corpus scores cannot satisfy that gate.

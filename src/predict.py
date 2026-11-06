@@ -10,6 +10,7 @@ an old deployment cannot crash silently.
 from __future__ import annotations
 
 import argparse
+import functools
 import io
 import json
 import os
@@ -24,6 +25,7 @@ import sklearn
 from sklearn.pipeline import Pipeline
 
 from src.artifact_integrity import ArtifactIntegrityError, verify_artifact_sidecar
+from src.ensemble import DEFAULT_CONFIDENCE_BAND, ConfidenceBandRouter, TransformerModelError
 from src.features import FEATURE_COLUMNS, FEATURE_VERSION, messages_to_frame, pipeline_feature_signature
 from src.metrics import jsonable
 from src.preprocess import MAX_MESSAGE_LENGTH, extract_features, extract_matches
@@ -389,22 +391,36 @@ def decision_probability(bundle: ModelBundle, message: str) -> float:
     return spam_probabilities(bundle, [message])[0]
 
 
-def risk_band(spam_probability: float, bundle: ModelBundle) -> str:
-    if spam_probability >= bundle.threshold:
+def risk_band(
+    spam_probability: float,
+    bundle: ModelBundle,
+    *,
+    decision_threshold: float | None = None,
+    suspicious_threshold: float | None = None,
+) -> str:
+    threshold = bundle.threshold if decision_threshold is None else decision_threshold
+    suspicious = bundle.suspicious_threshold or 0.0 if suspicious_threshold is None else suspicious_threshold
+    if spam_probability >= threshold:
         return "likely_scam"
-    if spam_probability >= (bundle.suspicious_threshold or 0.0):
+    if spam_probability >= suspicious:
         return "suspicious"
     return "looks_safe"
 
 
-def confidence_label(spam_probability: float, bundle: ModelBundle) -> str:
+def confidence_label(
+    spam_probability: float,
+    bundle: ModelBundle,
+    *,
+    decision_threshold: float | None = None,
+) -> str:
     """Confidence in the *decision*, based on distance from the threshold.
 
     This is deliberately not presented as calibrated probability: with a tuned
     threshold, a 0.75 spam probability is still a confident 'ham' when the
     threshold is 0.80. The margin makes that explicit.
     """
-    margin = abs(spam_probability - bundle.threshold)
+    threshold = bundle.threshold if decision_threshold is None else decision_threshold
+    margin = abs(spam_probability - threshold)
     if margin >= HIGH_CONFIDENCE_MARGIN:
         return "high"
     if margin >= DEFAULT_CONFIDENCE_MARGIN:
@@ -412,8 +428,17 @@ def confidence_label(spam_probability: float, bundle: ModelBundle) -> str:
     return "low"
 
 
-def _score_message(message: str, spam_probability: float, bundle: ModelBundle) -> dict[str, Any]:
-    prediction = "spam" if spam_probability >= bundle.threshold else "ham"
+def _score_message(
+    message: str,
+    spam_probability: float,
+    bundle: ModelBundle,
+    *,
+    decision_threshold: float | None = None,
+    suspicious_threshold: float | None = None,
+) -> dict[str, Any]:
+    threshold = bundle.threshold if decision_threshold is None else float(decision_threshold)
+    suspicious = bundle.suspicious_threshold or 0.0 if suspicious_threshold is None else float(suspicious_threshold)
+    prediction = "spam" if spam_probability >= threshold else "ham"
     indicators = extract_features(message)
     flags = [name for name in FLAG_NAMES if indicators[name]]
     matches = extract_matches(message)
@@ -429,39 +454,112 @@ def _score_message(message: str, spam_probability: float, bundle: ModelBundle) -
         "spam_probability": float(spam_probability),
         "probability_calibrated": bundle.metadata.get("probability_calibrated") is True,
         "probability": float(spam_probability if prediction == "spam" else 1.0 - spam_probability),
-        "decision_threshold": float(bundle.threshold),
-        "suspicious_threshold": float(bundle.suspicious_threshold or 0.0),
-        "margin": float(abs(spam_probability - bundle.threshold)),
-        "confidence": confidence_label(spam_probability, bundle),
-        "risk_band": risk_band(spam_probability, bundle),
+        "decision_threshold": threshold,
+        "suspicious_threshold": suspicious,
+        "margin": float(abs(spam_probability - threshold)),
+        "confidence": confidence_label(spam_probability, bundle, decision_threshold=threshold),
+        "risk_band": risk_band(
+            spam_probability,
+            bundle,
+            decision_threshold=threshold,
+            suspicious_threshold=suspicious,
+        ),
         "flags": flags,
         "matches": matches,
         "brands": brands,
         "model_version": bundle.version,
+        "model_path": "linear",
     }
+
+
+@functools.lru_cache(maxsize=8)
+def _confidence_router(model_path: str, confidence_band: float) -> ConfidenceBandRouter:
+    """Cache only the small router; its local model is loaded on first routed use."""
+    return ConfidenceBandRouter(model_path, confidence_band=confidence_band)
 
 
 def analyze_messages(
     messages: Iterable[str],
     model: Any = None,
     model_path: str | Path | None = None,
+    *,
+    transformer_model_path: str | Path | None = None,
+    confidence_band: float = DEFAULT_CONFIDENCE_BAND,
 ) -> list[dict[str, Any]]:
-    """Analyze several messages; one vectorized prediction call for the batch."""
+    """Analyze several messages; optional local routing handles uncertain scores."""
     bundle = _coerce_bundle(model, model_path)
     validated = _validate_messages(messages)
     probabilities = spam_probabilities(bundle, validated)
-    return [_score_message(message, probability, bundle) for message, probability in zip(validated, probabilities)]
+    routed_indices: set[int] = set()
+    transformer_threshold: float | None = None
+    # A confidence band has meaning only for the linear artifact's calibrated
+    # spam/ham score. Legacy or otherwise uncalibrated bundles stay linear.
+    if transformer_model_path and bundle.metadata.get("probability_calibrated") is True:
+        router = _confidence_router(str(Path(transformer_model_path)), float(confidence_band))
+        probabilities, routed_indices = router.route(validated, probabilities, threshold=bundle.threshold)
+        if routed_indices:
+            transformer_threshold = router.decision_threshold
+            if transformer_threshold is None:
+                raise TransformerModelError(
+                    "The local transformer is missing its validation-selected decision threshold."
+                )
+            if router.model_version is None:
+                raise TransformerModelError("The local transformer is missing its verified model identity.")
+    results: list[dict[str, Any]] = []
+    for index, (message, probability) in enumerate(zip(validated, probabilities)):
+        is_routed = index in routed_indices
+        threshold = transformer_threshold if is_routed else None
+        suspicious_threshold = round(max(0.05, threshold / 2.0), 4) if threshold is not None else None
+        result = _score_message(
+            message,
+            probability,
+            bundle,
+            decision_threshold=threshold,
+            suspicious_threshold=suspicious_threshold,
+        )
+        if is_routed:
+            result["model_path"] = "ensemble"
+            result["model_version"] = router.model_version
+            # Transformer output is thresholded on validation data but remains
+            # an uncalibrated score, not a calibrated spam/ham probability.
+            result["probability_calibrated"] = False
+        results.append(result)
+    return results
 
 
-def analyze_message(message: str, model: Any = None, model_path: str | Path | None = None) -> dict[str, Any]:
+def analyze_message(
+    message: str,
+    model: Any = None,
+    model_path: str | Path | None = None,
+    *,
+    transformer_model_path: str | Path | None = None,
+    confidence_band: float = DEFAULT_CONFIDENCE_BAND,
+) -> dict[str, Any]:
     """Full analysis for the web UI: verdict, probability, signal spans, brands."""
-    return analyze_messages([message], model=model, model_path=model_path)[0]
+    return analyze_messages(
+        [message],
+        model=model,
+        model_path=model_path,
+        transformer_model_path=transformer_model_path,
+        confidence_band=confidence_band,
+    )[0]
 
 
 def analyze_batch(
-    messages: Iterable[str], model: Any = None, model_path: str | Path | None = None
+    messages: Iterable[str],
+    model: Any = None,
+    model_path: str | Path | None = None,
+    *,
+    transformer_model_path: str | Path | None = None,
+    confidence_band: float = DEFAULT_CONFIDENCE_BAND,
 ) -> list[dict[str, Any]]:
-    return analyze_messages(messages, model=model, model_path=model_path)
+    return analyze_messages(
+        messages,
+        model=model,
+        model_path=model_path,
+        transformer_model_path=transformer_model_path,
+        confidence_band=confidence_band,
+    )
 
 
 def predict_message(message: str, model: Any = None, model_path: str | Path | None = None) -> dict[str, Any]:

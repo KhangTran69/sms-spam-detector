@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 import os
 import threading
 import time
@@ -36,6 +37,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from api.donations import DEFAULT_DONATION_DB
 from api.rate_limiter import RateLimiter, RedisRateLimiter, create_rate_limiter
+from src.ensemble import TransformerModelError
 from src.predict import (
     ModelArtifactError,
     load_model,
@@ -62,6 +64,14 @@ MAX_FEEDBACK_BYTES = 10 * 1024 * 1024
 _feedback_lock = threading.Lock()
 DEFAULT_CORS_ORIGINS = ("http://127.0.0.1:8000", "http://localhost:8000")
 PREDICTION_RATE_LIMIT = max(1, int(os.environ.get("SMSD_RATE_LIMIT_PER_MINUTE", "60")))
+_transformer_path = os.environ.get("SMSD_TRANSFORMER_MODEL_PATH", "").strip()
+TRANSFORMER_MODEL_PATH = Path(_transformer_path) if _transformer_path else None
+try:
+    TRANSFORMER_CONFIDENCE_BAND = float(os.environ.get("SMSD_TRANSFORMER_CONFIDENCE_BAND", "0.10"))
+except ValueError as exc:
+    raise RuntimeError("SMSD_TRANSFORMER_CONFIDENCE_BAND must be a finite number in [0, 0.5].") from exc
+if not math.isfinite(TRANSFORMER_CONFIDENCE_BAND) or not 0.0 <= TRANSFORMER_CONFIDENCE_BAND <= 0.5:
+    raise RuntimeError("SMSD_TRANSFORMER_CONFIDENCE_BAND must be a finite number in [0, 0.5].")
 
 SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
@@ -542,8 +552,12 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException) 
 
 @app.exception_handler(ModelArtifactError)
 @app.exception_handler(FileNotFoundError)
+@app.exception_handler(TransformerModelError)
 async def model_unavailable_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    message = _with_train_hint(str(exc).strip() or "The model artifact is unavailable.")
+    if isinstance(exc, TransformerModelError):
+        message = "The optional transformer model is unavailable or could not process this request. Check the server's local model configuration."
+    else:
+        message = _with_train_hint(str(exc).strip() or "The model artifact is unavailable.")
     return _error_response(503, "model_unavailable", message)
 
 

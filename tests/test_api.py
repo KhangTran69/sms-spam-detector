@@ -20,7 +20,7 @@ from sklearn.base import BaseEstimator, ClassifierMixin
 import api.main as api_main
 from api.rate_limiter import RedisRateLimiter
 from src.features import make_model, messages_to_frame
-from src.predict import ModelBundle, load_model
+from src.predict import ModelBundle, analyze_message, load_model
 
 MESSAGES = [
     "Claim ₱1,000,000 now! Call 09171234567",
@@ -254,6 +254,30 @@ def test_feedback_stays_disabled_in_production_even_if_flag_is_set(client, monke
     assert response.status_code == 404
 
 
+def test_feedback_is_disabled_when_transformer_route_cannot_be_attributed(client, monkeypatch, tmp_path):
+    report_path = tmp_path / "feedback.jsonl"
+    monkeypatch.setattr(api_main, "SMSD_ENV", "development")
+    monkeypatch.setattr(api_main, "FEEDBACK_ENABLED", True)
+    monkeypatch.setattr(api_main, "TRANSFORMER_MODEL_PATH", tmp_path / "optional-transformer")
+    monkeypatch.setattr(api_main, "FEEDBACK_PATH", report_path)
+
+    model_info = client.get("/model-info").json()
+    response = client.post(
+        "/feedback",
+        json={
+            "model_version": MODEL_VERSION,
+            "predicted_label": "spam",
+            "expected_label": "ham",
+        },
+    )
+
+    assert model_info["feedback_enabled"] is False
+    assert model_info["feedback_disabled_for_ensemble"] is True
+    assert response.status_code == 404
+    assert "route cannot be attributed" in response.json()["error"]["message"]
+    assert not report_path.exists()
+
+
 def test_feedback_persists_only_explicit_non_message_metadata(client, tmp_path, monkeypatch):
     report_path = tmp_path / "feedback" / "reports.jsonl"
     monkeypatch.setattr(api_main, "FEEDBACK_ENABLED", True)
@@ -374,12 +398,14 @@ def test_predict_uses_bundle_threshold(spam_probability, threshold, prediction, 
         "flags",
         "decision_threshold",
         "model_version",
+        "model_path",
     }
     assert body["prediction"] == prediction
     assert body["probability"] == pytest.approx(class_probability)
     assert body["probability_calibrated"] is False
     assert body["decision_threshold"] == pytest.approx(threshold)
     assert body["model_version"] == MODEL_VERSION
+    assert body["model_path"] == "linear"
     assert isinstance(body["flags"], list)
 
 
@@ -406,6 +432,7 @@ ANALYZE_KEYS = {
     "matches",
     "brands",
     "model_version",
+    "model_path",
 }
 
 
@@ -424,6 +451,7 @@ def test_analyze_returns_full_contract_payload(client):
     assert body["confidence"] == "medium"
     assert body["risk_band"] == "likely_scam"
     assert body["model_version"] == MODEL_VERSION
+    assert body["model_path"] == "linear"
     assert {"has_url", "has_phone"} <= set(body["flags"])
     assert "bdo" in body["brands"]
 
@@ -506,6 +534,32 @@ def test_openapi_explains_score_fields(client):
     assert "training labels" in predict["probability_calibrated"]["description"]
     assert "does not estimate probability of fraud" in analyze["spam_probability"]["description"]
     assert "not probability calibration" in analyze["confidence"]["description"]
+    assert "used for this result" in analyze["model_path"]["description"]
+    assert (
+        "results[0]"
+        in client.get("/openapi.json").json()["components"]["schemas"]["BatchResponse"]["properties"]["metadata_scope"][
+            "description"
+        ]
+    )
+
+
+def test_transformer_model_failure_returns_stable_503_without_internal_path(monkeypatch, tmp_path):
+    from api import routes
+    from src.ensemble import TransformerModelError
+
+    monkeypatch.setattr(api_main, "TRANSFORMER_MODEL_PATH", tmp_path / "missing-private-checkpoint")
+    monkeypatch.setattr(api_main, "TRANSFORMER_CONFIDENCE_BAND", 0.1)
+
+    def fail_when_routed(message, *, model, transformer_model_path=None, confidence_band=0.1):
+        raise TransformerModelError(f"Transformer model path {transformer_model_path} is unavailable")
+
+    monkeypatch.setattr(routes, "analyze_message", fail_when_routed)
+    test_bundle = make_bundle(fixed_pipeline(0.5))
+    with patched_client(lambda: test_bundle, test_bundle) as test_client:
+        response = test_client.post("/analyze", json={"message": "Synthetic service fixture"})
+
+    assert_error_schema(response, 503, "model_unavailable")
+    assert str(tmp_path) not in response.text
 
 
 def test_predict_rejects_non_string_message(client):
@@ -547,13 +601,72 @@ def test_batch_returns_aligned_results(client):
     response = client.post("/analyze/batch", json={"messages": messages})
     assert response.status_code == 200, response.text
     body = response.json()
-    assert set(body) == {"count", "results", "model_version", "decision_threshold"}
+    assert set(body) == {"count", "results", "model_version", "decision_threshold", "metadata_scope"}
     assert body["count"] == 2
+    assert body["metadata_scope"] == "first_result"
     assert body["decision_threshold"] == pytest.approx(DECISION_THRESHOLD)
     assert body["model_version"] == MODEL_VERSION
     assert [item["message"] for item in body["results"]] == messages
     for item in body["results"]:
         assert set(item) == ANALYZE_KEYS
+        assert item["model_path"] == "linear"
+
+
+def test_mixed_route_batch_marks_top_level_metadata_as_first_result(monkeypatch, tmp_path):
+    from api import routes
+
+    linear = analyze_message("Synthetic linear fixture", model=make_bundle())
+    transformer = {
+        **linear,
+        "message": "Synthetic transformer fixture",
+        "model_path": "ensemble",
+        "model_version": "transformer-a1b2c3d4e5f6",
+        "decision_threshold": 0.72,
+        "probability_calibrated": False,
+    }
+    monkeypatch.setattr(routes, "analyze_batch", lambda messages, **_kwargs: [linear, transformer])
+    test_bundle = make_bundle()
+
+    with patched_client(lambda: test_bundle, test_bundle) as client:
+        response = client.post("/analyze/batch", json={"messages": ["first", "second"]})
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["metadata_scope"] == "first_result"
+    assert body["model_version"] == linear["model_version"]
+    assert body["decision_threshold"] == pytest.approx(linear["decision_threshold"])
+    assert body["results"][0]["model_path"] == "linear"
+    assert body["results"][1]["model_path"] == "ensemble"
+    assert body["results"][1]["model_version"] == "transformer-a1b2c3d4e5f6"
+    assert body["results"][1]["decision_threshold"] == pytest.approx(0.72)
+
+
+def test_predict_reports_configured_ensemble_path_and_local_artifact(monkeypatch, tmp_path):
+    from api import routes
+
+    expected_model_path = tmp_path / "local-transformer"
+    expected_band = 0.07
+    observed: dict[str, object] = {}
+    original_analyze = routes.analyze_message
+
+    def capture_configuration(message, *, model, transformer_model_path=None, confidence_band=0.1):
+        observed["model_path"] = transformer_model_path
+        observed["confidence_band"] = confidence_band
+        result = original_analyze(message, model=model)
+        result["model_path"] = "ensemble"
+        return result
+
+    monkeypatch.setattr(api_main, "TRANSFORMER_MODEL_PATH", expected_model_path)
+    monkeypatch.setattr(api_main, "TRANSFORMER_CONFIDENCE_BAND", expected_band)
+    monkeypatch.setattr(routes, "analyze_message", capture_configuration)
+    test_bundle = make_bundle()
+
+    with patched_client(lambda: test_bundle, test_bundle) as client:
+        response = client.post("/predict", json={"message": "Synthetic fixture link https://example.test/code"})
+
+    assert response.status_code == 200
+    assert response.json()["model_path"] == "ensemble"
+    assert observed == {"model_path": expected_model_path, "confidence_band": expected_band}
 
 
 @pytest.mark.parametrize(
@@ -597,6 +710,10 @@ MODEL_INFO_KEYS = {
     "metrics",
     "legacy_artifact",
     "warnings",
+    "ensemble_configured",
+    "feedback_disabled_for_ensemble",
+    "ensemble_checkpoint_directory_available",
+    "ensemble_confidence_band",
 }
 
 
@@ -610,6 +727,10 @@ def test_model_info_exposes_thresholds_and_provenance(client):
     assert body["suspicious_threshold"] == pytest.approx(SUSPICIOUS_THRESHOLD)
     assert body["probability_calibrated"] is False
     assert body["feedback_enabled"] is False
+    assert body["ensemble_configured"] is False
+    assert body["feedback_disabled_for_ensemble"] is False
+    assert body["ensemble_checkpoint_directory_available"] is False
+    assert body["ensemble_confidence_band"] is None
     assert body["bands"] == {
         "likely_scam": pytest.approx(DECISION_THRESHOLD),
         "suspicious": pytest.approx(SUSPICIOUS_THRESHOLD),
@@ -620,6 +741,38 @@ def test_model_info_exposes_thresholds_and_provenance(client):
     assert body["data_note"] == DATA_NOTE
     assert body["legacy_artifact"] is False
     json.dumps(body)  # must be JSON-safe
+
+
+def test_model_info_reports_transformer_configuration_without_local_path(monkeypatch, tmp_path):
+    transformer_path = tmp_path / "private-checkpoint"
+    transformer_path.mkdir()
+    monkeypatch.setattr(api_main, "TRANSFORMER_MODEL_PATH", transformer_path)
+    monkeypatch.setattr(api_main, "TRANSFORMER_CONFIDENCE_BAND", 0.07)
+    test_bundle = make_bundle()
+    with patched_client(lambda: test_bundle, test_bundle) as test_client:
+        response = test_client.get("/model-info")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["ensemble_configured"] is True
+    assert body["feedback_disabled_for_ensemble"] is False
+    assert body["ensemble_checkpoint_directory_available"] is True
+    assert body["ensemble_confidence_band"] == pytest.approx(0.07)
+    assert str(transformer_path) not in json.dumps(body)
+
+
+def test_monitor_keeps_uncalibrated_ensemble_scores_out_of_linear_distribution():
+    from api.routes import _record_linear_monitor
+    from src.monitor import default_monitor
+
+    default_monitor.clear()
+    try:
+        _record_linear_monitor({"probability": 0.9, "prediction": "spam", "model_path": "ensemble"})
+        assert default_monitor.get_metrics()["samples_in_window"] == 0
+        _record_linear_monitor({"probability": 0.8, "prediction": "spam", "model_path": "linear"})
+        assert default_monitor.get_metrics()["samples_in_window"] == 1
+    finally:
+        default_monitor.clear()
 
 
 # ---------------------------------------------------------------------------

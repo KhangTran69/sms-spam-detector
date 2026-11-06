@@ -25,10 +25,16 @@ import src.benchmark
 import src.public_evaluation
 import src.consented_split
 import src.consented_rehearsal
+import src.ensemble
+import src.transformer_training
+import src.train
 from sklearn.linear_model import LogisticRegression
 from src.features import make_model, messages_to_frame
 from src.predict import ModelBundle
 from src.artifact_integrity import verify_artifact_sidecar
+
+assert "torch" not in sys.modules
+assert "transformers" not in sys.modules
 
 # Prove imports and assets came from the installed wheel while outside its checkout.
 site = Path(api.__file__).resolve().parent.parent
@@ -97,6 +103,9 @@ print("wheel-smoke: fixture readiness", flush=True)
 result = client.post("/analyze", json={"message": "ordinary family message"})
 assert result.status_code == 200, result.text
 assert result.json()["prediction"] in {"ham", "spam"}
+assert result.json()["model_path"] == "linear"
+predict_result = client.post("/predict", json={"message": "ordinary family message"})
+assert predict_result.status_code == 200 and predict_result.json()["model_path"] == "linear"
 batch = client.post("/analyze/batch", json={"messages": ["meeting at school", "claim a prize now"]})
 assert batch.status_code == 200 and len(batch.json()["results"]) == 2
 """

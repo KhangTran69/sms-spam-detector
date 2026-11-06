@@ -85,6 +85,9 @@ class PredictResponse(BaseModel):
     flags: list[str]
     decision_threshold: float
     model_version: str
+    model_path: Literal["linear", "ensemble"] = Field(
+        description="Inference path used for this result; ensemble means the optional transformer handled an uncertain score."
+    )
 
 
 class Match(BaseModel):
@@ -115,13 +118,19 @@ class AnalyzeResponse(BaseModel):
     matches: list[Match]
     brands: list[str]
     model_version: str
+    model_path: Literal["linear", "ensemble"] = Field(
+        description="Inference path used for this result; ensemble means the optional transformer handled an uncertain score."
+    )
 
 
 class BatchResponse(BaseModel):
     count: int
     results: list[AnalyzeResponse]
-    model_version: str
-    decision_threshold: float
+    model_version: str = Field(description="Model identity for the first result; inspect each result for its identity.")
+    decision_threshold: float = Field(description="Decision threshold for the first result only.")
+    metadata_scope: Literal["first_result"] = Field(
+        description="Top-level model_version and decision_threshold describe results[0]; per-result fields are authoritative."
+    )
 
 
 class FeedbackRequest(BaseModel):
