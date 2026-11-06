@@ -51,6 +51,16 @@ def run_report(monkeypatch, tmp_path: Path, rows: list[tuple[str, str, str]]):
     return report, dataset_path, model_path
 
 
+def _assert_absent(value: str, container: str) -> None:
+    if value in container:
+        raise AssertionError("message content unexpectedly appeared in a report")
+
+
+def _assert_present(value: str, container: str) -> None:
+    if value not in container:
+        raise AssertionError("expected URL signal was not retained for diagnostic scoring")
+
+
 def write_consent_dataset(path: Path, row_count: int = 12) -> Path:
     today = datetime.now(UTC).date()
     fields = {
@@ -203,6 +213,61 @@ def test_report_records_exact_provenance_metrics_and_safe_breakdowns(monkeypatch
     assert secret_message not in serialized
     assert str(dataset_path) not in serialized
     assert str(model_path) not in serialized
+
+
+def test_public_diagnostic_can_redact_pii_without_echoing_messages(monkeypatch, tmp_path):
+    message = "fixture contact 09171234567 email sample@example.com https://example.com/check"
+    dataset_path = write_dataset(
+        tmp_path / "dataset.csv",
+        [("spam", message, "public"), ("ham", "ordinary fixture", "public")],
+    )
+    model_path = tmp_path / "fixture-model.pkl"
+    model_path.write_bytes(b"synthetic fixture model")
+    bundle = SimpleNamespace(version="fixture-v1", threshold=0.5, metadata={"probability_calibrated": False})
+    captured_messages: list[str] = []
+    monkeypatch.setattr(public_evaluation, "load_model", lambda *args, **kwargs: bundle)
+
+    def score(_bundle, messages):
+        captured_messages.extend(messages)
+        return [0.9, 0.1]
+
+    monkeypatch.setattr(public_evaluation, "spam_probabilities", score)
+    report_dir = tmp_path / "reports"
+
+    report = public_evaluation.evaluate_public_dataset(
+        dataset_path,
+        model_path,
+        report_dir,
+        redact_pii=True,
+    )
+
+    assert report["status"] == "evaluated"
+    pii_report = report["privacy"]["pii_redaction"]
+    assert pii_report["enabled"] is True
+    assert pii_report["rows_with_findings"] == 1
+    assert pii_report["rows_redacted"] == 1
+    assert {"phone", "email", "url"} <= set(pii_report["findings_by_category"])
+    assert report["dataset"]["sha256"] == hashlib.sha256(dataset_path.read_bytes()).hexdigest()
+    assert len(captured_messages) == 2
+    from src.privacy.scrub import detect_pii
+
+    remaining_categories = {span.category for span in detect_pii(captured_messages[0])}
+    assert remaining_categories <= {"url"}
+    _assert_present("https://example.com/check", captured_messages[0])
+    serialized = "".join(path.read_text(encoding="utf-8") for path in report_dir.iterdir())
+    _assert_absent(message, serialized)
+
+
+def test_public_pii_redaction_is_rejected_for_sealed_consented_evaluation(tmp_path):
+    dataset_path = write_consent_dataset(tmp_path / "consented.csv")
+
+    with pytest.raises(ValueError, match="not allowed for consented evaluation"):
+        public_evaluation.evaluate_public_dataset(
+            dataset_path,
+            tmp_path / "missing-model.pkl",
+            tmp_path / "private-reports",
+            redact_pii=True,
+        )
 
 
 def test_single_class_dataset_marks_auc_and_fnr_unavailable(monkeypatch, tmp_path):
