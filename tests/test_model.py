@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import shutil
 from pathlib import Path
 
 import joblib
@@ -91,14 +92,14 @@ def trained_artifact(tmp_path_factory):
         random_state=7,
         target_precision=0.5,
         min_recall=0.0,
-        write_metadata=False,
+        write_metadata=True,
         verbose=False,
     )
     return artifact, model_path
 
 
 def test_artifact_contains_required_metadata(trained_artifact):
-    artifact, _ = trained_artifact
+    artifact, model_path = trained_artifact
     assert artifact["artifact_schema_version"] == ARTIFACT_SCHEMA_VERSION
     assert 0.0 < artifact["threshold"] < 1.0
     assert artifact["label_map"] == {"ham": "ham", "spam": "spam"}
@@ -114,6 +115,7 @@ def test_artifact_contains_required_metadata(trained_artifact):
     assert decision["policy"] == "cv-robust"
     assert artifact["threshold"] == decision["threshold"]
     assert artifact["data_sources"][0]["sha256"]
+    assert artifact["artifact_sha256"] == hashlib.sha256(model_path.read_bytes()).hexdigest()
     assert "model_version" in artifact
     assert "metrics" in artifact
     assert "split" in artifact
@@ -315,6 +317,91 @@ def test_model_hash_verification_rejects_malformed_digest(trained_artifact, monk
     monkeypatch.setenv("SMSD_MODEL_SHA256", "not-a-digest")
     with pytest.raises(ModelArtifactError, match="64-character hexadecimal"):
         load_model(model_path)
+
+
+def test_training_sidecar_records_the_exact_model_hash(trained_artifact):
+    artifact, model_path = trained_artifact
+    digest = hashlib.sha256(model_path.read_bytes()).hexdigest()
+    sidecar = json.loads(model_path.with_suffix(".metadata.json").read_text(encoding="utf-8"))
+    assert artifact["artifact_sha256"] == digest
+    assert sidecar["artifact_sha256"] == digest
+
+
+def test_model_sidecar_mismatch_is_rejected_before_deserialization(trained_artifact, tmp_path, monkeypatch):
+    _, original_model_path = trained_artifact
+    model_path = tmp_path / "tampered.pkl"
+    shutil.copyfile(original_model_path, model_path)
+    sidecar = model_path.with_suffix(".metadata.json")
+    sidecar.write_text(json.dumps({"artifact_sha256": hashlib.sha256(model_path.read_bytes()).hexdigest()}))
+    model_path.write_bytes(model_path.read_bytes() + b"tampered")
+
+    def fail_if_deserialized(_source):
+        raise AssertionError("tampered artifact must be rejected before joblib.load")
+
+    monkeypatch.setattr(joblib, "load", fail_if_deserialized)
+    with pytest.raises(ModelArtifactError, match="sidecar SHA-256 mismatch"):
+        load_model(model_path)
+
+
+def test_non_utf8_model_sidecar_is_rejected_before_deserialization(trained_artifact, tmp_path, monkeypatch):
+    _, original_model_path = trained_artifact
+    model_path = tmp_path / "invalid-sidecar.pkl"
+    shutil.copyfile(original_model_path, model_path)
+    model_path.with_suffix(".metadata.json").write_bytes(b"\xff\xfe")
+
+    def fail_if_deserialized(_source):
+        raise AssertionError("invalid metadata must be rejected before joblib.load")
+
+    monkeypatch.setattr(joblib, "load", fail_if_deserialized)
+    with pytest.raises(ModelArtifactError, match="UTF-8"):
+        load_model(model_path)
+
+
+def test_old_sidecar_without_hash_warns_but_remains_loadable(trained_artifact, tmp_path, monkeypatch):
+    artifact, original_model_path = trained_artifact
+    model_path = tmp_path / "legacy.pkl"
+    shutil.copyfile(original_model_path, model_path)
+    sidecar = model_path.with_suffix(".metadata.json")
+    sidecar.write_text(json.dumps({"model_version": "legacy-without-hash"}))
+    monkeypatch.setattr(joblib, "load", lambda _source: artifact)
+
+    bundle = load_model(model_path)
+
+    assert bundle.path == model_path
+    assert any("sidecar" in warning.lower() and "sha-256" in warning.lower() for warning in bundle.metadata["warnings"])
+
+
+def test_explicit_metadata_path_requires_a_matching_sidecar(trained_artifact, tmp_path, monkeypatch):
+    _, model_path = trained_artifact
+    monkeypatch.setenv("SMSD_MODEL_METADATA_PATH", str(tmp_path / "missing-metadata.json"))
+
+    with pytest.raises(ModelArtifactError, match="Model metadata sidecar is missing"):
+        load_model(model_path)
+
+
+def test_training_without_metadata_removes_stale_sidecar(tmp_path):
+    data_path = make_tiny_dataset(tmp_path / "tiny.csv")
+    model_path = tmp_path / "model.pkl"
+    sidecar_path = model_path.with_suffix(".metadata.json")
+    sidecar_path.write_text(json.dumps({"artifact_sha256": "0" * 64}), encoding="utf-8")
+
+    train(
+        data_path=data_path,
+        model_path=model_path,
+        supplement_path=None,
+        holdout_path=None,
+        val_size=0.2,
+        test_size=0.2,
+        random_state=7,
+        target_precision=0.5,
+        min_recall=0.0,
+        write_metadata=False,
+        verbose=False,
+    )
+
+    assert not sidecar_path.exists()
+    bundle = load_model(model_path)
+    assert any("sidecar is missing" in warning.lower() for warning in bundle.metadata["warnings"])
 
 
 def test_newer_schema_fails_with_actionable_error(trained_artifact, tmp_path):
