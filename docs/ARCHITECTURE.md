@@ -89,11 +89,10 @@ flowchart TD
         LOG["Structured JSON Logging<br/>(Latency, status, request_id — NO PII)"]
     end
 
-    subgraph API Router Layer (api/routes.py)
-        V1_ANALYZE["POST /v1/analyze<br/>POST /analyze (compat)"]
-        V1_PREDICT["POST /v1/predict<br/>POST /predict (compat)"]
-        V1_BATCH["POST /v1/batch<br/>POST /batch (compat)"]
-        HEALTH["GET /health<br/>GET /v1/health"]
+    subgraph API Router Layer (api/routes.py, mounted at / and /v1)
+        INFERENCE["POST /predict, /analyze,<br/>/analyze/batch"]
+        STATUS["GET /health, /ready,<br/>/model-info, /metrics/distribution"]
+        OPTIONAL["POST /feedback<br/>GET/HEAD/POST/DELETE /donate"]
     end
 
     subgraph Async Threadpool Execution
@@ -112,9 +111,9 @@ flowchart TD
     SEC --> RL
     RL --> SZ
     SZ --> LOG
-    LOG --> V1_ANALYZE & V1_PREDICT & V1_BATCH & HEALTH
+    LOG --> INFERENCE & STATUS & OPTIONAL
 
-    V1_ANALYZE & V1_PREDICT & V1_BATCH --> THREAD
+    INFERENCE --> THREAD
     THREAD --> PREPROC
     PREPROC --> MODEL_INF
     MODEL_INF --> THREAD
@@ -160,7 +159,7 @@ sequenceDiagram
 
 ## 4. Architectural Invariants & Privacy Guarantees
 
-1. **Zero Message Retention on Server**: Raw message text sent to `/predict`, `/analyze`, or `/batch` is processed strictly in-memory and discarded. It is never logged to stdout, syslog, disk, or remote monitoring sinks.
+1. **Zero Message Retention on Server**: Raw message text sent to `/predict`, `/analyze`, or `/analyze/batch` is processed strictly in-memory and discarded. It is never logged to stdout, syslog, disk, or remote monitoring sinks.
 2. **Deterministic Preprocessing Pipeline**: All inputs go through `unicodedata.normalize("NFKC")`, homoglyph canonicalization, and leetspeak substitution before feature extraction to prevent evasion.
 3. **Defense-in-Depth Web Security**:
    - `Content-Security-Policy` limits script and style loading exclusively to `'self'`.
@@ -194,3 +193,27 @@ Repository map:
 | `data/templates/` | Consent and collection templates |
 | `scripts/` | Dataset and synthetic-data tooling, demos, and packaging checks |
 | `docs/` | Architecture, deployment, evaluation, privacy, and governance guidance |
+
+## 6. Runtime API source-to-test map
+
+[`api/main.py`](../api/main.py) mounts the same router at `/` and `/v1`, so each route below has
+both a root path and a `/v1` path. The `/analyze/batch` route is versioned as
+`/v1/analyze/batch`; there is no `/batch` or `/v1/batch` route.
+
+| Route family | Handler | Focused tests |
+|---|---|---|
+| `GET /health` | [`api/routes.py`](../api/routes.py) `health` | [`tests/test_api.py`](../tests/test_api.py): `test_health_reports_loaded_model`, `test_health_never_503_when_model_missing`, `test_v1_versioned_routes` |
+| `GET /ready` | [`api/routes.py`](../api/routes.py) `ready` | [`tests/test_api.py`](../tests/test_api.py): `test_ready_loads_model`, `test_ready_503_when_model_missing` |
+| `GET /model-info` | [`api/routes.py`](../api/routes.py) `get_model_info` | [`tests/test_api.py`](../tests/test_api.py): `test_model_info_exposes_thresholds_and_provenance`, `test_v1_versioned_routes` |
+| `GET /metrics/distribution` | [`api/routes.py`](../api/routes.py) `get_distribution_metrics` | [`tests/test_api.py`](../tests/test_api.py): `test_distribution_metrics_endpoint` |
+| `POST /predict` | [`api/routes.py`](../api/routes.py) `predict` | [`tests/test_api.py`](../tests/test_api.py): `test_predict_uses_bundle_threshold`, `test_v1_versioned_routes` |
+| `POST /analyze` | [`api/routes.py`](../api/routes.py) `analyze` | [`tests/test_api.py`](../tests/test_api.py): `test_analyze_returns_full_contract_payload`, `test_v1_versioned_routes`; [`tests/test_web_contract.py`](../tests/test_web_contract.py) checks the web client contract |
+| `POST /analyze/batch` | [`api/routes.py`](../api/routes.py) `analyze_batch_endpoint` | [`tests/test_api.py`](../tests/test_api.py): `test_batch_returns_aligned_results`, `test_mixed_route_batch_marks_top_level_metadata_as_first_result`, `test_batch_rejects_invalid_payloads`; [`tests/test_web_contract.py`](../tests/test_web_contract.py): `test_compare_tab_reuses_batch_endpoint_and_resets_stale_state` |
+| `POST /feedback` | [`api/routes.py`](../api/routes.py) `submit_feedback` | [`tests/test_api.py`](../tests/test_api.py): `test_feedback_is_disabled_by_default`, `test_feedback_persists_only_explicit_non_message_metadata`, `test_feedback_rejects_message_content_and_correct_predictions`, `test_feedback_rejects_stale_model_version`; [`tests/test_web_contract.py`](../tests/test_web_contract.py): `test_feedback_is_operator_opt_in_and_never_sends_message_text` |
+| `GET`, `HEAD`, `POST`, `DELETE /donate` | [`api/routes.py`](../api/routes.py) `donation_form`, `donate`, `withdraw_donation` | [`tests/test_donations_api.py`](../tests/test_donations_api.py): `test_donation_routes_are_disabled_by_default_and_form_not_served`, `test_acceptance_and_withdrawal_are_explicit_non_cached_and_idempotent`, `test_v1_donation_alias_uses_the_same_rate_limit` |
+
+Run the focused route and web-contract checks from the repository root:
+
+```bash
+python -m pytest -q tests/test_api.py tests/test_donations_api.py tests/test_web_contract.py
+```
