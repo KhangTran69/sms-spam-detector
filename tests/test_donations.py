@@ -4,11 +4,12 @@ import csv
 import os
 import sqlite3
 import stat
+from contextlib import closing
 from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from api.donations import bootstrap_database, create_donation, delete_donation, export_donations
+from api.donations import bootstrap_database, create_donation, delete_donation, donation_summary, export_donations
 
 
 def test_bootstrap_is_idempotent_and_records_current_schema(tmp_path):
@@ -17,7 +18,7 @@ def test_bootstrap_is_idempotent_and_records_current_schema(tmp_path):
     bootstrap_database(database)
     bootstrap_database(database)
 
-    with sqlite3.connect(database) as connection:
+    with closing(sqlite3.connect(database)) as connection, connection:
         assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
         columns = {row[1] for row in connection.execute("PRAGMA table_info(donations)")}
     assert {
@@ -35,9 +36,40 @@ def test_bootstrap_is_idempotent_and_records_current_schema(tmp_path):
     } <= columns
 
 
+def test_donation_operations_close_database_connections(tmp_path, monkeypatch):
+    connections = []
+    sqlite_connect = sqlite3.connect
+
+    def track_connection(*args, **kwargs):
+        connection = sqlite_connect(*args, **kwargs)
+        connections.append(connection)
+        return connection
+
+    monkeypatch.setattr(sqlite3, "connect", track_connection)
+    database = tmp_path / "donations.sqlite3"
+    record_id = create_donation(
+        database,
+        message="Synthetic connection cleanup fixture",
+        label_hint=None,
+        language=None,
+        notice_version="2026-11-01-v1",
+        review_consent=True,
+        authorized_to_share=True,
+        model_research_consent=False,
+    )
+    assert donation_summary(database)["records"] == 1
+    export_donations(database, tmp_path / "review.csv")
+    assert delete_donation(database, record_id)
+
+    assert connections
+    for connection in connections:
+        with pytest.raises(sqlite3.ProgrammingError):
+            connection.execute("SELECT 1")
+
+
 def test_v1_rows_migrate_closed_to_research_and_authorization(tmp_path):
     database = tmp_path / "legacy.sqlite3"
-    with sqlite3.connect(database) as connection:
+    with closing(sqlite3.connect(database)) as connection, connection:
         connection.executescript(
             """CREATE TABLE donations (
                 record_id TEXT PRIMARY KEY, message TEXT NOT NULL, label_hint TEXT, language TEXT,
@@ -48,7 +80,7 @@ def test_v1_rows_migrate_closed_to_research_and_authorization(tmp_path):
 
     bootstrap_database(database)
 
-    with sqlite3.connect(database) as connection:
+    with closing(sqlite3.connect(database)) as connection, connection:
         assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
         assert (
             connection.execute(
@@ -81,7 +113,7 @@ def test_create_donation_persists_consent_metadata_without_diagnostics(tmp_path,
         consented_at=consented_at,
     )
 
-    with sqlite3.connect(database) as connection:
+    with closing(sqlite3.connect(database)) as connection, connection:
         record = connection.execute(
             "SELECT message, label_hint, language, notice_version, consented_at, withdrawn_at, "
             "review_consent, model_research_consent, authorized_to_share FROM donations WHERE record_id=?",
@@ -123,7 +155,7 @@ def test_withdrawal_erases_text_and_is_idempotent(tmp_path):
 
     assert delete_donation(database, record_id) is True
     assert delete_donation(database, record_id) is False
-    with sqlite3.connect(database) as connection:
+    with closing(sqlite3.connect(database)) as connection, connection:
         message, withdrawn_at = connection.execute(
             "SELECT message, withdrawn_at FROM donations WHERE record_id=?", (record_id,)
         ).fetchone()
@@ -189,7 +221,7 @@ def test_export_rescreens_pii_and_reports_only_aggregate_count(tmp_path):
         authorized_to_share=True,
         model_research_consent=True,
     )
-    with sqlite3.connect(database) as connection:
+    with closing(sqlite3.connect(database)) as connection, connection:
         connection.execute("UPDATE donations SET message=? WHERE record_id=?", (private_text, record_id))
     output = tmp_path / "review.csv"
 
@@ -212,7 +244,7 @@ def test_expired_rows_are_purged_before_export(tmp_path):
         authorized_to_share=True,
         model_research_consent=False,
     )
-    with sqlite3.connect(database) as connection:
+    with closing(sqlite3.connect(database)) as connection, connection:
         expired = (datetime.now(UTC) - timedelta(days=1)).isoformat(timespec="seconds")
         connection.execute("UPDATE donations SET expires_at=? WHERE record_id=?", (expired, record_id))
     output = tmp_path / "expired.csv"
@@ -220,7 +252,7 @@ def test_expired_rows_are_purged_before_export(tmp_path):
     result = export_donations(database, output)
 
     assert result == {"exported": 0, "withdrawn": 0, "pending_review": 0, "pii_blocked": 0}
-    with sqlite3.connect(database) as connection:
+    with closing(sqlite3.connect(database)) as connection, connection:
         assert connection.execute("SELECT COUNT(*) FROM donations WHERE record_id=?", (record_id,)).fetchone()[0] == 0
 
 

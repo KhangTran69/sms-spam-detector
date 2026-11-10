@@ -13,6 +13,7 @@ import os
 import re
 import sqlite3
 import uuid
+from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from io import StringIO
 from pathlib import Path
@@ -91,11 +92,16 @@ def _create_private_database_file(path: Path) -> None:
         os.close(descriptor)
 
 
-def _connect(path: Path) -> sqlite3.Connection:
+@contextlib.contextmanager
+def _connect(path: Path) -> Iterator[sqlite3.Connection]:
     connection = sqlite3.connect(path, timeout=2.0)
-    connection.execute("PRAGMA journal_mode=DELETE")
-    connection.execute("PRAGMA secure_delete=ON")
-    return connection
+    try:
+        connection.execute("PRAGMA journal_mode=DELETE")
+        connection.execute("PRAGMA secure_delete=ON")
+        with connection:
+            yield connection
+    finally:
+        connection.close()
 
 
 def _purge_expired(connection: sqlite3.Connection, *, now: datetime | None = None) -> int:
