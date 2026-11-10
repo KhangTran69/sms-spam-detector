@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 from pathlib import Path
 
 import pytest
@@ -188,7 +188,7 @@ def test_acceptance_and_withdrawal_are_explicit_non_cached_and_idempotent(tmp_pa
         assert accepted.status_code == 201
         assert accepted.headers["cache-control"] == "no-store"
         record_id = accepted.json()["record_id"]
-        with sqlite3.connect(tmp_path / "donations.sqlite3") as connection:
+        with closing(sqlite3.connect(tmp_path / "donations.sqlite3")) as connection, connection:
             assert connection.execute("SELECT message FROM donations").fetchone()[0] == VALID_PAYLOAD["message"]
             assert connection.execute(
                 "SELECT review_consent, model_research_consent, authorized_to_share FROM donations"
@@ -199,7 +199,7 @@ def test_acceptance_and_withdrawal_are_explicit_non_cached_and_idempotent(tmp_pa
 
     assert first.status_code == second.status_code == 200
     assert first.json() == second.json() == {"status": "withdrawn"}
-    with sqlite3.connect(tmp_path / "donations.sqlite3") as connection:
+    with closing(sqlite3.connect(tmp_path / "donations.sqlite3")) as connection, connection:
         assert connection.execute("SELECT message FROM donations").fetchone()[0] == ""
 
 
@@ -240,7 +240,7 @@ def test_model_research_consent_is_a_separate_optional_choice(tmp_path):
         accepted = client.post("/donate", json={**VALID_PAYLOAD, "model_research_consent": True})
 
     assert accepted.status_code == 201
-    with sqlite3.connect(tmp_path / "donations.sqlite3") as connection:
+    with closing(sqlite3.connect(tmp_path / "donations.sqlite3")) as connection, connection:
         assert connection.execute("SELECT review_consent, model_research_consent FROM donations").fetchone() == (
             1,
             1,
