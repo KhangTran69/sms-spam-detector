@@ -135,6 +135,28 @@ The internal pairs are possible template-leakage candidates rather than
 confirmed duplicates. Group disjointness alone does not rule out near-duplicate
 leakage; read the diagnostic scores with that limit.
 
+## Clean main refresh (2026-11-17)
+
+The [current-main report](benchmarks/clean-main-bdeaf7-20261117.json) reproduces
+commit `bdeaf7b492e65640d009c167c0bdd92625c3fda9` with Python 3.12.13 and the
+repository's pinned Python 3.12 dependencies. The UCI archive and extracted TSV
+matched the pinned hashes above: `1587ea43e58e82b14ff1f5425c88e17f8496bfcdb67a583dbff9eefaf9963ce3`
+for the archive and `7d039a24a6083ed9ef0f806ebad56bbb976e3aeb8de05669173bfdc4996c239d`
+for the extracted TSV. These source-file hashes are documented here because
+the JSON report records the six benchmark input CSV file hashes, not the
+download archive or extracted TSV. All six input-file hashes and the grouped
+split fingerprint match the 2026-11-01 report, as do the fixed-threshold test,
+baseline, and synthetic-holdout metrics. The current run reports test F1 0.9425
+on 810 mixed-provenance rows, baseline Naive Bayes F1 0.8548 on the same split,
+and F1 0.9333 on the separate 264-row synthetic Philippine holdout. Its model
+artifact hash differs from the earlier run, so this is a matching input/split/
+aggregate reproduction, not a claim of byte-identical model artifacts.
+
+The test split contains 740 UCI public-English rows and 70 synthetic rows; the
+holdout is synthetic. Neither result estimates representative Philippine
+performance. The report contains aggregate metrics and hashes only, no message
+text, and records `source_tree_clean: true` for the checked-out `main` commit.
+
 ## Optional local transformer spike
 
 The transformer is an opt-in research path. The default installation, default
