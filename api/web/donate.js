@@ -169,8 +169,9 @@ export function createDonationForm({
         cache: "no-store",
       }, timeoutMs);
       if (!response.ok) throw new Error("withdrawal failed");
-      withdrawalId.value = "";
-      setStatus("Withdrawn. The stored message and label hint were erased.");
+      setStatus(
+        "Withdrawal request received. The service cannot confirm a “Withdrawn” status or whether this ID matched a record. Keep this ID and contact the operator to confirm whether the message and label hint were erased.",
+      );
     } catch (error) {
       if (error.timeout) {
         setStatus("The local service timed out. We could not confirm whether withdrawal completed; the request was not automatically retried. Keep the ID and contact the operator if unsure.");
