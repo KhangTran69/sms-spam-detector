@@ -20,6 +20,7 @@ Design notes
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import math
 import os
@@ -173,6 +174,31 @@ logger = logging.getLogger("api.main")
 RATE_LIMITER: RateLimiter = create_rate_limiter()
 
 
+def _log_request_completed(
+    request_id: str,
+    method: str,
+    path: str,
+    status: int,
+    latency_ms: float,
+    client_ip: str,
+) -> None:
+    logger.info(
+        "%s",
+        json.dumps(
+            {
+                "event": "request_completed",
+                "request_id": request_id,
+                "method": method,
+                "path": path,
+                "status": status,
+                "latency_ms": latency_ms,
+                "client_ip": client_ip,
+            },
+            ensure_ascii=True,
+        ),
+    )
+
+
 class RequestBodyLimitMiddleware:
     """Bound body consumption, enforce rate limits, security headers, request ID, and structured logging."""
 
@@ -216,11 +242,11 @@ class RequestBodyLimitMiddleware:
             allowed, retry_after = await _check_rate_limiter("legacy", client_ip, RATE_LIMIT, RATE_LIMIT_WINDOW)
             if not allowed:
                 elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
-                logger.info(
-                    '{"event": "request_completed", "request_id": "%s", "method": "%s", "path": "%s", "status": 429, "latency_ms": %.2f, "client_ip": "%s"}',
+                _log_request_completed(
                     request_id,
                     method,
                     log_path,
+                    429,
                     elapsed_ms,
                     log_client_ip,
                 )
@@ -241,11 +267,11 @@ class RequestBodyLimitMiddleware:
             try:
                 if int(content_length) > MAX_REQUEST_BYTES:
                     elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
-                    logger.info(
-                        '{"event": "request_completed", "request_id": "%s", "method": "%s", "path": "%s", "status": 413, "latency_ms": %.2f, "client_ip": "%s"}',
+                    _log_request_completed(
                         request_id,
                         method,
                         log_path,
+                        413,
                         elapsed_ms,
                         log_client_ip,
                     )
@@ -272,11 +298,11 @@ class RequestBodyLimitMiddleware:
             consumed += len(chunk)
             if consumed > MAX_REQUEST_BYTES:
                 elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
-                logger.info(
-                    '{"event": "request_completed", "request_id": "%s", "method": "%s", "path": "%s", "status": 413, "latency_ms": %.2f, "client_ip": "%s"}',
+                _log_request_completed(
                     request_id,
                     method,
                     log_path,
+                    413,
                     elapsed_ms,
                     log_client_ip,
                 )
@@ -305,8 +331,7 @@ class RequestBodyLimitMiddleware:
             await self.app(scope, replay_body, secure_send)
         finally:
             elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
-            logger.info(
-                '{"event": "request_completed", "request_id": "%s", "method": "%s", "path": "%s", "status": %d, "latency_ms": %.2f, "client_ip": "%s"}',
+            _log_request_completed(
                 request_id,
                 method,
                 log_path,
