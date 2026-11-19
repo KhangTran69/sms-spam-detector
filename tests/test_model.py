@@ -147,9 +147,9 @@ def test_model_info_is_json_safe_and_contains_provenance(trained_artifact):
     assert "synthetic" in info["data_note"].lower()
 
 
-def test_model_info_marks_cached_undefined_subgroup_rates_unavailable(trained_artifact):
-    _, model_path = trained_artifact
-    bundle = load_model(model_path)
+def test_model_info_marks_cached_undefined_subgroup_rates_without_mutating_artifact(trained_artifact, tmp_path):
+    _, original_path = trained_artifact
+    artifact = joblib.load(original_path)
     cached_group = {
         "tp": 5,
         "fp": 0,
@@ -161,13 +161,21 @@ def test_model_info_marks_cached_undefined_subgroup_rates_unavailable(trained_ar
         "false_positive_rate": 0.0,
     }
     for key in ("test_by_category", "holdout_by_category"):
-        bundle.metadata["metrics"][key] = [dict(cached_group)]
+        artifact["metrics"][key] = [dict(cached_group)]
+    model_path = tmp_path / "cached-groups.pkl"
+    joblib.dump(artifact, model_path, compress=3)
+    model_path.with_suffix(".metadata.json").write_text(
+        json.dumps({"artifact_sha256": hashlib.sha256(model_path.read_bytes()).hexdigest()}), encoding="utf-8"
+    )
+    bundle = load_model(model_path)
 
     info = bundle.model_info()
 
     for key in ("test_by_category", "holdout_by_category"):
         assert info["metrics"][key][0]["false_positive_rate"] is None
         assert bundle.metadata["metrics"][key][0]["false_positive_rate"] == 0.0
+        assert joblib.load(model_path)["metrics"][key][0]["false_positive_rate"] == 0.0
+    assert load_model(model_path).model_info()["metrics"]["holdout_by_category"][0]["false_positive_rate"] is None
 
 
 def test_predict_message_contract(trained_artifact):
