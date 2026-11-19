@@ -4,7 +4,13 @@ from __future__ import annotations
 
 import pytest
 
-from src.metrics import binary_metrics, bootstrap_metrics, campaign_bootstrap_intervals, select_threshold
+from src.metrics import (
+    binary_metrics,
+    bootstrap_metrics,
+    campaign_bootstrap_intervals,
+    per_group_metrics,
+    select_threshold,
+)
 
 
 def test_binary_metrics_include_wilson_intervals_with_support():
@@ -22,6 +28,52 @@ def test_binary_metrics_empty_denominator_has_no_interval():
     assert result["confidence_intervals_95"]["precision"] is None
     assert result["confidence_intervals_95"]["recall"] is None
     assert result["confidence_intervals_95"]["false_positive_rate"] == pytest.approx([0.0, 0.6576], abs=0.001)
+
+    pooled_without_ham = binary_metrics(["spam", "spam"], [0.1, 0.2], 0.5)
+    assert pooled_without_ham["precision"] == 0.0
+    assert pooled_without_ham["recall"] == 0.0
+    assert pooled_without_ham["f1"] == 0.0
+    assert pooled_without_ham["false_positive_rate"] == 0.0
+
+
+def test_per_group_metrics_reports_zero_support_rates_as_none():
+    import pandas as pd
+
+    frame = pd.DataFrame(
+        {
+            "label": ["spam", "spam", "ham", "ham", "ham", "ham"],
+            "language": [
+                "spam_only",
+                "spam_only",
+                "ham_no_predictions",
+                "ham_no_predictions",
+                "ham_with_false_positive",
+                "ham_with_false_positive",
+            ],
+        }
+    )
+
+    metrics = {
+        row["language"]: row
+        for row in per_group_metrics(frame, [0.9, 0.1, 0.1, 0.2, 0.9, 0.1], 0.5, group_columns=("language",))
+    }
+
+    assert metrics["spam_only"]["false_positive_rate"] is None
+    assert metrics["spam_only"]["precision"] == 1.0
+    assert metrics["spam_only"]["recall"] == 0.5
+
+    ham_without_predictions = metrics["ham_no_predictions"]
+    assert ham_without_predictions["precision"] is None
+    assert ham_without_predictions["recall"] is None
+    assert ham_without_predictions["f1"] is None
+    assert ham_without_predictions["false_positive_rate"] == 0.0
+    assert ham_without_predictions["confidence_intervals_95"]["false_positive_rate"] is not None
+
+    ham_with_false_positive = metrics["ham_with_false_positive"]
+    assert ham_with_false_positive["precision"] == 0.0
+    assert ham_with_false_positive["recall"] is None
+    assert ham_with_false_positive["f1"] == 0.0
+    assert ham_with_false_positive["false_positive_rate"] == 0.5
 
 
 def test_user_supplied_error_costs_choose_threshold_without_implying_policy():
