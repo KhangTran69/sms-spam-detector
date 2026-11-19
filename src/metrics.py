@@ -474,6 +474,22 @@ def calibration_metrics(
     return metrics
 
 
+def normalize_group_metric_row(metrics: dict[str, Any]) -> dict[str, Any]:
+    """Return a subgroup metric row with empty-denominator rates marked unavailable."""
+    normalized = dict(metrics)
+    if not {"tp", "fp", "tn", "fn"}.issubset(normalized):
+        return normalized
+    if normalized.get("tp", 0) + normalized.get("fp", 0) == 0:
+        normalized["precision"] = None
+    if normalized.get("tp", 0) + normalized.get("fn", 0) == 0:
+        normalized["recall"] = None
+    if 2 * normalized.get("tp", 0) + normalized.get("fp", 0) + normalized.get("fn", 0) == 0:
+        normalized["f1"] = None
+    if normalized.get("fp", 0) + normalized.get("tn", 0) == 0:
+        normalized["false_positive_rate"] = None
+    return normalized
+
+
 def per_group_metrics(
     frame,
     probabilities: Iterable[float],
@@ -486,6 +502,9 @@ def per_group_metrics(
 
     ``frame`` must have a ``label`` column; missing/blank group values are
     reported as ``"unknown"`` rather than dropped, so coverage is visible.
+    Rates with an empty denominator are ``None`` in subgroup output; pooled
+    ``binary_metrics`` keeps its numeric zero-division convention for threshold
+    selection.
     """
     probs = _positive_probabilities(probabilities)
     if len(frame) != len(probs):
@@ -507,7 +526,9 @@ def per_group_metrics(
             column: (None if value is None or (isinstance(value, float) and math.isnan(value)) else str(value))
             for column, value in zip(group_columns, key_values)
         }
-        metrics = binary_metrics(chunk["_label"].tolist(), chunk["_probability"].tolist(), threshold)
+        metrics = normalize_group_metric_row(
+            binary_metrics(chunk["_label"].tolist(), chunk["_probability"].tolist(), threshold)
+        )
         entry.update(metrics)
         results.append(entry)
     return results

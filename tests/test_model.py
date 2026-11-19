@@ -147,6 +147,27 @@ def test_model_info_is_json_safe_and_contains_provenance(trained_artifact):
     assert "synthetic" in info["data_note"].lower()
 
 
+def test_model_info_marks_cached_undefined_subgroup_rates_unavailable(trained_artifact):
+    _, model_path = trained_artifact
+    bundle = load_model(model_path)
+    cached_group = {
+        "tp": 5,
+        "fp": 0,
+        "tn": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "false_positive_rate": 0.0,
+    }
+    bundle.metadata["metrics"]["holdout_by_category"] = [cached_group]
+
+    info = bundle.model_info()
+
+    assert info["metrics"]["holdout_by_category"][0]["false_positive_rate"] is None
+    assert bundle.metadata["metrics"]["holdout_by_category"][0]["false_positive_rate"] == 0.0
+
+
 def test_predict_message_contract(trained_artifact):
     _, model_path = trained_artifact
     result = predict_message("Claim your free prize now!", model_path=model_path)

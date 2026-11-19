@@ -27,7 +27,7 @@ from sklearn.pipeline import Pipeline
 from src.artifact_integrity import ArtifactIntegrityError, verify_artifact_sidecar
 from src.ensemble import DEFAULT_CONFIDENCE_BAND, ConfidenceBandRouter, TransformerModelError
 from src.features import FEATURE_COLUMNS, FEATURE_VERSION, messages_to_frame, pipeline_feature_signature
-from src.metrics import jsonable
+from src.metrics import jsonable, normalize_group_metric_row
 from src.preprocess import MAX_MESSAGE_LENGTH, extract_features, extract_matches
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -134,6 +134,13 @@ class ModelBundle:
     def model_info(self) -> dict[str, Any]:
         """JSON-safe artifact metadata for ``GET /model-info`` and docs."""
         warnings = [str(item) for item in self.metadata.get("warnings", [])]
+        metrics = self.metadata.get("metrics", {})
+        if isinstance(metrics, dict):
+            metrics = dict(metrics)
+            for key in ("test_by_category", "holdout_by_category"):
+                rows = metrics.get(key)
+                if isinstance(rows, list):
+                    metrics[key] = [normalize_group_metric_row(row) if isinstance(row, dict) else row for row in rows]
         info = {
             "model_version": self.version,
             "artifact_schema_version": int(
@@ -150,7 +157,7 @@ class ModelBundle:
             "training_data_kind_counts": self.metadata.get("training_data_kind_counts", {}),
             "probability_calibrated": self.metadata.get("probability_calibrated") is True,
             "data_note": self.data_note,
-            "metrics": self.metadata.get("metrics", {}),
+            "metrics": metrics,
             "legacy_artifact": bool(self.legacy),
             "warnings": warnings,
         }

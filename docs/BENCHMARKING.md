@@ -8,6 +8,11 @@ describe only the supplied data and split. A consented Philippine benchmark is
 not available yet; never present synthetic or unknown-provenance scores as
 Philippine real-world performance.
 
+In subgroup rows, precision, recall, F1, or false-positive rate is `null` when
+its denominator is empty. An unavailable rate must not be read as a measured
+zero; pooled metrics retain their numeric zero-division convention for model
+selection.
+
 The checked-in [UCI + synthetic diagnostic report](benchmarks/uci-synthetic-ph-diagnostic-20261022.json)
 is a reproducible example. Its internal test split reports public and synthetic
 rows separately, and its external Philippine holdout is fully synthetic. The
