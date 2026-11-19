@@ -29,6 +29,12 @@ def test_binary_metrics_empty_denominator_has_no_interval():
     assert result["confidence_intervals_95"]["recall"] is None
     assert result["confidence_intervals_95"]["false_positive_rate"] == pytest.approx([0.0, 0.6576], abs=0.001)
 
+    pooled_without_ham = binary_metrics(["spam", "spam"], [0.1, 0.2], 0.5)
+    assert pooled_without_ham["precision"] == 0.0
+    assert pooled_without_ham["recall"] == 0.0
+    assert pooled_without_ham["f1"] == 0.0
+    assert pooled_without_ham["false_positive_rate"] == 0.0
+
 
 def test_per_group_metrics_reports_zero_support_rates_as_none():
     import pandas as pd
