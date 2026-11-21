@@ -162,6 +162,24 @@ holdout is synthetic. Neither result estimates representative Philippine
 performance. The report contains aggregate metrics and hashes only, no message
 text, and records `source_tree_clean: true` for the checked-out `main` commit.
 
+## Clean main refresh (2026-11-21)
+
+The [current-main report](benchmarks/clean-main-f756098-20261121.json)
+reproduces commit `f75609881dd518b8f9c34c534f103b42c05b1d3d` with Python 3.13.3
+and the pinned Python 3.13 dependencies. The UCI archive and extracted TSV
+matched the pinned SHA-256 hashes above. Five tracked synthetic supplements
+were included in training; the separately evaluated 264-row Philippine
+holdout remains synthetic. The training set contains 5,157 public UCI rows and
+513 synthetic rows after duplicate removal. The 810-row internal test split
+reports the 740 UCI public-English examples separately from 70 synthetic
+examples. At threshold 0.5, public UCI precision is 0.9897, recall 0.9320, and
+F1 0.9600; the synthetic subgroup and holdout metrics are diagnostics only.
+
+This report was generated from a clean checkout of the current `main`, records
+the model and input hashes, and contains aggregate metrics without raw SMS
+text. It reproduces a historical English corpus plus synthetic Philippine
+fixtures; neither result estimates representative Philippine performance.
+
 ## Optional local transformer spike
 
 The transformer is an opt-in research path. The default installation, default

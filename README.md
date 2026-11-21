@@ -38,11 +38,13 @@ real-holdout promotion gate in the [model card](docs/MODEL_CARD.md).
 
 ## Evaluation
 
-The versioned [UCI and synthetic diagnostic report](docs/benchmarks/uci-synthetic-ph-diagnostic-20261022.json)
-separates public English results from synthetic Philippine fixture checks. It
-was generated from a dirty source tree and is an engineering reproducibility
-example, not real-world accuracy. The local Philippine public inbox is from
-one contributor and is not representative traffic. Its hash-bound internal
+The latest [clean-main UCI and synthetic report](docs/benchmarks/clean-main-f756098-20261121.json)
+reproduces the current `main` commit. It separates public English results from
+synthetic Philippine fixture checks; neither is real-world Philippine accuracy.
+The earlier [diagnostic report](docs/benchmarks/uci-synthetic-ph-diagnostic-20261022.json)
+was generated from a dirty source tree and is retained as a historical
+reproducibility example. The local Philippine public inbox is from one
+contributor and is not representative traffic. Its hash-bound internal
 group-split diagnostic is recorded in the [benchmark report](docs/benchmarks/ph-public-inbox-diagnostic-20261106.json)
 and [model card](docs/MODEL_CARD.md#4-evaluation-and-the-synthetic-only-caveat).
 It is not an independent corpus holdout or a consented Philippine performance
