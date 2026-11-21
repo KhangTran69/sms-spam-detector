@@ -142,7 +142,7 @@ leakage; read the diagnostic scores with that limit.
 
 ## Clean main refresh (2026-11-17)
 
-The [current-main report](benchmarks/clean-main-bdeaf7-20261117.json) reproduces
+The [clean-main report](benchmarks/clean-main-bdeaf7-20261117.json) reproduces
 commit `bdeaf7b492e65640d009c167c0bdd92625c3fda9` with Python 3.12.13 and the
 repository's pinned Python 3.12 dependencies. The UCI archive and extracted TSV
 matched the pinned hashes above: `1587ea43e58e82b14ff1f5425c88e17f8496bfcdb67a583dbff9eefaf9963ce3`
@@ -164,18 +164,20 @@ text, and records `source_tree_clean: true` for the checked-out `main` commit.
 
 ## Clean main refresh (2026-11-21)
 
-The [current-main report](benchmarks/clean-main-f756098-20261121.json)
-reproduces commit `f75609881dd518b8f9c34c534f103b42c05b1d3d` with Python 3.13.3
+The [clean-main report](benchmarks/clean-main-f756098-20261121.json)
+reproduces `main` at commit `f75609881dd518b8f9c34c534f103b42c05b1d3d` with Python 3.13.3
 and the pinned Python 3.13 dependencies. The UCI archive and extracted TSV
 matched the pinned SHA-256 hashes above. Five tracked synthetic supplements
 were included in training; the separately evaluated 264-row Philippine
-holdout remains synthetic. The training set contains 5,157 public UCI rows and
-513 synthetic rows after duplicate removal. The 810-row internal test split
-reports the 740 UCI public-English examples separately from 70 synthetic
-examples. At threshold 0.5, public UCI precision is 0.9897, recall 0.9320, and
-F1 0.9600; the synthetic subgroup and holdout metrics are diagnostics only.
+holdout remains synthetic. After duplicate removal, the complete input
+dataset contains 5,670 rows: 5,157 public UCI and 513 synthetic. The grouped
+training partition contains 4,050 rows: 3,676 public UCI and 374 synthetic.
+The 810-row internal test split reports 740 UCI public-English examples
+separately from 70 synthetic examples. At threshold 0.5, public UCI precision
+is 0.9897, recall 0.9320, and F1 0.9600; the synthetic subgroup and holdout
+metrics are diagnostics only.
 
-This report was generated from a clean checkout of the current `main`, records
+This report was generated from a clean checkout at the recorded commit, records
 the model and input hashes, and contains aggregate metrics without raw SMS
 text. It reproduces a historical English corpus plus synthetic Philippine
 fixtures; neither result estimates representative Philippine performance.

@@ -39,8 +39,9 @@ real-holdout promotion gate in the [model card](docs/MODEL_CARD.md).
 ## Evaluation
 
 The latest [clean-main UCI and synthetic report](docs/benchmarks/clean-main-f756098-20261121.json)
-reproduces the current `main` commit. It separates public English results from
-synthetic Philippine fixture checks; neither is real-world Philippine accuracy.
+reproduces `main` at commit `f75609881dd518b8f9c34c534f103b42c05b1d3d`. It
+separates public English results from synthetic Philippine fixture checks;
+neither is real-world Philippine accuracy.
 The earlier [diagnostic report](docs/benchmarks/uci-synthetic-ph-diagnostic-20261022.json)
 was generated from a dirty source tree and is retained as a historical
 reproducibility example. The local Philippine public inbox is from one
