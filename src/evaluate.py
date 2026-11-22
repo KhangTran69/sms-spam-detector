@@ -349,9 +349,12 @@ def _probabilities(bundle: ModelBundle, dataset: Dataset) -> list[float]:
 
 
 def _format_metrics(label: str, metrics: dict[str, Any]) -> str:
+    def format_rate(value: float | None) -> str:
+        return "unavailable" if value is None else f"{value:.4f}"
+
     return (
-        f"{label}: precision={metrics['precision']:.4f} recall={metrics['recall']:.4f} "
-        f"f1={metrics['f1']:.4f} accuracy={metrics['accuracy']:.4f} "
+        f"{label}: precision={format_rate(metrics['precision'])} recall={format_rate(metrics['recall'])} "
+        f"f1={format_rate(metrics['f1'])} accuracy={metrics['accuracy']:.4f} "
         f"FP={metrics['fp']} FN={metrics['fn']} (n={metrics['support']})"
     )
 
