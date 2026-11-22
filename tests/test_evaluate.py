@@ -1,6 +1,7 @@
 """Privacy and provenance regressions for evaluation reports."""
 
 import hashlib
+import json
 from types import SimpleNamespace
 
 import pandas as pd
@@ -70,6 +71,41 @@ def test_evaluation_banner_reflects_declared_provenance() -> None:
     assert "SYNTHETIC" in _provenance_banner(synthetic)
     assert "UNVERIFIED" in _provenance_banner(unknown)
     assert "PUBLIC-CORPUS" in _provenance_banner(public)
+
+
+def test_verbose_evaluation_reports_undefined_provenance_rates(tmp_path, monkeypatch, capsys) -> None:
+    data_path = tmp_path / "fixtures.csv"
+    data_path.write_text(
+        "label,message,data_kind,group\n"
+        "ham,meet for lunch today,,lunch\n"
+        "spam,claim your prize today,synthetic,lunch\n"
+        "ham,bring my book tomorrow,,books\n"
+        "spam,win a free prize tomorrow,synthetic,books\n"
+        "ham,see you at game night,,games\n"
+        "spam,your prize is waiting,synthetic,games\n",
+        encoding="utf-8",
+    )
+    pipeline = SimpleNamespace(
+        classes_=["ham", "spam"],
+        predict_proba=lambda features: [
+            [0.1, 0.9] if "prize" in text else [0.9, 0.1] for text in features["cleaned_text"]
+        ],
+    )
+    bundle = ModelBundle(pipeline=pipeline, threshold=0.5)
+    monkeypatch.setattr("src.evaluate.load_model", lambda *args, **kwargs: bundle)
+    report_path = tmp_path / "evaluation.json"
+
+    evaluate(data_path, supplement_path=None, holdout_path=None, plot_path=None, json_output=report_path)
+
+    output = capsys.readouterr().out
+    assert "unknown: precision=unavailable recall=unavailable f1=unavailable" in output
+    assert "synthetic: precision=1.0000 recall=1.0000 f1=1.0000" in output
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    groups = {row["data_kind"]: row for row in report["test"]["by_data_kind"]}
+    assert groups["unknown"]["precision"] is None
+    assert groups["unknown"]["recall"] is None
+    assert groups["unknown"]["f1"] is None
+    assert groups["unknown"]["false_positive_rate"] == 0.0
 
 
 def test_legacy_evaluator_blocks_consent_holdout_metrics() -> None:
