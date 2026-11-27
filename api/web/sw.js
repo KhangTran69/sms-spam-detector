@@ -3,11 +3,12 @@
  */
 "use strict";
 
-const CACHE_NAME = "smsd-shell-v23";
+const CACHE_NAME = "smsd-shell-v24";
 const SHELL_ASSETS = [
   "/",
   "/static/styles.css?v=ui19-synthetic-examples-20261101",
   "/static/app.js?v=ui19-synthetic-examples-20261101",
+  "/static/theme-init.js?v=theme-v1",
   "/static/api-client.js?v=ui19-synthetic-examples-20261101",
   "/static/i18n.js?v=ui19-synthetic-examples-20261101",
   "/static/privacy-preview.js?v=ui19-synthetic-examples-20261101",
@@ -35,6 +36,7 @@ const NEVER_CACHE_PATHS = [
   "/ready",
   "/metrics",
   "/metrics/distribution",
+  "/metrics/operations",
   "/v1/analyze",
   "/v1/analyze/batch",
   "/v1/predict",
@@ -44,6 +46,7 @@ const NEVER_CACHE_PATHS = [
   "/v1/ready",
   "/v1/metrics",
   "/v1/metrics/distribution",
+  "/v1/metrics/operations",
 ];
 
 self.addEventListener("install", (event) => {

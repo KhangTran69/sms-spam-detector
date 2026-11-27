@@ -9,18 +9,7 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="stylesheet" href="/static/styles.css?v=ui19-synthetic-examples-20261101" />
-  <script>
-    // Apply the saved theme before first paint to avoid a flash of the wrong theme.
-    (function () {
-      "use strict";
-      try {
-        var saved = localStorage.getItem("smsd_theme_v1");
-        if (saved === "light" || saved === "dark") {
-          document.documentElement.setAttribute("data-theme", saved);
-        }
-      } catch (error) { /* storage unavailable: use the light default */ }
-    })();
-  </script>
+  <script src="/static/theme-init.js?v=theme-v1"></script>
 </head>
 <body>
   <a class="skip-link" href="#main-content" data-i18n="skip">Skip to main content</a>

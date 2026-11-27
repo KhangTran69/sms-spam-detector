@@ -284,7 +284,8 @@ def test_service_worker_installs_complete_static_shell_and_never_caches_api(html
     assert "await cache.put(request" not in sw, "runtime responses must not mutate an installed release"
     for path in ("/analyze", "/analyze/batch", "/predict", "/feedback", "/model-info"):
         assert f'"{path}"' in sw
-    assert "smsd-shell-v23" in sw
+    assert "smsd-shell-v24" in sw
+    assert '"/static/theme-init.js?v=theme-v1"' in sw
     for asset in ("styles.css", "app.js"):
         assert f'"/static/{asset}?v=ui19-synthetic-examples-20261101"' in sw
     for asset in (
@@ -301,6 +302,8 @@ def test_service_worker_installs_complete_static_shell_and_never_caches_api(html
     assert '"/donate"' in sw and '"/privacy-notice"' in sw
     assert '"/static/demo-examples.js?v=ui19-synthetic-examples-20261101"' in sw
     assert 'type="module" src="/static/app.js?v=ui19-synthetic-examples-20261101"' in html
+    assert '<script src="/static/theme-init.js?v=theme-v1"></script>' in html
+    assert "<script>" not in html
     assert 'id="single-privacy-review"' in html
     assert 'id="batch-privacy-review"' in html
     assert 'id="compare-review-a"' in html and 'id="compare-review-b"' in html

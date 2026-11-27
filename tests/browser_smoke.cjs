@@ -235,6 +235,30 @@ async function main() {
 
     await page.goto(base, { waitUntil: 'domcontentloaded' });
     console.log('browser-smoke: initial page loaded');
+    const cspHeader = (await page.request.get(base)).headers()['content-security-policy'] || '';
+    if (!cspHeader.includes("script-src 'self';") || cspHeader.includes("script-src 'self' 'unsafe-inline'")) {
+      throw new Error('inline JavaScript remains enabled in CSP');
+    }
+    const themeResponse = await page.request.get(base + '/static/theme-init.js');
+    if (!themeResponse.ok()) throw new Error('external prepaint theme initializer failed to load');
+
+    // Playwright-powered DOM accessibility checks are not manual screen-reader tests.
+    const a11yAudit = await page.evaluate(() => {
+      const ids = [...document.querySelectorAll('[id]')].map((node) => node.id);
+      const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
+      const fields = [...document.querySelectorAll('input, textarea, select')]
+        .filter((node) => node.type !== 'hidden' && node.getClientRects().length)
+        .filter((node) => !(node.labels && node.labels.length)
+          && !node.getAttribute('aria-label') && !node.getAttribute('aria-labelledby'))
+        .map((node) => node.id || node.outerHTML.slice(0, 100));
+      const skip = document.querySelector('a.skip-link[href="#main-content"]');
+      return { duplicates, fields, validSkip: Boolean(skip && document.getElementById('main-content')),
+        mainCount: document.querySelectorAll('main').length };
+    });
+    if (a11yAudit.duplicates.length || a11yAudit.fields.length
+      || !a11yAudit.validSkip || a11yAudit.mainCount !== 1) {
+      throw new Error('Accessibility DOM audit failed: ' + JSON.stringify(a11yAudit));
+    }
     const modelDetails = page.locator('#model-details');
     if (await modelDetails.evaluate((element) => element.open)) {
       throw new Error('model metadata should be collapsed until requested');

@@ -41,7 +41,7 @@ function createWorker({ failAsset = null, delayAsset = null, networkFails = true
     async delete(name) { deleted.push(name); return shellCaches.delete(name); },
     async keys() { return [...shellCaches.keys()]; },
     async match(request, options) {
-      assert.equal(options.cacheName, 'smsd-shell-v23');
+      assert.equal(options.cacheName, 'smsd-shell-v24');
       return shellCaches.get(options.cacheName)?.get(cacheKey(request)) || null;
     },
   };
@@ -64,7 +64,7 @@ function createWorker({ failAsset = null, delayAsset = null, networkFails = true
   vm.runInContext(source, context);
   return {
     handlers, caches, shellCaches, deleted,
-    get cacheData() { return shellCaches.get('smsd-shell-v23'); },
+    get cacheData() { return shellCaches.get('smsd-shell-v24'); },
     finishDelayedAsset() { finishDelayedAsset(); },
     get skippedWaiting() { return skippedWaiting; },
   };
@@ -78,8 +78,8 @@ function createWorker({ failAsset = null, delayAsset = null, networkFails = true
   assert.deepEqual(interrupted.deleted, [], 'failed install waits for in-flight cache writes to settle');
   interrupted.finishDelayedAsset();
   await assert.rejects(install, /static shell asset could not be cached/);
-  assert.deepEqual(interrupted.deleted, ['smsd-shell-v23']);
-  assert.equal(interrupted.shellCaches.has('smsd-shell-v23'), false, 'failed candidate cache is removed');
+  assert.deepEqual(interrupted.deleted, ['smsd-shell-v24']);
+  assert.equal(interrupted.shellCaches.has('smsd-shell-v24'), false, 'failed candidate cache is removed');
   assert.equal(await (await interrupted.shellCaches.get('smsd-shell-v13').get('/').text()), 'previous release with spam signal wording',
     'failed update leaves the previous complete release intact');
   assert.equal(interrupted.skippedWaiting, false, 'partial shell must not activate');
@@ -93,7 +93,7 @@ function createWorker({ failAsset = null, delayAsset = null, networkFails = true
   worker.handlers.activate({ waitUntil(promise) { cleanup = promise; } });
   await cleanup;
   assert.deepEqual(worker.deleted, ['smsd-shell-v6', 'smsd-shell-v7', 'smsd-shell-v8', 'smsd-shell-v9', 'smsd-shell-v10', 'smsd-shell-v11', 'smsd-shell-v12', 'smsd-shell-v13', 'smsd-shell-v14'], 'old releases are removed only after new install completed');
-  assert.equal(worker.shellCaches.has('smsd-shell-v23'), true, 'new complete release is active after upgrade');
+  assert.equal(worker.shellCaches.has('smsd-shell-v24'), true, 'new complete release is active after upgrade');
 
   let apiIntercepted = false;
   worker.handlers.fetch({

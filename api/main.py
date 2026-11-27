@@ -37,7 +37,13 @@ from fastapi.responses import JSONResponse, Response
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from api.donations import DEFAULT_DONATION_DB
-from api.rate_limiter import RateLimiter, RedisRateLimiter, create_rate_limiter
+from api.ops_metrics import operations_monitor
+from api.rate_limiter import (
+    RateLimiter,
+    RateLimiterUnavailable,
+    RedisRateLimiter,
+    create_rate_limiter,
+)
 from src.ensemble import TransformerModelError
 from src.predict import (
     ModelArtifactError,
@@ -55,6 +61,7 @@ DONATIONS_OPERATOR_CONTACT = os.environ.get("SMSD_DONATIONS_OPERATOR_CONTACT", "
 DONATION_DB_PATH = Path(os.environ.get("SMSD_DONATIONS_PATH", str(DEFAULT_DONATION_DB)))
 DONATION_RATE_LIMIT_PER_MINUTE = max(1, int(os.environ.get("SMSD_DONATION_RATE_LIMIT_PER_MINUTE", "5")))
 SMSD_ENV = os.environ.get("SMSD_ENV", "development").strip().lower()
+METRICS_TOKEN = os.environ.get("SMSD_METRICS_TOKEN", "").strip()
 ALLOW_LEGACY_MODEL = os.environ.get("SMSD_ALLOW_LEGACY_MODEL", "").strip().lower() in {"1", "true", "yes"}
 if SMSD_ENV == "production":
     # Anonymous correction intake has no authentication or abuse controls.
@@ -81,7 +88,7 @@ SECURITY_HEADERS = {
     "Permissions-Policy": "geolocation=(), camera=(), microphone=()",
     "Content-Security-Policy": (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline'; "
+        "script-src 'self'; "
         "style-src 'self' 'unsafe-inline'; "
         "img-src 'self' data:; "
         "connect-src 'self'; "
@@ -170,6 +177,33 @@ def _is_donation_path(path: str) -> bool:
     return canonical == "/donate" or canonical.startswith("/donate/")
 
 
+def _safe_log_path(path: str) -> str:
+    """Never record arbitrary user-controlled path segments in operational logs."""
+    if _is_donation_path(path):
+        return "/donate"
+    canonical = path.removeprefix("/v1") if path.startswith("/v1/") else path
+    safe_routes = {
+        "/",
+        "/health",
+        "/ready",
+        "/model-info",
+        "/predict",
+        "/analyze",
+        "/analyze/batch",
+        "/feedback",
+        "/metrics/distribution",
+        "/metrics/operations",
+        "/sw.js",
+        "/manifest.webmanifest",
+        "/privacy-notice",
+    }
+    if canonical in safe_routes:
+        return path
+    if path.startswith("/static/"):
+        return "/static/*"
+    return "/unmatched"
+
+
 logger = logging.getLogger("api.main")
 RATE_LIMITER: RateLimiter = create_rate_limiter()
 
@@ -180,8 +214,9 @@ def _log_request_completed(
     path: str,
     status: int,
     latency_ms: float,
-    client_ip: str,
 ) -> None:
+    """Write message-free request metadata without persisting client IPs."""
+    operations_monitor.record(method, path, status, latency_ms)
     logger.info(
         "%s",
         json.dumps(
@@ -192,7 +227,6 @@ def _log_request_completed(
                 "path": path,
                 "status": status,
                 "latency_ms": latency_ms,
-                "client_ip": client_ip,
             },
             ensure_ascii=True,
         ),
@@ -233,13 +267,22 @@ class RequestBodyLimitMiddleware:
         client_ip = _client_ip(scope)
         path = scope.get("path", "")
         method = scope.get("method", "")
-        donation_request = _is_donation_path(path)
-        log_path = "/donate" if donation_request else path
-        log_client_ip = "redacted" if donation_request else client_ip
+        log_path = _safe_log_path(path)
 
         # 1. Rate limiting check
         if path in RATE_LIMIT_ENDPOINTS:
-            allowed, retry_after = await _check_rate_limiter("legacy", client_ip, RATE_LIMIT, RATE_LIMIT_WINDOW)
+            try:
+                allowed, retry_after = await _check_rate_limiter("legacy", client_ip, RATE_LIMIT, RATE_LIMIT_WINDOW)
+            except RateLimiterUnavailable:
+                elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
+                _log_request_completed(request_id, method, log_path, 503, elapsed_ms)
+                await _error_response(
+                    503,
+                    "rate_limiter_unavailable",
+                    "Request protection is temporarily unavailable. Retry later.",
+                    headers={"X-Request-ID": request_id, "Retry-After": "30"},
+                )(scope, receive, secure_send)
+                return
             if not allowed:
                 elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
                 _log_request_completed(
@@ -248,7 +291,6 @@ class RequestBodyLimitMiddleware:
                     log_path,
                     429,
                     elapsed_ms,
-                    log_client_ip,
                 )
                 await _error_response(
                     429,
@@ -273,7 +315,6 @@ class RequestBodyLimitMiddleware:
                         log_path,
                         413,
                         elapsed_ms,
-                        log_client_ip,
                     )
                     await _error_response(
                         413,
@@ -304,7 +345,6 @@ class RequestBodyLimitMiddleware:
                     log_path,
                     413,
                     elapsed_ms,
-                    log_client_ip,
                 )
                 await _error_response(
                     413,
@@ -337,7 +377,6 @@ class RequestBodyLimitMiddleware:
                 log_path,
                 status_code,
                 elapsed_ms,
-                log_client_ip,
             )
 
 
@@ -362,16 +401,33 @@ class PredictionRateLimitMiddleware:
         if scope["type"] == "http" and (
             (method == "POST" and is_prediction) or (method in {"POST", "DELETE"} and is_donation)
         ):
+            limit_check_started = time.perf_counter()
             identity = _client_ip(scope)
             endpoint = "donation" if is_donation else "prediction"
             limit = DONATION_RATE_LIMIT_PER_MINUTE if is_donation else PREDICTION_RATE_LIMIT
-            allowed, retry_after = await _check_rate_limiter(endpoint, identity, limit, 60)
+            try:
+                allowed, retry_after = await _check_rate_limiter(endpoint, identity, limit, 60)
+            except RateLimiterUnavailable:
+                request_id = _request_id(scope)
+                latency_ms = round((time.perf_counter() - limit_check_started) * 1000, 2)
+                _log_request_completed(request_id, method, _safe_log_path(path), 503, latency_ms)
+                response = _error_response(
+                    503,
+                    "rate_limiter_unavailable",
+                    "Request protection is temporarily unavailable. Retry later.",
+                    headers={"Retry-After": "30", "X-Request-ID": request_id},
+                )
+                await response(scope, receive, send)
+                return
             if not allowed:
+                request_id = _request_id(scope)
+                latency_ms = round((time.perf_counter() - limit_check_started) * 1000, 2)
+                _log_request_completed(request_id, method, _safe_log_path(path), 429, latency_ms)
                 response = _error_response(
                     429,
                     "rate_limited",
                     "Too many prediction requests; retry later.",
-                    headers={"Retry-After": str(retry_after)},
+                    headers={"Retry-After": str(retry_after), "X-Request-ID": request_id},
                 )
                 await response(scope, receive, send)
                 return
@@ -586,13 +642,24 @@ async def model_unavailable_exception_handler(request: Request, exc: Exception) 
     return _error_response(503, "model_unavailable", message)
 
 
+@app.exception_handler(RateLimiterUnavailable)
+async def rate_limiter_unavailable_handler(request: Request, exc: RateLimiterUnavailable) -> JSONResponse:
+    del request, exc
+    return _error_response(
+        503,
+        "rate_limiter_unavailable",
+        "Request protection is temporarily unavailable. Retry later.",
+        headers={"Retry-After": "30"},
+    )
+
+
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     # No traceback or message content in the response; log only the type/path.
     logger.error(
         "Unhandled API error on %s %s (%s)",
         request.method,
-        request.url.path,
+        _safe_log_path(request.url.path),
         type(exc).__name__,
     )
     return _error_response(
@@ -618,10 +685,12 @@ analyze_batch_endpoint = _routes.analyze_batch_endpoint
 submit_feedback = _routes.submit_feedback
 _append_feedback_report = _routes._append_feedback_report
 get_distribution_metrics = _routes.get_distribution_metrics
+get_operations_metrics = _routes.get_operations_metrics
 
 
 _STATIC_ASSETS = {
     "app.js",
+    "theme-init.js",
     "api-client.js",
     "i18n.js",
     "privacy-preview.js",
@@ -652,6 +721,7 @@ def static_asset(asset_name: str, request: Request):
         )
     media_type = {
         "app.js": "text/javascript",
+        "theme-init.js": "text/javascript",
         "api-client.js": "text/javascript",
         "i18n.js": "text/javascript",
         "privacy-preview.js": "text/javascript",

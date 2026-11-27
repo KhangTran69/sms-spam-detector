@@ -227,7 +227,38 @@ async function main() {
   }
   assert.deepEqual(timeoutStatuses, [['api', 'timeout'], ['model', 'unknown']],
     'request timeout marks reachability as slow and model readiness as unknown');
-  console.log('ui-modules: opt-in history, stale-safe status, shared results, and timeout recovery passed');
+  const outageStatuses = [];
+  globalThis.window = { navigator: { onLine: true } };
+  let nextResponse = new Response(JSON.stringify({
+    error: { code: 'rate_limiter_unavailable', message: 'Request protection is temporarily unavailable.' },
+  }), { status: 503, headers: { 'Content-Type': 'application/json' } });
+  globalThis.fetch = async () => nextResponse;
+  try {
+    const api = createApiClient({
+      translate: (key) => key,
+      setApiAvailability: (value) => outageStatuses.push(['api', value]),
+      setModelReadiness: (value) => outageStatuses.push(['model', value]),
+      hideOfflineBanner() {}, showOfflineBanner() {},
+    });
+    await assert.rejects(api.requestJson('/ready'), (error) => error.code === 'rate_limiter_unavailable');
+    assert.deepEqual(outageStatuses, [['api', true], ['model', 'unknown']],
+      'request protection outage is neither browser offline nor a proven model failure');
+    outageStatuses.length = 0;
+    nextResponse = new Response(JSON.stringify({ error: { code: 'model_unavailable', message: 'No model' } }),
+      { status: 503, headers: { 'Content-Type': 'application/json' } });
+    await assert.rejects(api.requestJson('/ready'), (error) => error.code === 'model_unavailable');
+    assert.deepEqual(outageStatuses, [['api', true], ['model', false]]);
+    outageStatuses.length = 0;
+    nextResponse = new Response(JSON.stringify({ status: 'ready', model_loaded: true }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } });
+    await api.requestJson('/ready');
+    assert.deepEqual(outageStatuses, [['api', true], ['model', true]], 'readiness recovers on success');
+  } finally {
+    globalThis.fetch = previousFetch;
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+  console.log('ui-modules: privacy, result formatting, timeout and dependency-outage recovery passed');
 }
 
 main().catch((error) => {

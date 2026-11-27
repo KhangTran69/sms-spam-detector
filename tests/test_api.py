@@ -761,6 +761,28 @@ def test_model_info_reports_transformer_configuration_without_local_path(monkeyp
     assert str(transformer_path) not in json.dumps(body)
 
 
+def test_monitor_uses_spam_probability_for_both_classes():
+    from api.routes import _record_linear_monitor
+    from src.monitor import default_monitor
+
+    default_monitor.clear()
+    try:
+        _record_linear_monitor(
+            {"spam_probability": 0.10, "probability": 0.90, "prediction": "ham", "model_path": "linear"}
+        )
+        _record_linear_monitor(
+            {"spam_probability": 0.80, "probability": 0.80, "prediction": "spam", "model_path": "linear"}
+        )
+        metrics = default_monitor.get_metrics()
+        assert metrics["samples_in_window"] == 2
+        assert metrics["spam_ratio"] == pytest.approx(0.5)
+        assert metrics["score_distribution"]["mean"] == pytest.approx(0.45)
+        assert metrics["score_distribution"]["min"] == pytest.approx(0.1)
+        assert metrics["score_distribution"]["max"] == pytest.approx(0.8)
+    finally:
+        default_monitor.clear()
+
+
 def test_monitor_keeps_uncalibrated_ensemble_scores_out_of_linear_distribution():
     from api.routes import _record_linear_monitor
     from src.monitor import default_monitor
@@ -769,7 +791,7 @@ def test_monitor_keeps_uncalibrated_ensemble_scores_out_of_linear_distribution()
     try:
         _record_linear_monitor({"probability": 0.9, "prediction": "spam", "model_path": "ensemble"})
         assert default_monitor.get_metrics()["samples_in_window"] == 0
-        _record_linear_monitor({"probability": 0.8, "prediction": "spam", "model_path": "linear"})
+        _record_linear_monitor({"spam_probability": 0.8, "prediction": "spam", "model_path": "linear"})
         assert default_monitor.get_metrics()["samples_in_window"] == 1
     finally:
         default_monitor.clear()
@@ -817,6 +839,7 @@ def test_security_headers_on_success_and_error(client):
         assert response.headers["X-Frame-Options"] == "DENY"
         assert response.headers["Referrer-Policy"] == "no-referrer"
         assert "default-src 'self'" in response.headers["Content-Security-Policy"]
+        assert "script-src 'self';" in response.headers["Content-Security-Policy"]
         assert "Permissions-Policy" in response.headers
         assert "X-Request-ID" in response.headers
 
@@ -901,6 +924,10 @@ def test_redis_rate_limiter_preserves_prediction_429_contract(client, monkeypatc
     assert first.status_code == 200
     assert_error_schema(second, 429, "rate_limited")
     assert second.headers["Retry-After"] == "30"
+    assert second.headers["X-Request-ID"]
+    from api.ops_metrics import operations_monitor
+
+    assert operations_monitor.snapshot()["status_classes"].get("4xx", 0) >= 1
 
 
 def test_structured_logging_records_requests(client, caplog):
@@ -912,6 +939,20 @@ def test_structured_logging_records_requests(client, caplog):
         assert any(
             "logging-req-id-99" in record.message and "request_completed" in record.message for record in caplog.records
         )
+        assert all(
+            "client_ip" not in record.message for record in caplog.records if "request_completed" in record.message
+        )
+
+
+def test_unknown_user_path_is_never_logged_raw(client, caplog):
+    import logging
+
+    with caplog.at_level(logging.INFO, logger="api.main"):
+        response = client.get("/fictional-private-code-123456")
+    assert response.status_code == 404
+    logged = "\\n".join(record.message for record in caplog.records)
+    assert "/unmatched" in logged
+    assert "fictional-private-code-123456" not in logged
 
 
 def test_v1_versioned_routes(client):
@@ -943,6 +984,102 @@ def test_distribution_metrics_endpoint(client):
     data_v1 = res_v1.json()
     assert "score_distribution" in data_v1
     assert data_v1["samples_in_window"] >= 1
+
+
+def test_operations_metrics_report_coarse_counts_without_sensitive_text(client):
+    from api.ops_metrics import operations_monitor
+
+    operations_monitor.clear()
+    try:
+        body = "FICTIONAL-PRIVATE-SMS-123456"
+        client.post("/predict", json={"message": body})
+        client.post("/predict", content="{malformed", headers={"Content-Type": "application/json"})
+        response = client.get("/metrics/operations")
+        assert response.status_code == 200
+        report = response.json()
+        assert report["request_count"] >= 2
+        assert report["route_groups"]["prediction"] >= 2
+        assert report["status_classes"]["4xx"] >= 1
+        assert report["latency_p95_ms"] is not None
+        assert body not in response.text
+        assert "/predict" not in response.text
+        assert client.get("/v1/metrics/operations").status_code == 200
+    finally:
+        operations_monitor.clear()
+
+
+def test_metrics_routes_are_private_in_production(client, monkeypatch):
+    monkeypatch.setattr(api_main, "SMSD_ENV", "production")
+    monkeypatch.setattr(api_main, "METRICS_TOKEN", "fixture-secret-token")
+    for route in ("/metrics/distribution", "/metrics/operations", "/v1/metrics/operations"):
+        assert client.get(route).status_code == 404
+        assert client.get(route, headers={"X-SMSD-Metrics-Token": "wrong"}).status_code == 404
+        malformed = client.get(route, headers=[(b"x-smsd-metrics-token", b"\xff")])
+        assert malformed.status_code == 404
+        assert malformed.headers["cache-control"] == "no-store"
+        allowed = client.get(route, headers={"X-SMSD-Metrics-Token": "fixture-secret-token"})
+        assert allowed.status_code == 200
+        assert allowed.headers["cache-control"] == "no-store"
+    monkeypatch.setattr(api_main, "METRICS_TOKEN", "")
+    assert (
+        client.get("/metrics/operations", headers={"X-SMSD-Metrics-Token": "fixture-secret-token"}).status_code == 404
+    )
+
+
+def test_rate_limit_runtime_outage_returns_safe_503(client, monkeypatch):
+    from api.rate_limiter import RateLimiterUnavailable
+
+    class BrokenLimiter:
+        def check(self, *args, **kwargs):
+            raise RateLimiterUnavailable("backend secret must not leak")
+
+        def reset(self):
+            pass
+
+    monkeypatch.setattr(api_main, "RATE_LIMITER", BrokenLimiter())
+    response = client.post("/predict", json={"message": "Fictional SMS fixture"})
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "rate_limiter_unavailable"
+    assert response.headers["retry-after"] == "30"
+    assert response.headers["x-request-id"]
+    from api.ops_metrics import operations_monitor
+
+    assert operations_monitor.snapshot()["status_classes"].get("5xx", 0) >= 1
+    assert "backend secret" not in response.text
+    assert client.get("/health").status_code == 200
+
+
+def test_readiness_rejects_unavailable_shared_limiter(client, monkeypatch):
+    from api.rate_limiter import UnavailableRateLimiter
+
+    monkeypatch.setattr(api_main, "RATE_LIMITER", UnavailableRateLimiter())
+    assert client.get("/health").status_code == 200
+    failed = client.get("/ready")
+    assert failed.status_code == 503
+    assert failed.json()["error"]["code"] == "rate_limiter_unavailable"
+
+
+def test_strict_redis_readiness_detects_runtime_failure_and_recovery(client, monkeypatch):
+    class ProbeStub:
+        available = True
+
+        def ping(self):
+            if not self.available:
+                raise OSError("private backend details")
+            return True
+
+    backend = ProbeStub()
+    monkeypatch.setattr(api_main, "RATE_LIMITER", RedisRateLimiter(backend, fail_closed=True))
+    assert client.get("/ready").status_code == 200
+    backend.available = False
+    assert client.get("/health").status_code == 200
+    failed = client.get("/v1/ready")
+    assert failed.status_code == 503
+    assert failed.json()["error"]["code"] == "rate_limiter_unavailable"
+    assert failed.headers["retry-after"] == "30"
+    assert "private backend details" not in failed.text
+    backend.available = True
+    assert client.get("/ready").status_code == 200
 
 
 # ---------------------------------------------------------------------------
@@ -1009,7 +1146,7 @@ def test_index_and_static_files_are_served(client):
     assert head.headers["content-length"] == str(len(script.content))
     assert head.headers["cache-control"] == "no-cache"
 
-    for module in ("api-client.js", "i18n.js", "privacy-preview.js", "demo-examples.js"):
+    for module in ("api-client.js", "i18n.js", "privacy-preview.js", "demo-examples.js", "theme-init.js"):
         response = client.get(f"/static/{module}")
         assert response.status_code == 200
         assert "javascript" in response.headers["content-type"]

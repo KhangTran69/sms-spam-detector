@@ -402,7 +402,9 @@ commit them.
 | `SMSD_RATE_LIMIT_PER_MINUTE` | `60` | Sliding-window limit per direct client address across anonymous prediction endpoints. Uses Redis when `SMSD_REDIS_URL` is set and healthy; otherwise it is process-local. |
 | `SMSD_RATE_LIMIT` | `0` | Optional additional per-address limit shared by the request-body middleware for prediction and feedback routes. Zero disables this legacy limit. |
 | `SMSD_RATE_LIMIT_WINDOW` | `60` | Window in seconds for the optional `SMSD_RATE_LIMIT` limit. |
-| `SMSD_REDIS_URL` | unset | Optional Redis connection URL for limits shared across workers and replicas. Treat URLs containing credentials as secrets. Install the Python `redis` extra outside Docker. Startup connection failure falls back to per-process memory; request-time failure allows the request and retries Redis on later requests. |
+| `SMSD_REDIS_URL` | unset | Optional Redis connection URL to share rate limits across workers. Keep credentials in a secret store. If unset, limits remain process-local and a trusted gateway limit is required for public replicas. |
+| `SMSD_RATE_LIMIT_FAILURE_MODE` | `closed` in production, `open` in development | Redis failure policy when Redis is configured: `closed` returns a safe 503 and blocks readiness after failed startup; `open` permits traffic during a Redis outage. Only choose `open` behind an independently enforced gateway limit. |
+| `SMSD_METRICS_TOKEN` | unset | High-entropy operator secret required to access `/metrics/distribution` and `/metrics/operations` in production (including `/v1` aliases). Without a token, those routes return 404. |
 
 - There is **no** `PORT`, log-level, or prediction decision-threshold environment variable. Pass
   host/port/log level to uvicorn on the command line
@@ -429,8 +431,10 @@ commit them.
 | Endpoint | Semantics | Use |
 |---|---|---|
 | `GET /health` | Liveness only. Always 200 when the process is up; never loads the model. Body: `{"status":"ok","model_loaded":bool,"model_version":str|null}`. | Container/orchestrator liveness probe, dashboards. |
-| `GET /ready` | Readiness gate. Loads/verifies the artifact; 200 when ready, 503 (`model_unavailable`) when missing/incompatible. | Deploy gate, load-balancer readiness, "is it safe to send traffic?" |
+| `GET /ready` | Readiness gate. Checks a configured strict Redis backend and loads/verifies the artifact; 200 when ready, 503 (`rate_limiter_unavailable` or `model_unavailable`) on failure. | Deploy gate, load-balancer readiness, "is it safe to send traffic?" |
 | `GET /model-info` | JSON-safe metadata: version, schema version, classes, thresholds, bands, training data info, synthetic-data note, metrics, warnings. | Debugging, audit, UI threshold display. |
+| `GET /metrics/operations` | Process-local aggregate request count, coarse route/status groups, rolling p50/p95 latency. No SMS text or client identifiers. Production requires the `X-SMSD-Metrics-Token` header. | Operator-only service diagnostics; not a cross-replica metrics system. |
+| `GET /metrics/distribution` | Rolling linear spam-score distribution and drift. Without a compatible baseline, drift status is `no_baseline_configured`. Production requires the same metrics token. | Operator-only diagnostics, not labeled field accuracy. |
 
 Notes:
 
@@ -550,3 +554,53 @@ Summarize an enabled local queue without exporting report IDs or timestamps:
 ```bash
 python -m src.feedback --path data/feedback/reports.jsonl --output data/processed/feedback-summary.json
 ```
+
+### Operator-only resilience verification
+
+The API deliberately uses the direct peer address for app-level rate limiting,
+not an untrusted `X-Forwarded-For` header. Behind a reverse proxy, multiple
+users can appear to share the proxy address. **Enforce per-real-client limits,
+body limits, concurrency and timeouts at the trusted ingress** and use Redis
+for consistent limits across workers. No reverse-proxy authentication or
+real-client identity is inferred by the application.
+
+With `SMSD_ENV=production` and `SMSD_REDIS_URL` configured, the default
+failure policy is `closed`: if Redis is unreachable during startup, protected
+prediction requests and `/ready` return a safe 503; `/health` stays 200.
+Runtime Redis errors return 503 with `rate_limiter_unavailable` and
+`Retry-After: 30`. Strict Redis readiness also checks connectivity at runtime
+and recovers on a successful probe. A successful PING is not proof that the
+server permits the rate-limit script; verify prediction behavior separately.
+Restart after repairing an unavailable startup backend. With Redis **unset**,
+the single-process memory limiter tracks at most 10,000 active endpoint/client
+keys; it does not evict active counters to admit more identities. New identities
+can receive 429 with a short retry interval while capacity is exhausted. This is
+not a globally effective limit behind multiple workers.
+
+In production, diagnostics require a strong ASCII `SMSD_METRICS_TOKEN`, stored
+outside Git, and the request header `X-SMSD-Metrics-Token`. Restrict metrics
+paths further at the proxy and use TLS for any non-loopback operator access.
+Without that token, the metrics routes return 404. An operator may check:
+
+```bash
+curl -fsS -H "X-SMSD-Metrics-Token: $SMSD_METRICS_TOKEN" \
+  http://127.0.0.1:8000/metrics/operations
+```
+
+Operational metrics are **bounded, process-local snapshots**: cumulative
+counts grouped into fixed route/status categories, plus rolling latency
+percentiles. They reset on process restart and cannot be summed into a
+cross-replica total without a separate aggregator. No request bodies,
+arbitrary URL paths, IPs, model input text or raw headers are retained.
+Corrected spam-score monitoring requires a new version-matched baseline;
+previous confidence-in-predicted-label monitoring samples are incompatible.
+An empty baseline is **not** evidence of no drift.
+
+For safe isolated deployment rehearsal, use **fictional** requests to check
+normal predictions, 429 with Retry-After, oversized or chunked 413, malformed
+JSON 422, absent/corrupt model 503, Redis startup/runtime 503, logging
+scrubbing, and operator-only metrics. CI covers corresponding synthetic cases.
+Do not perform public load or abuse traffic simulation without explicit
+authorization and an isolated test environment. See
+[OPERATIONAL_AND_ACCESSIBILITY_REVIEW.md](OPERATIONAL_AND_ACCESSIBILITY_REVIEW.md)
+for a structured manual release check.
