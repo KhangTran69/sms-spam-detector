@@ -363,12 +363,14 @@ The profile's Redis service has no published host port and disables disk
 persistence; it stores only expiring rate-limit counters. For a non-container
 install, add the optional client with `python -m pip install -e ".[redis]"` and
 set `SMSD_REDIS_URL` to a reachable Redis URL. Keep any URL credentials in a
-secret store or local environment, never in Git. If Redis is unavailable at
-startup, the API logs a content-free fallback event and uses its process-local
-limiter until the API process restarts. If Redis fails during a request, that
-request fails open and the limiter logs a content-free warning counter; it
-tries Redis again on the next request. During either failure mode, limits are
-not shared between workers. Redis keys contain a SHA-256 digest of the direct
+secret store or local environment, never in Git. The default production
+policy fails closed; if a Redis client can be constructed but the startup
+probe fails, readiness and protected requests fail safely until Redis
+recovers. If client construction fails, repair configuration or dependencies
+and restart. Development defaults to fail-open: a failed startup probe falls
+back to a process-local limiter until restart; a runtime Redis failure permits
+the request and retries Redis on the next request. Fail-open limits are not
+shared during outages. Redis keys contain a SHA-256 digest of the direct
 client address and short-lived counters only; SMS content is never sent to
 Redis.
 
@@ -572,7 +574,9 @@ Runtime Redis errors return 503 with `rate_limiter_unavailable` and
 `Retry-After: 30`. Strict Redis readiness also checks connectivity at runtime
 and recovers on a successful probe. A successful PING is not proof that the
 server permits the rate-limit script; verify prediction behavior separately.
-Restart after repairing an unavailable startup backend. With Redis **unset**,
+If the Redis client was constructed, a startup connectivity failure can recover
+without restarting the API. Restart after repairing a client-construction
+failure (for example, invalid configuration). With Redis **unset**,
 the single-process memory limiter tracks at most 10,000 active endpoint/client
 keys; it does not evict active counters to admit more identities. New identities
 can receive 429 with a short retry interval while capacity is exhausted. This is

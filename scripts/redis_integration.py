@@ -6,6 +6,7 @@ import os
 import sys
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -36,10 +37,22 @@ def main() -> None:
         assert b.check("donation", identity, 2, 2) == (True, 0)
         time.sleep(2.1)
         assert b.check("prediction", identity, 2, 2) == (True, 0)
+
+        # Concurrent clients must share a single admission budget.
+        concurrent_identity = f"fictional-ci-{uuid.uuid4().hex}"
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            results = list(
+                pool.map(
+                    lambda index: (a if index % 2 else b).check("prediction", concurrent_identity, 5, 60),
+                    range(24),
+                )
+            )
+        assert sum(allowed for allowed, _retry in results) == 5
+        assert all(retry == 0 if allowed else 1 <= retry <= 60 for allowed, retry in results)
     finally:
         first.close()
         second.close()
-    print("redis-integration: shared counters, endpoint isolation and expiration passed")
+    print("redis-integration: shared counters, endpoint isolation, expiration and concurrent admission passed")
 
 
 if __name__ == "__main__":

@@ -232,16 +232,25 @@ def create_rate_limiter(
         raise ValueError("SMSD_RATE_LIMIT_FAILURE_MODE must be 'open' or 'closed'")
     fail_closed = mode == "closed"
     factory = client_factory or _create_redis_client
+    client = None
     try:
         client = factory(resolved_url)
         if not client.ping():
             raise RuntimeError("Redis startup probe failed")
     except Exception as exc:
-        fallback = "unavailable" if fail_closed else "memory"
+        if fail_closed:
+            fallback = "redis_retry" if client is not None else "unavailable"
+        else:
+            fallback = "memory"
         logger.warning(
             '{"event":"rate_limiter_startup_fallback","backend":"redis","fallback":"%s","error_type":"%s"}',
             fallback,
             type(exc).__name__,
         )
-        return UnavailableRateLimiter() if fail_closed else InMemoryRateLimiter()
+        if not fail_closed:
+            return InMemoryRateLimiter()
+        if client is None:
+            return UnavailableRateLimiter()
+        # Retain the shared client after a failed connectivity probe. Subsequent
+        # checks remain fail-closed and can reconnect without a process restart.
     return RedisRateLimiter(client, fail_closed=fail_closed)
