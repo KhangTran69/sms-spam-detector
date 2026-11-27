@@ -839,6 +839,7 @@ def test_security_headers_on_success_and_error(client):
         assert response.headers["X-Frame-Options"] == "DENY"
         assert response.headers["Referrer-Policy"] == "no-referrer"
         assert "default-src 'self'" in response.headers["Content-Security-Policy"]
+        assert "script-src 'self';" in response.headers["Content-Security-Policy"]
         assert "Permissions-Policy" in response.headers
         assert "X-Request-ID" in response.headers
 
@@ -1096,7 +1097,7 @@ def test_index_and_static_files_are_served(client):
     assert head.headers["content-length"] == str(len(script.content))
     assert head.headers["cache-control"] == "no-cache"
 
-    for module in ("api-client.js", "i18n.js", "privacy-preview.js", "demo-examples.js"):
+    for module in ("api-client.js", "i18n.js", "privacy-preview.js", "demo-examples.js", "theme-init.js"):
         response = client.get(f"/static/{module}")
         assert response.status_code == 200
         assert "javascript" in response.headers["content-type"]

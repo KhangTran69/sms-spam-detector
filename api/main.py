@@ -88,7 +88,7 @@ SECURITY_HEADERS = {
     "Permissions-Policy": "geolocation=(), camera=(), microphone=()",
     "Content-Security-Policy": (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline'; "
+        "script-src 'self'; "
         "style-src 'self' 'unsafe-inline'; "
         "img-src 'self' data:; "
         "connect-src 'self'; "
@@ -657,6 +657,7 @@ get_operations_metrics = _routes.get_operations_metrics
 
 _STATIC_ASSETS = {
     "app.js",
+    "theme-init.js",
     "api-client.js",
     "i18n.js",
     "privacy-preview.js",
@@ -687,6 +688,7 @@ def static_asset(asset_name: str, request: Request):
         )
     media_type = {
         "app.js": "text/javascript",
+        "theme-init.js": "text/javascript",
         "api-client.js": "text/javascript",
         "i18n.js": "text/javascript",
         "privacy-preview.js": "text/javascript",
