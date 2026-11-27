@@ -924,6 +924,10 @@ def test_redis_rate_limiter_preserves_prediction_429_contract(client, monkeypatc
     assert first.status_code == 200
     assert_error_schema(second, 429, "rate_limited")
     assert second.headers["Retry-After"] == "30"
+    assert second.headers["X-Request-ID"]
+    from api.ops_metrics import operations_monitor
+
+    assert operations_monitor.snapshot()["status_classes"].get("4xx", 0) >= 1
 
 
 def test_structured_logging_records_requests(client, caplog):
@@ -1012,7 +1016,9 @@ def test_metrics_routes_are_private_in_production(client, monkeypatch):
         assert client.get(route, headers={"X-SMSD-Metrics-Token": "wrong"}).status_code == 404
         assert client.get(route, headers={"X-SMSD-Metrics-Token": "fixture-secret-token"}).status_code == 200
     monkeypatch.setattr(api_main, "METRICS_TOKEN", "")
-    assert client.get("/metrics/operations", headers={"X-SMSD-Metrics-Token": "fixture-secret-token"}).status_code == 404
+    assert (
+        client.get("/metrics/operations", headers={"X-SMSD-Metrics-Token": "fixture-secret-token"}).status_code == 404
+    )
 
 
 def test_rate_limit_runtime_outage_returns_safe_503(client, monkeypatch):
@@ -1030,6 +1036,10 @@ def test_rate_limit_runtime_outage_returns_safe_503(client, monkeypatch):
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "rate_limiter_unavailable"
     assert response.headers["retry-after"] == "30"
+    assert response.headers["x-request-id"]
+    from api.ops_metrics import operations_monitor
+
+    assert operations_monitor.snapshot()["status_classes"].get("5xx", 0) >= 1
     assert "backend secret" not in response.text
     assert client.get("/health").status_code == 200
 

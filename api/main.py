@@ -183,9 +183,19 @@ def _safe_log_path(path: str) -> str:
         return "/donate"
     canonical = path.removeprefix("/v1") if path.startswith("/v1/") else path
     safe_routes = {
-        "/", "/health", "/ready", "/model-info", "/predict", "/analyze",
-        "/analyze/batch", "/feedback", "/metrics/distribution",
-        "/metrics/operations", "/sw.js", "/manifest.webmanifest", "/privacy-notice",
+        "/",
+        "/health",
+        "/ready",
+        "/model-info",
+        "/predict",
+        "/analyze",
+        "/analyze/batch",
+        "/feedback",
+        "/metrics/distribution",
+        "/metrics/operations",
+        "/sw.js",
+        "/manifest.webmanifest",
+        "/privacy-notice",
     }
     if canonical in safe_routes:
         return path
@@ -391,26 +401,33 @@ class PredictionRateLimitMiddleware:
         if scope["type"] == "http" and (
             (method == "POST" and is_prediction) or (method in {"POST", "DELETE"} and is_donation)
         ):
+            limit_check_started = time.perf_counter()
             identity = _client_ip(scope)
             endpoint = "donation" if is_donation else "prediction"
             limit = DONATION_RATE_LIMIT_PER_MINUTE if is_donation else PREDICTION_RATE_LIMIT
             try:
                 allowed, retry_after = await _check_rate_limiter(endpoint, identity, limit, 60)
             except RateLimiterUnavailable:
+                request_id = _request_id(scope)
+                latency_ms = round((time.perf_counter() - limit_check_started) * 1000, 2)
+                _log_request_completed(request_id, method, _safe_log_path(path), 503, latency_ms)
                 response = _error_response(
                     503,
                     "rate_limiter_unavailable",
                     "Request protection is temporarily unavailable. Retry later.",
-                    headers={"Retry-After": "30"},
+                    headers={"Retry-After": "30", "X-Request-ID": request_id},
                 )
                 await response(scope, receive, send)
                 return
             if not allowed:
+                request_id = _request_id(scope)
+                latency_ms = round((time.perf_counter() - limit_check_started) * 1000, 2)
+                _log_request_completed(request_id, method, _safe_log_path(path), 429, latency_ms)
                 response = _error_response(
                     429,
                     "rate_limited",
                     "Too many prediction requests; retry later.",
-                    headers={"Retry-After": str(retry_after)},
+                    headers={"Retry-After": str(retry_after), "X-Request-ID": request_id},
                 )
                 await response(scope, receive, send)
                 return
