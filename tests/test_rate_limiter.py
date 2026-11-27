@@ -33,6 +33,20 @@ def test_in_memory_limiter_uses_sliding_window_and_exact_expiry_boundary() -> No
     assert limiter.check("prediction", "192.0.2.10", 2, 60, now=160) == (True, 0)
 
 
+def test_in_memory_limiter_bounds_identity_table_without_evicting_live_counters() -> None:
+    limiter = InMemoryRateLimiter(max_identities=2)
+    assert limiter.check("prediction", "fixture-a", 1, 60, now=100) == (True, 0)
+    assert limiter.check("prediction", "fixture-b", 1, 60, now=101) == (True, 0)
+    for index in range(20):
+        assert limiter.check("prediction", f"fixture-new-{index}", 1, 60, now=102) == (False, 1)
+    assert len(limiter._records) == 2
+    assert limiter.check("prediction", "fixture-a", 1, 60, now=103) == (False, 57)
+    assert limiter.check("prediction", "fixture-c", 1, 60, now=160) == (True, 0)
+    assert len(limiter._records) == 2
+    limiter.reset()
+    assert limiter.check("prediction", "fixture-d", 1, 60, now=161) == (True, 0)
+
+
 def test_in_memory_limiter_namespaces_endpoints() -> None:
     limiter = InMemoryRateLimiter()
 
@@ -156,3 +170,27 @@ def test_redis_outage_policy_override_is_validated(monkeypatch) -> None:
     monkeypatch.setenv("SMSD_RATE_LIMIT_FAILURE_MODE", "invalid")
     with pytest.raises(ValueError, match="SMSD_RATE_LIMIT_FAILURE_MODE"):
         create_rate_limiter("redis://cache.example.test/0", client_factory=lambda _url: client)
+
+
+def test_closed_redis_readiness_detects_failed_ping_and_recovers() -> None:
+    import pytest
+
+    from api.rate_limiter import RateLimiterUnavailable
+
+    class ProbeStub(RedisStub):
+        available = True
+
+        def ping(self) -> bool:
+            if not self.available:
+                raise OSError("private Redis connection details")
+            return True
+
+    client = ProbeStub()
+    limiter = RedisRateLimiter(client, fail_closed=True)
+    limiter.ensure_available()
+    client.available = False
+    with pytest.raises(RateLimiterUnavailable, match="Rate limiting backend unavailable"):
+        limiter.ensure_available()
+    RedisRateLimiter(client).ensure_available()
+    client.available = True
+    limiter.ensure_available()

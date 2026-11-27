@@ -75,10 +75,14 @@ class RateLimiter(Protocol):
 class InMemoryRateLimiter:
     """Thread-safe sliding-window limiter for one process."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, max_identities: int = 10_000) -> None:
+        if max_identities <= 0:
+            raise ValueError("max_identities must be positive")
+        self._max_identities = max_identities
         self._records: dict[tuple[str, str], tuple[int, list[float]]] = {}
         self._lock = threading.Lock()
         self._checks = 0
+        self._last_prune: float | None = None
 
     def check(
         self,
@@ -96,6 +100,13 @@ class InMemoryRateLimiter:
         cutoff = current_time - window
         key = (endpoint, identity)
         with self._lock:
+            if key not in self._records and len(self._records) >= self._max_identities:
+                # Never evict a live counter to admit a new identity. At capacity,
+                # bound full-table pruning to once per second.
+                if self._last_prune is None or current_time - self._last_prune >= 1:
+                    self._prune(current_time)
+                if len(self._records) >= self._max_identities:
+                    return False, 1
             _, stored_timestamps = self._records.get(key, (window, []))
             timestamps = [timestamp for timestamp in stored_timestamps if timestamp > cutoff]
             if len(timestamps) >= limit:
@@ -106,11 +117,12 @@ class InMemoryRateLimiter:
             timestamps.append(current_time)
             self._records[key] = (window, timestamps)
             self._checks += 1
-            if self._checks % 1024 == 0 or len(self._records) > 10_000:
+            if self._checks % 1024 == 0:
                 self._prune(current_time)
             return True, 0
 
     def _prune(self, now: float) -> None:
+        self._last_prune = now
         for key, (window, timestamps) in list(self._records.items()):
             active = [timestamp for timestamp in timestamps if timestamp > now - window]
             if active:
@@ -122,6 +134,7 @@ class InMemoryRateLimiter:
         with self._lock:
             self._records.clear()
             self._checks = 0
+            self._last_prune = None
 
 
 class RedisRateLimiter:
@@ -178,6 +191,16 @@ class RedisRateLimiter:
                 raise RateLimiterUnavailable("Rate limiting backend unavailable") from None
             return True, 0
 
+    def ensure_available(self) -> None:
+        """A strict shared backend must answer the readiness probe."""
+        if not self._fail_closed:
+            return
+        try:
+            if not self._client.ping():
+                raise RuntimeError("Redis readiness probe failed")
+        except Exception:
+            raise RateLimiterUnavailable("Rate limiting backend unavailable") from None
+
     def reset(self) -> None:
         """Redis counters expire naturally; never flush shared application keys."""
 
@@ -203,7 +226,7 @@ def create_rate_limiter(
     if not resolved_url:
         return InMemoryRateLimiter()
 
-    default_mode = "closed" if os.environ.get("SMSD_ENV", "development").lower() == "production" else "open"
+    default_mode = "closed" if os.environ.get("SMSD_ENV", "development").strip().lower() == "production" else "open"
     mode = os.environ.get("SMSD_RATE_LIMIT_FAILURE_MODE", default_mode).strip().lower()
     if mode not in {"open", "closed"}:
         raise ValueError("SMSD_RATE_LIMIT_FAILURE_MODE must be 'open' or 'closed'")
@@ -211,7 +234,8 @@ def create_rate_limiter(
     factory = client_factory or _create_redis_client
     try:
         client = factory(resolved_url)
-        client.ping()
+        if not client.ping():
+            raise RuntimeError("Redis startup probe failed")
     except Exception as exc:
         fallback = "unavailable" if fail_closed else "memory"
         logger.warning(

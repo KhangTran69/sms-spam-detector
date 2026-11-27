@@ -431,7 +431,7 @@ commit them.
 | Endpoint | Semantics | Use |
 |---|---|---|
 | `GET /health` | Liveness only. Always 200 when the process is up; never loads the model. Body: `{"status":"ok","model_loaded":bool,"model_version":str|null}`. | Container/orchestrator liveness probe, dashboards. |
-| `GET /ready` | Readiness gate. Loads/verifies the artifact; 200 when ready, 503 (`model_unavailable`) when missing/incompatible. | Deploy gate, load-balancer readiness, "is it safe to send traffic?" |
+| `GET /ready` | Readiness gate. Checks a configured strict Redis backend and loads/verifies the artifact; 200 when ready, 503 (`rate_limiter_unavailable` or `model_unavailable`) on failure. | Deploy gate, load-balancer readiness, "is it safe to send traffic?" |
 | `GET /model-info` | JSON-safe metadata: version, schema version, classes, thresholds, bands, training data info, synthetic-data note, metrics, warnings. | Debugging, audit, UI threshold display. |
 | `GET /metrics/operations` | Process-local aggregate request count, coarse route/status groups, rolling p50/p95 latency. No SMS text or client identifiers. Production requires the `X-SMSD-Metrics-Token` header. | Operator-only service diagnostics; not a cross-replica metrics system. |
 | `GET /metrics/distribution` | Rolling linear spam-score distribution and drift. Without a compatible baseline, drift status is `no_baseline_configured`. Production requires the same metrics token. | Operator-only diagnostics, not labeled field accuracy. |
@@ -568,11 +568,16 @@ With `SMSD_ENV=production` and `SMSD_REDIS_URL` configured, the default
 failure policy is `closed`: if Redis is unreachable during startup, protected
 prediction requests and `/ready` return a safe 503; `/health` stays 200.
 Runtime Redis errors return 503 with `rate_limiter_unavailable` and
-`Retry-After: 30`. Restart after repairing an unavailable startup backend.
-With Redis **unset**, the original single-process memory limiter remains
-available; it is not globally effective behind multiple workers.
+`Retry-After: 30`. Strict Redis readiness also checks connectivity at runtime
+and recovers on a successful probe. A successful PING is not proof that the
+server permits the rate-limit script; verify prediction behavior separately.
+Restart after repairing an unavailable startup backend. With Redis **unset**,
+the single-process memory limiter tracks at most 10,000 active endpoint/client
+keys; it does not evict active counters to admit more identities. New identities
+can receive 429 with a short retry interval while capacity is exhausted. This is
+not a globally effective limit behind multiple workers.
 
-In production, diagnostics require a strong `SMSD_METRICS_TOKEN`, stored
+In production, diagnostics require a strong ASCII `SMSD_METRICS_TOKEN`, stored
 outside Git, and the request header `X-SMSD-Metrics-Token`. Restrict metrics
 paths further at the proxy and use TLS for any non-loopback operator access.
 Without that token, the metrics routes return 404. An operator may check:

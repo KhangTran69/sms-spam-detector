@@ -1014,7 +1014,12 @@ def test_metrics_routes_are_private_in_production(client, monkeypatch):
     for route in ("/metrics/distribution", "/metrics/operations", "/v1/metrics/operations"):
         assert client.get(route).status_code == 404
         assert client.get(route, headers={"X-SMSD-Metrics-Token": "wrong"}).status_code == 404
-        assert client.get(route, headers={"X-SMSD-Metrics-Token": "fixture-secret-token"}).status_code == 200
+        malformed = client.get(route, headers=[(b"x-smsd-metrics-token", b"\xff")])
+        assert malformed.status_code == 404
+        assert malformed.headers["cache-control"] == "no-store"
+        allowed = client.get(route, headers={"X-SMSD-Metrics-Token": "fixture-secret-token"})
+        assert allowed.status_code == 200
+        assert allowed.headers["cache-control"] == "no-store"
     monkeypatch.setattr(api_main, "METRICS_TOKEN", "")
     assert (
         client.get("/metrics/operations", headers={"X-SMSD-Metrics-Token": "fixture-secret-token"}).status_code == 404
@@ -1052,6 +1057,29 @@ def test_readiness_rejects_unavailable_shared_limiter(client, monkeypatch):
     failed = client.get("/ready")
     assert failed.status_code == 503
     assert failed.json()["error"]["code"] == "rate_limiter_unavailable"
+
+
+def test_strict_redis_readiness_detects_runtime_failure_and_recovery(client, monkeypatch):
+    class ProbeStub:
+        available = True
+
+        def ping(self):
+            if not self.available:
+                raise OSError("private backend details")
+            return True
+
+    backend = ProbeStub()
+    monkeypatch.setattr(api_main, "RATE_LIMITER", RedisRateLimiter(backend, fail_closed=True))
+    assert client.get("/ready").status_code == 200
+    backend.available = False
+    assert client.get("/health").status_code == 200
+    failed = client.get("/v1/ready")
+    assert failed.status_code == 503
+    assert failed.json()["error"]["code"] == "rate_limiter_unavailable"
+    assert failed.headers["retry-after"] == "30"
+    assert "private backend details" not in failed.text
+    backend.available = True
+    assert client.get("/ready").status_code == 200
 
 
 # ---------------------------------------------------------------------------

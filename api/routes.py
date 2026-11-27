@@ -27,7 +27,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from api.donations import RETENTION_DAYS, create_donation, delete_donation
 from api.ops_metrics import operations_monitor
-from api.rate_limiter import RateLimiterUnavailable, UnavailableRateLimiter
+from api.rate_limiter import RateLimiterUnavailable, RedisRateLimiter, UnavailableRateLimiter
 from api.schemas import (
     _ERROR_RESPONSES,
     AnalyzeResponse,
@@ -82,8 +82,11 @@ def health() -> HealthResponse:
     summary="Readiness probe (loads and validates the model artifact)",
 )
 def ready() -> ReadinessResponse:
-    if isinstance(_state().RATE_LIMITER, UnavailableRateLimiter):
+    limiter = _state().RATE_LIMITER
+    if isinstance(limiter, UnavailableRateLimiter):
         raise RateLimiterUnavailable("Rate limiting backend unavailable")
+    if isinstance(limiter, RedisRateLimiter):
+        limiter.ensure_available()
     model = _state().get_model()
     return ReadinessResponse(status="ready", model_loaded=True, model_version=_state()._model_version(model))
 
@@ -137,8 +140,8 @@ def _authorize_metrics(request: Request) -> None:
         return
     token = state.METRICS_TOKEN
     provided = request.headers.get("x-smsd-metrics-token", "")
-    if not token or not hmac.compare_digest(provided, token):
-        raise HTTPException(status_code=404, detail="Not found")
+    if not token or not token.isascii() or not provided.isascii() or not hmac.compare_digest(provided, token):
+        raise HTTPException(status_code=404, detail="Not found", headers={"Cache-Control": "no-store"})
 
 
 @router.get(

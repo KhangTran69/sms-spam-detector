@@ -23,7 +23,8 @@ Review the following in an approved non-public environment:
 | Missing, invalid and malformed JSON | 422/4xx safe schema with no SMS echo |
 | Oversized declared or streamed input | 413; no unbounded buffering or text logging |
 | Redis unavailable at production startup | /health liveness 200, /ready 503, prediction 503 |
-| Redis outage after successful initialization | Safe 503 rate_limiter_unavailable; no backend secrets exposed |
+| Redis outage after successful initialization | Safe prediction and strict readiness 503 rate_limiter_unavailable; no backend secrets exposed; recovery probe succeeds after repair |
+| Local limiter identity capacity exhausted | New identities receive 429; existing active counters remain enforced and expired keys free capacity |
 | Redis disabled and multiple workers | Gateway handles shared per-client limits; no false shared-counter claim |
 | Missing/incompatible model | /ready 503; UI describes unavailable analysis without fake result |
 | Unauthorized operational metrics in production | 404 even for guessed token; operator token access through TLS only |
