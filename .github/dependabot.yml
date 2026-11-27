@@ -1,0 +1,21 @@
+# Dependabot: monthly update windows, one PR per ecosystem.
+# Runtime ranges are bounded in requirements.txt / pyproject.toml and the
+# constraints/ files pin exact versions per Python tier; Dependabot PRs must
+# regenerate constraints in the same change (see CONTRIBUTING.md).
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 5
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 5
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 5
