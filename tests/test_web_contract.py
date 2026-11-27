@@ -284,24 +284,29 @@ def test_service_worker_installs_complete_static_shell_and_never_caches_api(html
     assert "await cache.put(request" not in sw, "runtime responses must not mutate an installed release"
     for path in ("/analyze", "/analyze/batch", "/predict", "/feedback", "/model-info"):
         assert f'"{path}"' in sw
-    assert "smsd-shell-v24" in sw
-    assert '"/static/theme-init.js?v=theme-v1"' in sw
-    for asset in ("styles.css", "app.js"):
-        assert f'"/static/{asset}?v=ui19-synthetic-examples-20261101"' in sw
+    cache_match = re.search(r"smsd-shell-v(\d+)", sw)
+    assert cache_match, "sw.js must pin a shell cache generation"
+    ui_stamp = re.search(r"/static/app\.js\?v=([a-z0-9-]+)", html)
+    assert ui_stamp, "index.html must pin the app.js asset version"
+    stamp = ui_stamp.group(1)
     for asset in (
+        "styles.css",
+        "app.js",
         "api-client.js",
         "i18n.js",
         "privacy-preview.js",
         "history-store.js",
         "connection-status.js",
         "result-format.js",
+        "demo-examples.js",
+        "shell-updates.js",
     ):
-        assert f'"/static/{asset}?v=ui19-synthetic-examples-20261101"' in sw
+        assert f'"/static/{asset}?v={stamp}"' in sw, f"shell must cache the current {asset}"
+    assert '"/static/theme-init.js?v=theme-v1"' in sw
     assert '"/static/donate.js?v=donate-v5"' in sw
     assert '"/static/donate.css?v=donate-v5"' in sw
     assert '"/donate"' in sw and '"/privacy-notice"' in sw
-    assert '"/static/demo-examples.js?v=ui19-synthetic-examples-20261101"' in sw
-    assert 'type="module" src="/static/app.js?v=ui19-synthetic-examples-20261101"' in html
+    assert f'type="module" src="/static/app.js?v={stamp}"' in html
     assert '<script src="/static/theme-init.js?v=theme-v1"></script>' in html
     assert "<script>" not in html
     assert 'id="single-privacy-review"' in html
@@ -613,6 +618,78 @@ def test_service_worker_never_caches_messages(js, html, api_source):
     manifest = (ROOT / "api" / "web" / "manifest.webmanifest").read_text(encoding="utf-8")
     assert '"start_url": "/"' in manifest
     assert "icons" in manifest
+
+
+# ----------------------------- shell update self-healing -----------------------------
+
+
+def test_shell_and_asset_versions_move_in_lockstep(html):
+    """A release bumps the page stamp and the service-worker shell together.
+
+    If index.html references asset versions the shell does not cache, a
+    redeployed tab mixes generations; this is the drift behind stale-shell
+    bug reports."""
+    html_stamps = set(re.findall(r"\?v=([a-z0-9-]+)", html))
+    donate_html = ROOT / "api" / "web" / "donate.html"
+    if donate_html.is_file():
+        html_stamps |= set(re.findall(r"\?v=([a-z0-9-]+)", donate_html.read_text(encoding="utf-8")))
+    sw = (ROOT / "api" / "web" / "sw.js").read_text(encoding="utf-8")
+    sw_stamps = set(re.findall(r'"/static/[^"]+\?v=([a-z0-9-]+)"', sw))
+    untracked = sw_stamps - html_stamps
+    assert not untracked, f"sw.js caches asset versions index.html does not reference: {sorted(untracked)}"
+
+
+def test_shell_updates_module_is_wired(js, html):
+    shell = (ROOT / "api" / "web" / "shell-updates.js").read_text(encoding="utf-8")
+    sw = (ROOT / "api" / "web" / "sw.js").read_text(encoding="utf-8")
+    i18n = (ROOT / "api" / "web" / "i18n.js").read_text(encoding="utf-8")
+    api_client = (ROOT / "api" / "web" / "api-client.js").read_text(encoding="utf-8")
+
+    assert 'id="update-banner"' in html and 'id="btn-apply-update"' in html
+    assert 'aria-live="polite"' in html.split('id="update-banner"')[1][:300]
+    assert 'data-i18n="update.banner"' in html and 'data-i18n="update.reloadButton"' in html
+
+    # Update discovery: focus/visibility re-check plus controller takeover hook.
+    assert "registration.update()" in shell or "registrationRef.update()" in shell
+    assert 'addEventListener("controllerchange"' in shell
+    assert "shouldAutoReload" in shell and "visibilitychange" in shell
+
+    # app.js consumes the module and hands it the in-flight counter.
+    assert "createShellUpdates" in js and "shellUpdates.attach(registration)" in js
+    assert "activeRequestCount" in js and "onStaleShell" in js
+    assert "failure.staleShell" in js, "describeError must map stale-shell failures to update copy"
+
+    # The API client detects responses newer than the shell.
+    assert "activeRequests += 1" in api_client and "export function activeRequestCount()" in api_client
+    assert "assertKnownShape" in api_client and "staleShell" in api_client
+
+    # The worker announces the activated generation for the reload guard.
+    assert "shell-activated" in sw and "postMessage" in sw
+    assert "skipWaiting" in sw
+
+    # Both dictionaries carry the banner copy.
+    for lang_name in ("en", "taglish"):
+        block = i18n.split(f"{lang_name}: {{", 1)[1].split("\n  }", 1)[0]
+        for key in ("update.banner", "update.reloadButton", "update.staleShellError"):
+            assert f'"{key}"' in block, f"{lang_name} dictionary must translate {key}"
+
+
+def test_every_module_imported_by_app_js_is_served_by_the_api():
+    """A module missing from the static allowlist breaks the whole page (the
+    import graph fails before any UI code runs) — pin imports to the allowlist."""
+    app_source = (ROOT / "api" / "web" / "app.js").read_text(encoding="utf-8")
+    api_main = (ROOT / "api" / "main.py").read_text(encoding="utf-8")
+    imported = re.findall(r'from "\./([a-z0-9-]+\.js)\?v=', app_source)
+    assert imported, "expected explicit versioned module imports in app.js"
+    for module in imported:
+        assert f'"{module}"' in api_main, f"{module} is imported by app.js but missing from api/main.py _STATIC_ASSETS"
+
+
+def test_shell_update_auto_reload_never_interrupts_analysis(shell_source=None):
+    shell = (ROOT / "api" / "web" / "shell-updates.js").read_text(encoding="utf-8")
+    assert "activeRequests > 0" in shell, "auto-reload must check the in-flight counter"
+    assert "hidden" in shell, "auto-reload applies only to hidden tabs"
+    assert "RELOAD_GUARD_PREFIX" in shell, "reload guard must be scoped per shell generation"
 
 
 def test_mobile_batch_cards_use_data_labels(css, js):

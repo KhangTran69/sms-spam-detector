@@ -4,6 +4,9 @@ const path = require('node:path');
 const assert = require('node:assert/strict');
 
 const source = fs.readFileSync(path.join(__dirname, '../api/web/sw.js'), 'utf8');
+const CACHE_NAME = source.match(/smsd-shell-v\d+/)[0];
+const indexSource = fs.readFileSync(path.join(__dirname, '../api/web/index.html'), 'utf8');
+const UI_STAMP = indexSource.match(/\/static\/app\.js\?v=([a-z0-9-]+)/)[1];
 
 function createWorker({ failAsset = null, delayAsset = null, networkFails = true } = {}) {
   const handlers = {};
@@ -41,13 +44,13 @@ function createWorker({ failAsset = null, delayAsset = null, networkFails = true
     async delete(name) { deleted.push(name); return shellCaches.delete(name); },
     async keys() { return [...shellCaches.keys()]; },
     async match(request, options) {
-      assert.equal(options.cacheName, 'smsd-shell-v24');
+      assert.equal(options.cacheName, CACHE_NAME);
       return shellCaches.get(options.cacheName)?.get(cacheKey(request)) || null;
     },
   };
   const self = {
     location: { origin: 'http://detector.test' },
-    clients: { async claim() {} },
+    clients: { async claim() {}, async matchAll() { return []; } },
     async skipWaiting() { skippedWaiting = true; },
     addEventListener(name, callback) { handlers[name] = callback; },
   };
@@ -64,7 +67,7 @@ function createWorker({ failAsset = null, delayAsset = null, networkFails = true
   vm.runInContext(source, context);
   return {
     handlers, caches, shellCaches, deleted,
-    get cacheData() { return shellCaches.get('smsd-shell-v24'); },
+    get cacheData() { return shellCaches.get(CACHE_NAME); },
     finishDelayedAsset() { finishDelayedAsset(); },
     get skippedWaiting() { return skippedWaiting; },
   };
@@ -78,8 +81,8 @@ function createWorker({ failAsset = null, delayAsset = null, networkFails = true
   assert.deepEqual(interrupted.deleted, [], 'failed install waits for in-flight cache writes to settle');
   interrupted.finishDelayedAsset();
   await assert.rejects(install, /static shell asset could not be cached/);
-  assert.deepEqual(interrupted.deleted, ['smsd-shell-v24']);
-  assert.equal(interrupted.shellCaches.has('smsd-shell-v24'), false, 'failed candidate cache is removed');
+  assert.deepEqual(interrupted.deleted, [CACHE_NAME]);
+  assert.equal(interrupted.shellCaches.has(CACHE_NAME), false, 'failed candidate cache is removed');
   assert.equal(await (await interrupted.shellCaches.get('smsd-shell-v13').get('/').text()), 'previous release with spam signal wording',
     'failed update leaves the previous complete release intact');
   assert.equal(interrupted.skippedWaiting, false, 'partial shell must not activate');
@@ -93,7 +96,7 @@ function createWorker({ failAsset = null, delayAsset = null, networkFails = true
   worker.handlers.activate({ waitUntil(promise) { cleanup = promise; } });
   await cleanup;
   assert.deepEqual(worker.deleted, ['smsd-shell-v6', 'smsd-shell-v7', 'smsd-shell-v8', 'smsd-shell-v9', 'smsd-shell-v10', 'smsd-shell-v11', 'smsd-shell-v12', 'smsd-shell-v13', 'smsd-shell-v14'], 'old releases are removed only after new install completed');
-  assert.equal(worker.shellCaches.has('smsd-shell-v24'), true, 'new complete release is active after upgrade');
+  assert.equal(worker.shellCaches.has(CACHE_NAME), true, 'new complete release is active after upgrade');
 
   let apiIntercepted = false;
   worker.handlers.fetch({
@@ -110,25 +113,25 @@ function createWorker({ failAsset = null, delayAsset = null, networkFails = true
 
   let cachedResponse;
   worker.handlers.fetch({
-    request: { method: 'GET', url: 'http://detector.test/static/app.js?v=ui19-synthetic-examples-20261101' },
+    request: { method: 'GET', url: `http://detector.test/static/app.js?v=${UI_STAMP}` },
     respondWith(promise) { cachedResponse = promise; },
   });
   const response = await cachedResponse;
-  assert.equal(await response.text(), 'cached:/static/app.js?v=ui19-synthetic-examples-20261101');
-  assert.equal(worker.cacheData.get('/static/app.js?v=ui19-synthetic-examples-20261101').status, 200,
+  assert.equal(await response.text(), `cached:/static/app.js?v=${UI_STAMP}`);
+  assert.equal(worker.cacheData.get(`/static/app.js?v=${UI_STAMP}`).status, 200,
     'network responses must not overwrite immutable release assets');
   for (const asset of ['api-client.js', 'i18n.js', 'privacy-preview.js', 'history-store.js', 'connection-status.js', 'result-format.js']) {
-    const request = { method: 'GET', url: `http://detector.test/static/${asset}?v=ui19-synthetic-examples-20261101` };
+    const request = { method: 'GET', url: `http://detector.test/static/${asset}?v=${UI_STAMP}` };
     let moduleResponse;
     worker.handlers.fetch({ request, respondWith(promise) { moduleResponse = promise; } });
-    assert.equal(await (await moduleResponse).text(), `cached:/static/${asset}?v=ui19-synthetic-examples-20261101`);
+    assert.equal(await (await moduleResponse).text(), `cached:/static/${asset}?v=${UI_STAMP}`);
   }
   let examplesResponse;
   worker.handlers.fetch({
-    request: { method: 'GET', url: 'http://detector.test/static/demo-examples.js?v=ui19-synthetic-examples-20261101' },
+    request: { method: 'GET', url: `http://detector.test/static/demo-examples.js?v=${UI_STAMP}` },
     respondWith(promise) { examplesResponse = promise; },
   });
-  assert.equal(await (await examplesResponse).text(), 'cached:/static/demo-examples.js?v=ui19-synthetic-examples-20261101');
+  assert.equal(await (await examplesResponse).text(), `cached:/static/demo-examples.js?v=${UI_STAMP}`);
 
   let uncachedResponse;
   worker.handlers.fetch({
@@ -136,10 +139,10 @@ function createWorker({ failAsset = null, delayAsset = null, networkFails = true
     respondWith(promise) { uncachedResponse = promise; },
   });
   assert.equal(uncachedResponse, undefined, 'unknown asset versions bypass the worker');
-  worker.cacheData.delete('/static/styles.css?v=ui19-synthetic-examples-20261101');
+  worker.cacheData.delete(`/static/styles.css?v=${UI_STAMP}`);
   let unavailableResponse;
   worker.handlers.fetch({
-    request: { method: 'GET', url: 'http://detector.test/static/styles.css?v=ui19-synthetic-examples-20261101' },
+    request: { method: 'GET', url: `http://detector.test/static/styles.css?v=${UI_STAMP}` },
     respondWith(promise) { unavailableResponse = promise; },
   });
   const unavailable = await unavailableResponse;

@@ -1,10 +1,11 @@
-import { API, createApiClient } from "./api-client.js?v=ui19-synthetic-examples-20261101";
-import { I18N } from "./i18n.js?v=ui19-synthetic-examples-20261101";
-import { applyPrivacyMasks, buildPrivacyReview, clearPrivacyReview, detectSensitiveSpans } from "./privacy-preview.js?v=ui19-synthetic-examples-20261101";
-import { createHistoryStore } from "./history-store.js?v=ui19-synthetic-examples-20261101";
-import { createConnectionStatus } from "./connection-status.js?v=ui19-synthetic-examples-20261101";
-import { createResultFormatting, normalizeModelInfo } from "./result-format.js?v=ui19-synthetic-examples-20261101";
-import { EXAMPLES } from "./demo-examples.js?v=ui19-synthetic-examples-20261101";
+import { API, activeRequestCount, createApiClient } from "./api-client.js?v=ui20-shell-update-banner-20261127";
+import { createShellUpdates } from "./shell-updates.js?v=ui20-shell-update-banner-20261127";
+import { I18N } from "./i18n.js?v=ui20-shell-update-banner-20261127";
+import { applyPrivacyMasks, buildPrivacyReview, clearPrivacyReview, detectSensitiveSpans } from "./privacy-preview.js?v=ui20-shell-update-banner-20261127";
+import { createHistoryStore } from "./history-store.js?v=ui20-shell-update-banner-20261127";
+import { createConnectionStatus } from "./connection-status.js?v=ui20-shell-update-banner-20261127";
+import { createResultFormatting, normalizeModelInfo } from "./result-format.js?v=ui20-shell-update-banner-20261127";
+import { EXAMPLES } from "./demo-examples.js?v=ui20-shell-update-banner-20261127";
 
 /* PH SMS Scam Detector — UI logic (no build step, vanilla JS). */
 "use strict";
@@ -171,12 +172,23 @@ const connectionStatus = createConnectionStatus({
   element: $, translate: t, browserOnline: () => window.navigator.onLine, offlineBanner: $("offline-banner"),
 });
 
+/* Shell updates: discover redeployed shells and either reload a hidden idle
+   tab or show a reload banner. Created before the API client so the client
+   can notify it when responses look newer than this shell. */
+const shellUpdates = createShellUpdates({
+  translate: t,
+  activeRequestCount,
+  banner: $("update-banner"),
+  reloadButton: $("btn-apply-update"),
+});
+
 const apiClient = createApiClient({
   translate: t,
   setApiAvailability: connectionStatus.setApiAvailability,
   setModelReadiness: connectionStatus.setModelReadiness,
   hideOfflineBanner: connectionStatus.hideOfflineBanner,
   showOfflineBanner: connectionStatus.showOfflineBanner,
+  onStaleShell: () => shellUpdates.showBanner(),
 });
 
 /* ---------- Banding ---------- */
@@ -253,6 +265,7 @@ function nextExample(kind) {
 
 function describeError(failure) {
   if (!failure) return t("error.generic");
+  if (failure.staleShell) return t("update.staleShellError");
   let message = failure.message || t("error.generic");
   const modelUnavailable = failure.status === 503 || failure.code === "model_unavailable";
   if (modelUnavailable && !message.includes("src.train")) message += t("error.trainHint");
@@ -1896,8 +1909,10 @@ function initServiceWorker() {
   const host = location.hostname;
   if (location.protocol !== "https:" && host !== "localhost" && host !== "127.0.0.1") return;
   navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" }).then((registration) => {
-    // Check the release on normal visits so updated shell assets arrive without
-    // asking users to perform a hard refresh.
+    // Watch for activated updates (banner or hidden-tab reload) and check the
+    // release on normal visits so updated shell assets arrive without asking
+    // users to perform a hard refresh.
+    shellUpdates.attach(registration);
     return registration.update();
   }).catch(() => {
     /* Offline shell support is a bonus; ignore registration failures. */

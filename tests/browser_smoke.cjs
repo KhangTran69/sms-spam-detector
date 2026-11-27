@@ -907,6 +907,52 @@ async function main() {
     }
     await pwaContext.close();
     console.log('browser-smoke: offline reload passed');
+
+    // Shell-update drill: a redeployed shell (new cache generation served from
+    // the same origin) must announce itself in a long-lived tab instead of
+    // silently taking over. Simulated by briefly swapping the served sw.js for
+    // a bumped generation, then restoring it.
+    const swPath = path.join(root, 'api', 'web', 'sw.js');
+    const originalSw = await fs.readFile(swPath, 'utf8');
+    const cacheMatch = originalSw.match(/smsd-shell-v(\d+)/);
+    if (!cacheMatch) throw new Error('could not derive the current shell generation');
+    const bumpedSw = originalSw.replace(/smsd-shell-v\d+/, `smsd-shell-v${Number(cacheMatch[1]) + 1}`);
+    const updateContext = await browser.newContext({ viewport: { width: 360, height: 800 } });
+    try {
+      const updatePage = await updateContext.newPage();
+      await updatePage.goto(base, { waitUntil: 'domcontentloaded' });
+      // The registration object appears only after this page's own register()
+      // resolves, so wait for the registered state, not just a controller.
+      await updatePage.waitForFunction(async () => {
+        const registration = await navigator.serviceWorker.getRegistration();
+        return Boolean(registration && registration.active);
+      });
+      await fs.writeFile(swPath, bumpedSw);
+      await updatePage.evaluate(async () => {
+        const registration = await navigator.serviceWorker.getRegistration();
+        if (!registration) throw new Error('shell registration disappeared before the update drill');
+        await registration.update();
+      });
+      await updatePage.waitForSelector('#update-banner:not(.hidden)', { timeout: 15000 });
+      if (!(await updatePage.locator('#btn-apply-update').isVisible())) {
+        throw new Error('update banner appeared without a keyboard-reachable reload action');
+      }
+      await updatePage.click('#btn-apply-update');
+      await updatePage.waitForLoadState('domcontentloaded');
+      await updatePage.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
+      await updatePage.waitForTimeout(500);
+      if (await updatePage.locator('#update-banner').isVisible()) {
+        throw new Error('update banner re-appeared after applying the update (reload loop)');
+      }
+      const cacheNames = await updatePage.evaluate(async () => (await caches.keys()).filter((name) => name.startsWith('smsd-shell-')));
+      if (cacheNames.length !== 1) {
+        throw new Error(`expected exactly one shell cache after update, found ${cacheNames}`);
+      }
+      console.log('browser-smoke: shell update banner and reload drill passed');
+    } finally {
+      await fs.writeFile(swPath, originalSw);
+      await updateContext.close();
+    }
     await browser.close();
     browser = null;
   } finally {

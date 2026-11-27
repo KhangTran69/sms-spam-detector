@@ -31,6 +31,7 @@ Review the following in an approved non-public environment:
 | Reverse-proxy/application logs | No body, direct IP or arbitrary user-supplied path in application logs; proxy must independently suppress bodies |
 | Browser API unreachable or slow | Clear retry state; no false offline claim when only API is unavailable |
 | Rollback | Previous code+artifact version restores expected /ready and model-info metadata; CI rehearses an integrity mismatch and synthetic fixture recovery, while real rollback remains a separate staging check |
+| Long-lived browser tab across a redeploy | Shell-update banner appears (a hidden, idle tab may reload once); one reload restores a consistent shell; stale API responses surface the banner rather than a confusing error |
 
 The process-local operations metrics expose only fixed low-cardinality route
 groups, status classes, counts, and rolling latency. They are not aggregated

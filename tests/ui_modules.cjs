@@ -15,7 +15,10 @@ async function main() {
   const { createResultFormatting, normalizeModelInfo } = await import(resultUrl);
   const apiSource = fs.readFileSync(path.resolve(__dirname, '../api/web/api-client.js'), 'utf8');
   const apiUrl = `data:text/javascript;base64,${Buffer.from(apiSource).toString('base64')}`;
-  const { createApiClient } = await import(apiUrl);
+  const { createApiClient, activeRequestCount } = await import(apiUrl);
+  const shellSource = fs.readFileSync(path.resolve(__dirname, '../api/web/shell-updates.js'), 'utf8');
+  const shellUrl = `data:text/javascript;base64,${Buffer.from(shellSource).toString('base64')}`;
+  const { shouldAutoReload, createShellUpdates, RELOAD_GUARD_PREFIX } = await import(shellUrl);
   const donationSource = fs.readFileSync(path.resolve(__dirname, '../api/web/donate.js'), 'utf8');
   const donationUrl = `data:text/javascript;base64,${Buffer.from(donationSource).toString('base64')}`;
   const { buildDonationPayload, createDonationForm, formatPiiFinding, PRIVACY_NOTICE_VERSION } = await import(donationUrl);
@@ -258,7 +261,146 @@ async function main() {
     if (previousWindow === undefined) delete globalThis.window;
     else globalThis.window = previousWindow;
   }
-  console.log('ui-modules: privacy, result formatting, timeout and dependency-outage recovery passed');
+
+  /* ---------- shell update discovery (stale-shell self-healing) ---------- */
+  assert.equal(shouldAutoReload({ documentHidden: true, activeRequests: 0, reloadKey: 'v9', hasReloadedBefore: false }),
+    true, 'hidden idle tab auto-reloads once per shell generation');
+  assert.equal(shouldAutoReload({ documentHidden: false, activeRequests: 0, reloadKey: 'v9', hasReloadedBefore: false }),
+    false, 'visible tabs always get the banner, never an auto-reload');
+  assert.equal(shouldAutoReload({ documentHidden: true, activeRequests: 2, reloadKey: 'v9', hasReloadedBefore: false }),
+    false, 'auto-reload never interrupts an in-flight analysis');
+  assert.equal(shouldAutoReload({ documentHidden: true, activeRequests: 0, reloadKey: 'v9', hasReloadedBefore: true }),
+    false, 'the reload guard suppresses repeat reloads for the same generation');
+  assert.equal(shouldAutoReload({ documentHidden: true, activeRequests: 0, reloadKey: '', hasReloadedBefore: false }),
+    false, 'an unknown shell generation must not auto-reload; it shows the banner');
+
+  function shellFakeServiceWorker(initialController) {
+    const listeners = {};
+    return {
+      controller: initialController || null,
+      addEventListener(type, callback) { (listeners[type] ||= []).push(callback); },
+      removeEventListener(type, callback) {
+        listeners[type] = (listeners[type] || []).filter((entry) => entry !== callback);
+      },
+      emit(type, event) { for (const callback of listeners[type] || []) callback(event); },
+    };
+  }
+
+  function shellBannerDocument(hidden) {
+    return { hidden: hidden === true, addEventListener() {}, removeEventListener() {} };
+  }
+
+  function shellStorage() {
+    const map = new Map();
+    return {
+      getItem: (key) => (map.has(key) ? map.get(key) : null),
+      setItem: (key, value) => map.set(key, String(value)),
+    };
+  }
+
+  function shellBannerNodes() {
+    return {
+      banner: { classList: { add() {}, remove() {} } },
+      reloadButton: { textContent: '', handlers: {}, addEventListener(type, callback) { this.handlers[type] = callback; } },
+    };
+  }
+
+  {
+    // Scenario 1: a tab whose first claim arrives after attach is a fresh load,
+    // not an update. The next claim (with a known generation) auto-reloads it
+    // because the document fixture is hidden and idle.
+    const worker = shellFakeServiceWorker(null);
+    const { banner, reloadButton } = shellBannerNodes();
+    let reloads = 0;
+    const updates = createShellUpdates({
+      serviceWorker: worker,
+      documentRef: shellBannerDocument(true),
+      sessionStorageRef: shellStorage(),
+      activeRequestCount: () => 0,
+      translate: (key) => key,
+      onReload: () => { reloads += 1; },
+      banner,
+      reloadButton,
+      updateIntervalMs: 60_000,
+    });
+    const registration = { update: async () => {} };
+    try {
+      updates.attach(registration);
+      worker.emit('controllerchange', {});
+      assert.equal(updates.snapshot().bannerShown, false, 'initial claim must not be reported as an update');
+      assert.equal(reloads, 0, 'initial claim must not reload');
+      worker.emit('message', { data: { type: 'shell-activated', cache: 'smsd-shell-v99' } });
+      worker.emit('controllerchange', {});
+      assert.equal(reloads, 1, 'hidden idle tab reloads for a known new shell generation');
+      worker.emit('controllerchange', {});
+      assert.equal(reloads, 1, 'reload guard suppresses a repeat reload for the same generation');
+      updates.showBanner();
+      assert.equal(updates.snapshot().bannerShown, true, 'banner can be forced (stale-shell API responses)');
+    } finally {
+      updates.dispose();
+    }
+  }
+
+  {
+    // Scenario 2: a visible tab and an in-flight analysis never auto-reload.
+    const worker = shellFakeServiceWorker({ scriptURL: 'old' });
+    const { banner, reloadButton } = shellBannerNodes();
+    let reloads = 0;
+    const updates = createShellUpdates({
+      serviceWorker: worker,
+      documentRef: shellBannerDocument(false),
+      sessionStorageRef: shellStorage(),
+      activeRequestCount: () => 1,
+      translate: (key) => key,
+      onReload: () => { reloads += 1; },
+      banner,
+      reloadButton,
+      updateIntervalMs: 60_000,
+    });
+    const registration = { update: async () => {} };
+    try {
+      updates.attach(registration);
+      worker.emit('message', { data: { type: 'shell-activated', cache: 'smsd-shell-v100' } });
+      worker.emit('controllerchange', {});
+      assert.equal(reloads, 0, 'visible or busy tabs must not auto-reload');
+      assert.equal(updates.snapshot().bannerShown, true, 'busy tabs get the banner instead');
+      assert.equal(reloadButton.textContent, 'update.reloadButton', 'banner labels its reload action via i18n');
+    } finally {
+      updates.dispose();
+    }
+  }
+
+  {
+    // Scenario 3: the in-flight counter tracks concurrent API client requests
+    // (isolated client; the earlier suite leaves one fire-and-forget request).
+    const previousFetch = globalThis.fetch;
+    let releasePending;
+    const pending = new Promise((resolve) => { releasePending = resolve; });
+    globalThis.fetch = () => pending.then(() => new Response(JSON.stringify({
+        model_version: 'fixture', risk_band: 'looks_safe', spam_probability: 0.1, prediction: 'ham',
+      }), { status: 200 }));
+    const previousWindow = globalThis.window;
+    globalThis.window = { navigator: { onLine: true } };
+    try {
+      const client = createApiClient({
+        translate: (key) => key,
+        setApiAvailability() {}, setModelReadiness() {},
+        hideOfflineBanner() {}, showOfflineBanner() {},
+      });
+      const before = activeRequestCount();
+      const inFlight = client.requestJson('/analyze');
+      assert.equal(activeRequestCount(), before + 1, 'a started request raises the in-flight count');
+      releasePending();
+      await inFlight;
+      assert.equal(activeRequestCount(), before, 'a settled request restores the in-flight count');
+    } finally {
+      globalThis.fetch = previousFetch;
+      if (previousWindow === undefined) delete globalThis.window;
+      else globalThis.window = previousWindow;
+    }
+  }
+
+  console.log('ui-modules: privacy, result formatting, timeout, dependency-outage and shell-update recovery passed');
 }
 
 main().catch((error) => {

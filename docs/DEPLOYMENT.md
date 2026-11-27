@@ -523,6 +523,13 @@ does not require rebuilding the image:
    matching artifact; never pair mismatched schema versions — `/ready` will
    fail if the artifact is incompatible.
 
+**Client shells follow the deploy automatically.** Long-lived tabs discover a
+new shell generation through the service-worker update banner
+(`api/web/shell-updates.js`); a hidden, idle tab reloads itself once per
+generation, and visible tabs show a reload button. After a rollback the same
+mechanism returns clients to the previous shell — users never need a hard
+refresh, and no in-flight analysis is interrupted.
+
 **Browser history privacy.** The UI may store the last few checks in
 `localStorage` only when the user opts in; nothing is stored server-side and the
 history can be cleared from the UI. On shared devices, use a private window or

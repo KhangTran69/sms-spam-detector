@@ -8,7 +8,7 @@
   <title>PH SMS Scam Detector</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>" />
   <link rel="manifest" href="/manifest.webmanifest" />
-  <link rel="stylesheet" href="/static/styles.css?v=ui19-synthetic-examples-20261101" />
+  <link rel="stylesheet" href="/static/styles.css?v=ui20-shell-update-banner-20261127" />
   <script src="/static/theme-init.js?v=theme-v1"></script>
 </head>
 <body>
@@ -16,6 +16,13 @@
 
   <div id="offline-banner" class="offline-banner hidden" role="alert" aria-live="assertive">
     <span data-i18n="offline.banner">You appear to be offline. The page still works, but new checks need a connection.</span>
+  </div>
+
+  <div id="update-banner" class="update-banner hidden" role="status" aria-live="polite"
+    aria-label="Application update available">
+    <span data-i18n="update.banner">The detector was updated in the background. Reload to switch to the new version —
+      your saved history stays in this browser.</span>
+    <button type="button" id="btn-apply-update" class="btn small" data-i18n="update.reloadButton">Reload now</button>
   </div>
 
   <header class="site-header">
@@ -305,6 +312,6 @@
     <p><a id="donate-link" href="/donate" hidden data-i18n="footer.donate">Optional message donation</a></p>
   </footer>
 
-  <script type="module" src="/static/app.js?v=ui19-synthetic-examples-20261101"></script>
+  <script type="module" src="/static/app.js?v=ui20-shell-update-banner-20261127"></script>
 </body>
 </html>

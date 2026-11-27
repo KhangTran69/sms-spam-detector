@@ -3,19 +3,20 @@
  */
 "use strict";
 
-const CACHE_NAME = "smsd-shell-v24";
+const CACHE_NAME = "smsd-shell-v25";
 const SHELL_ASSETS = [
   "/",
-  "/static/styles.css?v=ui19-synthetic-examples-20261101",
-  "/static/app.js?v=ui19-synthetic-examples-20261101",
+  "/static/styles.css?v=ui20-shell-update-banner-20261127",
+  "/static/app.js?v=ui20-shell-update-banner-20261127",
+  "/static/shell-updates.js?v=ui20-shell-update-banner-20261127",
   "/static/theme-init.js?v=theme-v1",
-  "/static/api-client.js?v=ui19-synthetic-examples-20261101",
-  "/static/i18n.js?v=ui19-synthetic-examples-20261101",
-  "/static/privacy-preview.js?v=ui19-synthetic-examples-20261101",
-  "/static/history-store.js?v=ui19-synthetic-examples-20261101",
-  "/static/connection-status.js?v=ui19-synthetic-examples-20261101",
-  "/static/result-format.js?v=ui19-synthetic-examples-20261101",
-  "/static/demo-examples.js?v=ui19-synthetic-examples-20261101",
+  "/static/api-client.js?v=ui20-shell-update-banner-20261127",
+  "/static/i18n.js?v=ui20-shell-update-banner-20261127",
+  "/static/privacy-preview.js?v=ui20-shell-update-banner-20261127",
+  "/static/history-store.js?v=ui20-shell-update-banner-20261127",
+  "/static/connection-status.js?v=ui20-shell-update-banner-20261127",
+  "/static/result-format.js?v=ui20-shell-update-banner-20261127",
+  "/static/demo-examples.js?v=ui20-shell-update-banner-20261127",
   "/static/donate.js?v=donate-v5",
   "/static/donate.css?v=donate-v5",
   "/manifest.webmanifest",
@@ -74,6 +75,12 @@ self.addEventListener("activate", (event) => {
     const keys = await caches.keys();
     await Promise.all(keys.filter((key) => key.startsWith("smsd-shell-") && key !== CACHE_NAME)
       .map((key) => caches.delete(key)));
+    // Tell every open tab which shell generation is active so shell-updates.js
+    // can name the reload guard key and decide between banner and auto-reload.
+    const clients = await self.clients.matchAll({ includeUncontrolled: true });
+    for (const client of clients) {
+      client.postMessage({ type: "shell-activated", cache: CACHE_NAME });
+    }
   })());
 });
 

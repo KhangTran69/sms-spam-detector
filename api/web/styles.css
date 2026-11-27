@@ -163,6 +163,23 @@ a:focus-visible {
   border-bottom: 1px solid var(--amber-line);
 }
 
+.update-banner {
+  position: sticky;
+  top: 0;
+  z-index: 89;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary-dark);
+  background: var(--chip-bg);
+  border-bottom: 1px solid var(--primary);
+}
+
 /* ---------- Header ---------- */
 .site-header {
   background: linear-gradient(135deg, #312e81 0%, #4f46e5 60%, #6d28d9 100%);
