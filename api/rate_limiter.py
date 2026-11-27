@@ -95,7 +95,7 @@ class InMemoryRateLimiter:
         if limit <= 0:
             return True, 0
 
-        current_time = time.time() if now is None else now
+        current_time = time.monotonic() if now is None else now
         window = max(1, int(window_seconds))
         cutoff = current_time - window
         key = (endpoint, identity)
@@ -171,9 +171,18 @@ class RedisRateLimiter:
                 int(limit),
                 member,
             )
-            allowed = bool(int(result[0]))
-            retry_after = max(0, int(result[1]))
-            return allowed, retry_after
+            if not isinstance(result, (list, tuple)) or len(result) != 2:
+                raise ValueError("Invalid Redis limiter response")
+            allowed, retry_after = result
+            if (
+                type(allowed) is not int
+                or type(retry_after) is not int
+                or allowed not in (0, 1)
+                or (allowed == 1 and retry_after != 0)
+                or (allowed == 0 and not 1 <= retry_after <= max(1, int(window_seconds)))
+            ):
+                raise ValueError("Invalid Redis limiter response")
+            return bool(allowed), retry_after
         except Exception as exc:
             with self._failure_lock:
                 self.failure_count += 1

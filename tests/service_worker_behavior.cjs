@@ -17,6 +17,7 @@ function createWorker({ failAsset = null, delayAsset = null, networkFails = true
     ['smsd-shell-v12', new Map([['/', new Response('previous release with live service status')]])],
     ['smsd-shell-v13', new Map([['/', new Response('previous release with spam signal wording')]])],
     ['smsd-shell-v14', new Map([['/', new Response('previous release with modular frontend')]])],
+    ['smsd-shell-v24', new Map([['/', new Response('previous production shell')]])],
   ]);
   const deleted = [];
   let skippedWaiting = false;
@@ -41,7 +42,7 @@ function createWorker({ failAsset = null, delayAsset = null, networkFails = true
     async delete(name) { deleted.push(name); return shellCaches.delete(name); },
     async keys() { return [...shellCaches.keys()]; },
     async match(request, options) {
-      assert.equal(options.cacheName, 'smsd-shell-v24');
+      assert.equal(options.cacheName, 'smsd-shell-v25');
       return shellCaches.get(options.cacheName)?.get(cacheKey(request)) || null;
     },
   };
@@ -64,7 +65,7 @@ function createWorker({ failAsset = null, delayAsset = null, networkFails = true
   vm.runInContext(source, context);
   return {
     handlers, caches, shellCaches, deleted,
-    get cacheData() { return shellCaches.get('smsd-shell-v24'); },
+    get cacheData() { return shellCaches.get('smsd-shell-v25'); },
     finishDelayedAsset() { finishDelayedAsset(); },
     get skippedWaiting() { return skippedWaiting; },
   };
@@ -78,8 +79,8 @@ function createWorker({ failAsset = null, delayAsset = null, networkFails = true
   assert.deepEqual(interrupted.deleted, [], 'failed install waits for in-flight cache writes to settle');
   interrupted.finishDelayedAsset();
   await assert.rejects(install, /static shell asset could not be cached/);
-  assert.deepEqual(interrupted.deleted, ['smsd-shell-v24']);
-  assert.equal(interrupted.shellCaches.has('smsd-shell-v24'), false, 'failed candidate cache is removed');
+  assert.deepEqual(interrupted.deleted, ['smsd-shell-v25']);
+  assert.equal(interrupted.shellCaches.has('smsd-shell-v25'), false, 'failed candidate cache is removed');
   assert.equal(await (await interrupted.shellCaches.get('smsd-shell-v13').get('/').text()), 'previous release with spam signal wording',
     'failed update leaves the previous complete release intact');
   assert.equal(interrupted.skippedWaiting, false, 'partial shell must not activate');
@@ -92,8 +93,8 @@ function createWorker({ failAsset = null, delayAsset = null, networkFails = true
   let cleanup;
   worker.handlers.activate({ waitUntil(promise) { cleanup = promise; } });
   await cleanup;
-  assert.deepEqual(worker.deleted, ['smsd-shell-v6', 'smsd-shell-v7', 'smsd-shell-v8', 'smsd-shell-v9', 'smsd-shell-v10', 'smsd-shell-v11', 'smsd-shell-v12', 'smsd-shell-v13', 'smsd-shell-v14'], 'old releases are removed only after new install completed');
-  assert.equal(worker.shellCaches.has('smsd-shell-v24'), true, 'new complete release is active after upgrade');
+  assert.deepEqual(worker.deleted, ['smsd-shell-v6', 'smsd-shell-v7', 'smsd-shell-v8', 'smsd-shell-v9', 'smsd-shell-v10', 'smsd-shell-v11', 'smsd-shell-v12', 'smsd-shell-v13', 'smsd-shell-v14', 'smsd-shell-v24'], 'old releases are removed only after new install completed');
+  assert.equal(worker.shellCaches.has('smsd-shell-v25'), true, 'new complete release is active after upgrade');
 
   let apiIntercepted = false;
   worker.handlers.fetch({

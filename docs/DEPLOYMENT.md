@@ -686,3 +686,22 @@ bound all HTTP connections or read-only work. Apply independent ingress
 connection, read-only endpoint, body size, timeout and per-client controls.
 Do not automatically resend SMS after 408, 429 or 503; the browser displays a
 retry message. Use fictional fixtures for capacity and recovery exercises.
+
+### Isolated capacity and recovery evidence
+
+The operator metrics include active and peak admitted writes plus fixed outcome
+counters for saturation, rate denial, protection outage and body timeout.
+They are process-local; restart resets the counters, and multiple workers need
+an external collector. Cancellation of a prediction/Redis call keeps write
+admission occupied until its synchronous work completes; it cannot forcibly
+interrupt an already running model thread. Read-only routes do not accept
+request bodies. The default body deadline still needs ingress enforcement.
+
+CI rehearses three admission waves at the default 16-write budget and 320
+Redis checks across four fictional identities. Its disposable service test
+uses the 64 MiB no-eviction policy, simulates exhausted memory by temporarily
+lowering that service's limit, and pauses/unpauses only the CI service to
+exercise real startup and runtime outages. These are functional workload
+checks, not a host sizing benchmark or a full Redis restart recovery SLA.
+A successful Redis PING alone does not guarantee writes will succeed during
+memory pressure. Monitor prediction outcome counters alongside readiness.

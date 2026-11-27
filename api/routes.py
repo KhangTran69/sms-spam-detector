@@ -7,7 +7,6 @@ request time instead of copying them at import.
 
 from __future__ import annotations
 
-import asyncio
 import hmac
 import html
 import ipaddress
@@ -25,6 +24,7 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import ValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from api.blocking import run_blocking
 from api.donations import RETENTION_DAYS, create_donation, delete_donation
 from api.ops_metrics import operations_monitor
 from api.rate_limiter import RateLimiterUnavailable, RedisRateLimiter, UnavailableRateLimiter
@@ -168,10 +168,10 @@ def get_operations_metrics(request: Request, response: Response) -> dict[str, An
 
 @router.post("/predict", response_model=PredictResponse, responses=_ERROR_RESPONSES, summary="Minimal verdict")
 async def predict(request: PredictRequest) -> PredictResponse:
-    analysis = await asyncio.to_thread(
+    analysis = await run_blocking(
         analyze_message,
         request.message,
-        model=await asyncio.to_thread(_state().get_model),
+        model=await run_blocking(_state().get_model),
         transformer_model_path=_state().TRANSFORMER_MODEL_PATH,
         confidence_band=_state().TRANSFORMER_CONFIDENCE_BAND,
     )
@@ -189,10 +189,10 @@ async def predict(request: PredictRequest) -> PredictResponse:
 
 @router.post("/analyze", response_model=AnalyzeResponse, responses=_ERROR_RESPONSES, summary="Full analysis")
 async def analyze(request: PredictRequest) -> AnalyzeResponse:
-    analysis = await asyncio.to_thread(
+    analysis = await run_blocking(
         analyze_message,
         request.message,
-        model=await asyncio.to_thread(_state().get_model),
+        model=await run_blocking(_state().get_model),
         transformer_model_path=_state().TRANSFORMER_MODEL_PATH,
         confidence_band=_state().TRANSFORMER_CONFIDENCE_BAND,
     )
@@ -202,10 +202,10 @@ async def analyze(request: PredictRequest) -> AnalyzeResponse:
 
 @router.post("/analyze/batch", response_model=BatchResponse, responses=_ERROR_RESPONSES, summary="Batch analysis")
 async def analyze_batch_endpoint(request: BatchRequest) -> BatchResponse:
-    results = await asyncio.to_thread(
+    results = await run_blocking(
         analyze_batch,
         request.messages,
-        model=await asyncio.to_thread(_state().get_model),
+        model=await run_blocking(_state().get_model),
         transformer_model_path=_state().TRANSFORMER_MODEL_PATH,
         confidence_band=_state().TRANSFORMER_CONFIDENCE_BAND,
     )

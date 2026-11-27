@@ -229,3 +229,15 @@ def test_strict_redis_recovers_from_startup_probe_failure(monkeypatch, caplog) -
     assert limiter.check("prediction", "fixture-client", 2, 60) == (True, 0)
     client.result = (0, 42)
     assert limiter.check("prediction", "fixture-client", 2, 60) == (False, 42)
+
+
+def test_strict_redis_rejects_invalid_backend_reply():
+    import pytest
+
+    from api.rate_limiter import RateLimiterUnavailable
+
+    for invalid in ((2, 0), (0, 0), (1, 1), (0, 61), ("1", 0)):
+        client = RedisStub()
+        client.result = invalid
+        with pytest.raises(RateLimiterUnavailable):
+            RedisRateLimiter(client, fail_closed=True).check("prediction", "fixture", 1, 60)

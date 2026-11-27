@@ -284,7 +284,7 @@ def test_service_worker_installs_complete_static_shell_and_never_caches_api(html
     assert "await cache.put(request" not in sw, "runtime responses must not mutate an installed release"
     for path in ("/analyze", "/analyze/batch", "/predict", "/feedback", "/model-info"):
         assert f'"{path}"' in sw
-    assert "smsd-shell-v24" in sw
+    assert "smsd-shell-v25" in sw
     assert '"/static/theme-init.js?v=theme-v1"' in sw
     for asset in ("styles.css", "app.js"):
         assert f'"/static/{asset}?v=ui19-synthetic-examples-20261101"' in sw

@@ -93,3 +93,9 @@ request ID, query strings and bodies. Confirm that Redis no-eviction memory
 pressure fails safely and does not silently reset active counters. Record
 hardware, limits, latency, rates, error categories and recovery time without
 message content. The automated unit tests are not a capacity benchmark.
+
+During the accessible Chromium rehearsal, simulated capacity failures must
+appear in the existing alert region, preserve the editable message, and avoid
+training instructions or automatic resubmission. Verify announcement behavior
+with assistive technology separately. CI also exercises bounded admission
+waves and disposable Redis failure/recovery; no public load target is used.

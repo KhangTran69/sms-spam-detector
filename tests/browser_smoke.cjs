@@ -769,6 +769,26 @@ async function main() {
       && document.querySelector('#readiness-status').textContent.trim() === 'Ready');
     if (analysisRequests !== 2) throw new Error('service recovery automatically resubmitted SMS text');
 
+    // Verify overload is announced as an alert, keeps the text editable, and
+    // does not claim the model is broken or automatically retry the request.
+    const busyRoute = (route) => route.fulfill({
+      status: 503,
+      headers: { 'Retry-After': '5', 'Cache-Control': 'no-store' },
+      json: { error: { code: 'service_busy', message: 'The detector is busy.' } },
+    });
+    await livePage.route('**/analyze', busyRoute);
+    await livePage.locator('#message-input').fill('Fictional capacity fixture');
+    await livePage.locator('#btn-check').click();
+    const alert = livePage.locator('#error-banner[role="alert"]');
+    await alert.waitFor({ state: 'visible' });
+    if (!(await alert.textContent()).includes('busy') || (await alert.textContent()).includes('src.train')) {
+      throw new Error('overload alert incorrectly instructs model training');
+    }
+    await livePage.waitForFunction(() => !document.querySelector('#btn-check').disabled);
+    if ((await livePage.locator('#message-input').inputValue()) !== 'Fictional capacity fixture'
+      || analysisRequests !== 3) throw new Error('overload changed input or automatically resent SMS');
+    await livePage.unroute('**/analyze', busyRoute);
+
     const donationPage = await liveContext.newPage();
     donationPage.setDefaultTimeout(10000);
     const donationRequests = [];

@@ -36,6 +36,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from api.blocking import run_blocking
 from api.donations import DEFAULT_DONATION_DB
 from api.ops_metrics import operations_monitor
 from api.rate_limiter import (
@@ -184,7 +185,7 @@ async def _check_rate_limiter(
 ) -> tuple[bool, int]:
     limiter = RATE_LIMITER
     if isinstance(limiter, RedisRateLimiter):
-        return await asyncio.to_thread(limiter.check, endpoint, identity, limit, window_seconds)
+        return await run_blocking(limiter.check, endpoint, identity, limit, window_seconds)
     return limiter.check(endpoint, identity, limit, window_seconds)
 
 
@@ -332,7 +333,12 @@ class RequestBodyLimitMiddleware:
 
         # Reject ambiguous framing even when the ASGI server has not done so.
         lengths = [value for key, value in raw_headers if key.lower() == b"content-length"]
+        has_transfer_encoding = any(key.lower() == b"transfer-encoding" for key, _ in raw_headers)
+        declared_length = None
         if lengths:
+            if has_transfer_encoding:
+                await reject_body(400, "bad_request", "Ambiguous request body framing.")
+                return
             if len(lengths) != 1 or not lengths[0].isdigit():
                 await reject_body(400, "bad_request", "Invalid Content-Length header.")
                 return
@@ -340,33 +346,48 @@ class RequestBodyLimitMiddleware:
             if len(digits) > len(str(MAX_REQUEST_BYTES)) or int(digits) > MAX_REQUEST_BYTES:
                 await reject_body(413, "payload_too_large", f"Request body is limited to {MAX_REQUEST_BYTES} bytes.")
                 return
+            declared_length = int(digits)
+
+        # Read-only routes do not accept request bodies. Avoid unbounded
+        # concurrent buffering by callers that bypass write admission.
+        if method in {"GET", "HEAD", "OPTIONS"}:
+            if declared_length not in (None, 0) or has_transfer_encoding:
+                await reject_body(400, "bad_request", "This method does not accept a request body.")
+                return
+            body = b""
+        else:
+            body = None
 
         # A total deadline covers slow and fragmented uploads. A bytearray
         # avoids retaining one Python object per fragment (including empty ones).
-        buffer = bytearray()
-        try:
-            async with asyncio.timeout(REQUEST_BODY_TIMEOUT_SECONDS):
-                while True:
-                    message = await receive()
-                    if message["type"] == "http.disconnect":
-                        return
-                    if message["type"] != "http.request":
-                        continue
-                    chunk = message.get("body", b"")
-                    if len(buffer) + len(chunk) > MAX_REQUEST_BYTES:
-                        await reject_body(
-                            413, "payload_too_large", f"Request body is limited to {MAX_REQUEST_BYTES} bytes."
-                        )
-                        return
-                    buffer.extend(chunk)
-                    if not message.get("more_body", False):
-                        break
-        except TimeoutError:
-            await reject_body(408, "request_timeout", "Request body upload timed out. Try again.")
-            return
+        if body is None:
+            buffer = bytearray()
+            try:
+                async with asyncio.timeout(REQUEST_BODY_TIMEOUT_SECONDS):
+                    while True:
+                        message = await receive()
+                        if message["type"] == "http.disconnect":
+                            return
+                        if message["type"] != "http.request":
+                            continue
+                        chunk = message.get("body", b"")
+                        if len(buffer) + len(chunk) > MAX_REQUEST_BYTES:
+                            await reject_body(
+                                413, "payload_too_large", f"Request body is limited to {MAX_REQUEST_BYTES} bytes."
+                            )
+                            return
+                        buffer.extend(chunk)
+                        if not message.get("more_body", False):
+                            break
+            except TimeoutError:
+                await reject_body(408, "request_timeout", "Request body upload timed out. Try again.")
+                return
 
-        body = bytes(buffer)
-        del buffer
+            body = bytes(buffer)
+            del buffer
+            if declared_length is not None and len(body) != declared_length:
+                await reject_body(400, "bad_request", "Request body length does not match its header.")
+                return
         delivered = False
 
         async def replay_body():
@@ -456,7 +477,9 @@ class PredictionRateLimitMiddleware:
             except RateLimiterUnavailable:
                 request_id = _request_id(scope)
                 latency_ms = round((time.perf_counter() - limit_check_started) * 1000, 2)
-                _log_request_completed(request_id, method, _safe_log_path(path), 503, latency_ms, "rate_limiter_unavailable")
+                _log_request_completed(
+                    request_id, method, _safe_log_path(path), 503, latency_ms, "rate_limiter_unavailable"
+                )
                 response = _error_response(
                     503,
                     "rate_limiter_unavailable",
