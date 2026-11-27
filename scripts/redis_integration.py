@@ -43,7 +43,14 @@ def exercise_disposable_service(url, client, limiter, container_id: str) -> None
         # Simulate exhausted memory without allocating arbitrary amounts of RAM.
         client.config_set("maxmemory", 1)
         assert_unavailable(limiter, f"fictional-pressure-{uuid.uuid4().hex}")
+        try:
+            limiter.ensure_available()
+        except RateLimiterUnavailable:
+            pass
+        else:
+            raise AssertionError("readiness succeeded while Redis writes were blocked")
         client.config_set("maxmemory", 64 * 1024 * 1024)
+        limiter.ensure_available()
         assert limiter.check("prediction", retained, 1, 60)[0] is False
         assert limiter.check("prediction", f"fictional-recovered-{uuid.uuid4().hex}", 1, 60) == (True, 0)
 

@@ -70,6 +70,8 @@ DONATIONS_OPERATOR_CONTACT = os.environ.get("SMSD_DONATIONS_OPERATOR_CONTACT", "
 DONATION_DB_PATH = Path(os.environ.get("SMSD_DONATIONS_PATH", str(DEFAULT_DONATION_DB)))
 DONATION_RATE_LIMIT_PER_MINUTE = max(1, int(os.environ.get("SMSD_DONATION_RATE_LIMIT_PER_MINUTE", "5")))
 SMSD_ENV = os.environ.get("SMSD_ENV", "development").strip().lower()
+if SMSD_ENV not in {"development", "production", "test"}:
+    raise ValueError("SMSD_ENV must be development, production or test")
 METRICS_TOKEN = os.environ.get("SMSD_METRICS_TOKEN", "").strip()
 _monitor_baseline = os.environ.get("SMSD_MONITOR_BASELINE_PATH", "").strip()
 MONITOR_BASELINE_PATH = Path(_monitor_baseline) if _monitor_baseline else None

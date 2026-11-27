@@ -195,6 +195,11 @@ def test_closed_redis_readiness_detects_failed_ping_and_recovers() -> None:
     RedisRateLimiter(client).ensure_available()
     client.available = True
     limiter.ensure_available()
+    client.error = RuntimeError("private write-path failure")
+    with pytest.raises(RateLimiterUnavailable):
+        limiter.ensure_available()
+    client.error = None
+    limiter.ensure_available()
 
 
 def test_strict_redis_recovers_from_startup_probe_failure(monkeypatch, caplog) -> None:

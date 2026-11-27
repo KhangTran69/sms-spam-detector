@@ -1062,11 +1062,17 @@ def test_readiness_rejects_unavailable_shared_limiter(client, monkeypatch):
 def test_strict_redis_readiness_detects_runtime_failure_and_recovery(client, monkeypatch):
     class ProbeStub:
         available = True
+        writable = True
 
         def ping(self):
             if not self.available:
                 raise OSError("private backend details")
             return True
+
+        def eval(self, *args):
+            if not self.writable:
+                raise OSError("private write-path details")
+            return (1, 0)
 
     backend = ProbeStub()
     monkeypatch.setattr(api_main, "RATE_LIMITER", RedisRateLimiter(backend, fail_closed=True))
@@ -1079,6 +1085,10 @@ def test_strict_redis_readiness_detects_runtime_failure_and_recovery(client, mon
     assert failed.headers["retry-after"] == "30"
     assert "private backend details" not in failed.text
     backend.available = True
+    assert client.get("/ready").status_code == 200
+    backend.writable = False
+    assert client.get("/ready").json()["error"]["code"] == "rate_limiter_unavailable"
+    backend.writable = True
     assert client.get("/ready").status_code == 200
 
 

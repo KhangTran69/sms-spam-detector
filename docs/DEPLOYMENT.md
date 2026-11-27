@@ -712,3 +712,10 @@ before mutating an admission counter. See the Redis scripting documentation:
 https://redis.io/docs/latest/develop/interact/programmability/eval-intro/.
 Older servers are not supported; confirm the server version and an actual
 protected prediction during deployment readiness checks.
+
+Strict Redis readiness now executes the real admission script on a reserved
+one-second internal counter after PING. This distinguishes a reachable but
+write-blocked store from a functioning protection backend. The probe is
+content-free and never consumes a user's allowance. Restrict access to
+readiness at the gateway to avoid unnecessary dependency traffic. Unrecognized
+SMSD_ENV values fail startup rather than quietly disabling production controls.

@@ -202,7 +202,7 @@ class RedisRateLimiter:
             return True, 0
 
     def ensure_available(self) -> None:
-        """A strict shared backend must answer the readiness probe."""
+        """Require a working shared admission script, not just a reachable server."""
         if not self._fail_closed:
             return
         try:
@@ -210,6 +210,9 @@ class RedisRateLimiter:
                 raise RuntimeError("Redis readiness probe failed")
         except Exception:
             raise RateLimiterUnavailable("Rate limiting backend unavailable") from None
+        # A reserved, short-lived counter exercises the same write path and
+        # permissions as real admissions. A denial also proves script execution.
+        self.check("readiness", "internal-probe", 1, 1)
 
     def reset(self) -> None:
         """Redis counters expire naturally; never flush shared application keys."""

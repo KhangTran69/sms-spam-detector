@@ -113,8 +113,7 @@ def _agreement_summary(pairs: list[tuple[str, str]]) -> dict[str, Any]:
     agreement = sum(first == second for first, second in pairs) / count
     labels = {label for pair in pairs for label in pair}
     expected = sum(
-        (sum(first == label for first, _ in pairs) / count)
-        * (sum(second == label for _, second in pairs) / count)
+        (sum(first == label for first, _ in pairs) / count) * (sum(second == label for _, second in pairs) / count)
         for label in labels
     )
     return {
