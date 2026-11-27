@@ -629,6 +629,9 @@ def _validate_consent_evaluation_plan(
         upper_bounds, {"false_positive_rate", "false_negative_rate"}
     ):
         blockers.append("evaluation_plan_performance_bounds_invalid")
+    annotation_gates = plan.get("annotation_quality_gates")
+    if not _valid_annotation_gates(annotation_gates):
+        blockers.append("evaluation_plan_annotation_gates_invalid")
     subgroup_gates = plan.get("subgroup_error_gates")
     if not _valid_subgroup_gates(subgroup_gates):
         blockers.append("evaluation_plan_subgroup_gates_invalid")
@@ -653,11 +656,74 @@ def _validate_consent_evaluation_plan(
         "minimum_cluster_lower_bound": lower_bounds,
         "maximum_cluster_upper_bound": upper_bounds,
         "subgroup_error_gates": subgroup_gates,
+        "annotation_quality_gates": {
+            name: {key: value for key, value in gate.items() if key != "rationale"}
+            for name, gate in annotation_gates.items()
+        },
         "split_method": "chronological_campaign_holdout",
         "campaign_overlap_checked": True,
         "test_split_sealed": True,
     }
     return safe_plan, []
+
+
+def _valid_annotation_gates(gates: Any) -> bool:
+    if not isinstance(gates, dict) or set(gates) != {"spam_label", "scam_assessment"}:
+        return False
+    for name, gate in gates.items():
+        if not isinstance(gate, dict) or set(gate) != {
+            "minimum_pairs",
+            "minimum_agreement",
+            "minimum_kappa",
+            "rationale",
+        }:
+            return False
+        pairs = gate["minimum_pairs"]
+        agreement = gate["minimum_agreement"]
+        kappa = gate["minimum_kappa"]
+        rationale = gate["rationale"]
+        if not isinstance(pairs, int) or isinstance(pairs, bool) or pairs < 2:
+            return False
+        if type(agreement) not in (int, float) or not 0 <= agreement <= 1:
+            return False
+        if kappa is None:
+            if name == "spam_label":
+                return False
+        elif type(kappa) not in (int, float) or not 0 <= kappa <= 1:
+            return False
+        if not isinstance(rationale, str) or len(rationale.strip()) < 20:
+            return False
+    return True
+
+
+def _annotation_gate_diagnostics(dataset: Dataset, plan: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+    """Check first-pass labels on the validated snapshot before model scoring."""
+    quality = dataset.records[0].review_quality if len(dataset.records) == 1 else {}
+    diagnostics: dict[str, Any] = {}
+    blockers: list[str] = []
+    for name, gate in plan["annotation_quality_gates"].items():
+        observed = quality.get(name, {})
+        paired = observed.get("paired_rows", 0)
+        agreement = observed.get("agreement")
+        kappa = observed.get("cohen_kappa")
+        met = (
+            paired == len(dataset)
+            and paired >= gate["minimum_pairs"]
+            and agreement is not None
+            and agreement >= gate["minimum_agreement"]
+        )
+        if gate["minimum_kappa"] is not None:
+            met = met and kappa is not None and kappa >= gate["minimum_kappa"]
+        diagnostics[name] = {
+            "paired_rows": paired,
+            "agreement": agreement,
+            "cohen_kappa": kappa,
+            "kappa_required": gate["minimum_kappa"] is not None,
+            "met": met,
+        }
+        if not met:
+            blockers.append("annotation_quality_below_plan")
+    return diagnostics, sorted(set(blockers))
 
 
 def _valid_subgroup_gates(gates: Any) -> bool:
@@ -1099,6 +1165,9 @@ def evaluate_public_dataset(
             _write_reports(readiness, output_dir)
             return readiness
         coverage_diagnostics, coverage_blockers = _consented_coverage_diagnostics(dataset, evaluation_plan)
+        annotation_diagnostics, annotation_blockers = _annotation_gate_diagnostics(dataset, evaluation_plan)
+        split_diagnostics = {**split_diagnostics, "annotation_quality": annotation_diagnostics}
+        coverage_blockers.extend(annotation_blockers)
         if coverage_blockers:
             readiness = _evaluation_readiness_report(
                 dataset,

@@ -271,3 +271,10 @@ def test_review_agreement_is_chance_corrected_and_does_not_expose_reviewer_ids()
     assert result["cohen_kappa"] == 0.0
     assert _agreement_summary([("ham", "ham")])["cohen_kappa"] is None
     assert _agreement_summary([])["agreement"] is None
+
+
+def test_consent_record_cannot_be_reused_for_a_second_message():
+    first = valid_batch_row()
+    second = valid_batch_row(message="A distinct fictional school announcement.", group="campaign_002")
+    report = validate_batch(pd.DataFrame([first, second]), today=date(2026, 10, 21))
+    assert "duplicate_consent_record_id" in {item.rule for item in report.findings}

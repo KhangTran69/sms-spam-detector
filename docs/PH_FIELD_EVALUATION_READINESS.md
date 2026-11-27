@@ -160,3 +160,15 @@ approval. Percentile bootstrap intervals can be degenerate for all-correct or
 all-incorrect campaigns; the reviewer must consider limited independent support,
 Wilson marginal intervals and preregistered coverage rather than interpret a
 zero-width interval as certainty. No numerical study values are approved here.
+
+### First-pass annotation acceptance before scoring
+
+Register minimum complete reviewer pairs, observed agreement and Cohen's
+kappa for spam labels and scam assessments in the private plan. A spam-label
+kappa is mandatory. A scam-assessment kappa may be omitted only with a
+registered rationale; the resulting agreement alone is not chance-corrected
+evidence. An undefined required kappa, missing pairs or inadequate agreement
+blocks scoring before consuming the sealed attempt. Aggregate diagnostics are
+bound to the exact validated input snapshot and kept out of public manifests.
+Do not use these checks to substitute for independent reviewer training,
+qualification, source authorization or adjudicator review.

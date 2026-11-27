@@ -54,5 +54,19 @@
       "maximum_upper_bound": null,
       "maximum_interval_width": null
     }
-  ]
+  ],
+  "annotation_quality_gates": {
+    "spam_label": {
+      "minimum_pairs": null,
+      "minimum_agreement": null,
+      "minimum_kappa": null,
+      "rationale": ""
+    },
+    "scam_assessment": {
+      "minimum_pairs": null,
+      "minimum_agreement": null,
+      "minimum_kappa": null,
+      "rationale": ""
+    }
+  }
 }

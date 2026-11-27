@@ -370,6 +370,20 @@ def _evaluation_plan(
                 "maximum_interval_width": 1.0,
             },
         ],
+        "annotation_quality_gates": {
+            "spam_label": {
+                "minimum_pairs": 2,
+                "minimum_agreement": 0.0,
+                "minimum_kappa": 0.0,
+                "rationale": "Fictional rehearsal threshold, not a study criterion.",
+            },
+            "scam_assessment": {
+                "minimum_pairs": 2,
+                "minimum_agreement": 0.0,
+                "minimum_kappa": None,
+                "rationale": "Fictional rehearsal permits undefined kappa for a single assessment class.",
+            },
+        },
         "minimum_valid_cluster_fraction": 0.5,
         "minimum_cluster_lower_bound": {"precision": 0.0, "recall": 0.0, "f1": 0.0},
         "maximum_cluster_upper_bound": {"false_positive_rate": 1.0, "false_negative_rate": 1.0},

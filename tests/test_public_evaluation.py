@@ -164,6 +164,20 @@ def write_evaluation_plan(
                 "maximum_interval_width": 1.0,
             },
         ],
+        "annotation_quality_gates": {
+            "spam_label": {
+                "minimum_pairs": 2,
+                "minimum_agreement": 0.0,
+                "minimum_kappa": 0.0,
+                "rationale": "Fictional rehearsal threshold, not a study criterion.",
+            },
+            "scam_assessment": {
+                "minimum_pairs": 2,
+                "minimum_agreement": 0.0,
+                "minimum_kappa": None,
+                "rationale": "Fictional rehearsal permits undefined kappa for a single assessment class.",
+            },
+        },
         "minimum_valid_cluster_fraction": 0.5,
         "minimum_cluster_lower_bound": {"precision": 0.0, "recall": 0.0, "f1": 0.0},
         "maximum_cluster_upper_bound": {"false_positive_rate": 1.0, "false_negative_rate": 1.0},
@@ -439,6 +453,7 @@ def test_consent_evaluation_requires_plan_and_skips_threshold_search(monkeypatch
     assert report["evaluation_plan"]["sha256"] == hashlib.sha256(plan_path.read_bytes()).hexdigest()
     assert report["performance_acceptance"]["status"] == "met"
     assert report["subgroup_acceptance"]["status"] == "met"
+    assert report["split_inputs"]["annotation_quality"]["spam_label"]["met"] is True
     assert report["operating_threshold"]["status"] == "not_run_sealed_consent_evaluation"
     assert report["metrics"]["campaign_bootstrap_95"]["available"] is True
     assert "false_negative_rate" in report["metrics"]["campaign_bootstrap_95"]["intervals"]
@@ -782,3 +797,34 @@ def test_subgroup_gates_use_class_eligible_groups_and_report_unmet_bound():
     gate["minimum_groups"] = 3
     result = public_evaluation._subgroup_gate_results(frame, [0.9] * 4, 0.5, plan)
     assert result["status"] == "insufficient_evidence"
+
+
+def test_annotation_gate_rejects_unavailable_or_insufficient_agreement():
+    from src.dataset_loading import Dataset, FileRecord
+
+    frame = pd.DataFrame({"label": ["ham", "spam"]})
+    record = FileRecord(
+        path="fixture",
+        role="holdout",
+        sha256="fixture",
+        rows_in=2,
+        rows_loaded=2,
+        duplicates_removed=0,
+        review_quality={
+            "spam_label": {"paired_rows": 2, "agreement": 0.5, "cohen_kappa": 0.0},
+            "scam_assessment": {"paired_rows": 2, "agreement": 1.0, "cohen_kappa": None},
+        },
+    )
+    gate = {
+        "minimum_pairs": 2,
+        "minimum_agreement": 0.8,
+        "minimum_kappa": 0.5,
+        "rationale": "Fictional gate to exercise the failure path.",
+    }
+    plan = {"annotation_quality_gates": {"spam_label": gate, "scam_assessment": gate.copy()}}
+    assert public_evaluation._valid_annotation_gates(plan["annotation_quality_gates"])
+    diagnostics, blockers = public_evaluation._annotation_gate_diagnostics(Dataset(frame, [record]), plan)
+    assert blockers == ["annotation_quality_below_plan"]
+    assert diagnostics["spam_label"]["met"] is False
+    assert diagnostics["scam_assessment"]["met"] is False
+    assert "review_quality" not in record.as_dict()

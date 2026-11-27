@@ -209,6 +209,7 @@ def validate_batch(
     language_counts: dict[str, int] = {}
     category_counts: dict[str, int] = {}
     group_ids: set[str] = set()
+    consent_ids: set[str] = set()
     message_keys: set[str] = set()
     template_groups: dict[str, list[tuple[int, str]]] = {}
     label_pairs: list[tuple[str, str]] = []
@@ -241,6 +242,10 @@ def validate_batch(
         if values["adjudicator_id"] and not _is_safe_id(values["adjudicator_id"]):
             findings.append(Finding(row_number, "invalid_or_non_pseudonymous_adjudicator_id"))
         group_ids.add(values["group"])
+        consent_id = values["consent_record_id"].casefold()
+        if consent_id in consent_ids:
+            findings.append(Finding(row_number, "duplicate_consent_record_id"))
+        consent_ids.add(consent_id)
         if values["reviewer_a_id"].casefold() == values["reviewer_b_id"].casefold():
             findings.append(Finding(row_number, "reviewers_must_be_distinct"))
         if values["group"].casefold() == values["consent_record_id"].casefold():
