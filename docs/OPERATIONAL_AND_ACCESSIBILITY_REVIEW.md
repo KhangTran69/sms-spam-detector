@@ -30,7 +30,7 @@ Review the following in an approved non-public environment:
 | Unauthorized operational metrics in production | 404 even for guessed token; operator token access through TLS only |
 | Reverse-proxy/application logs | No body, direct IP or arbitrary user-supplied path in application logs; proxy must independently suppress bodies |
 | Browser API unreachable or slow | Clear retry state; no false offline claim when only API is unavailable |
-| Rollback | Previous code+artifact version restores expected /ready and model-info metadata |
+| Rollback | Previous code+artifact version restores expected /ready and model-info metadata; CI rehearses an integrity mismatch and synthetic fixture recovery, while real rollback remains a separate staging check |
 
 The process-local operations metrics expose only fixed low-cardinality route
 groups, status classes, counts, and rolling latency. They are not aggregated

@@ -110,14 +110,14 @@ make rehearse-consented
 make split-consented DATA=/secure/approved-reviewed.csv \
   DEVELOPMENT_DIR=/secure/development EVALUATION_DIR=/secure/sealed-test
 
-python -m src.train --data /secure/development/consented-development-<hash>.csv \
-  --holdout none --split-by time --threshold-policy validation \
+python -m src.train --data "/secure/development/consented-development-<hash>.csv" \
+  --no-supplements --holdout none --split-by time --threshold-policy validation \
   --output /secure/candidate/model.pkl
 
 # Register every acceptance threshold and artifact/data/membership hash first.
 # The custodian must authorize exactly one final evaluation attempt:
-make eval DATA=/secure/sealed-test/consented-evaluation-<hash>.csv \
-  TRAINING_DATA=/secure/development/consented-development-<hash>.csv \
+make eval DATA="/secure/sealed-test/consented-evaluation-<hash>.csv" \
+  TRAINING_DATA="/secure/development/consented-development-<hash>.csv" \
   MODEL=/secure/candidate/model.pkl \
   EVALUATION_PLAN=/secure/registered-plan.json \
   OUTPUT_DIR=/secure/private-reports

@@ -1230,3 +1230,35 @@ def test_missing_ui_entry_asset_returns_clear_service_error(client, monkeypatch,
     assert_error_schema(response, 503, "ui_unavailable")
     assert "bundled web interface is unavailable" in response.json()["error"]["message"].lower()
     assert str(tmp_path) not in response.text
+
+
+def test_lazy_model_load_initializes_version_bound_monitor(tmp_path, monkeypatch, bundle):
+    from src.monitor import BASELINE_SCORE_SEMANTICS, PredictionMonitor
+
+    bundle.artifact_sha256 = "a" * 64
+    bundle.metadata["probability_calibrated"] = True
+    baseline = tmp_path / "baseline.json"
+    baseline.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "model_version": bundle.version,
+                "artifact_sha256": bundle.artifact_sha256,
+                "score_semantics": BASELINE_SCORE_SEMANTICS,
+                "source_kind": "synthetic_diagnostic",
+                "scores": [0.1] * 50,
+            }
+        ),
+        encoding="utf-8",
+    )
+    monitor = PredictionMonitor()
+    monkeypatch.setattr(api_main, "default_monitor", monitor)
+    monkeypatch.setattr(api_main, "MONITOR_BASELINE_PATH", baseline)
+    monkeypatch.setattr(api_main, "TRANSFORMER_MODEL_PATH", None)
+    monkeypatch.setattr(api_main, "_model", None)
+    monkeypatch.setattr(api_main, "load_model", lambda: bundle)
+    assert api_main.get_model() is bundle
+    assert monitor.get_metrics()["baseline_samples"] == 50
+    monitor.record(0.1, "ham")
+    assert api_main.get_model() is bundle
+    assert monitor.get_metrics()["samples_in_window"] == 1

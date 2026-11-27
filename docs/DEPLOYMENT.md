@@ -405,6 +405,7 @@ commit them.
 | `SMSD_REDIS_URL` | unset | Optional Redis connection URL to share rate limits across workers. Keep credentials in a secret store. If unset, limits remain process-local and a trusted gateway limit is required for public replicas. |
 | `SMSD_RATE_LIMIT_FAILURE_MODE` | `closed` in production, `open` in development | Redis failure policy when Redis is configured: `closed` returns a safe 503 and blocks readiness after failed startup; `open` permits traffic during a Redis outage. Only choose `open` behind an independently enforced gateway limit. |
 | `SMSD_METRICS_TOKEN` | unset | High-entropy operator secret required to access `/metrics/distribution` and `/metrics/operations` in production (including `/v1` aliases). Without a token, those routes return 404. |
+| `SMSD_MONITOR_BASELINE_PATH` | unset | Optional private JSON score baseline, matched to the exact artifact hash, model version and calibrated linear spam-score semantics. Invalid or incompatible baselines disable drift comparison, not inference. |
 
 - There is **no** `PORT`, log-level, or prediction decision-threshold environment variable. Pass
   host/port/log level to uvicorn on the command line
@@ -604,3 +605,60 @@ Do not perform public load or abuse traffic simulation without explicit
 authorization and an isolated test environment. See
 [OPERATIONAL_AND_ACCESSIBILITY_REVIEW.md](OPERATIONAL_AND_ACCESSIBILITY_REVIEW.md)
 for a structured manual release check.
+
+
+
+### Version-bound drift reference
+
+Set `SMSD_MONITOR_BASELINE_PATH` to a private, read-only JSON file when a
+suitable reference score distribution is available. The file has exactly
+these fields: `schema_version` (1), `model_version`, `artifact_sha256`,
+`score_semantics` (`calibrated_linear_spam_probability_v1`), `source_kind`
+(`approved_development` or `synthetic_diagnostic`), and `scores` (50–10,000
+finite numeric values in [0, 1], without any message, label, identifier or
+timestamp association). The source label is an operator attestation, not
+proof of data provenance. The file must be at most 256 KiB.
+
+Use scores from the **same artifact's approved development validation or
+explicitly synthetic diagnostic** data, not a sealed test. Keep the file in
+protected storage outside Git, because even unlinked scores may be sensitive.
+If using Compose, put the reference file in the existing read-only model
+mount and set the variable to its container path. A synthetic baseline
+diagnoses engineering behavior only; it is not representative field evidence.
+
+The lazy model load resets the rolling window and validates the baseline once.
+The distribution endpoint exposes its status, model version and attested source
+kind, not the input scores. Artifact-bound drift comparison requires at least
+50 current scores; that is only an engineering floor, not proof of statistical
+adequacy. Uncalibrated/legacy models, missing artifact hashes, and ensemble
+routing cannot use this calibrated linear-only reference. Wrong hash/version,
+invalid JSON, invalid samples and unreadable files report
+`invalid_baseline`; missing configuration remains `no_baseline_configured`.
+The API continues to serve predictions when a reference is rejected. Restart
+to reload a changed artifact/reference. Review the actual score population
+and operating conditions before interpreting drift or authorizing retraining.
+
+#### Export a validation-only score reference during candidate training
+
+For an explicitly approved **development** training run, supply both
+`--monitor-baseline-output` and `--monitor-baseline-source`. Use a new file
+inside a pre-existing private directory, separate from all artifact files.
+For example, the isolated CI fixture uses `synthetic_diagnostic` and the
+tracked synthetic supplements. The training command writes sorted
+probabilities from the internal validation split only, not the final test,
+along with the exact serialized artifact hash. The file is created exclusively
+with mode 0600; existing files and symlinks are not overwritten.
+
+For approved real development input, use `approved_development` only after
+documenting the authorization and provenance. The export rejects mixed or
+unknown provenance, ensemble mode and validation sets outside 50–10,000
+scores. Source attestation does not establish legal authorization. Keep the
+reference outside Git and restrict read access, including the mounted
+container identity. Do not use the sealed final test or production traffic
+as a reference. If export fails after training, the candidate artifact may
+already exist; do not promote it on that basis.
+
+CI exercises the generated synthetic reference and checks a container's
+recovery after a deliberate artifact-integrity mismatch. This is an isolated
+configuration/artifact recovery rehearsal, not a real production rollback
+or proof of acceptable accuracy.

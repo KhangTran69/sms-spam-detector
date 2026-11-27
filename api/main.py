@@ -45,6 +45,7 @@ from api.rate_limiter import (
     create_rate_limiter,
 )
 from src.ensemble import TransformerModelError
+from src.monitor import default_monitor
 from src.predict import (
     ModelArtifactError,
     load_model,
@@ -62,6 +63,8 @@ DONATION_DB_PATH = Path(os.environ.get("SMSD_DONATIONS_PATH", str(DEFAULT_DONATI
 DONATION_RATE_LIMIT_PER_MINUTE = max(1, int(os.environ.get("SMSD_DONATION_RATE_LIMIT_PER_MINUTE", "5")))
 SMSD_ENV = os.environ.get("SMSD_ENV", "development").strip().lower()
 METRICS_TOKEN = os.environ.get("SMSD_METRICS_TOKEN", "").strip()
+_monitor_baseline = os.environ.get("SMSD_MONITOR_BASELINE_PATH", "").strip()
+MONITOR_BASELINE_PATH = Path(_monitor_baseline) if _monitor_baseline else None
 ALLOW_LEGACY_MODEL = os.environ.get("SMSD_ALLOW_LEGACY_MODEL", "").strip().lower() in {"1", "true", "yes"}
 if SMSD_ENV == "production":
     # Anonymous correction intake has no authentication or abuse controls.
@@ -493,7 +496,15 @@ def get_model():
     if _model is None:
         with _model_lock:
             if _model is None:
-                _model = load_model()
+                bundle = load_model()
+                default_monitor.configure_artifact_baseline(
+                    MONITOR_BASELINE_PATH,
+                    model_version=bundle.version,
+                    artifact_sha256=bundle.artifact_sha256,
+                    calibrated=bundle.metadata.get("probability_calibrated") is True and not bundle.legacy,
+                    ensemble_configured=TRANSFORMER_MODEL_PATH is not None,
+                )
+                _model = bundle
     if SMSD_ENV == "production" and getattr(_model, "legacy", False) and not ALLOW_LEGACY_MODEL:
         raise ModelArtifactError(
             "Production requires a versioned model bundle with recorded training metadata. "

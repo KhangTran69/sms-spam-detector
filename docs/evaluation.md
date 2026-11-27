@@ -188,8 +188,8 @@ internal validation partition:
 
 ```bash
 .venv/bin/python -m src.train \
-  --data /secure/development/consented-development-<hash>.csv \
-  --holdout none --split-by time --threshold-policy validation \
+  --data "/secure/development/consented-development-<hash>.csv" \
+  --no-supplements --holdout none --split-by time --threshold-policy validation \
   --output /secure/candidate/model.pkl
 ```
 
@@ -208,8 +208,8 @@ Evaluate once with the matching development file, model, and sealed test file:
 
 ```bash
 make eval \
-  DATA=/secure/sealed-test/consented-evaluation-<hash>.csv \
-  TRAINING_DATA=/secure/development/consented-development-<hash>.csv \
+  DATA="/secure/sealed-test/consented-evaluation-<hash>.csv" \
+  TRAINING_DATA="/secure/development/consented-development-<hash>.csv" \
   MODEL=/secure/candidate/model.pkl \
   EVALUATION_PLAN=/secure/registered-plan.json \
   OUTPUT_DIR=/secure/reports

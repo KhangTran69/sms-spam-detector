@@ -72,7 +72,11 @@ jobs:
             --supplement data/raw/ph_supplement_2.csv data/raw/ph_supplement_3.csv data/raw/ph_supplement_4.csv data/raw/ph_supplement_5.csv \
             --holdout none \
             --output models/ci-smoke.pkl \
-            --model-version ci-synthetic-smoke
+            --model-version ci-synthetic-smoke \
+            --monitor-baseline-output models/ci-smoke-baseline.json \
+            --monitor-baseline-source synthetic_diagnostic
+          # The isolated non-root container needs read access to this synthetic fixture.
+          chmod 644 models/ci-smoke-baseline.json
       - name: Build runtime image
         run: docker build --tag smsd-ci-smoke .
       - name: Verify liveness and readiness contracts
@@ -111,6 +115,8 @@ jobs:
             -p 127.0.0.1:8001:8000 \
             -v "$PWD/models:/app/models:ro" \
             -e SMSD_MODEL_PATH=/app/models/ci-smoke.pkl \
+            -e SMSD_MONITOR_BASELINE_PATH=/app/models/ci-smoke-baseline.json \
+            -e SMSD_METRICS_TOKEN=fictional-ci-metrics-token \
             -e SMSD_ENV=production \
             smsd-ci-smoke
           trap 'docker stop smsd-ci-fixture >/dev/null 2>&1 || true' EXIT
@@ -142,6 +148,17 @@ jobs:
           info = json.load(urllib.request.urlopen(f"{base}/model-info", timeout=2))
           assert info["model_version"] == "ci-synthetic-smoke"
           assert info["feature_version"] != "unknown"
+          request = urllib.request.Request(
+              f"{base}/metrics/distribution",
+              headers={"X-SMSD-Metrics-Token": "fictional-ci-metrics-token"},
+          )
+          with urllib.request.urlopen(request, timeout=2) as response:
+              monitor = json.load(response)
+              assert monitor["baseline_status"] == "configured"
+              assert monitor["baseline_model_version"] == info["model_version"]
+              assert monitor["baseline_source_kind"] == "synthetic_diagnostic"
+              assert monitor["drift"]["drift_status"] == "insufficient_data"
+              assert "scores" not in monitor
           assert post("/predict", {"message": "CI fixture message"})["prediction"] in {"ham", "spam"}
           assert post("/analyze", {"message": "CI fixture message"})["prediction"] in {"ham", "spam"}
           assert len(post("/analyze/batch", {"messages": ["fixture one", "fixture two"]})["results"]) == 2
@@ -169,6 +186,62 @@ jobs:
               assert secret.encode() not in response.read()
           else:
               raise AssertionError("unexpected request field should be rejected")
+          PY
+
+      - name: Rehearse artifact-integrity failure and known-good fixture recovery
+        run: |
+          set -e
+          trap 'docker rm -f smsd-ci-recovery >/dev/null 2>&1 || true' EXIT
+          start_fixture() {
+            docker run --detach --rm --name smsd-ci-recovery \
+              -p 127.0.0.1:8002:8000 -v "$PWD/models:/app/models:ro" \
+              -e SMSD_ENV=production -e SMSD_MODEL_PATH=/app/models/ci-smoke.pkl \
+              -e SMSD_MODEL_SHA256="$1" smsd-ci-smoke
+          }
+          start_fixture "$(printf '%064d' 0)"
+          python - <<'PY'
+          import time
+          import urllib.error
+          import urllib.request
+
+          base = "http://127.0.0.1:8002"
+          for attempt in range(30):
+              try:
+                  assert urllib.request.urlopen(base + "/health", timeout=2).status == 200
+                  break
+              except (OSError, urllib.error.URLError):
+                  if attempt == 29:
+                      raise
+                  time.sleep(1)
+          try:
+              urllib.request.urlopen(base + "/ready", timeout=5)
+          except urllib.error.HTTPError as response:
+              assert response.code == 503
+              assert b"model_unavailable" in response.read()
+          else:
+              raise AssertionError("mismatched artifact digest must fail readiness")
+          PY
+          docker stop smsd-ci-recovery
+          start_fixture "$(sha256sum models/ci-smoke.pkl | cut -d' ' -f1)"
+          python - <<'PY'
+          import json
+          import time
+          import urllib.error
+          import urllib.request
+
+          base = "http://127.0.0.1:8002"
+          for attempt in range(30):
+              try:
+                  with urllib.request.urlopen(base + "/ready", timeout=5) as response:
+                      assert response.status == 200
+                      assert json.load(response)["model_version"] == "ci-synthetic-smoke"
+                      break
+              except (OSError, urllib.error.URLError):
+                  if attempt == 29:
+                      raise
+                  time.sleep(1)
+          with urllib.request.urlopen(base + "/model-info", timeout=5) as response:
+              assert json.load(response)["model_version"] == "ci-synthetic-smoke"
           PY
 
   uci-quality-gate:
@@ -257,5 +330,30 @@ jobs:
       # CSVs are tracked). Tests must synthesize tiny datasets or skip when
       # those paths are missing; no step here downloads data or trains on the
       # full corpus.
-      - name: Tests (pytest)
+      - name: Tests including disposable synthetic consented-study rehearsal (pytest)
         run: pytest -q
+
+  redis-integration:
+    name: Isolated Redis shared rate-limit integration
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379/tcp
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install optional Redis client
+        run: python -m pip install "redis>=5,<6" -c constraints/py3.12.txt
+      - name: Verify real shared counters using fictional local identities
+        env:
+          SMSD_TEST_REDIS_URL: redis://127.0.0.1:${{ job.services.redis.ports[6379] }}/0
+        run: python scripts/redis_integration.py
