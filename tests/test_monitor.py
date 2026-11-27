@@ -173,3 +173,34 @@ def test_baseline_rejects_invalid_score_samples(tmp_path, bad_scores):
     )
     with pytest.raises(ValueError):
         read_artifact_baseline(path, "fixture-v1", "a" * 64)
+
+
+def test_write_reference_is_private_sorted_and_exclusive(tmp_path):
+    from src.monitor import read_artifact_baseline, write_artifact_baseline
+
+    path = tmp_path / "reference.json"
+    scores = [0.9, 0.1] * 25
+    write_artifact_baseline(path, "fixture", "a" * 64, "synthetic_diagnostic", scores)
+    loaded, source = read_artifact_baseline(path, "fixture", "a" * 64)
+    assert loaded == sorted(scores)
+    assert source == "synthetic_diagnostic"
+    assert path.stat().st_mode & 0o077 == 0
+    original = path.read_bytes()
+    with pytest.raises(FileExistsError):
+        write_artifact_baseline(path, "fixture", "a" * 64, "synthetic_diagnostic", [0.5] * 50)
+    assert path.read_bytes() == original
+
+
+def test_write_reference_rejects_invalid_inputs_before_creating_file(tmp_path):
+    from src.monitor import write_artifact_baseline
+
+    path = tmp_path / "reference.json"
+    for digest, source, scores in (
+        ("a" * 64, "unknown", [0.2] * 50),
+        ("invalid", "synthetic_diagnostic", [0.2] * 50),
+        ("a" * 64, "synthetic_diagnostic", [0.2] * 49),
+        ("a" * 64, "synthetic_diagnostic", [float("nan")] * 50),
+    ):
+        with pytest.raises(ValueError):
+            write_artifact_baseline(path, "fixture", digest, source, scores)
+        assert not path.exists()

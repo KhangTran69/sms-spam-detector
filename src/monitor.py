@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import logging
 import math
+import os
 import threading
 from collections import deque
 from collections.abc import Sequence
@@ -29,6 +30,45 @@ MAX_BASELINE_BYTES = 256 * 1024
 MAX_BASELINE_SCORES = 10_000
 MIN_BASELINE_SCORES = 50
 BASELINE_SCORE_SEMANTICS = "calibrated_linear_spam_probability_v1"
+
+
+def write_artifact_baseline(
+    path: Path, model_version: str, artifact_sha256: str, source_kind: str, scores: Sequence[float]
+) -> None:
+    """Create a private score-only reference without overwriting an existing file."""
+    if not MIN_BASELINE_SCORES <= len(scores) <= MAX_BASELINE_SCORES:
+        raise ValueError("Invalid baseline sample count")
+    if source_kind not in ("approved_development", "synthetic_diagnostic"):
+        raise ValueError("Invalid baseline source kind")
+    if len(artifact_sha256) != 64 or any(char not in "0123456789abcdef" for char in artifact_sha256):
+        raise ValueError("Invalid artifact digest")
+    if not model_version.strip():
+        raise ValueError("Model version required")
+    if any(type(score) not in (int, float) or not 0 <= score <= 1 for score in scores):
+        raise ValueError("Invalid baseline score")
+    payload = {
+        "schema_version": 1,
+        "model_version": model_version,
+        "artifact_sha256": artifact_sha256,
+        "score_semantics": BASELINE_SCORE_SEMANTICS,
+        "source_kind": source_kind,
+        # Sort to discard the association with the original row ordering.
+        "scores": sorted(float(score) for score in scores),
+    }
+    encoded = (json.dumps(payload, allow_nan=False, separators=(",", ":")) + "\n").encode("utf-8")
+    if len(encoded) > MAX_BASELINE_BYTES:
+        raise ValueError("Baseline exceeds size limit")
+    # Exclusive creation (also rejects existing symbolic links). The parent
+    # directory must already be provisioned as private storage by the operator.
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(encoded)
+            handle.flush()
+            os.fsync(handle.fileno())
+    except OSError:
+        path.unlink(missing_ok=True)
+        raise
 
 
 def read_artifact_baseline(path: Path, model_version: str, artifact_sha256: str) -> tuple[list[float], str]:

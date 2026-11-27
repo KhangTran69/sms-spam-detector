@@ -66,6 +66,7 @@ from src.model_selection import (
     robust_threshold_decision,
     select_classifier,
 )
+from src.monitor import MAX_BASELINE_SCORES, MIN_BASELINE_SCORES, write_artifact_baseline
 from src.predict import ARTIFACT_SCHEMA_VERSION, DEFAULT_MODEL, ModelBundle, spam_probabilities
 from src.transformer_training import TransformerTrainingError, fine_tune_transformer, validate_transformer_plan
 
@@ -170,6 +171,8 @@ def train(
     transformer_output: str | Path | None = None,
     allow_synthetic_demo: bool = False,
     transformer_epochs: float = 2.0,
+    monitor_baseline_output: str | Path | None = None,
+    monitor_baseline_source: str | None = None,
 ) -> dict[str, Any]:
     """Train and persist the primary model. Returns the saved artifact mapping."""
     dataset = load_training_dataset(
@@ -188,6 +191,33 @@ def train(
     elif transformer_base_model is not None or transformer_output is not None or allow_synthetic_demo:
         raise TransformerTrainingError("Transformer options require --ensemble.")
     train_set, val_set, test_set = split_dataset(dataset, split)
+    if (monitor_baseline_output is None) != (monitor_baseline_source is None):
+        raise DatasetError("Specify both monitor baseline output and source kind, or neither.")
+    if monitor_baseline_output is not None:
+        reference = Path(monitor_baseline_output)
+        model_destination = Path(model_path)
+        reserved = {
+            model_destination.resolve(),
+            model_destination.with_suffix(".metadata.json").resolve(),
+            model_destination.with_suffix(".manifest.json").resolve(),
+        }
+        if metadata_output is not None:
+            reserved.add(Path(metadata_output).resolve())
+        if reference.resolve() in reserved or reference.exists() or reference.is_symlink():
+            raise DatasetError("Monitor baseline output must be a new file separate from the model and sidecars.")
+        if not reference.parent.is_dir():
+            raise DatasetError("Monitor baseline parent must be an existing private directory.")
+        kinds = set(dataset.frame["data_kind"])
+        if monitor_baseline_source == "synthetic_diagnostic":
+            if kinds != {"synthetic"}:
+                raise DatasetError("Synthetic diagnostic reference requires only synthetic development data.")
+        elif monitor_baseline_source == "approved_development":
+            if kinds != {"consented"} and kinds != {"public"}:
+                raise DatasetError("Approved development reference requires a single real-data provenance kind.")
+        else:
+            raise DatasetError("Unknown monitor baseline source kind.")
+        if ensemble or not MIN_BASELINE_SCORES <= len(val_set) <= MAX_BASELINE_SCORES:
+            raise DatasetError("Monitor reference requires a linear-only model and 50–10,000 validation scores.")
     for split_name, split_dataset_value in (("train", train_set), ("validation", val_set), ("test", test_set)):
         small_classes = {
             label: count
@@ -416,6 +446,13 @@ def train(
         manifest_path.write_text(
             json.dumps(jsonable(artifact["dataset_manifest"]), ensure_ascii=False, indent=2), encoding="utf-8"
         )
+    if monitor_baseline_output is not None and monitor_baseline_source is not None:
+        try:
+            write_artifact_baseline(
+                Path(monitor_baseline_output), version, artifact_sha256, monitor_baseline_source, val_probabilities
+            )
+        except (OSError, ValueError):
+            raise DatasetError("Monitor baseline export failed; the candidate artifact must not be promoted.") from None
     if track_run:
         target_runs_dir = runs_dir or (ROOT / "runs")
         log_experiment_run(artifact, runs_dir=target_runs_dir, model_path=model_path)
@@ -626,6 +663,12 @@ def _main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output", default=str(DEFAULT_MODEL), help="Model bundle output path.")
     parser.add_argument("--metadata-output", default=None, help="Metadata JSON sidecar path (default: next to model).")
     parser.add_argument("--no-metadata", action="store_true", help="Do not write the JSON metadata sidecar.")
+    parser.add_argument("--monitor-baseline-output", help="New private file for sorted validation scores; opt-in only.")
+    parser.add_argument(
+        "--monitor-baseline-source",
+        choices=("synthetic_diagnostic", "approved_development"),
+        help="Required source attestation with monitor baseline output; never supply sealed test data.",
+    )
     parser.add_argument("--model-version", default=None, help="Human-readable artifact version label.")
     parser.add_argument(
         "--ensemble",
@@ -739,6 +782,8 @@ def _main(argv: list[str] | None = None) -> int:
             transformer_output=args.transformer_output,
             allow_synthetic_demo=args.allow_synthetic_demo,
             transformer_epochs=args.transformer_epochs,
+            monitor_baseline_output=args.monitor_baseline_output,
+            monitor_baseline_source=args.monitor_baseline_source,
         )
     except (DatasetError, TransformerTrainingError) as exc:
         print(f"data error: {exc}")

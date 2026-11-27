@@ -637,3 +637,28 @@ invalid JSON, invalid samples and unreadable files report
 The API continues to serve predictions when a reference is rejected. Restart
 to reload a changed artifact/reference. Review the actual score population
 and operating conditions before interpreting drift or authorizing retraining.
+
+#### Export a validation-only score reference during candidate training
+
+For an explicitly approved **development** training run, supply both
+`--monitor-baseline-output` and `--monitor-baseline-source`. Use a new file
+inside a pre-existing private directory, separate from all artifact files.
+For example, the isolated CI fixture uses `synthetic_diagnostic` and the
+tracked synthetic supplements. The training command writes sorted
+probabilities from the internal validation split only, not the final test,
+along with the exact serialized artifact hash. The file is created exclusively
+with mode 0600; existing files and symlinks are not overwritten.
+
+For approved real development input, use `approved_development` only after
+documenting the authorization and provenance. The export rejects mixed or
+unknown provenance, ensemble mode and validation sets outside 50–10,000
+scores. Source attestation does not establish legal authorization. Keep the
+reference outside Git and restrict read access, including the mounted
+container identity. Do not use the sealed final test or production traffic
+as a reference. If export fails after training, the candidate artifact may
+already exist; do not promote it on that basis.
+
+CI exercises the generated synthetic reference and checks a container's
+recovery after a deliberate artifact-integrity mismatch. This is an isolated
+configuration/artifact recovery rehearsal, not a real production rollback
+or proof of acceptable accuracy.

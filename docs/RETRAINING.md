@@ -9,11 +9,13 @@ what to monitor, and how to respond when something goes wrong.
 
 ## 1. Retraining cadence and triggers
 
-**Scheduled:** at least monthly while the service is actively used, even if no
-errors are reported — scam templates rotate. Also retrain after any dependency
-upgrade that changes scikit-learn/pandas numeric behavior.
+**Scheduled:** review the service at least monthly while it is actively used.
+Review evidence, dependency changes, drift, critical legitimate-message errors
+and consent/retention changes. Retrain only when an authorized development
+dataset and a justified candidate experiment are available. A calendar date,
+dependency upgrade or drift alert alone is not permission to train or promote.
 
-**Trigger-based (retrain sooner):**
+**Trigger-based (investigate and decide whether a candidate is justified):**
 
 - New scam campaign reported by users or surfaced in error analysis.
 - False-positive cluster on legitimate messages (bank alerts, OTPs, delivery,
@@ -149,8 +151,11 @@ secure review area before summarizing; never add it to the training corpus.
 
 Drift evaluation:
 
-- Compare weekly feature/label-proxy distributions against the training window;
-  alert on material shift.
+- Compare version-bound linear spam-score distributions against an approved
+  development reference, with matching artifact hash and score semantics.
+  Report synthetic references as diagnostic only. Investigate material shifts,
+  proxy/traffic changes and sample support; score drift is not labeled accuracy.
+  Never trigger automatic retraining or promotion from a drift alert.
 - Periodically sample **masked** real messages through the data workflow to
   measure precision/recall on real traffic; this is the only way to validate
   real-world performance. Until then, state clearly that it is unmeasured.
@@ -161,7 +166,9 @@ Drift evaluation:
 1. Identify the issue and current version from `GET /model-info`; record time,
    symptom, and impact.
 2. Re-point `SMSD_MODEL_PATH` to the previous known-good immutable bundle (or
-   redeploy the previous image tag/digest if code changed too). Restart/recreate
+   redeploy the previous image tag/digest if code changed too). Restore its
+   matching metadata sidecar and score reference, or unset the reference if
+   none is suitable. Restore the expected artifact digest and restart/recreate
    the container.
 3. Wait for `GET /ready` to return 200 and `/model-info` to report the expected
    `model_version`; verify a known-good sample message and `/health`.
