@@ -129,3 +129,15 @@ def test_bootstrap_metrics_computes_empirical_percentiles():
     assert 0.8 <= ci["precision"][0] <= ci["precision"][1] <= 1.0
     assert 0.8 <= ci["recall"][0] <= ci["recall"][1] <= 1.0
     assert 0.8 <= ci["accuracy"][0] <= ci["accuracy"][1] <= 1.0
+
+
+def test_campaign_bootstrap_excludes_undefined_class_ratios():
+    import pandas as pd
+
+    frame = pd.DataFrame({"label": ["ham", "spam"], "group": ["a", "b"]})
+    report = campaign_bootstrap_intervals(frame, [0.1, 0.9], 0.5, replicates=200, minimum_groups=2)
+    assert report["intervals"]["recall"] == [1.0, 1.0]
+    assert report["intervals"]["precision"] == [1.0, 1.0]
+    assert report["intervals"]["false_positive_rate"] == [0.0, 0.0]
+    assert 0 < report["valid_replicates"]["recall"] < 200
+    assert 0 < report["valid_replicates"]["false_positive_rate"] < 200

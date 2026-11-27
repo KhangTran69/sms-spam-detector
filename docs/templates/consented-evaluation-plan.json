@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "registered_at": null,
   "intended_use": "",
   "dataset_sha256": "",
@@ -23,6 +23,17 @@
     "precision": null,
     "recall": null,
     "f1": null,
+    "false_positive_rate": null,
+    "false_negative_rate": null
+  },
+  "performance_rationale": "",
+  "minimum_valid_cluster_fraction": null,
+  "minimum_cluster_lower_bound": {
+    "precision": null,
+    "recall": null,
+    "f1": null
+  },
+  "maximum_cluster_upper_bound": {
     "false_positive_rate": null,
     "false_negative_rate": null
   }

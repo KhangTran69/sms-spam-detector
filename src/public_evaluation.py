@@ -269,6 +269,22 @@ def _markdown(report: dict[str, Any]) -> str:
         "Verify suspicious requests through trusted official channels. Do not use a low spam score as proof that a message is safe.",
         "",
     ]
+    acceptance = report.get("performance_acceptance")
+    if acceptance is not None:
+        lines.extend(
+            [
+                "## Registered overall performance gates",
+                "",
+                f"Status: **{acceptance['status']}**. {acceptance['interpretation']}",
+                "",
+            ]
+        )
+        for metric, result in acceptance["metrics"].items():
+            lines.append(
+                f"- {metric}: observed {result['observed_bound']:.4f}; "
+                f"{result['direction']} {result['limit']:.4f}; met: {result['met']}"
+            )
+        lines.append("")
     return "\n".join(lines)
 
 
@@ -500,13 +516,13 @@ def _validate_consent_evaluation_plan(
         plan = json.loads(plan_bytes.decode("utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError):
         return None, ["evaluation_plan_unavailable"]
-    if not isinstance(plan, dict) or plan.get("schema_version") != 1:
+    if not isinstance(plan, dict) or plan.get("schema_version") != 2:
         return None, ["evaluation_plan_invalid"]
 
     blockers: list[str] = []
     if not isinstance(plan.get("intended_use"), str) or not plan["intended_use"].strip():
         blockers.append("evaluation_plan_intended_use_missing")
-    for field in ("coverage_rationale", "uncertainty_rationale"):
+    for field in ("coverage_rationale", "uncertainty_rationale", "performance_rationale"):
         value = plan.get(field)
         if not isinstance(value, str) or len(value.strip()) < 20:
             blockers.append("evaluation_plan_acceptance_rationale_missing")
@@ -580,6 +596,32 @@ def _validate_consent_evaluation_plan(
         )
     ):
         blockers.append("evaluation_plan_uncertainty_requirements_invalid")
+    minimum_valid_fraction = plan.get("minimum_valid_cluster_fraction")
+    if (
+        isinstance(minimum_valid_fraction, bool)
+        or not isinstance(minimum_valid_fraction, (int, float))
+        or not 0.0 < float(minimum_valid_fraction) <= 1.0
+    ):
+        blockers.append("evaluation_plan_valid_replicate_fraction_invalid")
+    lower_bounds = plan.get("minimum_cluster_lower_bound")
+    upper_bounds = plan.get("maximum_cluster_upper_bound")
+
+    def valid_bounds(bounds: Any, names: set[str]) -> bool:
+        return (
+            isinstance(bounds, dict)
+            and set(bounds) == names
+            and all(
+                isinstance(value, (int, float))
+                and not isinstance(value, bool)
+                and 0.0 <= float(value) <= 1.0
+                for value in bounds.values()
+            )
+        )
+
+    if not valid_bounds(lower_bounds, {"precision", "recall", "f1"}) or not valid_bounds(
+        upper_bounds, {"false_positive_rate", "false_negative_rate"}
+    ):
+        blockers.append("evaluation_plan_performance_bounds_invalid")
     if blockers:
         return None, sorted(set(blockers))
     if registered_at is None:  # Defensive for type checkers and malformed plans.
@@ -597,11 +639,32 @@ def _validate_consent_evaluation_plan(
         "minimum_campaign_groups": minimum_groups,
         "minimum_coverage": coverage,
         "maximum_cluster_interval_width": {name: float(widths[name]) for name in sorted(required_metrics)},
+        "minimum_valid_cluster_fraction": minimum_valid_fraction,
+        "minimum_cluster_lower_bound": lower_bounds,
+        "maximum_cluster_upper_bound": upper_bounds,
         "split_method": "chronological_campaign_holdout",
         "campaign_overlap_checked": True,
         "test_split_sealed": True,
     }
     return safe_plan, []
+
+
+def _performance_gate_results(plan: dict[str, Any], intervals: dict[str, Any]) -> dict[str, Any]:
+    """Compare frozen campaign bounds; do not retune or promote a model."""
+    results: dict[str, dict[str, Any]] = {}
+    for field, index, direction in (
+        ("minimum_cluster_lower_bound", 0, "minimum"),
+        ("maximum_cluster_upper_bound", 1, "maximum"),
+    ):
+        for metric, limit in plan[field].items():
+            observed = intervals[metric][index]
+            met = observed >= limit if direction == "minimum" else observed <= limit
+            results[metric] = {"direction": direction, "limit": limit, "observed_bound": observed, "met": met}
+    return {
+        "status": "met" if all(item["met"] for item in results.values()) else "not_met",
+        "metrics": results,
+        "interpretation": "Overall statistical gates only; no deployment or field-study approval is implied.",
+    }
 
 
 def _consented_development_diagnostics(
@@ -995,7 +1058,13 @@ def evaluate_public_dataset(
         interval_widths: dict[str, float | None] = {}
         planned_widths = evaluation_plan["maximum_cluster_interval_width"]
         intervals = campaign_intervals.get("intervals", {})
+        valid_replicates = campaign_intervals.get("valid_replicates", {})
+        valid_fractions: dict[str, float] = {}
         for metric_name, maximum_width in planned_widths.items():
+            fraction = valid_replicates.get(metric_name, 0) / 1000
+            valid_fractions[metric_name] = fraction
+            if fraction < evaluation_plan["minimum_valid_cluster_fraction"]:
+                uncertainty_blockers.append("campaign_uncertainty_valid_replicates_below_plan")
             interval = intervals.get(metric_name) if campaign_intervals.get("available") else None
             if not isinstance(interval, list) or len(interval) != 2:
                 interval_widths[metric_name] = None
@@ -1016,6 +1085,7 @@ def evaluate_public_dataset(
                     **split_diagnostics,
                     "campaign_bootstrap_95": campaign_intervals,
                     "campaign_interval_widths": interval_widths,
+                    "campaign_valid_replicate_fractions": valid_fractions,
                 },
                 model_status="verified",
                 evaluation_plan_sha256=evaluation_plan["sha256"],
@@ -1104,6 +1174,11 @@ def evaluate_public_dataset(
             else _operating_threshold(labels, probabilities, operating_fpr)
         ),
         "evaluation_plan": evaluation_plan,
+        "performance_acceptance": (
+            _performance_gate_results(evaluation_plan, campaign_intervals["intervals"])
+            if requires_consent_gate and evaluation_plan is not None
+            else None
+        ),
         "split_inputs": split_diagnostics if requires_consent_gate else None,
         "privacy": {"pii_redaction": pii_redaction},
         "breakdowns": _breakdowns(dataset, probabilities, bundle.threshold),

@@ -131,3 +131,18 @@ file, example, or synthetic rehearsal provides authorization for a field study.
 **Current go/no-go:** no authorized independent consented Philippine corpus and
 no signed numerical acceptance criteria exist; therefore a representative
 Philippine field-performance release remains blocked.
+
+### Executable overall statistical acceptance (plan schema 2)
+
+The template requires an owner-justified minimum fraction of defined campaign
+bootstrap replicates, maximum interval widths, lower confidence bounds for
+precision/recall/F1, and upper bounds for FPR/FNR. Missing class denominators
+are excluded from resamples rather than interpreted as zero error. Too few
+valid replicates or overly wide intervals block the evaluation report. When
+intervals are adequate, the private report records whether all registered
+overall performance bounds were met. A failed performance gate is a completed
+statistical evaluation with an unmet criterion, never a reason to retune or
+retry the sealed set. Subgroup-specific criteria, annotation quality, coverage,
+privacy and deployment gates remain independently required. Schema 1 plans
+must be updated and registered **before** opening any sealed set; no migration
+or re-registration is permitted to evade an already consumed attempt.
