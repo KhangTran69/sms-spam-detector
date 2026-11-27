@@ -257,5 +257,30 @@ jobs:
       # CSVs are tracked). Tests must synthesize tiny datasets or skip when
       # those paths are missing; no step here downloads data or trains on the
       # full corpus.
-      - name: Tests (pytest)
+      - name: Tests including disposable synthetic consented-study rehearsal (pytest)
         run: pytest -q
+
+  redis-integration:
+    name: Isolated Redis rate-limit and recovery integration
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379/tcp
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install optional Redis client
+        run: python -m pip install "redis>=5,<6" -c constraints/py3.12.txt
+      - name: Verify real shared counters using fictional local identities
+        env:
+          SMSD_TEST_REDIS_URL: redis://127.0.0.1:${{ job.services.redis.ports[6379] }}/0
+        run: python scripts/redis_integration.py

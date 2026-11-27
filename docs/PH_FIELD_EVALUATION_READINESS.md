@@ -111,7 +111,7 @@ make split-consented DATA=/secure/approved-reviewed.csv \
   DEVELOPMENT_DIR=/secure/development EVALUATION_DIR=/secure/sealed-test
 
 python -m src.train --data /secure/development/consented-development-<hash>.csv \
-  --holdout none --split-by time --threshold-policy validation \
+  --no-supplements --holdout none --split-by time --threshold-policy validation \
   --output /secure/candidate/model.pkl
 
 # Register every acceptance threshold and artifact/data/membership hash first.

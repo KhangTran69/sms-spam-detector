@@ -189,7 +189,7 @@ internal validation partition:
 ```bash
 .venv/bin/python -m src.train \
   --data /secure/development/consented-development-<hash>.csv \
-  --holdout none --split-by time --threshold-policy validation \
+  --no-supplements --holdout none --split-by time --threshold-policy validation \
   --output /secure/candidate/model.pkl
 ```
 

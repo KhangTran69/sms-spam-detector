@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import concurrent.futures
+import json
 
 import numpy as np
 import pytest
@@ -106,3 +107,66 @@ def test_prediction_monitor_thread_safety():
 
     metrics = monitor.get_metrics()
     assert metrics["samples_in_window"] == 200
+
+
+
+def test_artifact_baseline_is_bound_to_hash_version_and_score_semantics(tmp_path):
+    from src.monitor import BASELINE_SCORE_SEMANTICS
+
+    monitor = PredictionMonitor()
+    path = tmp_path / "baseline.json"
+    payload = {
+        "schema_version": 1,
+        "model_version": "fixture-v1",
+        "artifact_sha256": "a" * 64,
+        "score_semantics": BASELINE_SCORE_SEMANTICS,
+        "source_kind": "synthetic_diagnostic",
+        "scores": [0.2] * 50,
+    }
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    monitor.record(0.9, "spam")
+    monitor.configure_artifact_baseline(
+        path, model_version="fixture-v1", artifact_sha256="a" * 64, calibrated=True, ensemble_configured=False
+    )
+    metrics = monitor.get_metrics()
+    assert metrics["baseline_status"] == "configured"
+    assert metrics["samples_in_window"] == 0
+    assert metrics["drift"]["drift_status"] == "insufficient_data"
+    for _ in range(50):
+        monitor.record(0.8, "spam")
+    assert monitor.get_metrics()["drift"]["drift_status"] == "significant_drift"
+
+    monitor.configure_artifact_baseline(
+        path, model_version="fixture-v1", artifact_sha256="b" * 64, calibrated=True, ensemble_configured=False
+    )
+    metrics = monitor.get_metrics()
+    assert metrics["baseline_status"] == "invalid_baseline"
+    assert metrics["samples_in_window"] == 0
+    assert metrics["drift"]["drift_status"] == "invalid_baseline"
+
+    monitor.configure_artifact_baseline(
+        path, model_version="fixture-v1", artifact_sha256="a" * 64, calibrated=True, ensemble_configured=True
+    )
+    assert monitor.get_metrics()["drift"]["drift_status"] == "incompatible_baseline"
+
+
+@pytest.mark.parametrize("bad_scores", [[0.2] * 49, [float("nan")] * 50, [True] * 50, [2] * 50, ["0.2"] * 50])
+def test_baseline_rejects_invalid_score_samples(tmp_path, bad_scores):
+    from src.monitor import BASELINE_SCORE_SEMANTICS, read_artifact_baseline
+
+    path = tmp_path / "baseline.json"
+    path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "model_version": "fixture-v1",
+                "artifact_sha256": "a" * 64,
+                "score_semantics": BASELINE_SCORE_SEMANTICS,
+                "source_kind": "synthetic_diagnostic",
+                "scores": bad_scores,
+            }
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError):
+        read_artifact_baseline(path, "fixture-v1", "a" * 64)
