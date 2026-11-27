@@ -76,6 +76,7 @@ def test_redis_limiter_calls_atomic_script_with_namespaced_hashed_key() -> None:
     assert key_count == 1
     assert key == f"smsd:rl:prediction:{expected_digest}"
     assert window_ms == 60_000 and limit == 60
+    assert script.startswith("#!lua\n")
     assert "ZREMRANGEBYSCORE" in script and "ZADD" in script and "TIME" in script
 
 

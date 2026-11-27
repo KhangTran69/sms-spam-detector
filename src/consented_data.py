@@ -82,6 +82,7 @@ class BatchReport:
     categories: dict[str, int]
     groups: int
     findings: tuple[Finding, ...]
+    review_quality: dict[str, Any]
 
     @property
     def valid(self) -> bool:
@@ -95,12 +96,33 @@ class BatchReport:
             "languages": self.languages,
             "categories": self.categories,
             "groups": self.groups,
+            "review_quality": self.review_quality,
             "findings": [asdict(item) for item in self.findings],
             "notice": (
                 "Preflight checks do not prove consent or complete de-identification. "
                 "Verify the separate consent register and reviewer records."
             ),
         }
+
+
+def _agreement_summary(pairs: list[tuple[str, str]]) -> dict[str, Any]:
+    """Content-free paired agreement and chance-corrected Cohen kappa."""
+    count = len(pairs)
+    if not count:
+        return {"paired_rows": 0, "agreement": None, "cohen_kappa": None}
+    agreement = sum(first == second for first, second in pairs) / count
+    labels = {label for pair in pairs for label in pair}
+    expected = sum(
+        (sum(first == label for first, _ in pairs) / count)
+        * (sum(second == label for _, second in pairs) / count)
+        for label in labels
+    )
+    return {
+        "paired_rows": count,
+        "disagreements": sum(first != second for first, second in pairs),
+        "agreement": agreement,
+        "cohen_kappa": (agreement - expected) / (1 - expected) if expected < 1 else None,
+    }
 
 
 def _norm_label(value: Any) -> str | None:
@@ -190,6 +212,8 @@ def validate_batch(
     group_ids: set[str] = set()
     message_keys: set[str] = set()
     template_groups: dict[str, list[tuple[int, str]]] = {}
+    label_pairs: list[tuple[str, str]] = []
+    scam_pairs: list[tuple[str, str]] = []
 
     for row_offset, (_, row) in enumerate(frame.iterrows()):
         row_number = row_offset + 2
@@ -288,6 +312,8 @@ def validate_batch(
         reviewer_a = _norm_label(values["reviewer_a_label"])
         reviewer_b = _norm_label(values["reviewer_b_label"])
         adjudicated = _norm_label(values["adjudicated_label"])
+        if reviewer_a is not None and reviewer_b is not None:
+            label_pairs.append((reviewer_a, reviewer_b))
         if None in (reviewer_a, reviewer_b, adjudicated):
             findings.append(Finding(row_number, "two_review_labels_and_adjudication_required"))
         elif label is not None and adjudicated != label:
@@ -307,6 +333,8 @@ def validate_batch(
         scam_b = values["reviewer_b_scam_assessment"].lower()
         scam_final = values["adjudicated_scam_assessment"].lower()
         scam_row = values["scam_assessment"].lower()
+        if scam_a in SCAM_ASSESSMENTS and scam_b in SCAM_ASSESSMENTS:
+            scam_pairs.append((scam_a, scam_b))
         for assessment in (scam_a, scam_b, scam_final, scam_row):
             if assessment not in SCAM_ASSESSMENTS:
                 findings.append(Finding(row_number, "invalid_scam_assessment"))
@@ -352,6 +380,10 @@ def validate_batch(
         categories=category_counts,
         groups=len(group_ids - {""}),
         findings=unique_findings,
+        review_quality={
+            "spam_label": _agreement_summary(label_pairs),
+            "scam_assessment": _agreement_summary(scam_pairs),
+        },
     )
 
 

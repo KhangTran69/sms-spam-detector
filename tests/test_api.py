@@ -1407,40 +1407,43 @@ def test_default_admission_capacity_under_repeated_concurrent_waves(monkeypatch)
     monkeypatch.setattr(api_main, "REQUEST_ADMISSION", threading.BoundedSemaphore(capacity))
     monkeypatch.setattr(api_main, "operations_monitor", monitor)
 
+    async def wave():
+        release = asyncio.Event()
+        full = asyncio.Event()
+        admitted = 0
+
+        async def downstream(scope, receive, send):
+            nonlocal admitted
+            admitted += 1
+            if admitted == capacity:
+                full.set()
+            await release.wait()
+            await send({"type": "http.response.start", "status": 200, "headers": []})
+
+        middleware = api_main.WriteAdmissionMiddleware(downstream)
+
+        async def request():
+            sent = []
+
+            async def send(message):
+                sent.append(message)
+
+            await middleware({"type": "http", "method": "POST", "path": "/predict"}, None, send)
+            return sent[0]["status"]
+
+        active = [asyncio.create_task(request()) for _ in range(capacity)]
+        try:
+            await asyncio.wait_for(full.wait(), timeout=2)
+            assert await asyncio.gather(*(request() for _ in range(8))) == [503] * 8
+            assert monitor.snapshot()["active_writes"] == capacity
+        finally:
+            release.set()
+            assert await asyncio.gather(*active) == [200] * capacity
+        assert monitor.snapshot()["active_writes"] == 0
+
     async def exercise():
         for _ in range(3):
-            release = asyncio.Event()
-            full = asyncio.Event()
-            admitted = 0
-
-            async def downstream(scope, receive, send):
-                nonlocal admitted
-                admitted += 1
-                if admitted == capacity:
-                    full.set()
-                await release.wait()
-                await send({"type": "http.response.start", "status": 200, "headers": []})
-
-            middleware = api_main.WriteAdmissionMiddleware(downstream)
-
-            async def request():
-                sent = []
-
-                async def send(message):
-                    sent.append(message)
-
-                await middleware({"type": "http", "method": "POST", "path": "/predict"}, None, send)
-                return sent[0]["status"]
-
-            active = [asyncio.create_task(request()) for _ in range(capacity)]
-            try:
-                await asyncio.wait_for(full.wait(), timeout=2)
-                assert await asyncio.gather(*(request() for _ in range(8))) == [503] * 8
-                assert monitor.snapshot()["active_writes"] == capacity
-            finally:
-                release.set()
-                assert await asyncio.gather(*active) == [200] * capacity
-            assert monitor.snapshot()["active_writes"] == 0
+            await wave()
 
     asyncio.run(exercise())
     snapshot = monitor.snapshot()

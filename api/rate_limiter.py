@@ -20,7 +20,8 @@ from typing import Any, Protocol
 
 logger = logging.getLogger("api.rate_limiter")
 
-_SLIDING_WINDOW_SCRIPT = """
+# Redis 7 script flags reject execution before any mutation when over maxmemory.
+_SLIDING_WINDOW_SCRIPT = """#!lua
 local current_time = redis.call('TIME')
 local now_ms = tonumber(current_time[1]) * 1000 + math.floor(tonumber(current_time[2]) / 1000)
 local window_ms = tonumber(ARGV[1])

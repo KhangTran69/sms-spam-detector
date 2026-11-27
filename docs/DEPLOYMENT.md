@@ -705,3 +705,10 @@ exercise real startup and runtime outages. These are functional workload
 checks, not a host sizing benchmark or a full Redis restart recovery SLA.
 A successful Redis PING alone does not guarantee writes will succeed during
 memory pressure. Monitor prediction outcome counters alongside readiness.
+
+The Redis backend requires Redis 7 or later. Its Lua script uses the Redis 7
+script declaration to reject execution while the server is over maxmemory,
+before mutating an admission counter. See the Redis scripting documentation:
+https://redis.io/docs/latest/develop/interact/programmability/eval-intro/.
+Older servers are not supported; confirm the server version and an actual
+protected prediction during deployment readiness checks.

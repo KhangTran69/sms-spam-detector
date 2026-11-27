@@ -57,6 +57,8 @@ def test_valid_intake_reports_aggregate_metadata_only() -> None:
     assert report.languages == {"en": 1}
     assert report.categories == {"school_work": 1}
     assert report.groups == 1
+    assert report.review_quality["spam_label"]["agreement"] == 1.0
+    assert report.review_quality["spam_label"]["cohen_kappa"] is None
     assert "message" not in str(report.as_dict())
 
 
@@ -257,3 +259,15 @@ def test_normalized_duplicate_messages_are_rejected_before_splitting():
 def test_evaluation_intake_requires_real_dates_for_temporal_holdout():
     with pytest.raises(ValueError, match="received_at"):
         validate_batch(pd.DataFrame([valid_batch_row()]), today=date(2026, 10, 21), purpose="evaluation")
+
+
+def test_review_agreement_is_chance_corrected_and_does_not_expose_reviewer_ids():
+    from src.consented_data import _agreement_summary
+
+    result = _agreement_summary([("ham", "ham"), ("spam", "spam"), ("ham", "spam"), ("spam", "ham")])
+    assert result["paired_rows"] == 4
+    assert result["disagreements"] == 2
+    assert result["agreement"] == 0.5
+    assert result["cohen_kappa"] == 0.0
+    assert _agreement_summary([("ham", "ham")])["cohen_kappa"] is None
+    assert _agreement_summary([])["agreement"] is None
