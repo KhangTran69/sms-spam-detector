@@ -716,6 +716,7 @@ _STATIC_ASSETS = {
     "donate.js",
     "donate.css",
     "styles.css",
+    "tokens.css",
     "icon.svg",
 }
 
@@ -748,6 +749,7 @@ def static_asset(asset_name: str, request: Request):
         "donate.js": "text/javascript",
         "donate.css": "text/css",
         "styles.css": "text/css",
+        "tokens.css": "text/css",
         "fonts/BricolageGrotesque-var-latin.woff2": "font/woff2",
         "fonts/SourceSerif4-var-latin.woff2": "font/woff2",
         "fonts/SourceSerif4-Italic-var-latin.woff2": "font/woff2",

@@ -306,6 +306,12 @@ block on it.
 - **T5.5 partially done.** Docs-index rows added for ROADMAP/OWNER_DECISIONS/
   history; index-completeness check lives in `make doctor` (CI addition still
   open).
+- 2026-11-28: Editorial polish pass executed on the untracked plan's successor prompt
+  (docs/UI_UX_DESIGN_PLAN.md follow-up): tokens.css extracted and shared with the
+  donation page (donate-v6), short meter labels, marker settle via transform,
+  result reveal, WCAG token-pair audit test (16 pairs x 2 dials), 200%/400% zoom
+  smoke checks, aria-current on tabs. Shell smsd-shell-v27 / ui22-editorial-polish.
+  Word-budget copy trimming remains deferred to the comprehension re-review round.
 - Queued next: T2.1 Tagalog-SMS fetch+eval (needs Kaggle credentials),
   T4.1 comprehension study (needs owner approval per HUMAN_REVIEW.md), T5.3
   coverage ratchet toward 85%, T5.6 quarterly ritual scheduling.

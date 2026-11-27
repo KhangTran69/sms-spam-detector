@@ -5,6 +5,13 @@ continue to process messages in memory; donation storage stays **disabled by
 default**. This page describes the implementation, not a legal determination
 that any particular collection is lawful.
 
+## Presentation note
+
+The donation page shares the detector's design tokens (`tokens.css`, added
+2026-11-28) with the same Editorial material as the main interface; the
+restyle is presentational only — consent gating, notice version, PII
+rejection, withdrawal, and export behavior are unchanged.
+
 ## Enable only for a reviewed local service
 
 Before enabling collection, the project owner must complete and sign the

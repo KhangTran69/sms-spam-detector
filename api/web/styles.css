@@ -4,83 +4,6 @@
    Adaptations (on the record): tri-band verdict colors carried by words plus a
    4px rule (never color-only); one derived dark dial of the same material.
    Source: docs/UI_UX_DESIGN_PLAN.md · method: github.com/Nutlope/hallmark (MIT). */
-:root {
-  color-scheme: light;
-  --bg: #f7f5f0;
-  --card: #f7f5f0;
-  --surface: #eeebe4;
-  --surface-2: #e5e1d9;
-  --ink: #0c0d12;
-  --ink-2: #2a2b31;
-  --muted: #56524b;
-  --line: #d0cdc7;
-  --rule-2: #8f8c85;
-  --primary: #007136;
-  --primary-dark: #005c24;
-  --on-primary: #faf8f5;
-  --focus: #007e3f;
-  --red: #a03f3c;
-  --red-bg: #f5e3e1;
-  --red-ink: #6f2120;
-  --red-line: #dba9a4;
-  --amber: #9d6300;
-  --amber-bg: #f4ead5;
-  --amber-ink: #663900;
-  --amber-line: #d6b98a;
-  --green: #10703a;
-  --green-bg: #dcede0;
-  --green-ink: #00481e;
-  --green-line: #9bc3a5;
-  --chip-bg: #e5e1d9;
-  --sig-url: #1f6f3d;
-  --sig-phone: #4c4f86;
-  --sig-money: #875814;
-  --sig-urgency: #9c433f;
-  --sig-brand: #5c4a7b;
-  --rule-heavy: 4px;
-  --radius: 0px;
-  --radius-small: 0px;
-  --font-display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
-  --font-body: "Source Serif 4", ui-serif, Georgia, serif;
-  --shadow: none;
-}
-
-/* Manual dark choice: one derived dial of the same warm material. */
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --bg: #0f0d00;
-  --card: #0f0d00;
-  --surface: #181610;
-  --surface-2: #201c16;
-  --ink: #edebe5;
-  --ink-2: #cac7c0;
-  --muted: #96918a;
-  --line: #33302a;
-  --rule-2: #56524b;
-  --primary: #6fc087;
-  --primary-dark: #86d29b;
-  --on-primary: #0f0d00;
-  --focus: #86d29b;
-  --red: #e27e76;
-  --red-bg: #2c1a18;
-  --red-ink: #f7b4ad;
-  --red-line: #643a37;
-  --amber: #dba15c;
-  --amber-bg: #282014;
-  --amber-ink: #edcc95;
-  --amber-line: #5e4925;
-  --green: #73bf88;
-  --green-bg: #162319;
-  --green-ink: #a7ddb4;
-  --green-line: #2d5137;
-  --chip-bg: #201c16;
-  --sig-url: #79bd8c;
-  --sig-phone: #a2a7d7;
-  --sig-money: #d3a46e;
-  --sig-urgency: #e18881;
-  --sig-brand: #ab9bcb;
-}
-
 @font-face {
   font-family: "Bricolage Grotesque";
   src: url("/static/fonts/BricolageGrotesque-var-latin.woff2") format("woff2");
@@ -445,6 +368,12 @@ textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .example-chip:hover { border-bottom-color: var(--ink); color: var(--primary-dark); }
 .example-status { flex-basis: 100%; color: var(--muted); font-size: 13px; font-family: var(--font-display); }
 
+/* P5: restrained reveal for the analysis result. */
+#result:not(.hidden) { animation: result-reveal 0.35s ease-out; }
+@keyframes result-reveal {
+  from { opacity: 0; transform: translateY(6px); }
+}
+
 /* ---------- Verdict ---------- */
 .verdict { display: flex; align-items: flex-start; gap: 16px; border-left: var(--rule-heavy) solid var(--muted); padding: 4px 0 4px 16px; flex-wrap: wrap; }
 .verdict-icon { display: none; }
@@ -477,8 +406,14 @@ textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
     var(--amber) var(--suspect), var(--amber) var(--scam),
     var(--red) var(--scam), var(--red) 100%);
 }
+.meter-marker-track {
+  position: absolute;
+  inset: 0;
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
 .meter-marker {
   position: absolute;
+  left: 0;
   top: -7px;
   width: 3px;
   height: 26px;
@@ -486,7 +421,7 @@ textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
   transform: translateX(-50%);
   box-shadow: 0 0 0 2px var(--bg);
 }
-.meter-labels { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; font-family: var(--font-display); margin-top: 8px; }
+.meter-labels { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 11.5px; font-family: var(--font-display); margin-top: 8px; }
 
 /* ---------- Highlighted message & signals ---------- */
 .highlighted {
@@ -708,6 +643,7 @@ mark.sig {
 .panel-title { margin: 0 0 6px; font-family: var(--font-display); font-weight: 800; font-stretch: 78%; font-size: 24px; color: var(--ink); }
 .compare-inputs, .compare-result-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .compare-input, .compare-result-card { min-width: 0; }
+.compare-result-card { border-top: 1px solid var(--line); padding-top: 12px; }
 .compare-input textarea { min-height: 120px; }
 .compare-input .char-count { display: block; text-align: right; margin-top: 4px; }
 .compare-examples { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 12px 0 20px; }
@@ -789,6 +725,7 @@ mark.sig {
 
 @media (max-width: 400px) {
   main, .header-inner { padding: 0 10px; }
+  .meter-labels { gap: 4px; }
   .meter-labels span { font-size: 10.5px; }
   .brand { font-size: 19px; }
 }

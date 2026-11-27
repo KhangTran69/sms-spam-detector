@@ -303,8 +303,12 @@ def test_service_worker_installs_complete_static_shell_and_never_caches_api(html
     ):
         assert f'"/static/{asset}?v={stamp}"' in sw, f"shell must cache the current {asset}"
     assert '"/static/theme-init.js?v=theme-v1"' in sw
-    assert '"/static/donate.js?v=donate-v5"' in sw
-    assert '"/static/donate.css?v=donate-v5"' in sw
+    donate_html = (ROOT / "api" / "web" / "donate.html").read_text(encoding="utf-8")
+    donate_stamp = re.search(r"/static/donate\.css\?v=([a-z0-9-]+)", donate_html)
+    assert donate_stamp, "donate.html must pin the donate.css version"
+    assert f'"/static/donate.css?v={donate_stamp.group(1)}"' in sw
+    donate_js = re.search(r"/static/donate\.js\?v=([a-z0-9-]+)", donate_html)
+    assert donate_js and f'"/static/donate.js?v={donate_js.group(1)}"' in sw
     assert '"/donate"' in sw and '"/privacy-notice"' in sw
     assert f'type="module" src="/static/app.js?v={stamp}"' in html
     assert '<script src="/static/theme-init.js?v=theme-v1"></script>' in html
@@ -415,6 +419,62 @@ def test_score_bands_use_cautious_spam_signal_terminology(js, html):
     assert 'id="model-details"' in html
 
 
+# ----------------------------- token contrast audit (WCAG AA) -----------------------------
+
+
+def _srgb_channels(hex_color: str) -> tuple[float, float, float]:
+    value = hex_color.lstrip("#")
+    return tuple(int(value[i : i + 2], 16) / 255 for i in (0, 2, 4))
+
+
+def _relative_luminance(hex_color: str) -> float:
+    def linear(channel: float) -> float:
+        return channel / 12.92 if channel <= 0.04045 else ((channel + 0.055) / 1.055) ** 2.4
+
+    r, g, b = (linear(c) for c in _srgb_channels(hex_color))
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def _contrast(foreground: str, background: str) -> float:
+    light, dark = sorted((_relative_luminance(foreground), _relative_luminance(background)), reverse=True)
+    return (light + 0.05) / (dark + 0.05)
+
+
+def test_token_pairs_meet_wcag_aa_in_both_dials():
+    tokens = (ROOT / "api" / "web" / "tokens.css").read_text(encoding="utf-8")
+    light_block = tokens.split(':root[data-theme="dark"]', 1)[0]
+    dark_block = tokens.split(':root[data-theme="dark"]', 1)[1]
+    # (foreground var, background var, minimum ratio, why)
+    pairs = [
+        ("--ink", "--bg", 4.5, "primary reading text"),
+        ("--ink-2", "--bg", 4.5, "body text"),
+        ("--muted", "--bg", 4.5, "hints and meta"),
+        ("--ink-2", "--surface", 4.5, "text on wells"),
+        ("--red-ink", "--bg", 4.5, "spam verdict title"),
+        ("--amber-ink", "--bg", 4.5, "suspicious verdict title"),
+        ("--green-ink", "--bg", 4.5, "safe verdict title"),
+        ("--red-ink", "--red-bg", 4.5, "error banner"),
+        ("--amber-ink", "--amber-bg", 4.5, "warning banner"),
+        ("--on-primary", "--primary", 4.5, "primary button label"),
+        ("--focus", "--bg", 3.0, "focus outline"),
+        ("--sig-url", "--bg", 3.0, "link signal underline"),
+        ("--sig-phone", "--bg", 3.0, "phone signal underline"),
+        ("--sig-money", "--bg", 3.0, "money signal underline"),
+        ("--sig-urgency", "--bg", 3.0, "urgency signal underline"),
+        ("--sig-brand", "--bg", 3.0, "brand signal underline"),
+    ]
+    failures = []
+    for dial_name, block in (("light", light_block), ("dark", dark_block)):
+        values = dict(re.findall(r"^\s*(--[a-z0-9-]+):\s*#([0-9a-fA-F]{6})", block, re.MULTILINE))
+        for foreground, background, minimum, why in pairs:
+            fg, bg = values.get(foreground), values.get(background)
+            assert fg and bg, f"{dial_name} dial is missing {foreground}/{background}"
+            ratio = _contrast(fg, bg)
+            if ratio < minimum:
+                failures.append(f"{dial_name}: {foreground} on {background} = {ratio:.2f} (< {minimum}, {why})")
+    assert not failures, "contrast failures:\n" + "\n".join(failures)
+
+
 def test_message_signals_are_described_as_text_patterns(html, js, css):
     normalized = collapse_whitespace(html)
     versioned_assets = re.findall(r"/static/(?:styles\.css|app\.js)\?v=([a-z0-9-]+)", html)
@@ -519,19 +579,22 @@ def test_signal_terminology_is_consistent_across_languages(js):
 
 
 def test_dark_mode_variables_and_toggle(css, js, html):
+    tokens = (ROOT / "api" / "web" / "tokens.css").read_text(encoding="utf-8")
     assert 'id="btn-theme"' in html
     assert 'data-i18n-aria-label="theme.aria"' in html
     assert 'id="offline-banner"' in html
-    assert ':root[data-theme="dark"]' in css, "manual dark theme must define its own variables"
-    assert "prefers-color-scheme: dark" not in css, "theme must have only the explicit light/dark modes"
-    assert "color-scheme: light" in css and "color-scheme: dark" in css
+    assert ':root[data-theme="dark"]' in tokens, "manual dark theme must define its own variables"
+    assert "prefers-color-scheme" not in tokens, "theme must have only the explicit light/dark modes"
+    assert "color-scheme: light" in tokens and "color-scheme: dark" in tokens
+    assert "/static/tokens.css" in html, "both pages must load the shared tokens"
+    assert '"tokens.css"' in (ROOT / "api" / "main.py").read_text(encoding="utf-8"), "tokens.css must be allowlisted"
     assert "THEME_KEY" in js and "localStorage.setItem(THEME_KEY" in js, "theme choice must persist"
     assert 'const THEME_STATES = ["light", "dark"]' in js
     assert "readTheme" in js and "applyTheme" in js and "toggleTheme" in js
     assert "cycleTheme" not in js and '"theme.auto"' not in js
     for state in ("light", "dark"):
         assert f'"{state}"' in js
-    # Both themes must define the core palette variables (WCAG baseline).
+    # Both dials must define the core palette variables (WCAG baseline).
     for variable in (
         "--bg",
         "--card",
@@ -544,8 +607,9 @@ def test_dark_mode_variables_and_toggle(css, js, html):
         "--amber",
         "--green",
     ):
-        light_section = css.split(':root[data-theme="dark"]', 1)[0]
-        dark_section = css.split(':root[data-theme="dark"]', 1)[1]
+        tokens = (ROOT / "api" / "web" / "tokens.css").read_text(encoding="utf-8")
+        light_section = tokens.split(':root[data-theme="dark"]', 1)[0]
+        dark_section = tokens.split(':root[data-theme="dark"]', 1)[1]
         assert light_section.count(variable) >= 1 and dark_section.count(variable) >= 1, variable
 
 
@@ -719,9 +783,14 @@ def _styles() -> str:
 
 
 def _token_free_styles() -> str:
-    """Strip the token blocks so 'tokens only' can be checked on the rest."""
-    css = _styles()
-    return re.sub(r":root[^{]*\{.*?\n\}", "", css, flags=re.DOTALL)
+    """Strip the token blocks so 'tokens only' can be checked on the rest.
+
+    Tokens live in tokens.css (shared with the donation page); styles.css
+    must carry none of its own."""
+    body = re.sub(r":root[^{]*\{.*?\n\}", "", _styles(), flags=re.DOTALL)
+    tokens = (ROOT / "api" / "web" / "tokens.css").read_text(encoding="utf-8")
+    tokens_free = re.sub(r":root[^{]*\{.*?\n\}", "", tokens, flags=re.DOTALL)
+    return body + "\n" + tokens_free
 
 
 def test_floor_no_eyebrow_labels(css):
@@ -765,6 +834,15 @@ def test_floor_job_first_layout(html):
         if pos != -1:
             assert pos > check_pos, f"{meta_id} must follow the check panel (job-first layout)"
     assert html.count('class="btn primary"') <= 3, "at most one primary action per panel"
+
+
+def test_floor_meter_labels_are_short_and_dedicated(html):
+    """Meter edge labels reuse verdict sentences at 10.5px until this fix;
+    they now carry their own short keys so they cannot collide at 360px."""
+    assert 'data-i18n="meter.safe"' in html and 'data-i18n="meter.scam"' in html
+    assert 'data-i18n="meter.suspicious"' in html
+    for key in ("meter.safe", "meter.suspicious", "meter.scam"):
+        assert f'"{key}"' in (ROOT / "api" / "web" / "i18n.js").read_text(encoding="utf-8")
 
 
 def test_floor_hallmark_stamp(css):

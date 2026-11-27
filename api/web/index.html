@@ -8,7 +8,8 @@
   <title>PH SMS Scam Detector</title>
   <link rel="icon" href="/static/icon.svg" type="image/svg+xml" />
   <link rel="manifest" href="/manifest.webmanifest" />
-  <link rel="stylesheet" href="/static/styles.css?v=ui21-editorial-20261128" />
+  <link rel="stylesheet" href="/static/tokens.css?v=ui22-editorial-polish-20261128" />
+  <link rel="stylesheet" href="/static/styles.css?v=ui22-editorial-polish-20261128" />
   <script src="/static/theme-init.js?v=theme-v1"></script>
 </head>
 <body>
@@ -103,9 +104,9 @@
           </div>
           <div id="risk-meter" class="meter" role="meter" aria-label="Spam score; calibration status follows the loaded model"
             aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="0% model score">
-            <div id="meter-marker" class="meter-marker" aria-hidden="true" style="left:0%"></div>
+            <div id="meter-marker-track" class="meter-marker-track" aria-hidden="true"><div id="meter-marker" class="meter-marker"></div></div>
           </div>
-          <div class="meter-labels" aria-hidden="true"><span data-i18n="band.looks_safe">Low spam score</span><span data-i18n="band.suspicious">Elevated spam score</span><span data-i18n="band.likely_scam">High spam score</span></div>
+          <div class="meter-labels" aria-hidden="true"><span data-i18n="meter.safe">Low</span><span data-i18n="meter.suspicious">Elevated</span><span data-i18n="meter.scam">High</span></div>
         </div>
 
         <div class="card">
@@ -310,6 +311,6 @@
     <p><a id="donate-link" href="/donate" hidden data-i18n="footer.donate">Optional message donation</a></p>
   </footer>
 
-  <script type="module" src="/static/app.js?v=ui21-editorial-20261128"></script>
+  <script type="module" src="/static/app.js?v=ui22-editorial-polish-20261128"></script>
 </body>
 </html>

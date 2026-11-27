@@ -1,11 +1,11 @@
-import { API, activeRequestCount, createApiClient } from "./api-client.js?v=ui21-editorial-20261128";
-import { createShellUpdates } from "./shell-updates.js?v=ui21-editorial-20261128";
-import { I18N } from "./i18n.js?v=ui21-editorial-20261128";
-import { applyPrivacyMasks, buildPrivacyReview, clearPrivacyReview, detectSensitiveSpans } from "./privacy-preview.js?v=ui21-editorial-20261128";
-import { createHistoryStore } from "./history-store.js?v=ui21-editorial-20261128";
-import { createConnectionStatus } from "./connection-status.js?v=ui21-editorial-20261128";
-import { createResultFormatting, normalizeModelInfo } from "./result-format.js?v=ui21-editorial-20261128";
-import { EXAMPLES } from "./demo-examples.js?v=ui21-editorial-20261128";
+import { API, activeRequestCount, createApiClient } from "./api-client.js?v=ui22-editorial-polish-20261128";
+import { createShellUpdates } from "./shell-updates.js?v=ui22-editorial-polish-20261128";
+import { I18N } from "./i18n.js?v=ui22-editorial-polish-20261128";
+import { applyPrivacyMasks, buildPrivacyReview, clearPrivacyReview, detectSensitiveSpans } from "./privacy-preview.js?v=ui22-editorial-polish-20261128";
+import { createHistoryStore } from "./history-store.js?v=ui22-editorial-polish-20261128";
+import { createConnectionStatus } from "./connection-status.js?v=ui22-editorial-polish-20261128";
+import { createResultFormatting, normalizeModelInfo } from "./result-format.js?v=ui22-editorial-polish-20261128";
+import { EXAMPLES } from "./demo-examples.js?v=ui22-editorial-polish-20261128";
 
 /* PH SMS Scam Detector — UI logic (no build step, vanilla JS). */
 "use strict";
@@ -317,6 +317,8 @@ function selectTab(tab) {
     const selected = candidate === tab;
     candidate.classList.toggle("active", selected);
     candidate.setAttribute("aria-selected", String(selected));
+    if (selected) candidate.setAttribute("aria-current", "true");
+    else candidate.removeAttribute("aria-current");
     candidate.tabIndex = selected ? 0 : -1;
   }
   for (const panel of document.querySelectorAll(".panel")) {
@@ -485,7 +487,8 @@ function renderMeter(analysis) {
     : calibration === false ? t("meter.aria") : t("meter.aria.unavailable"));
   meter.setAttribute("aria-valuetext", value === null ? t("value.unavailable")
     : `${value}% ${scoreLabel(analysis)} — ${bandTitle(band)}`);
-  $("meter-marker").style.left = value === null ? "0%" : `${value}%`;
+  // Floor-compliant settle: animate transform on a full-width track, never left.
+  $("meter-marker-track").style.transform = `translateX(${value === null ? 0 : value}%)`;
   const output = $("meter-value");
   output.textContent = value === null ? t("value.unavailable") : `${value}%`;
   output.style.color = { spam: "var(--red)", suspicious: "var(--amber)", safe: "var(--green)" }[bandView(band).css] || "var(--muted)";

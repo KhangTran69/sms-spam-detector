@@ -3,25 +3,26 @@
  */
 "use strict";
 
-const CACHE_NAME = "smsd-shell-v26";
+const CACHE_NAME = "smsd-shell-v27";
 const SHELL_ASSETS = [
   "/",
-  "/static/styles.css?v=ui21-editorial-20261128",
-  "/static/app.js?v=ui21-editorial-20261128",
-  "/static/shell-updates.js?v=ui21-editorial-20261128",
+  "/static/tokens.css?v=ui22-editorial-polish-20261128",
+  "/static/styles.css?v=ui22-editorial-polish-20261128",
+  "/static/app.js?v=ui22-editorial-polish-20261128",
+  "/static/shell-updates.js?v=ui22-editorial-polish-20261128",
   "/static/fonts/BricolageGrotesque-var-latin.woff2",
   "/static/fonts/SourceSerif4-var-latin.woff2",
   "/static/fonts/SourceSerif4-Italic-var-latin.woff2",
   "/static/theme-init.js?v=theme-v1",
-  "/static/api-client.js?v=ui21-editorial-20261128",
-  "/static/i18n.js?v=ui21-editorial-20261128",
-  "/static/privacy-preview.js?v=ui21-editorial-20261128",
-  "/static/history-store.js?v=ui21-editorial-20261128",
-  "/static/connection-status.js?v=ui21-editorial-20261128",
-  "/static/result-format.js?v=ui21-editorial-20261128",
-  "/static/demo-examples.js?v=ui21-editorial-20261128",
+  "/static/api-client.js?v=ui22-editorial-polish-20261128",
+  "/static/i18n.js?v=ui22-editorial-polish-20261128",
+  "/static/privacy-preview.js?v=ui22-editorial-polish-20261128",
+  "/static/history-store.js?v=ui22-editorial-polish-20261128",
+  "/static/connection-status.js?v=ui22-editorial-polish-20261128",
+  "/static/result-format.js?v=ui22-editorial-polish-20261128",
+  "/static/demo-examples.js?v=ui22-editorial-polish-20261128",
   "/static/donate.js?v=donate-v5",
-  "/static/donate.css?v=donate-v5",
+  "/static/donate.css?v=donate-v6",
   "/manifest.webmanifest",
 ];
 const SHELL_REQUESTS = new Set(SHELL_ASSETS.map((asset) => {

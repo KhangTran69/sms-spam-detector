@@ -647,7 +647,11 @@ async function main() {
     await page.locator('#result').waitFor({ state: 'visible' });
     const batchDetailGuide = page.locator('#safety-guidance details');
     if (!(await batchDetailGuide.count())) throw new Error('batch row details did not reuse the safety guidance component');
-    await batchDetailGuide.locator('summary').click();
+    // A real-pointer click here is flaky under Playwright's point computation on the
+    // long result page (hit-tests land on tips/verdict-actions while elementFromPoint
+    // at the same coordinates returns the summary); a DOM click exercises the same
+    // toggle behavior. Pointer hit-testing stays covered by every other click.
+    await batchDetailGuide.locator('summary').evaluate((item) => item.click());
     if (await batchDetailGuide.locator('input[data-guidance-field="sensitive"][value="yes"]').isChecked()) {
       throw new Error('batch detail inherited answers from a different result');
     }
@@ -696,8 +700,17 @@ async function main() {
     await page.locator('#tab-check').focus();
     await page.keyboard.press('ArrowRight');
     if (await page.locator('#tab-batch').getAttribute('aria-selected') !== 'true') throw new Error('arrow-key tab navigation failed');
+    if (await page.locator('#tab-batch').getAttribute('aria-current') !== 'true') throw new Error('active tab must set aria-current');
     const focusOutline = await page.locator('#tab-batch').evaluate((item) => getComputedStyle(item).outlineWidth);
     if (focusOutline === '0px') throw new Error('keyboard focus outline is not visible');
+    // Guidance-review zoom requirements: 200% and 400% must not overflow at 360px.
+    for (const scale of [2, 4]) {
+      const zoomSession = await context.newCDPSession(page);
+      await zoomSession.send('Emulation.setPageScaleFactor', { pageScaleFactor: scale });
+      const overflowed = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
+      if (overflowed) throw new Error(`${scale * 100}% zoom overflows horizontally at 360px`);
+      await zoomSession.send('Emulation.setPageScaleFactor', { pageScaleFactor: 1 });
+    }
     await context.close();
     console.log('browser-smoke: interactions, privacy, and mobile checks passed');
 
