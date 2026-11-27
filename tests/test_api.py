@@ -970,6 +970,66 @@ def test_distribution_metrics_endpoint(client):
     assert data_v1["samples_in_window"] >= 1
 
 
+def test_operations_metrics_report_coarse_counts_without_sensitive_text(client):
+    from api.ops_metrics import operations_monitor
+
+    operations_monitor.clear()
+    try:
+        body = "FICTIONAL-PRIVATE-SMS-123456"
+        client.post("/predict", json={"message": body})
+        client.post("/predict", content="{malformed", headers={"Content-Type": "application/json"})
+        response = client.get("/metrics/operations")
+        assert response.status_code == 200
+        report = response.json()
+        assert report["request_count"] >= 2
+        assert report["route_groups"]["prediction"] >= 2
+        assert report["status_classes"]["4xx"] >= 1
+        assert report["latency_p95_ms"] is not None
+        assert body not in response.text
+        assert "/predict" not in response.text
+        assert client.get("/v1/metrics/operations").status_code == 200
+    finally:
+        operations_monitor.clear()
+
+
+def test_metrics_routes_are_private_in_production(client, monkeypatch):
+    monkeypatch.setattr(api_main, "SMSD_ENV", "production")
+    monkeypatch.setattr(api_main, "METRICS_TOKEN", "fixture-secret-token")
+    for route in ("/metrics/distribution", "/metrics/operations", "/v1/metrics/operations"):
+        assert client.get(route).status_code == 404
+        assert client.get(route, headers={"X-SMSD-Metrics-Token": "wrong"}).status_code == 404
+        assert client.get(route, headers={"X-SMSD-Metrics-Token": "fixture-secret-token"}).status_code == 200
+    monkeypatch.setattr(api_main, "METRICS_TOKEN", "")
+    assert client.get("/metrics/operations", headers={"X-SMSD-Metrics-Token": "fixture-secret-token"}).status_code == 404
+
+
+def test_rate_limit_runtime_outage_returns_safe_503(client, monkeypatch):
+    from api.rate_limiter import RateLimiterUnavailable
+
+    class BrokenLimiter:
+        def check(self, *args, **kwargs):
+            raise RateLimiterUnavailable("backend secret must not leak")
+
+        def reset(self):
+            pass
+
+    monkeypatch.setattr(api_main, "RATE_LIMITER", BrokenLimiter())
+    response = client.post("/predict", json={"message": "Fictional SMS fixture"})
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "rate_limiter_unavailable"
+    assert response.headers["retry-after"] == "30"
+    assert "backend secret" not in response.text
+    assert client.get("/health").status_code == 200
+
+
+def test_readiness_rejects_unavailable_shared_limiter(client, monkeypatch):
+    from api.rate_limiter import UnavailableRateLimiter
+
+    monkeypatch.setattr(api_main, "RATE_LIMITER", UnavailableRateLimiter())
+    assert client.get("/health").status_code == 200
+    assert client.get("/ready").status_code == 503
+
+
 # ---------------------------------------------------------------------------
 # CORS defaults
 # ---------------------------------------------------------------------------

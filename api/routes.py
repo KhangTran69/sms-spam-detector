@@ -8,6 +8,7 @@ request time instead of copying them at import.
 from __future__ import annotations
 
 import asyncio
+import hmac
 import html
 import ipaddress
 import json
@@ -19,12 +20,13 @@ from datetime import UTC, datetime
 from types import ModuleType
 from typing import Any
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse, Response
 from pydantic import ValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from api.donations import RETENTION_DAYS, create_donation, delete_donation
+from api.ops_metrics import operations_monitor
 from api.schemas import (
     _ERROR_RESPONSES,
     AnalyzeResponse,
@@ -79,6 +81,8 @@ def health() -> HealthResponse:
     summary="Readiness probe (loads and validates the model artifact)",
 )
 def ready() -> ReadinessResponse:
+    if isinstance(_state().RATE_LIMITER, _state().UnavailableRateLimiter):
+        raise HTTPException(status_code=503, detail="Rate limiting backend unavailable")
     model = _state().get_model()
     return ReadinessResponse(status="ready", model_loaded=True, model_version=_state()._model_version(model))
 
@@ -125,13 +129,35 @@ def _append_feedback_report(report: dict[str, Any]) -> str:
     return report_id
 
 
+def _authorize_metrics(request: Request) -> None:
+    """Production metrics require an operator token; no public fallback."""
+    state = _state()
+    if state.SMSD_ENV != "production":
+        return
+    token = state.METRICS_TOKEN
+    provided = request.headers.get("x-smsd-metrics-token", "")
+    if not token or not hmac.compare_digest(provided, token):
+        raise HTTPException(status_code=404, detail="Not found")
+
+
 @router.get(
     "/metrics/distribution",
     response_model=dict[str, Any],
     summary="Prediction score distribution and covariate drift metrics",
 )
-def get_distribution_metrics() -> dict[str, Any]:
+def get_distribution_metrics(request: Request) -> dict[str, Any]:
+    _authorize_metrics(request)
     return default_monitor.get_metrics()
+
+
+@router.get(
+    "/metrics/operations",
+    response_model=dict[str, Any],
+    summary="Process-local aggregated operations telemetry without message content",
+)
+def get_operations_metrics(request: Request) -> dict[str, Any]:
+    _authorize_metrics(request)
+    return operations_monitor.snapshot()
 
 
 @router.post("/predict", response_model=PredictResponse, responses=_ERROR_RESPONSES, summary="Minimal verdict")

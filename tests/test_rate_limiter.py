@@ -109,3 +109,50 @@ def test_unavailable_redis_uses_in_memory_fallback_and_warns_once(monkeypatch, c
     assert caplog.text.count("rate_limiter_startup_fallback") == 1
     assert "secret@example.test" not in caplog.text
     assert "connection details" not in caplog.text
+
+
+def test_redis_failure_closes_in_production_without_leaking_details(monkeypatch, caplog) -> None:
+    import pytest
+
+    from api.rate_limiter import RateLimiterUnavailable
+
+    monkeypatch.setenv("SMSD_ENV", "production")
+    monkeypatch.delenv("SMSD_RATE_LIMIT_FAILURE_MODE", raising=False)
+    client = RedisStub(error=RuntimeError("private Redis credential"))
+    limiter = create_rate_limiter("redis://cache.example.test/0", client_factory=lambda _url: client)
+    with caplog.at_level("WARNING", logger="api.rate_limiter"), pytest.raises(RateLimiterUnavailable):
+        limiter.check("prediction", "192.0.2.44", 3, 60)
+    assert "private Redis credential" not in caplog.text
+    assert "192.0.2.44" not in caplog.text
+    assert "closed" in caplog.text
+
+
+def test_redis_startup_failure_closes_in_production(monkeypatch) -> None:
+    import pytest
+
+    from api.rate_limiter import RateLimiterUnavailable, UnavailableRateLimiter
+
+    monkeypatch.setenv("SMSD_ENV", "production")
+    monkeypatch.delenv("SMSD_RATE_LIMIT_FAILURE_MODE", raising=False)
+
+    def cannot_connect(_url):
+        raise OSError("credential must not be logged")
+
+    limiter = create_rate_limiter("redis://cache.example.test/0", client_factory=cannot_connect)
+    assert isinstance(limiter, UnavailableRateLimiter)
+    with pytest.raises(RateLimiterUnavailable):
+        limiter.check("prediction", "192.0.2.44", 3, 60)
+
+
+def test_redis_outage_policy_override_is_validated(monkeypatch) -> None:
+    import pytest
+
+    monkeypatch.setenv("SMSD_ENV", "production")
+    monkeypatch.setenv("SMSD_RATE_LIMIT_FAILURE_MODE", "open")
+    client = RedisStub(error=RuntimeError("offline"))
+    limiter = create_rate_limiter("redis://cache.example.test/0", client_factory=lambda _url: client)
+    assert limiter.check("prediction", "192.0.2.44", 3, 60) == (True, 0)
+
+    monkeypatch.setenv("SMSD_RATE_LIMIT_FAILURE_MODE", "invalid")
+    with pytest.raises(ValueError, match="SMSD_RATE_LIMIT_FAILURE_MODE"):
+        create_rate_limiter("redis://cache.example.test/0", client_factory=lambda _url: client)

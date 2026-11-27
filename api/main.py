@@ -37,7 +37,14 @@ from fastapi.responses import JSONResponse, Response
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from api.donations import DEFAULT_DONATION_DB
-from api.rate_limiter import RateLimiter, RedisRateLimiter, create_rate_limiter
+from api.ops_metrics import operations_monitor
+from api.rate_limiter import (
+    RateLimiter,
+    RateLimiterUnavailable,
+    RedisRateLimiter,
+    UnavailableRateLimiter,
+    create_rate_limiter,
+)
 from src.ensemble import TransformerModelError
 from src.predict import (
     ModelArtifactError,
@@ -55,6 +62,7 @@ DONATIONS_OPERATOR_CONTACT = os.environ.get("SMSD_DONATIONS_OPERATOR_CONTACT", "
 DONATION_DB_PATH = Path(os.environ.get("SMSD_DONATIONS_PATH", str(DEFAULT_DONATION_DB)))
 DONATION_RATE_LIMIT_PER_MINUTE = max(1, int(os.environ.get("SMSD_DONATION_RATE_LIMIT_PER_MINUTE", "5")))
 SMSD_ENV = os.environ.get("SMSD_ENV", "development").strip().lower()
+METRICS_TOKEN = os.environ.get("SMSD_METRICS_TOKEN", "").strip()
 ALLOW_LEGACY_MODEL = os.environ.get("SMSD_ALLOW_LEGACY_MODEL", "").strip().lower() in {"1", "true", "yes"}
 if SMSD_ENV == "production":
     # Anonymous correction intake has no authentication or abuse controls.
@@ -182,6 +190,7 @@ def _log_request_completed(
     latency_ms: float,
 ) -> None:
     """Write message-free request metadata without persisting client IPs."""
+    operations_monitor.record(method, path, status, latency_ms)
     logger.info(
         "%s",
         json.dumps(
@@ -237,7 +246,18 @@ class RequestBodyLimitMiddleware:
 
         # 1. Rate limiting check
         if path in RATE_LIMIT_ENDPOINTS:
-            allowed, retry_after = await _check_rate_limiter("legacy", client_ip, RATE_LIMIT, RATE_LIMIT_WINDOW)
+            try:
+                allowed, retry_after = await _check_rate_limiter("legacy", client_ip, RATE_LIMIT, RATE_LIMIT_WINDOW)
+            except RateLimiterUnavailable:
+                elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
+                _log_request_completed(request_id, method, log_path, 503, elapsed_ms)
+                await _error_response(
+                    503,
+                    "rate_limiter_unavailable",
+                    "Request protection is temporarily unavailable. Retry later.",
+                    headers={"X-Request-ID": request_id, "Retry-After": "30"},
+                )(scope, receive, secure_send)
+                return
             if not allowed:
                 elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
                 _log_request_completed(
@@ -359,7 +379,17 @@ class PredictionRateLimitMiddleware:
             identity = _client_ip(scope)
             endpoint = "donation" if is_donation else "prediction"
             limit = DONATION_RATE_LIMIT_PER_MINUTE if is_donation else PREDICTION_RATE_LIMIT
-            allowed, retry_after = await _check_rate_limiter(endpoint, identity, limit, 60)
+            try:
+                allowed, retry_after = await _check_rate_limiter(endpoint, identity, limit, 60)
+            except RateLimiterUnavailable:
+                response = _error_response(
+                    503,
+                    "rate_limiter_unavailable",
+                    "Request protection is temporarily unavailable. Retry later.",
+                    headers={"Retry-After": "30"},
+                )
+                await response(scope, receive, send)
+                return
             if not allowed:
                 response = _error_response(
                     429,
@@ -612,6 +642,7 @@ analyze_batch_endpoint = _routes.analyze_batch_endpoint
 submit_feedback = _routes.submit_feedback
 _append_feedback_report = _routes._append_feedback_report
 get_distribution_metrics = _routes.get_distribution_metrics
+get_operations_metrics = _routes.get_operations_metrics
 
 
 _STATIC_ASSETS = {

@@ -35,6 +35,7 @@ const NEVER_CACHE_PATHS = [
   "/ready",
   "/metrics",
   "/metrics/distribution",
+  "/metrics/operations",
   "/v1/analyze",
   "/v1/analyze/batch",
   "/v1/predict",
@@ -44,6 +45,7 @@ const NEVER_CACHE_PATHS = [
   "/v1/ready",
   "/v1/metrics",
   "/v1/metrics/distribution",
+  "/v1/metrics/operations",
 ];
 
 self.addEventListener("install", (event) => {

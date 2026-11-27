@@ -40,6 +40,23 @@ return {1, 0}
 """
 
 
+class RateLimiterUnavailable(RuntimeError):
+    """The configured shared rate-limiting backend cannot enforce limits."""
+
+
+class UnavailableRateLimiter:
+    """Protect traffic if a required Redis backend failed at startup."""
+
+    def check(
+        self, endpoint: str, identity: str, limit: int, window_seconds: int, now: float | None = None
+    ) -> tuple[bool, int]:
+        del endpoint, identity, limit, window_seconds, now
+        raise RateLimiterUnavailable("Rate limiting backend unavailable")
+
+    def reset(self) -> None:
+        """No counters to clear. Restart to reconnect to Redis."""
+
+
 class RateLimiter(Protocol):
     """Interface shared by process-local and Redis-backed sliding windows."""
 
@@ -110,8 +127,9 @@ class InMemoryRateLimiter:
 class RedisRateLimiter:
     """Atomic sliding-window limiter shared by workers through Redis."""
 
-    def __init__(self, client: Any) -> None:
+    def __init__(self, client: Any, *, fail_closed: bool = False) -> None:
         self._client = client
+        self._fail_closed = fail_closed
         self._failure_lock = threading.Lock()
         self.failure_count = 0
 
@@ -147,11 +165,15 @@ class RedisRateLimiter:
             with self._failure_lock:
                 self.failure_count += 1
                 failure_count = self.failure_count
+            policy = "closed" if self._fail_closed else "open"
             logger.warning(
-                '{"event":"rate_limiter_fail_open","failure_count":%d,"error_type":"%s"}',
+                '{"event":"rate_limiter_backend_failure","policy":"%s","failure_count":%d,"error_type":"%s"}',
+                policy,
                 failure_count,
                 type(exc).__name__,
             )
+            if self._fail_closed:
+                raise RateLimiterUnavailable("Rate limiting backend unavailable") from None
             return True, 0
 
     def reset(self) -> None:
@@ -174,19 +196,26 @@ def create_rate_limiter(
     *,
     client_factory: Callable[[str], Any] | None = None,
 ) -> RateLimiter:
-    """Create the configured backend, falling back to memory if Redis is unavailable."""
+    """Create the rate limiter with a configurable Redis outage policy."""
     resolved_url = os.environ.get("SMSD_REDIS_URL", "").strip() if redis_url is None else redis_url.strip()
     if not resolved_url:
         return InMemoryRateLimiter()
 
+    default_mode = "closed" if os.environ.get("SMSD_ENV", "development").lower() == "production" else "open"
+    mode = os.environ.get("SMSD_RATE_LIMIT_FAILURE_MODE", default_mode).strip().lower()
+    if mode not in {"open", "closed"}:
+        raise ValueError("SMSD_RATE_LIMIT_FAILURE_MODE must be 'open' or 'closed'")
+    fail_closed = mode == "closed"
     factory = client_factory or _create_redis_client
     try:
         client = factory(resolved_url)
         client.ping()
     except Exception as exc:
+        fallback = "unavailable" if fail_closed else "memory"
         logger.warning(
-            '{"event":"rate_limiter_startup_fallback","backend":"redis","fallback":"memory","error_type":"%s"}',
+            '{"event":"rate_limiter_startup_fallback","backend":"redis","fallback":"%s","error_type":"%s"}',
+            fallback,
             type(exc).__name__,
         )
-        return InMemoryRateLimiter()
-    return RedisRateLimiter(client)
+        return UnavailableRateLimiter() if fail_closed else InMemoryRateLimiter()
+    return RedisRateLimiter(client, fail_closed=fail_closed)
