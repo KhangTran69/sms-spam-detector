@@ -3,7 +3,7 @@
  */
 "use strict";
 
-const CACHE_NAME = "smsd-shell-v24";
+const CACHE_NAME = "smsd-shell-v25";
 const SHELL_ASSETS = [
   "/",
   "/static/styles.css?v=ui19-synthetic-examples-20261101",

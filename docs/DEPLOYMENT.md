@@ -149,7 +149,7 @@ pickle; verification does not neutralize pickle code execution.
 ## 3. Serve locally
 
 ```bash
-uvicorn api.main:app --host 127.0.0.1 --port 8000
+uvicorn api.main:app --host 127.0.0.1 --port 8000 --no-access-log --no-proxy-headers
 # UI:      http://127.0.0.1:8000/
 # Docs:    http://127.0.0.1:8000/docs
 # Health:  http://127.0.0.1:8000/health
@@ -254,7 +254,7 @@ lsof -a -p 12345 -d cwd
 Only if that PID is the detector's Uvicorn process and its working directory is
 this checkout, stop that specific process with `kill -TERM 12345`, replacing
 `12345` with the verified PID. Then start the server in a terminal from the repository root with
-`.venv/bin/python -m uvicorn api.main:app --host 127.0.0.1 --port 8000` and
+`.venv/bin/python -m uvicorn api.main:app --host 127.0.0.1 --port 8000 --no-access-log --no-proxy-headers` and
 repeat the route checks. If the listener belongs to another project or the
 identity is unclear, leave it running and use a free port such as 8001. Do not
 use a broad `pkill uvicorn` command. The detector does not log SMS contents;
@@ -405,13 +405,15 @@ commit them.
 | `SMSD_RATE_LIMIT` | `0` | Optional additional per-address limit shared by the request-body middleware for prediction and feedback routes. Zero disables this legacy limit. |
 | `SMSD_RATE_LIMIT_WINDOW` | `60` | Window in seconds for the optional `SMSD_RATE_LIMIT` limit. |
 | `SMSD_REDIS_URL` | unset | Optional Redis connection URL to share rate limits across workers. Keep credentials in a secret store. If unset, limits remain process-local and a trusted gateway limit is required for public replicas. |
+| `SMSD_MAX_IN_FLIGHT_WRITES` | `16` | Maximum simultaneous non-GET/HEAD/OPTIONS requests per API process. Excess writes receive a no-store 503 `service_busy` with Retry-After 5. Size for target hardware; not a shared cluster budget. |
+| `SMSD_BODY_TIMEOUT_SECONDS` | `10` | Total ASGI body upload deadline in seconds, independent of chunk count; expiration returns 408. Also configure ingress connection and body deadlines. |
 | `SMSD_RATE_LIMIT_FAILURE_MODE` | `closed` in production, `open` in development | Redis failure policy when Redis is configured: `closed` returns a safe 503 and blocks readiness after failed startup; `open` permits traffic during a Redis outage. Only choose `open` behind an independently enforced gateway limit. |
 | `SMSD_METRICS_TOKEN` | unset | High-entropy operator secret required to access `/metrics/distribution` and `/metrics/operations` in production (including `/v1` aliases). Without a token, those routes return 404. |
 | `SMSD_MONITOR_BASELINE_PATH` | unset | Optional private JSON score baseline, matched to the exact artifact hash, model version and calibrated linear spam-score semantics. Invalid or incompatible baselines disable drift comparison, not inference. |
 
 - There is **no** `PORT`, log-level, or prediction decision-threshold environment variable. Pass
   host/port/log level to uvicorn on the command line
-  (`uvicorn api.main:app --host 0.0.0.0 --port 8000 --log-level info`). Prediction
+  (`uvicorn api.main:app --host 0.0.0.0 --port 8000 --log-level info --no-access-log --no-proxy-headers`). Prediction
   thresholds come from the linear artifact (`GET /model-info`); the separate
   transformer routing band is optional and does not change that decision threshold.
 - Request limits are constants: max message length 10,000 chars, batch 1–50
@@ -547,7 +549,7 @@ only selected labels and model metadata to the local queue. See
 The web form appears only when the operator opts in:
 
 ```bash
-SMSD_FEEDBACK_ENABLED=true uvicorn api.main:app --host 127.0.0.1 --port 8000
+SMSD_FEEDBACK_ENABLED=true uvicorn api.main:app --host 127.0.0.1 --port 8000 --no-access-log --no-proxy-headers
 ```
 
 A submitted report stores the chosen correction, broad category, timestamp, and model version in `data/feedback/reports.jsonl`. It never sends or stores the SMS text, sender details, or IP address. Reports are unverified review signals; they are never automatically added to training. The queue is local, ignored by Git, and capped at 10 MiB. For Docker Compose, set `SMSD_FEEDBACK_ENABLED=true`; reports persist in the named `smsd_feedback` Docker volume. Do not expose this anonymous endpoint publicly without authentication or deployment-level abuse controls and a retention policy.
@@ -666,3 +668,21 @@ CI exercises the generated synthetic reference and checks a container's
 recovery after a deliberate artifact-integrity mismatch. This is an isolated
 configuration/artifact recovery rehearsal, not a real production rollback
 or proof of acceptable accuracy.
+
+### Capacity and privacy controls
+
+The bundled CLI and container disable Uvicorn access logs and proxy-header
+rewriting. The app generates production request IDs rather than trusting
+client IDs; configure the gateway to omit query strings, headers and bodies
+from its own logs. The Redis Compose profile caps counter memory at 64 MiB
+with no eviction; a full store rejects new writes instead of silently dropping
+active counters. Size and monitor Redis separately for the intended deployment.
+Hashed IP keys are pseudonymous, not anonymous; restrict Redis access and
+retain counters only for the configured expiry window.
+
+The write admission budget covers rate-limit calls, body buffering and model
+execution; GET health remains available during write saturation. It does not
+bound all HTTP connections or read-only work. Apply independent ingress
+connection, read-only endpoint, body size, timeout and per-client controls.
+Do not automatically resend SMS after 408, 429 or 503; the browser displays a
+retry message. Use fictional fixtures for capacity and recovery exercises.

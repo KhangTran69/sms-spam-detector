@@ -80,3 +80,16 @@ and model artifact together, check /health, /ready and /model-info, and record
 the incident. Never switch to a synthetic or unapproved model as an outage
 fallback. Stop if any SMS content leaks into logs/telemetry or if critical
 legitimate categories suffer unreviewed regressions.
+
+## Additional capacity and privacy checks
+
+On the named staging hardware, exercise sustained ordinary requests and
+short bursts against the configured process admission budget. Verify 503
+`service_busy` and Retry-After when saturated, continued liveness, and recovery
+once active writes finish. Verify slow uploads time out with 408, invalid
+framing is rejected by the gateway or app, and analysis responses have
+Cache-Control: no-store. Check that production access logs omit the original
+request ID, query strings and bodies. Confirm that Redis no-eviction memory
+pressure fails safely and does not silently reset active counters. Record
+hardware, limits, latency, rates, error categories and recovery time without
+message content. The automated unit tests are not a capacity benchmark.

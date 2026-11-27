@@ -30,6 +30,8 @@ services:
       SMSD_FEEDBACK_PATH: /app/data/feedback/reports.jsonl
       SMSD_REDIS_URL: ${SMSD_REDIS_URL:-}
       SMSD_RATE_LIMIT_FAILURE_MODE: ${SMSD_RATE_LIMIT_FAILURE_MODE:-closed}
+      SMSD_MAX_IN_FLIGHT_WRITES: ${SMSD_MAX_IN_FLIGHT_WRITES:-16}
+      SMSD_BODY_TIMEOUT_SECONDS: ${SMSD_BODY_TIMEOUT_SECONDS:-10}
       SMSD_METRICS_TOKEN: ${SMSD_METRICS_TOKEN:-}
       SMSD_MONITOR_BASELINE_PATH: ${SMSD_MONITOR_BASELINE_PATH:-}
       # Comma-separated browser origins allowed by CORS. The bundled UI is
@@ -67,7 +69,8 @@ services:
     image: redis:7-alpine
     profiles: [redis]
     user: redis
-    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    # Bound counter memory without silently evicting active protection keys.
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "64mb", "--maxmemory-policy", "noeviction"]
     # No host port is published; only the API service can reach this counter store.
     expose:
       - "6379"

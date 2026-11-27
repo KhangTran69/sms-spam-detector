@@ -171,7 +171,7 @@ async def predict(request: PredictRequest) -> PredictResponse:
     analysis = await asyncio.to_thread(
         analyze_message,
         request.message,
-        model=_state().get_model(),
+        model=await asyncio.to_thread(_state().get_model),
         transformer_model_path=_state().TRANSFORMER_MODEL_PATH,
         confidence_band=_state().TRANSFORMER_CONFIDENCE_BAND,
     )
@@ -192,7 +192,7 @@ async def analyze(request: PredictRequest) -> AnalyzeResponse:
     analysis = await asyncio.to_thread(
         analyze_message,
         request.message,
-        model=_state().get_model(),
+        model=await asyncio.to_thread(_state().get_model),
         transformer_model_path=_state().TRANSFORMER_MODEL_PATH,
         confidence_band=_state().TRANSFORMER_CONFIDENCE_BAND,
     )
@@ -205,7 +205,7 @@ async def analyze_batch_endpoint(request: BatchRequest) -> BatchResponse:
     results = await asyncio.to_thread(
         analyze_batch,
         request.messages,
-        model=_state().get_model(),
+        model=await asyncio.to_thread(_state().get_model),
         transformer_model_path=_state().TRANSFORMER_MODEL_PATH,
         confidence_band=_state().TRANSFORMER_CONFIDENCE_BAND,
     )
@@ -358,7 +358,11 @@ async def donate(request: Request) -> Response:
     except ValidationError as exc:
         details = [
             {
-                "loc": [str(part) for part in error.get("loc", ())],
+                "loc": (
+                    ["body", "<unknown-field>"]
+                    if error.get("type") == "extra_forbidden"
+                    else [str(part) for part in error.get("loc", ())]
+                ),
                 "msg": str(error.get("msg", "Invalid value")),
                 "type": str(error.get("type", "value_error")),
             }
@@ -444,7 +448,11 @@ async def withdraw_donation(request: Request) -> Response:
     except ValidationError as exc:
         details = [
             {
-                "loc": [str(part) for part in error.get("loc", ())],
+                "loc": (
+                    ["body", "<unknown-field>"]
+                    if error.get("type") == "extra_forbidden"
+                    else [str(part) for part in error.get("loc", ())]
+                ),
                 "msg": str(error.get("msg", "Invalid value")),
                 "type": str(error.get("type", "value_error")),
             }

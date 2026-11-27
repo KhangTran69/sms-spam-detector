@@ -55,6 +55,13 @@ ROOT = Path(__file__).resolve().parents[1]
 # Bundled with the package (see [tool.setuptools.package-data]) so `pip install .` serves the UI.
 WEB_DIR = Path(__file__).resolve().parent / "web"
 MAX_REQUEST_BYTES = 1_000_000  # 1 MB cap on the raw JSON body
+REQUEST_BODY_TIMEOUT_SECONDS = float(os.environ.get("SMSD_BODY_TIMEOUT_SECONDS", "10"))
+if not math.isfinite(REQUEST_BODY_TIMEOUT_SECONDS) or REQUEST_BODY_TIMEOUT_SECONDS <= 0:
+    raise ValueError("SMSD_BODY_TIMEOUT_SECONDS must be a finite positive number")
+MAX_IN_FLIGHT_WRITES = int(os.environ.get("SMSD_MAX_IN_FLIGHT_WRITES", "16"))
+if MAX_IN_FLIGHT_WRITES <= 0:
+    raise ValueError("SMSD_MAX_IN_FLIGHT_WRITES must be positive")
+REQUEST_ADMISSION = threading.BoundedSemaphore(MAX_IN_FLIGHT_WRITES)
 FEEDBACK_ENABLED = os.environ.get("SMSD_FEEDBACK_ENABLED", "").strip().lower() in {"1", "true", "yes"}
 DONATIONS_ENABLED = os.environ.get("SMSD_DONATIONS_ENABLED", "").strip().lower() in {"1", "true", "yes"}
 DONATION_NOTICE_VERSION = "2026-11-01-v4"
@@ -107,6 +114,7 @@ _HTTP_ERROR_CODES = {
     403: "forbidden",
     404: "not_found",
     405: "method_not_allowed",
+    408: "request_timeout",
     413: "payload_too_large",
     415: "unsupported_media_type",
     422: "validation_error",
@@ -140,6 +148,11 @@ def _client_ip(scope: dict[str, Any]) -> str:
 
 
 def _request_id(scope: dict[str, Any]) -> str:
+    if SMSD_ENV == "production":
+        # Client-supplied IDs can contain sensitive text even if syntactically valid.
+        if "smsd.request_id" not in scope:
+            scope["smsd.request_id"] = uuid.uuid4().hex
+        return str(scope["smsd.request_id"])
     for key, value in scope.get("headers", []):
         if key.lower() != b"x-request-id":
             continue
@@ -219,6 +232,7 @@ def _log_request_completed(
     latency_ms: float,
 ) -> None:
     """Write message-free request metadata without persisting client IPs."""
+    method = method if method in {"GET", "HEAD", "POST", "DELETE", "PUT", "PATCH", "OPTIONS"} else "OTHER"
     operations_monitor.record(method, path, status, latency_ms)
     logger.info(
         "%s",
@@ -251,10 +265,12 @@ class RequestBodyLimitMiddleware:
         raw_headers = scope.get("headers", [])
         request_id = _request_id(scope)
         status_code = 500
+        response_started = False
 
         async def secure_send(message):
-            nonlocal status_code
+            nonlocal status_code, response_started
             if message["type"] == "http.response.start":
+                response_started = True
                 status_code = message.get("status", 200)
                 headers = list(message.get("headers", []))
                 present = {key.lower() for key, _ in headers}
@@ -264,6 +280,8 @@ class RequestBodyLimitMiddleware:
                         headers.append((key, value.encode("latin-1")))
                 if b"x-request-id" not in present:
                     headers.append((b"x-request-id", request_id.encode("latin-1")))
+                if b"cache-control" not in present and method not in {"GET", "HEAD", "OPTIONS"}:
+                    headers.append((b"cache-control", b"no-store"))
                 message = {**message, "headers": headers}
             await send(message)
 
@@ -303,64 +321,50 @@ class RequestBodyLimitMiddleware:
                 )(scope, receive, secure_send)
                 return
 
-        # 2. Content-Length pre-check
-        content_length = next(
-            (value.decode("latin-1") for key, value in raw_headers if key.lower() == b"content-length"),
-            None,
-        )
-        if content_length:
-            try:
-                if int(content_length) > MAX_REQUEST_BYTES:
-                    elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
-                    _log_request_completed(
-                        request_id,
-                        method,
-                        log_path,
-                        413,
-                        elapsed_ms,
-                    )
-                    await _error_response(
-                        413,
-                        "payload_too_large",
-                        f"Request body is too large; the limit is {MAX_REQUEST_BYTES} bytes.",
-                        headers={"X-Request-ID": request_id},
-                    )(scope, receive, secure_send)
-                    return
-            except ValueError:
-                pass
+        async def reject_body(status: int, code: str, message: str) -> None:
+            elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
+            _log_request_completed(request_id, method, log_path, status, elapsed_ms)
+            await _error_response(status, code, message, headers={"X-Request-ID": request_id})(
+                scope, receive, secure_send
+            )
 
-        # 3. Read and cap the body before calling FastAPI
-        chunks: list[bytes] = []
-        consumed = 0
-        while True:
-            message = await receive()
-            if message["type"] == "http.disconnect":
+        # Reject ambiguous framing even when the ASGI server has not done so.
+        lengths = [value for key, value in raw_headers if key.lower() == b"content-length"]
+        if lengths:
+            if len(lengths) != 1 or not lengths[0].isdigit():
+                await reject_body(400, "bad_request", "Invalid Content-Length header.")
                 return
-            if message["type"] != "http.request":
-                continue
-            chunk = message.get("body", b"")
-            consumed += len(chunk)
-            if consumed > MAX_REQUEST_BYTES:
-                elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
-                _log_request_completed(
-                    request_id,
-                    method,
-                    log_path,
-                    413,
-                    elapsed_ms,
-                )
-                await _error_response(
-                    413,
-                    "payload_too_large",
-                    f"Request body is too large; the limit is {MAX_REQUEST_BYTES} bytes.",
-                    headers={"X-Request-ID": request_id},
-                )(scope, receive, secure_send)
+            digits = lengths[0].lstrip(b"0") or b"0"
+            if len(digits) > len(str(MAX_REQUEST_BYTES)) or int(digits) > MAX_REQUEST_BYTES:
+                await reject_body(413, "payload_too_large", f"Request body is limited to {MAX_REQUEST_BYTES} bytes.")
                 return
-            chunks.append(chunk)
-            if not message.get("more_body", False):
-                break
 
-        body = b"".join(chunks)
+        # A total deadline covers slow and fragmented uploads. A bytearray
+        # avoids retaining one Python object per fragment (including empty ones).
+        buffer = bytearray()
+        try:
+            async with asyncio.timeout(REQUEST_BODY_TIMEOUT_SECONDS):
+                while True:
+                    message = await receive()
+                    if message["type"] == "http.disconnect":
+                        return
+                    if message["type"] != "http.request":
+                        continue
+                    chunk = message.get("body", b"")
+                    if len(buffer) + len(chunk) > MAX_REQUEST_BYTES:
+                        await reject_body(
+                            413, "payload_too_large", f"Request body is limited to {MAX_REQUEST_BYTES} bytes."
+                        )
+                        return
+                    buffer.extend(chunk)
+                    if not message.get("more_body", False):
+                        break
+        except TimeoutError:
+            await reject_body(408, "request_timeout", "Request body upload timed out. Try again.")
+            return
+
+        body = bytes(buffer)
+        del buffer
         delivered = False
 
         async def replay_body():
@@ -372,6 +376,13 @@ class RequestBodyLimitMiddleware:
 
         try:
             await self.app(scope, replay_body, secure_send)
+        except Exception as exc:
+            if SMSD_ENV != "production" or response_started:
+                raise
+            # Returning a handled response here prevents the ASGI server from
+            # emitting an exception traceback that could contain user content.
+            response = await unhandled_exception_handler(Request(scope), exc)
+            await response(scope, replay_body, secure_send)
         finally:
             elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
             _log_request_completed(
@@ -381,6 +392,34 @@ class RequestBodyLimitMiddleware:
                 status_code,
                 elapsed_ms,
             )
+
+
+class WriteAdmissionMiddleware:
+    """Reject excess write requests before Redis, body buffering or inference."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        method = scope.get("method", "")
+        if scope["type"] != "http" or method in {"GET", "HEAD", "OPTIONS"}:
+            await self.app(scope, receive, send)
+            return
+        if not REQUEST_ADMISSION.acquire(blocking=False):
+            request_id = _request_id(scope)
+            _log_request_completed(request_id, method, _safe_log_path(scope.get("path", "")), 503, 0.0)
+            response = _error_response(
+                503,
+                "service_busy",
+                "The detector is busy. Try again shortly.",
+                headers={"Retry-After": "5", "X-Request-ID": request_id},
+            )
+            await response(scope, receive, send)
+            return
+        try:
+            await self.app(scope, receive, send)
+        finally:
+            REQUEST_ADMISSION.release()
 
 
 class PredictionRateLimitMiddleware:
@@ -561,7 +600,7 @@ def _error_response(
     details: list[Any] | None = None,
     headers: dict[str, str] | None = None,
 ) -> JSONResponse:
-    merged_headers = dict(SECURITY_HEADERS)
+    merged_headers = {**SECURITY_HEADERS, "Cache-Control": "no-store"}
     if headers:
         merged_headers.update(headers)
     return JSONResponse(
@@ -587,7 +626,11 @@ def sanitize_validation_errors(exc: RequestValidationError) -> list[dict[str, An
     for error in exc.errors():
         details.append(
             {
-                "loc": [str(part) for part in error.get("loc", ())],
+                "loc": (
+                    ["body", "<unknown-field>"]
+                    if error.get("type") == "extra_forbidden"
+                    else [str(part) for part in error.get("loc", ())]
+                ),
                 "msg": str(error.get("msg", "Invalid value")),
                 "type": str(error.get("type", "value_error")),
             }
@@ -620,6 +663,7 @@ from api.schemas import (  # noqa: E402,F401  (re-exported for compatibility)
 # ---------------------------------------------------------------------------
 app.add_middleware(RequestBodyLimitMiddleware)
 app.add_middleware(PredictionRateLimitMiddleware)
+app.add_middleware(WriteAdmissionMiddleware)
 
 
 # ---------------------------------------------------------------------------
@@ -646,7 +690,10 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException) 
 @app.exception_handler(FileNotFoundError)
 @app.exception_handler(TransformerModelError)
 async def model_unavailable_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    if isinstance(exc, TransformerModelError):
+    if SMSD_ENV == "production":
+        logger.warning("Model unavailable (%s)", type(exc).__name__)
+        message = "The model is temporarily unavailable. Contact the service operator or try again later."
+    elif isinstance(exc, TransformerModelError):
         message = "The optional transformer model is unavailable or could not process this request. Check the server's local model configuration."
     else:
         message = _with_train_hint(str(exc).strip() or "The model artifact is unavailable.")
@@ -669,7 +716,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
     # No traceback or message content in the response; log only the type/path.
     logger.error(
         "Unhandled API error on %s %s (%s)",
-        request.method,
+        request.method if request.method in {"GET", "HEAD", "POST", "DELETE", "PUT", "PATCH", "OPTIONS"} else "OTHER",
         _safe_log_path(request.url.path),
         type(exc).__name__,
     )
