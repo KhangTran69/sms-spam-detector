@@ -571,3 +571,17 @@ def test_web_assets_are_packaged_with_api() -> None:
     assert api.main.WEB_DIR == ROOT / "api" / "web"
     assert (api.main.WEB_DIR / "index.html").is_file()
     assert '"web/*"' in (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+
+
+def test_field_evaluation_readiness_is_not_misrepresented_as_results() -> None:
+    protocol = _doc("docs/PH_FIELD_EVALUATION_READINESS.md").lower()
+    assert "methodology only" in protocol
+    assert "no new datasets" in protocol
+    assert "independent campaigns" in protocol
+    assert "chronological" in protocol
+    assert "acceptance gates" in protocol
+    assert "not performed with real sms" in protocol
+    assert "make rehearse-consented" in protocol
+    index = _text("docs/README.md")
+    assert "PH_FIELD_EVALUATION_READINESS.md" in index
+    assert "OPERATIONAL_AND_ACCESSIBILITY_REVIEW.md" in index
