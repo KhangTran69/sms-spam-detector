@@ -940,6 +940,17 @@ def test_structured_logging_records_requests(client, caplog):
         )
 
 
+def test_unknown_user_path_is_never_logged_raw(client, caplog):
+    import logging
+
+    with caplog.at_level(logging.INFO, logger="api.main"):
+        response = client.get("/fictional-private-code-123456")
+    assert response.status_code == 404
+    logged = "\\n".join(record.message for record in caplog.records)
+    assert "/unmatched" in logged
+    assert "fictional-private-code-123456" not in logged
+
+
 def test_v1_versioned_routes(client):
     health = client.get("/v1/health")
     assert health.status_code == 200

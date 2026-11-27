@@ -146,8 +146,9 @@ def _authorize_metrics(request: Request) -> None:
     response_model=dict[str, Any],
     summary="Prediction score distribution and covariate drift metrics",
 )
-def get_distribution_metrics(request: Request) -> dict[str, Any]:
+def get_distribution_metrics(request: Request, response: Response) -> dict[str, Any]:
     _authorize_metrics(request)
+    response.headers["Cache-Control"] = "no-store"
     return default_monitor.get_metrics()
 
 
@@ -156,8 +157,9 @@ def get_distribution_metrics(request: Request) -> dict[str, Any]:
     response_model=dict[str, Any],
     summary="Process-local aggregated operations telemetry without message content",
 )
-def get_operations_metrics(request: Request) -> dict[str, Any]:
+def get_operations_metrics(request: Request, response: Response) -> dict[str, Any]:
     _authorize_metrics(request)
+    response.headers["Cache-Control"] = "no-store"
     return operations_monitor.snapshot()
 
 

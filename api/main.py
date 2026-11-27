@@ -177,6 +177,23 @@ def _is_donation_path(path: str) -> bool:
     return canonical == "/donate" or canonical.startswith("/donate/")
 
 
+def _safe_log_path(path: str) -> str:
+    """Never record arbitrary user-controlled path segments in operational logs."""
+    if _is_donation_path(path):
+        return "/donate"
+    canonical = path.removeprefix("/v1") if path.startswith("/v1/") else path
+    safe_routes = {
+        "/", "/health", "/ready", "/model-info", "/predict", "/analyze",
+        "/analyze/batch", "/feedback", "/metrics/distribution",
+        "/metrics/operations", "/sw.js", "/manifest.webmanifest", "/privacy-notice",
+    }
+    if canonical in safe_routes:
+        return path
+    if path.startswith("/static/"):
+        return "/static/*"
+    return "/unmatched"
+
+
 logger = logging.getLogger("api.main")
 RATE_LIMITER: RateLimiter = create_rate_limiter()
 
@@ -240,8 +257,7 @@ class RequestBodyLimitMiddleware:
         client_ip = _client_ip(scope)
         path = scope.get("path", "")
         method = scope.get("method", "")
-        donation_request = _is_donation_path(path)
-        log_path = "/donate" if donation_request else path
+        log_path = _safe_log_path(path)
 
         # 1. Rate limiting check
         if path in RATE_LIMIT_ENDPOINTS:
@@ -626,7 +642,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
     logger.error(
         "Unhandled API error on %s %s (%s)",
         request.method,
-        request.url.path,
+        _safe_log_path(request.url.path),
         type(exc).__name__,
     )
     return _error_response(
