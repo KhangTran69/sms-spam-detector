@@ -55,7 +55,7 @@ def _state() -> ModuleType:
 def _record_linear_monitor(analysis: dict[str, Any]) -> None:
     """Keep the calibrated linear score baseline separate from raw transformer scores."""
     if analysis.get("model_path", "linear") == "linear":
-        default_monitor.record(analysis["probability"], analysis["prediction"])
+        default_monitor.record(analysis["spam_probability"], analysis["prediction"])
 
 
 # ---------------------------------------------------------------------------

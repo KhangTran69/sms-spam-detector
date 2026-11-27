@@ -180,8 +180,8 @@ def _log_request_completed(
     path: str,
     status: int,
     latency_ms: float,
-    client_ip: str,
 ) -> None:
+    """Write message-free request metadata without persisting client IPs."""
     logger.info(
         "%s",
         json.dumps(
@@ -192,7 +192,6 @@ def _log_request_completed(
                 "path": path,
                 "status": status,
                 "latency_ms": latency_ms,
-                "client_ip": client_ip,
             },
             ensure_ascii=True,
         ),
@@ -235,7 +234,6 @@ class RequestBodyLimitMiddleware:
         method = scope.get("method", "")
         donation_request = _is_donation_path(path)
         log_path = "/donate" if donation_request else path
-        log_client_ip = "redacted" if donation_request else client_ip
 
         # 1. Rate limiting check
         if path in RATE_LIMIT_ENDPOINTS:
@@ -248,7 +246,6 @@ class RequestBodyLimitMiddleware:
                     log_path,
                     429,
                     elapsed_ms,
-                    log_client_ip,
                 )
                 await _error_response(
                     429,
@@ -273,7 +270,6 @@ class RequestBodyLimitMiddleware:
                         log_path,
                         413,
                         elapsed_ms,
-                        log_client_ip,
                     )
                     await _error_response(
                         413,
@@ -304,7 +300,6 @@ class RequestBodyLimitMiddleware:
                     log_path,
                     413,
                     elapsed_ms,
-                    log_client_ip,
                 )
                 await _error_response(
                     413,
@@ -337,7 +332,6 @@ class RequestBodyLimitMiddleware:
                 log_path,
                 status_code,
                 elapsed_ms,
-                log_client_ip,
             )
 
 

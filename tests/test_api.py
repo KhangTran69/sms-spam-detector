@@ -761,6 +761,28 @@ def test_model_info_reports_transformer_configuration_without_local_path(monkeyp
     assert str(transformer_path) not in json.dumps(body)
 
 
+def test_monitor_uses_spam_probability_for_both_classes():
+    from api.routes import _record_linear_monitor
+    from src.monitor import default_monitor
+
+    default_monitor.clear()
+    try:
+        _record_linear_monitor(
+            {"spam_probability": 0.10, "probability": 0.90, "prediction": "ham", "model_path": "linear"}
+        )
+        _record_linear_monitor(
+            {"spam_probability": 0.80, "probability": 0.80, "prediction": "spam", "model_path": "linear"}
+        )
+        metrics = default_monitor.get_metrics()
+        assert metrics["samples_in_window"] == 2
+        assert metrics["spam_ratio"] == pytest.approx(0.5)
+        assert metrics["score_distribution"]["mean"] == pytest.approx(0.45)
+        assert metrics["score_distribution"]["min"] == pytest.approx(0.1)
+        assert metrics["score_distribution"]["max"] == pytest.approx(0.8)
+    finally:
+        default_monitor.clear()
+
+
 def test_monitor_keeps_uncalibrated_ensemble_scores_out_of_linear_distribution():
     from api.routes import _record_linear_monitor
     from src.monitor import default_monitor
@@ -769,7 +791,7 @@ def test_monitor_keeps_uncalibrated_ensemble_scores_out_of_linear_distribution()
     try:
         _record_linear_monitor({"probability": 0.9, "prediction": "spam", "model_path": "ensemble"})
         assert default_monitor.get_metrics()["samples_in_window"] == 0
-        _record_linear_monitor({"probability": 0.8, "prediction": "spam", "model_path": "linear"})
+        _record_linear_monitor({"spam_probability": 0.8, "prediction": "spam", "model_path": "linear"})
         assert default_monitor.get_metrics()["samples_in_window"] == 1
     finally:
         default_monitor.clear()
@@ -911,6 +933,9 @@ def test_structured_logging_records_requests(client, caplog):
         assert resp.status_code == 200
         assert any(
             "logging-req-id-99" in record.message and "request_completed" in record.message for record in caplog.records
+        )
+        assert all(
+            "client_ip" not in record.message for record in caplog.records if "request_completed" in record.message
         )
 
 

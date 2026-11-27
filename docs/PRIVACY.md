@@ -33,15 +33,16 @@ accounts, so privacy is a first-class design constraint.
 ## 2. Logging
 
 - Application logs must **not contain message bodies**, message prefixes,
-  matched spans, or raw request bodies. Log only operational metadata: request
-  path, status code, latency, and (if needed) a coarse size bucket.
+  matched spans, raw request bodies, or direct client IP addresses. Log only
+  operational metadata: request path, status code, latency, and (if needed) a
+  coarse size bucket. Client addresses remain available transiently to rate limiting.
 - Do not add "debug logging" of requests in production. If a logging framework
   captures request bodies by default, disable it.
 - Reverse proxies (nginx, Caddy, cloud load balancers) must also be configured
   not to log request bodies. Donation withdrawal IDs are sent in a JSON body,
   not a URL path; the supported local `smsd-serve` command disables Uvicorn
   access logs, and application logs keep donation routes as `/donate` with the
-  client address redacted. `/predict` and `/analyze` carry data in the body —
+  client address omitted. `/predict` and `/analyze` carry data in the body —
   do not switch them to GET.
 - Never send production messages to third-party error trackers/APMs. If you must
   use one, scrub bodies and headers centrally.

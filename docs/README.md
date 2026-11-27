@@ -23,10 +23,12 @@ evidence status, and API examples; this directory covers the
 
 ## Scope of current evidence
 
-All Philippine data tracked in Git is synthetic; one public inbox corpus is
-available locally but has not been evaluated. The consented split/evaluation
-workflow is implemented, but no consented corpus or trained artifact exists.
-No Philippine field performance has been established. The canonical statement of limitations is
+All Philippine SMS examples tracked in Git are synthetic. A licensed public
+one-person Philippine inbox was evaluated in an internal group-split diagnostic
+on November 6, 2026, but this is neither an independent corpus evaluation nor
+representative Philippine field evidence. The consented split/evaluation workflow
+is implemented, but no independently labeled consented corpus or consented-trained
+artifact is available. No Philippine field performance has been established. The canonical statement of limitations is
 [MODEL_CARD.md §4](MODEL_CARD.md#4-evaluation-and-the-synthetic-only-caveat).
 The top-level [README evaluation section](../README.md#evaluation) summarizes
 the current state; dataset-specific instructions and quality gates are in

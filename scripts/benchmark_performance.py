@@ -27,7 +27,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from src.predict import analyze_batch, analyze_message, load_model  # noqa: E402
+from src.predict import analyze_batch, analyze_message, default_model_path, load_model  # noqa: E402
 
 SAMPLE_MESSAGES = [
     "GCash: You have received PHP 1,500.00 from Maria Cruz. Ref: 102938475. Balance: PHP 4,250.00.",
@@ -184,8 +184,8 @@ def main() -> int:
     parser.add_argument(
         "--model",
         type=Path,
-        default=ROOT / "models" / "sms_spam_model.joblib",
-        help="Path to trained model bundle (.joblib).",
+        default=default_model_path(),
+        help="Path to an existing trained model bundle (.pkl or .joblib).",
     )
     parser.add_argument(
         "--output-dir",
@@ -202,28 +202,12 @@ def main() -> int:
     args = parser.parse_args()
 
     model_path = args.model
-    if not model_path.exists():
-        # Fallback check for alternate locations or train a fast demo model
-        print(f"Model artifact not found at {model_path}. Training a temporary benchmark model...", file=sys.stderr)
-        from src.train import train
-
-        supplements = [
-            ROOT / "data" / "raw" / "ph_supplement.csv",
-            ROOT / "data" / "raw" / "ph_supplement_2.csv",
-        ]
-        existing_supplements = [s for s in supplements if s.exists()]
-        if not existing_supplements:
-            print("Error: Training data fixtures not found.", file=sys.stderr)
-            return 1
-        train(
-            data_path=existing_supplements[0],
-            supplement_path=existing_supplements[1:],
-            holdout_path=None,
-            model_path=model_path,
-            val_size=0.2,
-            test_size=0.2,
-            verbose=False,
+    if not model_path.is_file():
+        print(
+            f"Error: Model artifact not found at {model_path}. Train a model first or provide --model.",
+            file=sys.stderr,
         )
+        return 1
 
     res = run_benchmark(model_path=model_path, output_dir=args.output_dir, iterations=args.iterations)
     print_summary(res)
