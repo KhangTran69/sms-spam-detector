@@ -146,7 +146,7 @@ export function buildPrivacyReview(container, initialText, onConfirm, translate)
         updateOutput();
       });
       const text = document.createElement("span");
-      text.textContent = `${translate(`privacy.${span.type}`)} → ${PRIVACY_PLACEHOLDERS[span.type]}`;
+      text.textContent = `${translate(`privacy.${span.type}`)} to ${PRIVACY_PLACEHOLDERS[span.type]}`;
       label.append(checkbox, text);
       item.append(label);
       suggestions.append(item);

@@ -692,6 +692,95 @@ def test_shell_update_auto_reload_never_interrupts_analysis(shell_source=None):
     assert "RELOAD_GUARD_PREFIX" in shell, "reload guard must be scoped per shell generation"
 
 
+# ----------------------------- Hallmark design floor -----------------------------
+# Ported from the Hallmark method's non-waivable Floor
+# (github.com/Nutlope/hallmark): tokens only, no banned transitions, no
+# eyebrow labels, no emoji icons, no gradient slop. These are regression
+# gates for the UI's design language; waiver-worthy changes must update
+# these checks deliberately, on the record.
+
+FLOOR_FILES = (
+    "api/web/index.html",
+    "api/web/app.js",
+    "api/web/i18n.js",
+    "api/web/result-format.js",
+    "api/web/shell-updates.js",
+    "api/web/connection-status.js",
+    "api/web/history-store.js",
+    "api/web/privacy-preview.js",
+    "api/web/demo-examples.js",
+)
+
+EMOJI_RE = re.compile("[\U0001f000-\U0001faff\u2190-\u21ff\u2300-\u27bf\u2b00-\u2bff\ufe0f\U0001f1e6-\U0001f1ff]")
+
+
+def _styles() -> str:
+    return STYLES_CSS.read_text(encoding="utf-8")
+
+
+def _token_free_styles() -> str:
+    """Strip the token blocks so 'tokens only' can be checked on the rest."""
+    css = _styles()
+    return re.sub(r":root[^{]*\{.*?\n\}", "", css, flags=re.DOTALL)
+
+
+def test_floor_no_eyebrow_labels(css):
+    assert "text-transform: uppercase" not in css, "tracked capitals are an eyebrow tell"
+    assert "letter-spacing: 0.6px" not in css
+
+
+def test_floor_no_gradient_slop(css):
+    gradients = re.findall(r"linear-gradient[^;]+", css)
+    # Waived on the record: the skeleton shimmer (loading affordance) and the
+    # meter's tri-color verdict zones, which carry data, not decoration.
+    waived = [g for g in gradients if ("--surface" in g and "--line" in g) or "--suspect" in g]
+    assert gradients == waived, (
+        f"decorative gradients are banned; waived: skeleton shimmer + meter verdict zones; found: {gradients}"
+    )
+
+
+def test_floor_no_banned_transitions(css):
+    for banned in ("transition: left", "transition: width", "transition: top", "transition: height", "transition: all"):
+        assert banned not in css, f"animating {banned.split(': ')[1]} is banned by the floor"
+
+
+def test_floor_tokens_only(css):
+    naked = _token_free_styles()
+    hexes = re.findall(r"#[0-9a-fA-F]{3,8}\b", naked)
+    assert not hexes, f"literal colors outside tokens: {hexes[:8]}"
+
+
+def test_floor_no_emoji_icons():
+    for rel in FLOOR_FILES:
+        text = (ROOT / rel).read_text(encoding="utf-8")
+        found = EMOJI_RE.findall(text)
+        assert not found, f"emoji icons are banned in {rel}: {found[:6]}"
+
+
+def test_floor_job_first_layout(html):
+    """The checker's job (input + primary action) leads the page; meta comes last."""
+    check_pos = html.index('id="panel-check"')
+    for meta_id in ('id="model-status"', 'id="connection-status"'):
+        pos = html.find(meta_id)
+        if pos != -1:
+            assert pos > check_pos, f"{meta_id} must follow the check panel (job-first layout)"
+    assert html.count('class="btn primary"') <= 3, "at most one primary action per panel"
+
+
+def test_floor_hallmark_stamp(css):
+    first = css.split("\n", 1)[0]
+    assert first.startswith("/* Hallmark:"), "first CSS line must carry the material stamp"
+
+
+def test_every_font_declared_in_css_is_served_by_the_api():
+    css = _styles()
+    api_main = (ROOT / "api" / "main.py").read_text(encoding="utf-8")
+    fonts = re.findall(r'url\("/static/([^"]+\.woff2)"\)', css)
+    assert fonts, "expected self-hosted @font-face declarations"
+    for font in fonts:
+        assert f'"{font}"' in api_main, f"{font} is used by styles.css but missing from _STATIC_ASSETS"
+
+
 def test_mobile_batch_cards_use_data_labels(css, js):
     assert "data-label" in css, "mobile card layout labels cells via ::before content"
     assert "messageCell.dataset.label" in js and "verdictCell.dataset.label" in js

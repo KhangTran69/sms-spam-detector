@@ -710,6 +710,9 @@ _STATIC_ASSETS = {
     "result-format.js",
     "demo-examples.js",
     "shell-updates.js",
+    "fonts/BricolageGrotesque-var-latin.woff2",
+    "fonts/SourceSerif4-var-latin.woff2",
+    "fonts/SourceSerif4-Italic-var-latin.woff2",
     "donate.js",
     "donate.css",
     "styles.css",
@@ -717,7 +720,7 @@ _STATIC_ASSETS = {
 }
 
 
-@app.api_route("/static/{asset_name}", methods=["GET", "HEAD"], include_in_schema=False)
+@app.api_route("/static/{asset_name:path}", methods=["GET", "HEAD"], include_in_schema=False)
 def static_asset(asset_name: str, request: Request):
     """Serve the small, known UI bundle with consistent safe failure behavior."""
     if asset_name not in _STATIC_ASSETS:
@@ -745,6 +748,9 @@ def static_asset(asset_name: str, request: Request):
         "donate.js": "text/javascript",
         "donate.css": "text/css",
         "styles.css": "text/css",
+        "fonts/BricolageGrotesque-var-latin.woff2": "font/woff2",
+        "fonts/SourceSerif4-var-latin.woff2": "font/woff2",
+        "fonts/SourceSerif4-Italic-var-latin.woff2": "font/woff2",
         "icon.svg": "image/svg+xml",
     }[asset_name]
     headers = {"Cache-Control": "no-cache", "Content-Length": str(len(body))}

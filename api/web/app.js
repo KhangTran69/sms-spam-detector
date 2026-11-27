@@ -1,11 +1,11 @@
-import { API, activeRequestCount, createApiClient } from "./api-client.js?v=ui20-shell-update-banner-20261127";
-import { createShellUpdates } from "./shell-updates.js?v=ui20-shell-update-banner-20261127";
-import { I18N } from "./i18n.js?v=ui20-shell-update-banner-20261127";
-import { applyPrivacyMasks, buildPrivacyReview, clearPrivacyReview, detectSensitiveSpans } from "./privacy-preview.js?v=ui20-shell-update-banner-20261127";
-import { createHistoryStore } from "./history-store.js?v=ui20-shell-update-banner-20261127";
-import { createConnectionStatus } from "./connection-status.js?v=ui20-shell-update-banner-20261127";
-import { createResultFormatting, normalizeModelInfo } from "./result-format.js?v=ui20-shell-update-banner-20261127";
-import { EXAMPLES } from "./demo-examples.js?v=ui20-shell-update-banner-20261127";
+import { API, activeRequestCount, createApiClient } from "./api-client.js?v=ui21-editorial-20261128";
+import { createShellUpdates } from "./shell-updates.js?v=ui21-editorial-20261128";
+import { I18N } from "./i18n.js?v=ui21-editorial-20261128";
+import { applyPrivacyMasks, buildPrivacyReview, clearPrivacyReview, detectSensitiveSpans } from "./privacy-preview.js?v=ui21-editorial-20261128";
+import { createHistoryStore } from "./history-store.js?v=ui21-editorial-20261128";
+import { createConnectionStatus } from "./connection-status.js?v=ui21-editorial-20261128";
+import { createResultFormatting, normalizeModelInfo } from "./result-format.js?v=ui21-editorial-20261128";
+import { EXAMPLES } from "./demo-examples.js?v=ui21-editorial-20261128";
 
 /* PH SMS Scam Detector — UI logic (no build step, vanilla JS). */
 "use strict";
@@ -129,9 +129,8 @@ function setLanguage(nextLang) {
   if (currentComparison) renderComparison(currentComparison.results);
 }
 
-/* ---------- Theme (light ↔ dark, persisted) ---------- */
+/* ---------- Theme (light dark, persisted) ---------- */
 const THEME_STATES = ["light", "dark"];
-const THEME_ICONS = { light: "🌙", dark: "☀️" };
 
 function readTheme() {
   try {
@@ -147,9 +146,11 @@ function applyTheme(theme) {
 }
 
 function updateThemeButton() {
-  const button = $("btn-theme");
-  button.textContent = THEME_ICONS[currentTheme];
+  // Action semantics: the control names the mode it switches to, not the
+  // current one (pinned by the browser smoke).
   const nextTheme = currentTheme === "dark" ? "light" : "dark";
+  const button = $("btn-theme");
+  button.textContent = t(`theme.${nextTheme}Label`);
   button.setAttribute("aria-label", t(`theme.${nextTheme}`));
   button.title = t(`theme.${nextTheme}`);
 }
@@ -457,7 +458,6 @@ function renderVerdict(analysis) {
   const band = bandOf(analysis);
   const view = bandView(band);
   $("verdict-card").className = `card verdict ${view.css}`;
-  $("verdict-icon").textContent = view.icon;
   $("verdict-title").textContent = bandTitle(band);
   const decisionThreshold = validFraction(analysis.decision_threshold)
     ?? (resultMatchesLoadedModel(analysis) ? validFraction(modelInfo.decision_threshold) : null);
@@ -995,10 +995,10 @@ function miniMeter(probability, band = bandFromProbability(probability)) {
   const wrap = document.createElement("div");
   wrap.className = "mini-meter";
   const fill = document.createElement("div");
+  fill.className = `mini-meter-fill-${bandView(band).css}`;
   const score = validFraction(probability);
-  fill.style.width = score === null ? "0%" : `${Math.round(score * 100)}%`;
-  fill.style.background = score === null ? "var(--muted)"
-    : ({ spam: "var(--red)", suspicious: "var(--amber)", safe: "var(--green)" }[bandView(band).css] || "var(--muted)");
+  // Floor: animate transform, never width.
+  fill.style.transform = `scaleX(${score === null ? 0 : Math.max(0, Math.min(1, score))})`;
   if (score === null) wrap.classList.add("mini-meter-unavailable");
   wrap.append(fill);
   return wrap;

@@ -114,10 +114,13 @@ privacy posture. New files go through the static allowlist (`_STATIC_ASSETS`,
 1. Check-first hero: label + textarea + primary action within the first
    800px of height at 1280×800; the page headline is a sentence, not a brand
    banner.
-2. Demote meta: connection status becomes a single quiet line **rendered
-   only when something is degraded** (all-good = invisible; no Retry button
-   in the good state). Model information collapses into one line in the
-   footer area; the details disclosure keeps thresholds/provenance.
+2. Demote meta: connection status becomes a single quiet line, restyled
+   small and muted with no colored state dots. Deviation from the original
+   "hidden when all-good" ambition, on the record: the browser smoke pins an
+   always-reachable retry control (users may re-check status proactively),
+   and hiding it would strand a user whose server died silently. Model
+   information collapses into one line in the footer area; the details
+   disclosure keeps thresholds/provenance.
 3. Replace the card stack with hairline sections opened by a heavy ink rule;
    the analyzed message becomes the typographic centerpiece: serif, larger,
    set as a quotation with the existing signal underlines (patterns keep
