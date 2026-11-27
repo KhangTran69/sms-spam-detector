@@ -36,6 +36,10 @@ accounts, so privacy is a first-class design constraint.
   matched spans, raw request bodies, or direct client IP addresses. Log only
   operational metadata: request path, status code, latency, and (if needed) a
   coarse size bucket. Client addresses remain available transiently to rate limiting.
+- Operator telemetry records only fixed route/status groups, request counts,
+  and rolling latency percentiles; a separate monitor keeps aggregate scores.
+  Production metric endpoints require an operator token and must also be
+  restricted at the trusted gateway. Neither monitor establishes field accuracy.
 - Do not add "debug logging" of requests in production. If a logging framework
   captures request bodies by default, disable it.
 - Reverse proxies (nginx, Caddy, cloud load balancers) must also be configured
