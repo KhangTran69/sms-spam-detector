@@ -250,3 +250,9 @@ FPR/FNR. Undefined bootstrap ratios are excluded. An insufficient fraction of
 valid replicates blocks reporting; adequate intervals produce an explicit
 overall statistical acceptance result. Meeting those bounds is not approval
 for field deployment. Do not edit a consumed plan to repeat a sealed attempt.
+
+Complete the blank subgroup error gate entries in the schema 2 template before
+registration. Each entry specifies a language or category, FPR or FNR, minimum
+class-eligible campaign groups, upper confidence bound and interval width.
+The evaluator checks support before scoring and reports subgroup acceptance
+separately from overall acceptance. Both must be reviewed before a release.

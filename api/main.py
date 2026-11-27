@@ -230,10 +230,11 @@ def _log_request_completed(
     path: str,
     status: int,
     latency_ms: float,
+    outcome: str = "",
 ) -> None:
     """Write message-free request metadata without persisting client IPs."""
     method = method if method in {"GET", "HEAD", "POST", "DELETE", "PUT", "PATCH", "OPTIONS"} else "OTHER"
-    operations_monitor.record(method, path, status, latency_ms)
+    operations_monitor.record(method, path, status, latency_ms, outcome)
     logger.info(
         "%s",
         json.dumps(
@@ -296,7 +297,7 @@ class RequestBodyLimitMiddleware:
                 allowed, retry_after = await _check_rate_limiter("legacy", client_ip, RATE_LIMIT, RATE_LIMIT_WINDOW)
             except RateLimiterUnavailable:
                 elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
-                _log_request_completed(request_id, method, log_path, 503, elapsed_ms)
+                _log_request_completed(request_id, method, log_path, 503, elapsed_ms, "rate_limiter_unavailable")
                 await _error_response(
                     503,
                     "rate_limiter_unavailable",
@@ -312,6 +313,7 @@ class RequestBodyLimitMiddleware:
                     log_path,
                     429,
                     elapsed_ms,
+                    "rate_limited",
                 )
                 await _error_response(
                     429,
@@ -323,7 +325,7 @@ class RequestBodyLimitMiddleware:
 
         async def reject_body(status: int, code: str, message: str) -> None:
             elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
-            _log_request_completed(request_id, method, log_path, status, elapsed_ms)
+            _log_request_completed(request_id, method, log_path, status, elapsed_ms, code)
             await _error_response(status, code, message, headers={"X-Request-ID": request_id})(
                 scope, receive, secure_send
             )
@@ -407,7 +409,7 @@ class WriteAdmissionMiddleware:
             return
         if not REQUEST_ADMISSION.acquire(blocking=False):
             request_id = _request_id(scope)
-            _log_request_completed(request_id, method, _safe_log_path(scope.get("path", "")), 503, 0.0)
+            _log_request_completed(request_id, method, _safe_log_path(scope.get("path", "")), 503, 0.0, "service_busy")
             response = _error_response(
                 503,
                 "service_busy",
@@ -416,9 +418,11 @@ class WriteAdmissionMiddleware:
             )
             await response(scope, receive, send)
             return
+        operations_monitor.write_started()
         try:
             await self.app(scope, receive, send)
         finally:
+            operations_monitor.write_finished()
             REQUEST_ADMISSION.release()
 
 
@@ -452,7 +456,7 @@ class PredictionRateLimitMiddleware:
             except RateLimiterUnavailable:
                 request_id = _request_id(scope)
                 latency_ms = round((time.perf_counter() - limit_check_started) * 1000, 2)
-                _log_request_completed(request_id, method, _safe_log_path(path), 503, latency_ms)
+                _log_request_completed(request_id, method, _safe_log_path(path), 503, latency_ms, "rate_limiter_unavailable")
                 response = _error_response(
                     503,
                     "rate_limiter_unavailable",
@@ -464,7 +468,7 @@ class PredictionRateLimitMiddleware:
             if not allowed:
                 request_id = _request_id(scope)
                 latency_ms = round((time.perf_counter() - limit_check_started) * 1000, 2)
-                _log_request_completed(request_id, method, _safe_log_path(path), 429, latency_ms)
+                _log_request_completed(request_id, method, _safe_log_path(path), 429, latency_ms, "rate_limited")
                 response = _error_response(
                     429,
                     "rate_limited",

@@ -36,5 +36,23 @@
   "maximum_cluster_upper_bound": {
     "false_positive_rate": null,
     "false_negative_rate": null
-  }
+  },
+  "subgroup_error_gates": [
+    {
+      "dimension": "language",
+      "code": "",
+      "metric": "false_negative_rate",
+      "minimum_groups": null,
+      "maximum_upper_bound": null,
+      "maximum_interval_width": null
+    },
+    {
+      "dimension": "category",
+      "code": "",
+      "metric": "false_positive_rate",
+      "minimum_groups": null,
+      "maximum_upper_bound": null,
+      "maximum_interval_width": null
+    }
+  ]
 }

@@ -352,6 +352,24 @@ def _evaluation_plan(
         },
         # Permissive fixture-only bounds exercise the evaluator, not release criteria.
         "performance_rationale": "Fictional fixtures only; no real study acceptance values are implied.",
+        "subgroup_error_gates": [
+            {
+                "dimension": "language",
+                "code": "en",
+                "metric": "false_negative_rate",
+                "minimum_groups": 2,
+                "maximum_upper_bound": 1.0,
+                "maximum_interval_width": 1.0,
+            },
+            {
+                "dimension": "category",
+                "code": "bank_alert",
+                "metric": "false_positive_rate",
+                "minimum_groups": 2,
+                "maximum_upper_bound": 1.0,
+                "maximum_interval_width": 1.0,
+            },
+        ],
         "minimum_valid_cluster_fraction": 0.5,
         "minimum_cluster_lower_bound": {"precision": 0.0, "recall": 0.0, "f1": 0.0},
         "maximum_cluster_upper_bound": {"false_positive_rate": 1.0, "false_negative_rate": 1.0},

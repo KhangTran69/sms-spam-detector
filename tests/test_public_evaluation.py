@@ -146,6 +146,24 @@ def write_evaluation_plan(
         },
         # Permissive fixture-only bounds exercise the evaluator, not release criteria.
         "performance_rationale": "Fictional fixtures only; no real study acceptance values are implied.",
+        "subgroup_error_gates": [
+            {
+                "dimension": "language",
+                "code": "en",
+                "metric": "false_negative_rate",
+                "minimum_groups": 2,
+                "maximum_upper_bound": 1.0,
+                "maximum_interval_width": 1.0,
+            },
+            {
+                "dimension": "category",
+                "code": "otp_legit",
+                "metric": "false_positive_rate",
+                "minimum_groups": 2,
+                "maximum_upper_bound": 1.0,
+                "maximum_interval_width": 1.0,
+            },
+        ],
         "minimum_valid_cluster_fraction": 0.5,
         "minimum_cluster_lower_bound": {"precision": 0.0, "recall": 0.0, "f1": 0.0},
         "maximum_cluster_upper_bound": {"false_positive_rate": 1.0, "false_negative_rate": 1.0},
@@ -420,6 +438,7 @@ def test_consent_evaluation_requires_plan_and_skips_threshold_search(monkeypatch
     assert report["status"] == "evaluated"
     assert report["evaluation_plan"]["sha256"] == hashlib.sha256(plan_path.read_bytes()).hexdigest()
     assert report["performance_acceptance"]["status"] == "met"
+    assert report["subgroup_acceptance"]["status"] == "met"
     assert report["operating_threshold"]["status"] == "not_run_sealed_consent_evaluation"
     assert report["metrics"]["campaign_bootstrap_95"]["available"] is True
     assert "false_negative_rate" in report["metrics"]["campaign_bootstrap_95"]["intervals"]
@@ -731,3 +750,35 @@ def test_registered_performance_bounds_report_failure_without_retuning():
     assert not result["metrics"]["recall"]["met"]
     assert not result["metrics"]["false_positive_rate"]["met"]
     assert result["metrics"]["false_negative_rate"]["met"]
+
+
+def test_subgroup_gates_use_class_eligible_groups_and_report_unmet_bound():
+    frame = pd.DataFrame(
+        {
+            "language": ["en"] * 4,
+            "category": ["otp_legit", "otp_legit", "phishing", "phishing"],
+            "label": ["ham", "ham", "spam", "spam"],
+            "group": ["a", "b", "c", "d"],
+        }
+    )
+    gate = {
+        "dimension": "category",
+        "code": "otp_legit",
+        "metric": "false_positive_rate",
+        "minimum_groups": 2,
+        "maximum_upper_bound": 0.1,
+        "maximum_interval_width": 1.0,
+    }
+    language_gate = {**gate, "dimension": "language", "code": "en", "metric": "false_negative_rate"}
+    gates = [gate, language_gate]
+    assert public_evaluation._valid_subgroup_gates(gates)
+    assert not public_evaluation._valid_subgroup_gates([gate, gate])
+    plan = {"subgroup_error_gates": gates, "minimum_valid_cluster_fraction": 0.5}
+    result = public_evaluation._subgroup_gate_results(frame, [0.9, 0.9, 0.9, 0.9], 0.5, plan)
+    assert result["status"] == "not_met"
+    assert result["gates"][0]["eligible_rows"] == 2
+    assert result["gates"][0]["interval"] == [1.0, 1.0]
+    assert result["gates"][1]["status"] == "met"
+    gate["minimum_groups"] = 3
+    result = public_evaluation._subgroup_gate_results(frame, [0.9] * 4, 0.5, plan)
+    assert result["status"] == "insufficient_evidence"

@@ -146,3 +146,17 @@ retry the sealed set. Subgroup-specific criteria, annotation quality, coverage,
 privacy and deployment gates remain independently required. Schema 1 plans
 must be updated and registered **before** opening any sealed set; no migration
 or re-registration is permitted to evade an already consumed attempt.
+
+### Registered subgroup error gates
+
+Complete `subgroup_error_gates` before opening the sealed set. Register each
+critical legitimate category's false-positive bound and each supported spam
+language's false-negative bound, with minimum eligible campaign groups and
+maximum interval width. At least one language and one category gate are
+required; the evaluator checks class-specific campaign support before scoring.
+It records met, not_met or insufficient_evidence independently of the overall
+statistical gate. Neither gate alone establishes representativeness or release
+approval. Percentile bootstrap intervals can be degenerate for all-correct or
+all-incorrect campaigns; the reviewer must consider limited independent support,
+Wilson marginal intervals and preregistered coverage rather than interpret a
+zero-width interval as certainty. No numerical study values are approved here.
