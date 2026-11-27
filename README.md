@@ -77,7 +77,11 @@ curl -X POST http://127.0.0.1:8000/predict -H 'Content-Type: application/json' \
 
 ## Web app and privacy
 
-The no-build UI supports single-message, batch, and comparison checks. Privacy
+The no-build UI supports single-message, batch, and comparison checks. Its
+design language is the Hallmark-method **Editorial material**
+([docs/UI_UX_DESIGN_PLAN.md](docs/UI_UX_DESIGN_PLAN.md)): self-hosted OFL
+fonts, shared tokens (`tokens.css`), and non-waivable floor tests that gate
+every UI change in CI. Privacy
 Preview runs in the browser; history is opt-in and browser-local. Prediction
 requests are processed in memory and are not logged, persisted, or cached by the
 app. Full details about comparison, masking, the safety checklist, history, and
