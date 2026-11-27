@@ -248,7 +248,7 @@ jobs:
         run: |
           set -eu
           cleanup() {
-            docker rm -f smsd-ci-api-a smsd-ci-api-b smsd-ci-redis-restart >/dev/null 2>&1 || true
+            docker rm -fv smsd-ci-api-a smsd-ci-api-b smsd-ci-redis-restart >/dev/null 2>&1 || true
             docker network rm smsd-ci-capacity >/dev/null 2>&1 || true
           }
           trap cleanup EXIT

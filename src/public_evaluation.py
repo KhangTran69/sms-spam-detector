@@ -641,6 +641,8 @@ def _validate_consent_evaluation_plan(
         return None, ["evaluation_plan_registration_time_invalid"]
     if not isinstance(widths, dict):  # Defensive: the blocker above should already cover this.
         return None, ["evaluation_plan_uncertainty_requirements_invalid"]
+    if not isinstance(annotation_gates, dict):
+        return None, ["evaluation_plan_annotation_gates_invalid"]
 
     safe_plan = {
         "sha256": hashlib.sha256(plan_bytes).hexdigest(),
