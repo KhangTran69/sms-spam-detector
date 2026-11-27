@@ -261,7 +261,7 @@ jobs:
         run: pytest -q
 
   redis-integration:
-    name: Isolated Redis rate-limit and recovery integration
+    name: Isolated Redis shared rate-limit integration
     runs-on: ubuntu-latest
     services:
       redis:

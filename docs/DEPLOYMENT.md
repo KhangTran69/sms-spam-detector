@@ -627,8 +627,10 @@ mount and set the variable to its container path. A synthetic baseline
 diagnoses engineering behavior only; it is not representative field evidence.
 
 The lazy model load resets the rolling window and validates the baseline once.
-The distribution endpoint exposes its status and model version, not the input
-scores. Uncalibrated/legacy models, missing artifact hashes, and ensemble
+The distribution endpoint exposes its status, model version and attested source
+kind, not the input scores. Artifact-bound drift comparison requires at least
+50 current scores; that is only an engineering floor, not proof of statistical
+adequacy. Uncalibrated/legacy models, missing artifact hashes, and ensemble
 routing cannot use this calibrated linear-only reference. Wrong hash/version,
 invalid JSON, invalid samples and unreadable files report
 `invalid_baseline`; missing configuration remains `no_baseline_configured`.

@@ -31,7 +31,7 @@ MIN_BASELINE_SCORES = 50
 BASELINE_SCORE_SEMANTICS = "calibrated_linear_spam_probability_v1"
 
 
-def read_artifact_baseline(path: Path, model_version: str, artifact_sha256: str) -> list[float]:
+def read_artifact_baseline(path: Path, model_version: str, artifact_sha256: str) -> tuple[list[float], str]:
     """Read only a bounded, exact-artifact-matched score file (never SMS content)."""
     with path.open("rb") as handle:
         raw = handle.read(MAX_BASELINE_BYTES + 1)
@@ -55,7 +55,7 @@ def read_artifact_baseline(path: Path, model_version: str, artifact_sha256: str)
         raise ValueError("Invalid baseline sample count")
     if any(type(score) not in (float, int) or not 0 <= score <= 1 for score in scores):
         raise ValueError("Invalid baseline score")
-    return [float(score) for score in scores]
+    return [float(score) for score in scores], str(payload["source_kind"])
 
 
 def compute_distribution_summary(scores: Sequence[float]) -> dict[str, Any]:
@@ -197,6 +197,7 @@ class PredictionMonitor:
         self._events_since_check = 0
         self._baseline_status = "configured" if self._baseline_scores else "not_configured"
         self._baseline_model_version: str | None = None
+        self._baseline_source_kind: str | None = None
 
     def configure_artifact_baseline(
         self,
@@ -213,12 +214,13 @@ class PredictionMonitor:
         """
         scores: list[float] = []
         status = "not_configured"
+        source_kind = None
         if path is not None:
             if not calibrated or ensemble_configured or not artifact_sha256:
                 status = "incompatible_baseline"
             else:
                 try:
-                    scores = read_artifact_baseline(path, model_version, artifact_sha256)
+                    scores, source_kind = read_artifact_baseline(path, model_version, artifact_sha256)
                     status = "configured"
                 except (OSError, ValueError, RecursionError):
                     status = "invalid_baseline"
@@ -228,6 +230,7 @@ class PredictionMonitor:
             self._baseline_scores = scores
             self._baseline_status = status
             self._baseline_model_version = model_version
+            self._baseline_source_kind = source_kind
             self._scores.clear()
             self._labels.clear()
             self._last_alert_time = None
@@ -239,6 +242,7 @@ class PredictionMonitor:
             self._baseline_scores = list(scores)
             self._baseline_status = "configured" if self._baseline_scores else "not_configured"
             self._baseline_model_version = None
+            self._baseline_source_kind = None
 
     def record(self, score: float, label: str) -> None:
         """Record an inference event's calibrated probability score and predicted label."""
@@ -269,6 +273,7 @@ class PredictionMonitor:
             baseline = list(self._baseline_scores)
             baseline_status = self._baseline_status
             baseline_model_version = self._baseline_model_version
+            baseline_source_kind = self._baseline_source_kind
 
         summary = compute_distribution_summary(scores)
         spam_count = labels.count("spam")
@@ -282,10 +287,12 @@ class PredictionMonitor:
             "score_distribution": summary,
             "baseline_status": baseline_status,
             "baseline_model_version": baseline_model_version,
+            "baseline_source_kind": baseline_source_kind,
         }
 
         if baseline:
-            metrics["drift"] = compute_drift(baseline, scores)
+            drift_scores = [] if baseline_source_kind and len(scores) < MIN_BASELINE_SCORES else scores
+            metrics["drift"] = compute_drift(baseline, drift_scores)
             metrics["baseline_samples"] = len(baseline)
         else:
             metrics["drift"] = {

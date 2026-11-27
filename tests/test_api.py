@@ -1232,7 +1232,6 @@ def test_missing_ui_entry_asset_returns_clear_service_error(client, monkeypatch,
     assert str(tmp_path) not in response.text
 
 
-
 def test_lazy_model_load_initializes_version_bound_monitor(tmp_path, monkeypatch, bundle):
     from src.monitor import BASELINE_SCORE_SEMANTICS, PredictionMonitor
 

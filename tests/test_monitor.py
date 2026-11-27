@@ -109,7 +109,6 @@ def test_prediction_monitor_thread_safety():
     assert metrics["samples_in_window"] == 200
 
 
-
 def test_artifact_baseline_is_bound_to_hash_version_and_score_semantics(tmp_path):
     from src.monitor import BASELINE_SCORE_SEMANTICS
 
@@ -130,10 +129,13 @@ def test_artifact_baseline_is_bound_to_hash_version_and_score_semantics(tmp_path
     )
     metrics = monitor.get_metrics()
     assert metrics["baseline_status"] == "configured"
+    assert metrics["baseline_source_kind"] == "synthetic_diagnostic"
     assert metrics["samples_in_window"] == 0
     assert metrics["drift"]["drift_status"] == "insufficient_data"
-    for _ in range(50):
+    for _ in range(49):
         monitor.record(0.8, "spam")
+    assert monitor.get_metrics()["drift"]["drift_status"] == "insufficient_data"
+    monitor.record(0.8, "spam")
     assert monitor.get_metrics()["drift"]["drift_status"] == "significant_drift"
 
     monitor.configure_artifact_baseline(
@@ -141,6 +143,7 @@ def test_artifact_baseline_is_bound_to_hash_version_and_score_semantics(tmp_path
     )
     metrics = monitor.get_metrics()
     assert metrics["baseline_status"] == "invalid_baseline"
+    assert metrics["baseline_source_kind"] is None
     assert metrics["samples_in_window"] == 0
     assert metrics["drift"]["drift_status"] == "invalid_baseline"
 
