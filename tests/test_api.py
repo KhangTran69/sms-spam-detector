@@ -1027,7 +1027,9 @@ def test_readiness_rejects_unavailable_shared_limiter(client, monkeypatch):
 
     monkeypatch.setattr(api_main, "RATE_LIMITER", UnavailableRateLimiter())
     assert client.get("/health").status_code == 200
-    assert client.get("/ready").status_code == 503
+    failed = client.get("/ready")
+    assert failed.status_code == 503
+    assert failed.json()["error"]["code"] == "rate_limiter_unavailable"
 
 
 # ---------------------------------------------------------------------------

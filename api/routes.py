@@ -27,6 +27,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from api.donations import RETENTION_DAYS, create_donation, delete_donation
 from api.ops_metrics import operations_monitor
+from api.rate_limiter import RateLimiterUnavailable, UnavailableRateLimiter
 from api.schemas import (
     _ERROR_RESPONSES,
     AnalyzeResponse,
@@ -81,8 +82,8 @@ def health() -> HealthResponse:
     summary="Readiness probe (loads and validates the model artifact)",
 )
 def ready() -> ReadinessResponse:
-    if isinstance(_state().RATE_LIMITER, _state().UnavailableRateLimiter):
-        raise HTTPException(status_code=503, detail="Rate limiting backend unavailable")
+    if isinstance(_state().RATE_LIMITER, UnavailableRateLimiter):
+        raise RateLimiterUnavailable("Rate limiting backend unavailable")
     model = _state().get_model()
     return ReadinessResponse(status="ready", model_loaded=True, model_version=_state()._model_version(model))
 

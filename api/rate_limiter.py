@@ -166,8 +166,10 @@ class RedisRateLimiter:
                 self.failure_count += 1
                 failure_count = self.failure_count
             policy = "closed" if self._fail_closed else "open"
+            event = "rate_limiter_fail_closed" if self._fail_closed else "rate_limiter_fail_open"
             logger.warning(
-                '{"event":"rate_limiter_backend_failure","policy":"%s","failure_count":%d,"error_type":"%s"}',
+                '{"event":"%s","policy":"%s","failure_count":%d,"error_type":"%s"}',
+                event,
                 policy,
                 failure_count,
                 type(exc).__name__,

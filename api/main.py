@@ -42,7 +42,6 @@ from api.rate_limiter import (
     RateLimiter,
     RateLimiterUnavailable,
     RedisRateLimiter,
-    UnavailableRateLimiter,
     create_rate_limiter,
 )
 from src.ensemble import TransformerModelError
@@ -608,6 +607,17 @@ async def model_unavailable_exception_handler(request: Request, exc: Exception) 
     else:
         message = _with_train_hint(str(exc).strip() or "The model artifact is unavailable.")
     return _error_response(503, "model_unavailable", message)
+
+
+@app.exception_handler(RateLimiterUnavailable)
+async def rate_limiter_unavailable_handler(request: Request, exc: RateLimiterUnavailable) -> JSONResponse:
+    del request, exc
+    return _error_response(
+        503,
+        "rate_limiter_unavailable",
+        "Request protection is temporarily unavailable. Retry later.",
+        headers={"Retry-After": "30"},
+    )
 
 
 @app.exception_handler(Exception)

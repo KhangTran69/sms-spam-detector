@@ -111,7 +111,9 @@ export function createApiClient({
         if (setApiAvailability("timeout", sequence)) setModelReadiness("unknown", sequence);
         throw timeoutFailure;
       }
-      if (failure && (failure.status === 503 || failure.code === "model_unavailable")) {
+      if (failure && failure.code === "rate_limiter_unavailable") {
+        setModelReadiness("unknown", sequence);
+      } else if (failure && (failure.status === 503 || failure.code === "model_unavailable")) {
         setModelReadiness(false, sequence);
       }
       throw failure;
