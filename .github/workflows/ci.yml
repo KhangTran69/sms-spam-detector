@@ -244,6 +244,30 @@ jobs:
               assert json.load(response)["model_version"] == "ci-synthetic-smoke"
           PY
 
+      - name: Exercise two real API containers and isolated Redis restart
+        run: |
+          set -eu
+          cleanup() {
+            docker rm -f smsd-ci-api-a smsd-ci-api-b smsd-ci-redis-restart >/dev/null 2>&1 || true
+            docker network rm smsd-ci-capacity >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          docker network create smsd-ci-capacity
+          docker run --detach --name smsd-ci-redis-restart --network smsd-ci-capacity \
+            redis:7-alpine redis-server --save "" --appendonly yes --appendfsync always \
+            --maxmemory 64mb --maxmemory-policy noeviction
+          for entry in a:8003 b:8004; do
+            name="${entry%:*}"
+            port="${entry#*:}"
+            docker run --detach --name "smsd-ci-api-$name" --network smsd-ci-capacity \
+              -p "127.0.0.1:$port:8000" -v "$PWD/models:/app/models:ro" \
+              -e SMSD_ENV=production -e SMSD_MODEL_PATH=/app/models/ci-smoke.pkl \
+              -e SMSD_MODEL_SHA256="$(sha256sum models/ci-smoke.pkl | cut -d ' ' -f1)" \
+              -e SMSD_REDIS_URL=redis://smsd-ci-redis-restart:6379/0 \
+              -e SMSD_METRICS_TOKEN=fictional-ci-metrics-token smsd-ci-smoke
+          done
+          python scripts/container_capacity.py
+
   uci-quality-gate:
     name: UCI train + F1 >= 0.90 gate
     runs-on: ubuntu-latest

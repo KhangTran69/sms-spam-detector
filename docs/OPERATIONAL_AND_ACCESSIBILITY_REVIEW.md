@@ -99,3 +99,10 @@ appear in the existing alert region, preserve the editable message, and avoid
 training instructions or automatic resubmission. Verify announcement behavior
 with assistive technology separately. CI also exercises bounded admission
 waves and disposable Redis failure/recovery; no public load target is used.
+
+The two-process container rehearsal uses a synthetic artifact and actual HTTP
+connections to test default write admission, body timeout, shared counters,
+forwarding-header trust and a disposable persistent Redis restart. The
+normal ephemeral profile needs an independent ingress limit during complete
+counter-store restart; do not infer persistence from the pause test. Record
+CI timings separately from target-hardware capacity and recovery objectives.

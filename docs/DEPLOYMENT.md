@@ -719,3 +719,24 @@ write-blocked store from a functioning protection backend. The probe is
 content-free and never consumes a user's allowance. Restrict access to
 readiness at the gateway to avoid unnecessary dependency traffic. Unrecognized
 SMSD_ENV values fail startup rather than quietly disabling production controls.
+
+### Two-process HTTP and persistent restart rehearsal
+
+The container CI job builds the existing synthetic model once and starts two
+separate API containers on a private network with Redis 7. It exercises the
+default 16 simultaneous writes, eight excess requests, liveness, drainage,
+the default 10-second upload deadline, one shared 60-request budget and
+forged forwarded headers. It then stops and starts that disposable Redis
+container with AOF and appendfsync always configured, checking fail-closed
+responses and persistence of active counters. The test is loopback-only.
+
+The normal Compose Redis profile remains deliberately ephemeral: counters
+can be lost after a complete Redis restart. Unlike a pause, a restart of an
+ephemeral store resets the budget. Require an independent gateway admission
+budget covering the complete window during outages/restarts, or provision a
+separately reviewed durable Redis service with restricted storage, AOF rewrite
+and deletion policies. Hashed client keys remain pseudonymous; persistent
+journals can outlive key expiry. The CI AOF exercise uses fictional identifiers
+and deletes its disposable storage. It does not authorize persisting actual
+client identities. Compose also accepts the independent SMSD_MODEL_SHA256
+pin and per-minute rate setting. Confirm both on target infrastructure.
