@@ -180,3 +180,7 @@ independently. Do not include this explanation before the measured probes.
 For the optional donation walkthrough, use only fictional text and ask
 participants to explain the distinct review, sharing-authorization, and
 optional research choices in their own words. Do not record real messages.
+
+### Pending donation and interrupted-response walkthrough (fictional only)
+
+Use the disposable service and generated text, never participant messages. Ask the participant to explain why the form cannot be edited while a submission is in progress, what an uncertain receipt means, and what they would do if a later attempt is rejected. Filipino draft: “Ano ang gagawin mo kung hindi tiyak kung natanggap ang unang ipinadalang form?” Do not give the expected answer first. Record keyboard access after the pending operation, announcement of the status, and whether the user understands that a later rejection does not establish the earlier outcome. Native-speaker and actual screen-reader evaluation remain outstanding.

@@ -872,6 +872,9 @@ async function main() {
     await donationPage.route('**/donate', async (route) => {
       if (route.request().method() === 'POST' && abortOneSubmission) {
         abortOneSubmission = false;
+        if (!(await donationMessage.isDisabled()) || !(await donationConsent.isDisabled())) {
+          throw new Error('pending donation choices remained editable');
+        }
         const stored = await route.fetch();
         if (stored.status() !== 201) throw new Error('lost receipt fixture was not saved');
         lostReceipt = (await stored.json()).record_id;

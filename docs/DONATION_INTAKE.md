@@ -197,3 +197,5 @@ register is unavailable, quarantine the restore; do not assume active consent.
 The rehearsal uses no actual data, does not restore an operator database and
 does not establish that an actual backup is safe. Record the operator's
 maintenance results privately without message text or receipt IDs.
+
+While a donation submission is in progress, its text, choices and withdrawal controls are temporarily disabled, then restored for keyboard access. An invalid receipt is an uncertain outcome. A later validation rejection cannot erase the pending key if an earlier outcome was uncertain; resolve that request with the operator instead of starting a different submission. The live status explains this distinction. A page reload still loses the in-memory retry state.

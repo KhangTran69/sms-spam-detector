@@ -115,6 +115,38 @@ async function main() {
   assert.match(sent[0].submission_key, /^[a-f0-9]{32}$/);
   assert.deepEqual(sent[0], sent[1], 'manual retry reuses the opaque key and exact choices');
 
+  const uncertainDocument = donationDocument();
+  const uncertainRequests = [];
+  createDonationForm({
+    documentRef: uncertainDocument,
+    fetchImpl: async (_url, options) => {
+      uncertainRequests.push(JSON.parse(options.body));
+      for (const selector of ['#donation-message', '#donation-consent', '#donation-withdraw']) {
+        assert.equal(uncertainDocument.nodes[selector].disabled, true, 'pending form inputs are locked');
+      }
+      if (uncertainRequests.length === 1) {
+        return { ok: true, status: 201, json: async () => ({ record_id: 'invalid-receipt' }) };
+      }
+      if (uncertainRequests.length === 2) {
+        return { ok: false, status: 422, json: async () => ({ error: { message: 'Fixture rejection' } }) };
+      }
+      return { ok: true, status: 201, json: async () => ({ record_id: 'd'.repeat(32) }) };
+    },
+  });
+  await submit(uncertainDocument.nodes['#donation-form']);
+  assert.equal(uncertainDocument.nodes['#donation-message'].disabled, false);
+  assert.equal(uncertainDocument.nodes['#donation-withdrawal-id'].value, '');
+  await submit(uncertainDocument.nodes['#donation-form']);
+  assert.match(uncertainDocument.nodes['#donation-status'].textContent, /earlier submission outcome may still be uncertain/);
+  uncertainDocument.nodes['#donation-message'].value = 'Different fictional text';
+  await submit(uncertainDocument.nodes['#donation-form']);
+  assert.equal(uncertainRequests.length, 2);
+  uncertainDocument.nodes['#donation-message'].value = 'Synthetic local fixture';
+  await submit(uncertainDocument.nodes['#donation-form']);
+  assert.equal(uncertainRequests.length, 3);
+  assert.deepEqual(uncertainRequests[0], uncertainRequests[2]);
+  assert.equal(uncertainDocument.nodes['#donation-withdrawal-id'].value, 'd'.repeat(32));
+
   const stalledWithdrawalDocument = donationDocument();
   let stalledWithdrawalRequests = 0;
   createDonationForm({
