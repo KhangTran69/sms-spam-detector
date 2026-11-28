@@ -14,7 +14,10 @@ groups the ratified minimums require. It is never an accuracy,
 release-readiness, or safety assessment and never evaluates model quality.
 Minimums are read from the plan at runtime (``--plan`` can point at a
 re-ratified copy) so a future re-ratification flows through without code
-changes.
+changes. Language codes present in the data but absent from the plan's
+``minimum_coverage.language`` keys are reported as a vocabulary warning --
+never canonicalized (vocabulary re-ratification is an owner decision), so the
+gap the ratified vocabulary produces stays visible.
 
 Message-free discipline: stdout, the JSON report, and errors carry counts,
 category/language codes, and notice text only -- never message text, sender
@@ -31,7 +34,8 @@ prints row values -- only counts, code names, and id-shape statistics.
 
 Exit codes: 0 when every ratified minimum is met, 1 when at least one is not
 (the coverage readiness signal), 2 for tool errors (unreadable input, missing
-columns, invalid plan, unsafe output path).
+columns, invalid plan, unsafe output path) and for unexpected internal errors,
+which are reduced to their exception-type name so no traceback reaches stderr.
 """
 
 from __future__ import annotations
@@ -66,6 +70,14 @@ SPAM_TOP3_KEY = "spam_top3"
 SPAM_TOP3_SLOTS = 3
 UNKNOWN_CODE = "unknown"
 UNRECOGNIZED_LABEL = "unrecognized"
+
+# The intake flow and the ratified plan may disagree on language vocabulary
+# (for example the donate/worksheet flow emits "fil" while the plan keys on
+# "tl"). Codes present in the data but absent from the plan are reported as a
+# warning -- never canonicalized; vocabulary re-ratification is an owner
+# decision, so a permanent coverage gap must stay visible instead of being
+# silently papered over.
+VOCABULARY_NOTE = "vocabulary re-ratification is an owner decision"
 
 STATUS_MET = "minimums_met"
 STATUS_BELOW = "below_minimum"
@@ -339,6 +351,11 @@ def build_report(pooled: PooledIntake, minimums: CoverageMinimums) -> dict[str, 
         "warnings": {
             "duplicate_messages": pooled.duplicate_messages,
             "unrecognized_label_rows": pooled.labels[UNRECOGNIZED_LABEL],
+            "languages_outside_plan": {
+                "codes": sorted(code for code in pooled.languages if code not in minimums.language),
+                "plan_keys": list(minimums.language),
+                "note": VOCABULARY_NOTE,
+            },
         },
         "limitations": list(LIMITATIONS),
     }
@@ -381,9 +398,17 @@ def format_summary(report: dict[str, Any]) -> str:
             f"  {gap['dimension']} {gap['code']}: have {gap['count']}, minimum {gap['minimum']}, "
             f"still needed {gap['needed']}"
         )
+    vocabulary = warnings["languages_outside_plan"]
+    if vocabulary["codes"]:
+        plan_keys = ", ".join(vocabulary["plan_keys"]) or "none ratified"
+        lines.append(
+            f"Language vocabulary warning: {', '.join(vocabulary['codes'])} "
+            f"(plan keys: {plan_keys}) — {vocabulary['note']}."
+        )
     lines.append(
         f"Warnings: duplicate_messages {warnings['duplicate_messages']} | "
-        f"unrecognized_label_rows {warnings['unrecognized_label_rows']}"
+        f"unrecognized_label_rows {warnings['unrecognized_label_rows']} | "
+        f"languages_outside_plan {len(vocabulary['codes'])}"
     )
     lines.append(f"Notice: {NOTICE}")
     return "\n".join(lines)
@@ -458,6 +483,13 @@ def main(argv: list[str] | None = None) -> int:
         destination = write_report(report, args.output, pooled.forbidden) if args.output else None
     except (ValueError, OSError) as exc:
         payload = {"status": STATUS_ERROR, "detail": str(exc)}
+        print(json.dumps(payload, indent=2, sort_keys=True), file=sys.stderr)
+        return 2
+    except Exception as exc:
+        # Reduce unexpected failures to the exception-type name only (same
+        # pattern as the preflight checks) so no traceback or internal error
+        # text can reach stderr.
+        payload = {"status": STATUS_ERROR, "detail": f"unexpected_{type(exc).__name__}"}
         print(json.dumps(payload, indent=2, sort_keys=True), file=sys.stderr)
         return 2
     print(summary)
