@@ -636,6 +636,20 @@ def test_human_task_kits_exist_and_are_ready_to_run() -> None:
     assert "2026-11-01-v4" in draft and "withdraw" in draft
 
 
+def test_architecture_docs_do_not_describe_unimplemented_behavior() -> None:
+    architecture = _doc("docs/ARCHITECTURE.md")
+    for stale in (
+        "deduplication.py",
+        "HistGradientBoosting",
+        "RandomForest",
+        "max_length=1600",
+        "sms_spam_model.joblib",
+        "masked text, confidence, consent",
+        "Generate candidate retraining batch",
+    ):
+        assert stale not in architecture, f"stale architecture claim: {stale}"
+
+
 def test_dockerfile_disables_uvicorn_access_log() -> None:
     dockerfile = _text("Dockerfile")
     cmd_lines = [line for line in dockerfile.splitlines() if line.strip().startswith("CMD ")]

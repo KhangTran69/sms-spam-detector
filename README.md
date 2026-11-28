@@ -50,8 +50,8 @@ Philippine accuracy (see the [model card](docs/MODEL_CARD.md#4-evaluation-and-th
 | Internal test (group-isolated) | 94.78% (Wilson 95% interval: 89.61%–97.45%) | 96.95% (Wilson 95% interval: 92.41%–98.81%) | 7 / 4 | 810 (131 spam, 679 ham) |
 | Synthetic PH holdout (synthetic-only check) | 96.90% (Wilson 95% interval: 92.30%–98.79%) | 89.29% (Wilson 95% interval: 83.07%–93.40%) | 4 / 15 | 264 (140 spam, 124 ham) |
 
-The latest [clean-main UCI and synthetic report](docs/benchmarks/clean-main-f756098-20261121.json)
-reproduces `main` at commit `f75609881dd518b8f9c34c534f103b42c05b1d3d`. It
+A [clean-main UCI and synthetic report](docs/benchmarks/clean-main-f756098-20261121.json)
+was generated from `main` at commit `f75609881dd518b8f9c34c534f103b42c05b1d3d`. It
 separates public English results from synthetic Philippine fixture checks;
 neither is real-world Philippine accuracy.
 The earlier [diagnostic report](docs/benchmarks/uci-synthetic-ph-diagnostic-20261022.json)
@@ -64,7 +64,8 @@ It is not an independent corpus holdout or a consented Philippine performance
 estimate. See [evaluation methods and data status](docs/evaluation.md) and the
 [dataset inventory](docs/DATASET_INVENTORY.md). The reproducible clean-main
 run and its near-duplicate audit are documented in the
-[benchmark runbook](docs/BENCHMARKING.md).
+[benchmark runbook](docs/BENCHMARKING.md). That report is a pinned historical
+snapshot, not a claim about the current commit.
 
 ## API
 

@@ -18,7 +18,7 @@ flowchart TD
 
     subgraph Ingestion & Preprocessing
         LOAD["Dataset Loader<br/>(dataset_loading.py)"]
-        DEDUP["Near-Duplicate De-duplication<br/>(deduplication.py)"]
+        DEDUP["Exact/Normalized De-duplication<br/>(data.py, dataset_loading.py)"]
         PRE["Text Normalization<br/>(preprocess.py)<br/>• NFKC Unicode Normalization<br/>• Homoglyph Canonicalization<br/>• Leetspeak Translation<br/>• Character De-repetition"]
         PAT["Shared Pattern Extraction<br/>(patterns.py)<br/>• URLs, Phone numbers, Currency<br/>• Urgency terms, Brand patterns"]
     end
@@ -26,15 +26,15 @@ flowchart TD
     subgraph Feature Extraction & Modeling
         FEAT["Feature Extraction<br/>(features.py)<br/>• Word n-grams (1-2)<br/>• Char n-grams (3-5)<br/>• Surface heuristics"]
         CV["Group-Aware Split & CV<br/>(data.py, model_selection.py)<br/>• GroupKFold by template family<br/>• Stratified candidates"]
-        GRID["Candidate Grid Search<br/>• MultinomialNB<br/>• LinearSVC<br/>• LogisticRegression<br/>• SGDClassifier<br/>• HistGradientBoosting<br/>• RandomForest"]
+        GRID["Candidate Grid Search<br/>• LogisticRegression<br/>• LinearSVC<br/>• SGDClassifier<br/>(MultinomialNB is a fixed baseline)"]
         CAL["Calibration Split & Fitting<br/>(train.py)<br/>• Sigmoid CalibratedClassifierCV<br/>• Dedicated calibration folds"]
     end
 
     subgraph Artifact & Experiment Tracking
         THRESH["Threshold Optimizer<br/>• CV-robust decision policy<br/>• Precision target constraint"]
         EVAL["Segmented Evaluation<br/>(evaluate.py, metrics.py)<br/>• Language breakdowns (EN/FIL/Taglish)<br/>• 95% Bootstrap CIs"]
-        BUNDLE["Joblib Model Bundle<br/>(models/sms_spam_model.joblib)"]
-        META["JSON Metadata & Manifest<br/>(models/sms_spam_model.metadata.json)"]
+        BUNDLE["Joblib Model Bundle<br/>(models/spam_detector_v1.pkl)"]
+        META["JSON Metadata & Manifest<br/>(models/spam_detector_v1.metadata.json)"]
         RUNS["Experiment Run Log<br/>(runs/run_*.json)"]
     end
 
@@ -85,7 +85,7 @@ flowchart TD
         CORS["CORS Middleware<br/>(Explicit SMSD_CORS_ORIGINS allowlist)"]
         SEC["Security Headers & CSP<br/>(default-src 'self', script-src 'self')"]
         RL["Rate Limiter Middleware<br/>(Redis shared window / in-memory fallback)"]
-        SZ["Request Body Limit<br/>(max_length=1600 per message)"]
+        SZ["Request Body Limit<br/>(max_length=10,000 per message;<br/>SMSD_MAX_MESSAGE_LENGTH)"]
         LOG["Structured JSON Logging<br/>(Latency, status, request_id — NO PII)"]
     end
 
@@ -127,7 +127,7 @@ flowchart TD
 
 ## 3. Feedback & Active Learning Triage Loop
 
-User feedback submitted via the UI or API (`/feedback`) is collected in an anonymized, audited store and passed through automated filtering and deduplication before candidate retraining batches are generated.
+User feedback submitted via the UI or API (`/feedback`) records only the predicted label, expected label, coarse category, and model version. Message text, confidence, and consent fields are rejected by the request schema. Reports are appended to a message-free JSONL store. `src/active_learning.py` triages aggregate counts to guide human decisions; it does not deduplicate text, generate retraining CSVs, or train a model automatically.
 
 ```mermaid
 sequenceDiagram
@@ -135,24 +135,21 @@ sequenceDiagram
     actor User as User / Reviewer
     participant API as FastAPI (/feedback)
     participant Store as Feedback Store (JSONL)
-    participant AL as Active Learning (active_learning.py)
-    participant Train as Model Retraining (train.py)
+    participant AL as Triage (active_learning.py)
+    participant Human as Maintainer / Data Steward
 
-    User->>API: Submit feedback (label, masked text, confidence, consent)
-    API->>Store: Append validated anonymized record
-    Note over Store: PII-free; only consented feedback stored
+    User->>API: Submit label, category, model_version
+    API->>Store: Append anonymous report (no text, no confidence)
+    Note over Store: Message-free; rate limited and disabled by default in production
 
-    loop Periodic / Triggered Triage
-        AL->>Store: Ingest accumulated feedback
-        AL->>AL: Normalize text (NFKC, homoglyphs, leetspeak)
-        AL->>AL: Deduplicate against existing training dataset
-        AL->>AL: Filter by label agreement & confidence criteria
-        AL-->>Train: Generate candidate retraining batch (CSV)
+    loop Operator-initiated review
+        AL->>Store: Read accumulated reports
+        AL->>AL: Count false positives / false negatives by category
+        AL-->>Human: Prioritized recommendations (no retraining CSV)
     end
 
-    Train->>Train: Train candidate model with group-aware CV
-    Train->>Train: Run regression suite & quality gates
-    Note over Train: Threshold validation against holdout benchmark
+    Human->>Human: Decide whether consented data or threshold work is justified
+    Note over Human: Any retraining uses consented data and the normal quality gates
 ```
 
 ---
@@ -166,7 +163,7 @@ sequenceDiagram
    - Explicit CORS origins prevent unauthorized browser-origin cross-site requests.
    - Per-IP rate limiting guards against brute-force harvesting or denial-of-service.
    - Text rendering on the frontend strictly utilizes `textContent` and parameterized DOM construction to eliminate cross-site scripting (XSS).
-4. **Reproducible Experiment Logs**: Every model training invocation produces immutable artifacts: `.joblib` model bundle, `.metadata.json` model card & metric breakdown, `.manifest.json` dataset provenance hashes, and run records under `runs/`.
+4. **Reproducible Experiment Logs**: Training always writes the `.pkl` model bundle, `.metadata.json` model card & metric breakdown, and `.manifest.json` dataset provenance hashes. Run records under `runs/` are written only when `--track-run` is passed.
 
 ## 5. Web interface, examples, and repository map
 
