@@ -17,8 +17,10 @@ from __future__ import annotations
 
 import copy
 import importlib
+import io
 import json
 import urllib.error
+import urllib.request
 from pathlib import Path
 from typing import Any
 
@@ -138,7 +140,7 @@ def test_unreachable_endpoint_is_warn_not_fail(monkeypatch, capsys) -> None:
     assert doctor.WARNINGS == ["ops-baseline"]
     out = capsys.readouterr().out
     assert "WARN  ops-baseline" in out
-    assert f"no local API answering at {BASE}" in out
+    assert "no local API answering at the configured endpoint" in out
 
 
 @pytest.mark.parametrize("drift_status", ["insufficient_data", "stable"])
@@ -264,3 +266,80 @@ def test_endpoint_env_override_is_read_at_import(monkeypatch) -> None:
     assert doctor.OPERATIONS_API_BASE == "http://override-fixture.test:9999"
     monkeypatch.undo()
     importlib.reload(doctor)  # restore the module constant from the process environment
+
+
+def test_fetch_json_sends_metrics_token_only_to_protected_endpoints(monkeypatch):
+    monkeypatch.setenv("SMSD_METRICS_TOKEN", "fictional-doctor-token")
+    requests = []
+
+    class Opener:
+        def open(self, request, timeout):
+            requests.append(request)
+            assert timeout == 2
+            return io.BytesIO(b'{"request_count": 1}')
+
+    def build(*handlers):
+        assert any(isinstance(handler, doctor._NoRedirect) for handler in handlers)
+        assert any(isinstance(handler, urllib.request.ProxyHandler) for handler in handlers)
+        return Opener()
+
+    monkeypatch.setattr(urllib.request, "build_opener", build)
+    assert doctor._fetch_json("http://127.0.0.1:8000/metrics/operations") == {"request_count": 1}
+    doctor._fetch_json("https://operator.example.test/metrics/distribution")
+    doctor._fetch_json("https://operator.example.test/model-info")
+    assert [request.get_header("X-smsd-metrics-token") for request in requests] == [
+        "fictional-doctor-token",
+        "fictional-doctor-token",
+        None,
+    ]
+
+
+def test_insecure_remote_metrics_endpoint_refuses_credentials(monkeypatch):
+    monkeypatch.setenv("SMSD_METRICS_TOKEN", "fictional-doctor-token")
+    with pytest.raises(ValueError, match="HTTPS or a loopback"):
+        doctor._fetch_json("http://operator.example.test/metrics/operations")
+
+
+@pytest.mark.parametrize("url", ["https://private@example.test/metrics/operations", "https://example.test/?private=1"])
+def test_doctor_refuses_credential_or_query_urls(url):
+    with pytest.raises(ValueError, match="(?i)endpoint"):
+        doctor._fetch_json(url)
+
+
+def test_doctor_does_not_follow_redirects():
+    handler = doctor._NoRedirect()
+    request = urllib.request.Request("https://operator.example.test/metrics/operations")
+    assert handler.redirect_request(request, None, 302, "Found", {}, "https://other.example.test/") is None
+
+
+def test_doctor_bounds_json_response(monkeypatch):
+    monkeypatch.setattr(doctor, "MAX_DOCTOR_RESPONSE_BYTES", 10)
+
+    class Opener:
+        def open(self, request, timeout):
+            return io.BytesIO(b"x" * 11)
+
+    monkeypatch.setattr(urllib.request, "build_opener", lambda *_handlers: Opener())
+    with pytest.raises(ValueError, match="size limit"):
+        doctor._fetch_json("http://127.0.0.1:8000/model-info")
+
+
+@pytest.mark.parametrize("status", [401, 403, 404, 503])
+def test_metrics_http_error_is_distinct_from_connection_failure(monkeypatch, capsys, status):
+    def fail(url):
+        raise urllib.error.HTTPError(url, status, "private response detail", {}, None)
+
+    monkeypatch.setattr(doctor, "_fetch_json", fail)
+    doctor.check_operations_baseline()
+    assert doctor.WARNINGS == ["ops-baseline"]
+    assert doctor.FAILURES == []
+    output = capsys.readouterr().out
+    assert "private response detail" not in output
+    assert "no local API answering" not in output
+    assert ("SMSD_METRICS_TOKEN" if status != 503 else "HTTP 503") in output
+
+
+def test_non_object_sidecar_is_reported_as_missing(tmp_path):
+    sidecar = tmp_path / "bad.metadata.json"
+    sidecar.write_text("[]", encoding="utf-8")
+    assert doctor._sidecar_model_version(sidecar) is None

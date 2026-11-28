@@ -19,9 +19,11 @@ import json
 import os
 import subprocess
 import sys
+import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 OPERATIONAL_MODEL_FILES = (ROOT / "Makefile", ROOT / "docker-compose.yml", ROOT / "Dockerfile")
@@ -33,6 +35,7 @@ OPERATIONS_API_BASE = os.environ.get("SMSD_DOCTOR_ENDPOINT", "").strip().rstrip(
 CANONICAL_MODEL_SIDECAR = ROOT / "models" / "spam_detector_v1.metadata.json"
 # Drift statuses the monitor reports that need no operator attention.
 DRIFT_OK_STATUSES = frozenset({"insufficient_data", "stable"})
+MAX_DOCTOR_RESPONSE_BYTES = 1024 * 1024
 
 FAILURES: list[str] = []
 WARNINGS: list[str] = []
@@ -159,9 +162,32 @@ def check_served_model() -> None:
         )
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Do not forward operator credentials to redirected destinations."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
 def _fetch_json(url: str) -> Any:
-    with urllib.request.urlopen(url, timeout=2) as response:
-        return json.loads(response.read().decode("utf-8"))
+    parsed = urlsplit(url)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username or parsed.password:
+        raise ValueError("Invalid doctor endpoint.")
+    if parsed.query or parsed.fragment:
+        raise ValueError("Doctor endpoint must not contain a query or fragment.")
+    headers = {"Accept": "application/json"}
+    token = os.environ.get("SMSD_METRICS_TOKEN", "").strip()
+    if token and parsed.path.endswith(("/metrics/operations", "/metrics/distribution")):
+        if parsed.scheme != "https" and parsed.hostname not in {"127.0.0.1", "::1", "localhost"}:
+            raise ValueError("Metrics credentials require HTTPS or a loopback HTTP endpoint.")
+        headers["X-SMSD-Metrics-Token"] = token
+    request = urllib.request.Request(url, headers=headers)
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect())
+    with opener.open(request, timeout=2) as response:
+        content = response.read(MAX_DOCTOR_RESPONSE_BYTES + 1)
+    if len(content) > MAX_DOCTOR_RESPONSE_BYTES:
+        raise ValueError("Doctor response exceeds the JSON size limit.")
+    return json.loads(content.decode("utf-8"))
 
 
 def _expected_sidecar() -> Path:
@@ -181,9 +207,10 @@ def _expected_sidecar() -> Path:
 
 def _sidecar_model_version(sidecar: Path) -> str | None:
     try:
-        value = json.loads(sidecar.read_text(encoding="utf-8")).get("model_version")
+        payload = json.loads(sidecar.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
+    value = payload.get("model_version") if isinstance(payload, dict) else None
     return value if isinstance(value, str) and value else None
 
 
@@ -206,11 +233,22 @@ def check_operations_baseline() -> None:
         operations = _fetch_json(f"{OPERATIONS_API_BASE}/metrics/operations")
         distribution = _fetch_json(f"{OPERATIONS_API_BASE}/metrics/distribution")
         model_info = _fetch_json(f"{OPERATIONS_API_BASE}/model-info")
-    except (OSError, ValueError):
+    except urllib.error.HTTPError as exc:
+        detail = (
+            "metrics unavailable or authorization rejected; check SMSD_METRICS_TOKEN and endpoint configuration"
+            if exc.code in {401, 403, 404}
+            else f"operator endpoint returned HTTP {exc.code}; inspect service health"
+        )
+        check("ops-baseline", False, detail, warn_only=True)
+        return
+    except ValueError:
+        check("ops-baseline", False, "invalid endpoint, unsafe credential transport or JSON response", warn_only=True)
+        return
+    except OSError:
         check(
             "ops-baseline",
             False,
-            f"no local API answering at {OPERATIONS_API_BASE} (optional; start with make serve)",
+            "no local API answering at the configured endpoint (optional; start with make serve)",
             warn_only=True,
         )
         return

@@ -611,6 +611,13 @@ curl -fsS -H "X-SMSD-Metrics-Token: $SMSD_METRICS_TOKEN" \
   http://127.0.0.1:8000/metrics/operations
 ```
 
+For the read-only `make doctor` operator check, export the same
+`SMSD_METRICS_TOKEN` in the operator environment. The doctor forwards it only
+to the two metrics endpoints, rejects credential-bearing or query-bearing
+URLs, does not follow redirects or ambient HTTP proxies, and requires HTTPS
+for non-loopback authenticated requests. A denied metrics request is reported
+as an authorization/configuration warning rather than a connection outage.
+
 Operational metrics are **bounded, process-local snapshots**: cumulative
 counts grouped into fixed route/status categories, plus rolling latency
 percentiles. They reset on process restart and cannot be summed into a
