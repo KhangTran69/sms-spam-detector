@@ -119,6 +119,9 @@ def test_artifact_contains_required_metadata(trained_artifact):
     assert "model_version" in artifact
     assert "metrics" in artifact
     assert "split" in artifact
+    baseline_scores = artifact["monitor_baseline_scores"]
+    assert 0 < len(baseline_scores) <= 1000
+    assert all(0.0 <= float(value) <= 1.0 for value in baseline_scores)
     assert artifact["split"]["group_leakage"] == 0
     assert artifact["threshold_selection"]["target_precision"] == 0.5
     assert "data_note" in artifact and "synthetic" in artifact["data_note"].lower()

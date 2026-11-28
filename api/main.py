@@ -45,6 +45,7 @@ from api.rate_limiter import (
     create_rate_limiter,
 )
 from src.ensemble import TransformerModelError
+from src.monitor import default_monitor
 from src.predict import (
     ModelArtifactError,
     load_model,
@@ -482,6 +483,28 @@ _model = None
 _model_lock = threading.Lock()
 
 
+def configure_monitor(bundle: Any) -> None:
+    """Seed the drift monitor from the artifact's validation-score baseline.
+
+    The artifact stores scores only, never messages. Older artifacts have no
+    baseline, in which case the monitor keeps reporting
+    ``no_baseline_configured`` instead of inventing one.
+    """
+    metadata = getattr(bundle, "metadata", None)
+    scores = metadata.get("monitor_baseline_scores") if isinstance(metadata, dict) else None
+    if not isinstance(scores, (list, tuple)):
+        return
+    clean: list[float] = []
+    for value in scores:
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            continue
+        numeric = float(value)
+        if math.isfinite(numeric) and 0.0 <= numeric <= 1.0:
+            clean.append(numeric)
+    if clean:
+        default_monitor.set_baseline(clean)
+
+
 def get_model():
     """Load the model artifact once (lazy, thread-safe) and reuse it.
 
@@ -494,6 +517,7 @@ def get_model():
         with _model_lock:
             if _model is None:
                 _model = load_model()
+                configure_monitor(_model)
     if SMSD_ENV == "production" and getattr(_model, "legacy", False) and not ALLOW_LEGACY_MODEL:
         raise ModelArtifactError(
             "Production requires a versioned model bundle with recorded training metadata. "

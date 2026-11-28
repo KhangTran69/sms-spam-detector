@@ -365,6 +365,9 @@ def train(
         "training_data_kind_counts": train_set.frame["data_kind"].value_counts().to_dict(),
         # Sigmoid calibration is fitted on training folds only; test/holdout ECE is reported.
         "probability_calibrated": True,
+        # Validation scores only (no messages) so the API can seed drift
+        # monitoring without recomputing predictions at startup.
+        "monitor_baseline_scores": [round(float(value), 6) for value in val_probabilities[:1000]],
         "data_note": (
             "Training data may include synthetic examples and messages with unverified provenance. "
             "Synthetic examples are engineering checks, not proof of real-world accuracy. "

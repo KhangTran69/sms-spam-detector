@@ -761,6 +761,23 @@ def test_model_info_reports_transformer_configuration_without_local_path(monkeyp
     assert str(transformer_path) not in json.dumps(body)
 
 
+def test_model_load_configures_monitor_baseline(bundle, monkeypatch):
+    from src.monitor import default_monitor
+
+    default_monitor.clear()
+    bundle.metadata["monitor_baseline_scores"] = [0.1, 0.2, 0.3, 0.4, 0.5]
+    monkeypatch.setattr(api_main, "_model", None)
+    monkeypatch.setattr(api_main, "load_model", lambda: bundle)
+    try:
+        api_main.get_model()
+
+        metrics = default_monitor.get_metrics()
+        assert metrics["baseline_samples"] == 5
+        assert metrics["drift"]["drift_status"] == "insufficient_data"
+    finally:
+        default_monitor.clear()
+
+
 def test_monitor_uses_spam_probability_for_both_classes():
     from api.routes import _record_linear_monitor
     from src.monitor import default_monitor
