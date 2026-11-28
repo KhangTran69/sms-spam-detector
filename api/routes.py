@@ -326,6 +326,14 @@ def _donation_request_is_local(request: Request) -> bool:
         return False
     if not _loopback_ip(request.client.host):
         return False
+    # Donations are direct-loopback only. A reverse proxy can itself be a
+    # loopback peer; reject recognizable forwarding metadata even if Host
+    # has been rewritten. This is not a substitute for isolating the origin.
+    if any(
+        name in request.headers
+        for name in ("forwarded", "x-forwarded-for", "x-forwarded-host", "x-forwarded-proto", "x-real-ip")
+    ):
+        return False
     hosts = request.headers.getlist("host")
     if len(hosts) != 1 or not hosts[0] or any(char.isspace() for char in hosts[0]):
         return False

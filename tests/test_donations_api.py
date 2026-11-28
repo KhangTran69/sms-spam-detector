@@ -407,3 +407,16 @@ def test_invalid_submission_key_is_rejected(tmp_path, key):
     with donation_client(tmp_path) as client:
         assert client.post("/donate", json={**VALID_PAYLOAD, "submission_key": key}).status_code == 422
     assert not (tmp_path / "donations.sqlite3").exists()
+
+
+@pytest.mark.parametrize(
+    "header",
+    ["Forwarded", "X-Forwarded-For", "X-Forwarded-Host", "X-Forwarded-Proto", "X-Real-IP"],
+)
+def test_donation_routes_reject_proxy_metadata_even_from_local_peer(tmp_path, header):
+    with donation_client(tmp_path) as client:
+        headers = {header: "127.0.0.1"}
+        assert client.get("/donate", headers=headers).status_code == 404
+        assert client.post("/v1/donate", json=VALID_PAYLOAD, headers=headers).status_code == 404
+        assert client.request("DELETE", "/donate", json={"record_id": "a" * 32}, headers=headers).status_code == 404
+    assert not (tmp_path / "donations.sqlite3").exists()

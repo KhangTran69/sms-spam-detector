@@ -367,7 +367,7 @@ def test_plan_minimums_are_read_at_runtime(tmp_path):
                 "minimum_campaign_groups": 2,
                 "minimum_coverage": {
                     "language": {"en": 2, "tl": 1, "tl-en": 0},
-                    "category": {"otp": 2, "bank_alert": 0, "delivery": 0, "spam_top3": 2},
+                    "category": {"otp": 1, "bank_alert": 0, "delivery": 0, "spam_top3": 2},
                 },
             }
         ),
@@ -556,3 +556,30 @@ def test_duplicate_or_unavailable_message_check_blocks_coverage_even_when_raw_co
     report = build_report(pool_intake([missing]), load_minimums(plan))
     assert report["status"] != "minimums_met"
     assert "duplicate_check_incomplete" in report["readiness_blockers"]
+
+
+def test_spam_rows_cannot_satisfy_legitimate_otp_coverage(tmp_path):
+    csv_path = _write_csv(tmp_path / "intake.csv", [BELOW_ROWS[0]])
+    plan = tmp_path / "plan.json"
+    plan.write_text(
+        json.dumps({"minimum_coverage": {"category": {"otp": 1}}, "minimum_campaign_groups": 1}),
+        encoding="utf-8",
+    )
+    code, report, _, _ = _run_with_output(tmp_path, [str(csv_path), "--plan", str(plan)])
+    assert code == 1
+    assert report["coverage"]["category"]["otp"]["met"] is True
+    assert report["legitimate_category_coverage"]["otp"]["met"] is False
+    assert "critical_legitimate_category_support_below_minimum" in report["readiness_blockers"]
+
+
+def test_pilot_status_refuses_duplicate_raw_header_and_existing_report(tmp_path, capsys):
+    source = tmp_path / "ambiguous.csv"
+    source.write_text("label,label,message,language,category,group,consent_record_id\nham,spam,x,en,otp,g,c\n")
+    assert main([str(source)]) == 2
+    assert "duplicate columns" in capsys.readouterr().err
+    good = _write_csv(tmp_path / "intake.csv", BELOW_ROWS)
+    output = tmp_path / "existing.json"
+    output.write_text("unchanged", encoding="utf-8")
+    assert main([str(good), "--output", str(output)]) == 2
+    assert output.read_text(encoding="utf-8") == "unchanged"
+    assert not list(tmp_path.glob(".pilot-status-*"))

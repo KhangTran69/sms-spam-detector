@@ -46,6 +46,7 @@ import argparse
 import json
 import os
 import sys
+import tempfile
 import unicodedata
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -54,7 +55,7 @@ from typing import Any
 
 import pandas as pd
 
-from src.consented_data import SAFE_CODE, normalize_intake_columns
+from src.consented_data import SAFE_CODE, _read_intake_csv as read_private_snapshot, normalize_intake_columns
 from src.dataset_schema import LABEL_ALIASES
 from src.privacy.storage import ensure_private_directory
 
@@ -92,6 +93,7 @@ NOTICE = (
 )
 LIMITATIONS = (
     "Raw counts include duplicates; duplicate or incomplete message checks block minimums_met.",
+    "Critical legitimate-category support is counted from ham only; raw category totals are retained separately.",
     "Coverage is counted from the declared label, language, category, group, and "
     "consent_record_id columns; consent, retention, and de-identification are not re-checked here.",
     "Exit code 1 is a coverage readiness signal only; it never measures model quality.",
@@ -126,15 +128,16 @@ class PooledIntake:
     ham_categories: dict[str, int]
     duplicate_messages: int
     duplicate_detection_applied: bool
+    missing_group_or_consent_rows: int
     forbidden: tuple[str, ...]
 
 
 def _read_intake_csv(path: str | Path) -> pd.DataFrame:
     """Read one intake CSV with repo-standard parsing; parse errors are sanitized."""
     try:
-        frame = pd.read_csv(path, dtype=str, keep_default_na=False, encoding="utf-8-sig")
-    except (OSError, UnicodeError, pd.errors.ParserError, pd.errors.EmptyDataError) as exc:
-        raise ValueError(f"Could not read intake CSV ({type(exc).__name__}).") from None
+        _, frame = read_private_snapshot(path)
+    except ValueError as exc:
+        raise ValueError(f"Could not read intake CSV: {exc}") from None
     try:
         return normalize_intake_columns(frame)
     except ValueError:
@@ -177,10 +180,14 @@ def pool_intake(paths: Sequence[str | Path]) -> PooledIntake:
     if not paths:
         raise ValueError("At least one intake CSV path is required.")
     frames: list[pd.DataFrame] = []
+    total_rows = 0
     has_message = False
     complete_message_check = True
     for path in paths:
         frame = _read_intake_csv(path)
+        total_rows += len(frame)
+        if total_rows > 20_000:
+            raise ValueError("Pooled intake exceeds the row budget.")
         missing = [column for column in STATUS_COLUMNS if column not in frame.columns]
         if missing:
             raise ValueError(f"Intake CSV is missing required status columns: {', '.join(missing)}.")
@@ -227,6 +234,7 @@ def pool_intake(paths: Sequence[str | Path]) -> PooledIntake:
         ham_categories=ham_categories,
         duplicate_messages=duplicate_messages,
         duplicate_detection_applied=complete_message_check,
+        missing_group_or_consent_rows=int(((consent_values == "") | (group_values == "")).sum()),
         forbidden=forbidden,
     )
 
@@ -344,6 +352,16 @@ def build_report(pooled: PooledIntake, minimums: CoverageMinimums) -> dict[str, 
         blockers.append("duplicate_messages_require_reconciliation")
     if pooled.labels[UNRECOGNIZED_LABEL]:
         blockers.append("unrecognized_labels")
+    if pooled.missing_group_or_consent_rows:
+        blockers.append("missing_campaign_or_consent_identifiers")
+    if not pooled.messages:
+        blockers.append("empty_intake")
+    legitimate_coverage = {
+        code: _coverage_entry(pooled.ham_categories.get(code, 0), minimums.category.get(code))
+        for code in ("otp", "bank_alert", "delivery")
+    }
+    if any(entry["met"] is False for entry in legitimate_coverage.values()):
+        blockers.append("critical_legitimate_category_support_below_minimum")
     return {
         "report_kind": "pilot_coverage_status",
         "status": STATUS_BELOW if gaps or blockers else STATUS_MET,
@@ -351,6 +369,7 @@ def build_report(pooled: PooledIntake, minimums: CoverageMinimums) -> dict[str, 
         "legitimate_category_support": {
             code: pooled.ham_categories.get(code, 0) for code in ("otp", "bank_alert", "delivery")
         },
+        "legitimate_category_coverage": legitimate_coverage,
         "notice": NOTICE,
         "inputs": {
             "file_count": pooled.file_count,
@@ -415,6 +434,7 @@ def format_summary(report: dict[str, Any]) -> str:
         f"Messages: {totals['messages']} | Donors: {totals['donors']} | {groups_line}",
         _section_line("Language coverage", coverage["language"]),
         _section_line("Category coverage", coverage["category"]),
+        _section_line("Legitimate category coverage", report["legitimate_category_coverage"]),
         f"{SPAM_TOP3_KEY}: {_coverage_phrase(spam)}" + (f" ({spam_names})" if spam_names else ""),
         f"Gaps: {len(report['gaps'])}",
     ]
@@ -466,12 +486,21 @@ def write_report(report: dict[str, Any], output: str | os.PathLike[str], forbidd
     payload = json.dumps(report, indent=2, sort_keys=True, allow_nan=False) + "\n"
     _assert_report_message_free(payload, forbidden)
     ensure_private_directory(destination.parent)
-    descriptor = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
-        handle.write(payload)
-        handle.flush()
-        os.fsync(handle.fileno())
-    os.chmod(destination, 0o600)
+    temporary: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", dir=destination.parent, prefix=".pilot-status-", delete=False
+        ) as handle:
+            temporary = Path(handle.name)
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.link(temporary, destination)
+    except FileExistsError:
+        raise ValueError("Status report must not overwrite an existing file.") from None
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
     return destination
 
 

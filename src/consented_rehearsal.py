@@ -21,11 +21,11 @@ from typing import Any
 import pandas as pd
 
 from api.donations import create_donation, delete_donation, export_donations
-from scripts.verify_review_export import verify_export
 from src.consented_data import REQUIRED_COLUMNS, validate_batch
 from src.consented_split import split_consented_dataset
 from src.privacy.scrub import detect_pii
 from src.public_evaluation import evaluate_public_dataset
+from src.review_reconciliation import verify_export
 from src.train import train
 
 SYNTHETIC_CAMPAIGNS = 64

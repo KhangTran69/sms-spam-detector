@@ -501,3 +501,7 @@ Union declared campaign groups with template families before development cross-v
 ### Current export reconciliation and strict chronological holdout
 
 Add a bounded, read-only private review-export reconciliation command that checks complete encoded rows against current active, unexpired storage and optional research consent. Exercise withdrawal invalidation in the disposable end-to-end rehearsal. Refuse chronological campaign partitions whose actual row timestamps overlap. These checks do not establish human consent or authorize release.
+
+### Pilot coverage and direct-loopback boundary
+
+Use bounded strict intake parsing for pooled coverage, require legitimate-class support for critical categories without changing ratified minimums, block missing identifiers, and publish reports exclusively. Keep review reconciliation in the installed library, with its CLI wrapper in scripts. Refuse recognizable forwarding metadata on the local-only donation route and retain external isolation requirements.
