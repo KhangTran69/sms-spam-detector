@@ -95,4 +95,3 @@ def verify_export(database: Path, export: Path, *, require_model_research: bool 
         "model_research_required": require_model_research,
         "consent_approval_verified": False,
     }
-

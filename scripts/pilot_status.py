@@ -55,7 +55,8 @@ from typing import Any
 
 import pandas as pd
 
-from src.consented_data import SAFE_CODE, _read_intake_csv as read_private_snapshot, normalize_intake_columns
+from src.consented_data import SAFE_CODE, normalize_intake_columns
+from src.consented_data import _read_intake_csv as read_private_snapshot
 from src.dataset_schema import LABEL_ALIASES
 from src.privacy.storage import ensure_private_directory
 

@@ -10,6 +10,7 @@ from pathlib import Path
 
 from src.review_reconciliation import verify_export
 
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--database", required=True, type=Path)
