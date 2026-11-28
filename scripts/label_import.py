@@ -75,8 +75,13 @@ category column); ``group`` is the worksheet ``group`` column when present,
 otherwise ``grp_`` + the first 12 ``record_id`` characters -- never derived
 from message content. Exit codes: 0 when the intake CSV was produced and
 passes ``validate_csv``; 1 for every tool failure (row-level exclusions are
-reported and are not failures). All row numbers in reports refer to worksheet
-lines: header = line 1, first data row = 2, matching ``validate_batch``.
+reported and are not failures) -- unlike ``scripts/pilot_preflight.py`` and
+``scripts/pilot_status.py``, which exit 2 for path/usage-class errors via
+``parser.error``, this tool deliberately exits 1 for every failure it controls
+because its binding contract is "0 if the intake CSV was produced and passes
+``validate_csv``, 1 otherwise"; only argparse usage errors exit 2. All row
+numbers in reports refer to worksheet lines: header = line 1, first data row
+= 2, matching ``validate_batch``.
 """
 
 from __future__ import annotations
@@ -740,6 +745,12 @@ def main(argv: list[str] | None = None) -> int:
             "output_written": False,
         }
         print(json.dumps(payload, indent=2, sort_keys=True), file=sys.stderr)
+        return 1
+    except Exception as exc:
+        # Keep unexpected failures content-free: only the exception type name
+        # (mirrors scripts/pilot_preflight.py; exit stays 1 per this tool's
+        # binding 0/1 contract, so no traceback ever reaches stderr).
+        print(f"Label import aborted with an unexpected error ({type(exc).__name__}).", file=sys.stderr)
         return 1
     print(json.dumps(summary, indent=2, sort_keys=True))
     return 0

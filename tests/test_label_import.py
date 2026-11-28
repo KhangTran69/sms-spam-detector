@@ -12,6 +12,7 @@ senders, nothing real), and every reviewer/adjudicator id is pseudonymous.
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import stat
@@ -21,6 +22,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+import scripts.label_import as label_import_module
 from scripts.label_import import (
     OWNER_ADJUDICATION_EXCEPTION_EXPIRED,
     OWNER_ADJUDICATION_PENDING_INDEPENDENT_REVIEWER,
@@ -542,3 +544,22 @@ def test_no_importable_rows_is_a_failure_listing_the_exclusions(tmp_path, capsys
         {"row_number": 3, "code": OWNER_ADJUDICATION_PENDING_INDEPENDENT_REVIEWER},
     ]
     _assert_message_free(captured.err)
+
+
+def test_unexpected_exceptions_reach_stderr_as_a_type_name_only(tmp_path, capsys, monkeypatch) -> None:
+    # Unexpected exception types must never produce a traceback or carry any
+    # message content: the catch-all reduces them to the type name (mirroring
+    # scripts/pilot_preflight.py) and exits 1 per this tool's 0/1 contract.
+    argv = _write_sidecars(tmp_path, [_row(RECORD_A, MSG_A)])
+    marker = "unexpected-failure-marker-with-message-text"
+
+    def _boom(args: argparse.Namespace) -> dict[str, object]:
+        raise RuntimeError(marker)
+
+    monkeypatch.setattr(label_import_module, "run_import", _boom)
+
+    assert main(argv) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == "Label import aborted with an unexpected error (RuntimeError).\n"
+    assert "Traceback" not in captured.err and marker not in captured.err
