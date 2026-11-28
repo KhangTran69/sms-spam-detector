@@ -292,8 +292,15 @@ def review_export_row(
 ) -> dict[str, str] | None:
     """Encode a current review-staging row identically for export and verification."""
     (
-        record_id, message, language, notice_version, consented_at, expires_at,
-        review_consent, model_research_consent, authorized_to_share,
+        record_id,
+        message,
+        language,
+        notice_version,
+        consented_at,
+        expires_at,
+        review_consent,
+        model_research_consent,
+        authorized_to_share,
     ) = stored
     if detect_pii(message, strict=True):
         return None
@@ -387,9 +394,7 @@ def donation_summary(path: Path) -> dict[str, int]:
     path = _validated_database_path(path)
     bootstrap_database(path)
     with _connect(path) as connection:
-        total, withdrawn = connection.execute(
-            "SELECT COUNT(*), COUNT(withdrawn_at) FROM donations"
-        ).fetchone()
+        total, withdrawn = connection.execute("SELECT COUNT(*), COUNT(withdrawn_at) FROM donations").fetchone()
         total, withdrawn = int(total), int(withdrawn)
     return {"records": total, "withdrawn": withdrawn, "active": total - withdrawn}
 

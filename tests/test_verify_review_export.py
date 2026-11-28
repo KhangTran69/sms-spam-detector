@@ -49,7 +49,9 @@ def test_expiry_is_blocked_even_before_maintenance(tmp_path):
     receipt = _create(database)
     export_donations(database, export)
     with closing(sqlite3.connect(database)) as connection, connection:
-        connection.execute("UPDATE donations SET expires_at=? WHERE record_id=?", ("2000-01-01T00:00:00+00:00", receipt))
+        connection.execute(
+            "UPDATE donations SET expires_at=? WHERE record_id=?", ("2000-01-01T00:00:00+00:00", receipt)
+        )
     assert verify_export(database, export)["unavailable"] == 1
     with closing(sqlite3.connect(database)) as connection:
         assert connection.execute("SELECT COUNT(*) FROM donations").fetchone()[0] == 1
