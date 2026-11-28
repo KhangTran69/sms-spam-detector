@@ -1,0 +1,1266 @@
+{
+  "record": "v2.1.0-candidate preregistered gate evaluation on frozen sets",
+  "generated_note": "Aggregate counts, rates, and Wilson 95% intervals only; no message text.",
+  "models": {
+    "old": {
+      "path": "models/releases/v2.0.0/spam_detector_v1.pkl",
+      "sha256": "daa8a7c192bf9e02a068f5c60b15bec1cba0db6522b4bf68d69b5b9633815daf",
+      "decision_threshold": 0.5
+    },
+    "new": {
+      "path": "models/spam_detector_v2_1_candidate.pkl",
+      "sha256": "3d23c802cae7ee542180081d15f0b8533a7415dfa5bb9dcb6cf2d2a2b094dc6b",
+      "decision_threshold": 0.5
+    }
+  },
+  "frozen_sets": {
+    "tagalog_heldout_groups": {
+      "derived_from_training_dataset": true,
+      "base_sha256": "ec218ffbb1dae2f3a4fca95e92cfe2cd38960c3219759a978f795636355784d8",
+      "tagalog_supplement_sha256": "6cf7676c2216cc62a7e0ae0675b2a1849d242ffd2582ee93fa4e53d58c9ffe6e",
+      "membership_binding": "group_fingerprint in tagalog_heldout_split",
+      "old_model": {
+        "decision_threshold": 0.5,
+        "n": 372,
+        "ham": 270,
+        "spam": 102,
+        "confusion": {
+          "tp": 71,
+          "fp": 59,
+          "tn": 211,
+          "fn": 31
+        },
+        "precision": 0.5461538461538461,
+        "precision_wilson95": [
+          0.46047273824046614,
+          0.6291855791877401
+        ],
+        "recall": 0.696078431372549,
+        "recall_wilson95": [
+          0.6010479530545229,
+          0.7768757872801973
+        ],
+        "fpr": 0.21851851851851853,
+        "fpr_wilson95": [
+          0.17336384822198447,
+          0.2715704555368684
+        ],
+        "fnr": 0.30392156862745096,
+        "fnr_wilson95": [
+          0.22312421271980248,
+          0.39895204694547703
+        ],
+        "by_category": {
+          "ads": {
+            "ham": 0,
+            "spam": 22,
+            "false_positives": 0,
+            "false_negatives": 7,
+            "fnr": 0.3181818181818182,
+            "fnr_wilson95": [
+              0.16360593181356242,
+              0.5268140225895724
+            ]
+          },
+          "gov": {
+            "ham": 11,
+            "spam": 0,
+            "false_positives": 5,
+            "false_negatives": 0,
+            "fpr": 0.45454545454545453,
+            "fpr_wilson95": [
+              0.21271271622459764,
+              0.719908462590678
+            ]
+          },
+          "notifs": {
+            "ham": 202,
+            "spam": 0,
+            "false_positives": 43,
+            "false_negatives": 0,
+            "fpr": 0.21287128712871287,
+            "fpr_wilson95": [
+              0.16205412221844354,
+              0.2744053710994399
+            ]
+          },
+          "otp": {
+            "ham": 57,
+            "spam": 0,
+            "false_positives": 11,
+            "false_negatives": 0,
+            "fpr": 0.19298245614035087,
+            "fpr_wilson95": [
+              0.11132746980050533,
+              0.3134069024776396
+            ]
+          },
+          "spam": {
+            "ham": 0,
+            "spam": 80,
+            "false_positives": 0,
+            "false_negatives": 24,
+            "fnr": 0.3,
+            "fnr_wilson95": [
+              0.21064571260081338,
+              0.40768153921339734
+            ]
+          }
+        },
+        "calibration": {
+          "brier": 0.20829294156698525,
+          "ece": 0.17305270792857394,
+          "bins_populated": 10,
+          "min_bin_n": 3,
+          "bin_counts": [
+            167,
+            38,
+            15,
+            12,
+            10,
+            3,
+            9,
+            5,
+            7,
+            106
+          ]
+        }
+      },
+      "new_model": {
+        "decision_threshold": 0.5,
+        "n": 372,
+        "ham": 270,
+        "spam": 102,
+        "confusion": {
+          "tp": 97,
+          "fp": 12,
+          "tn": 258,
+          "fn": 5
+        },
+        "precision": 0.8899082568807339,
+        "precision_wilson95": [
+          0.8173772800737439,
+          0.9358919605788925
+        ],
+        "recall": 0.9509803921568627,
+        "recall_wilson95": [
+          0.8903421993187709,
+          0.9788824034510856
+        ],
+        "fpr": 0.044444444444444446,
+        "fpr_wilson95": [
+          0.02560410473259042,
+          0.07606588687713202
+        ],
+        "fnr": 0.049019607843137254,
+        "fnr_wilson95": [
+          0.021117596548914302,
+          0.10965780068122896
+        ],
+        "by_category": {
+          "ads": {
+            "ham": 0,
+            "spam": 22,
+            "false_positives": 0,
+            "false_negatives": 3,
+            "fnr": 0.13636363636363635,
+            "fnr_wilson95": [
+              0.04749003714055253,
+              0.33334987166571717
+            ]
+          },
+          "gov": {
+            "ham": 11,
+            "spam": 0,
+            "false_positives": 1,
+            "false_negatives": 0,
+            "fpr": 0.09090909090909091,
+            "fpr_wilson95": [
+              0.01623217288588484,
+              0.37735843645159567
+            ]
+          },
+          "notifs": {
+            "ham": 202,
+            "spam": 0,
+            "false_positives": 7,
+            "false_negatives": 0,
+            "fpr": 0.034653465346534656,
+            "fpr_wilson95": [
+              0.01688566932506946,
+              0.0697900612246037
+            ]
+          },
+          "otp": {
+            "ham": 57,
+            "spam": 0,
+            "false_positives": 4,
+            "false_negatives": 0,
+            "fpr": 0.07017543859649122,
+            "fpr_wilson95": [
+              0.027626420229066022,
+              0.1670017009603369
+            ]
+          },
+          "spam": {
+            "ham": 0,
+            "spam": 80,
+            "false_positives": 0,
+            "false_negatives": 2,
+            "fnr": 0.025,
+            "fnr_wilson95": [
+              0.006882893202970645,
+              0.0866443298557801
+            ]
+          }
+        },
+        "calibration": {
+          "brier": 0.03809590333033725,
+          "ece": 0.03055524957950294,
+          "bins_populated": 10,
+          "min_bin_n": 3,
+          "bin_counts": [
+            244,
+            7,
+            4,
+            5,
+            3,
+            4,
+            3,
+            4,
+            11,
+            87
+          ]
+        }
+      }
+    },
+    "ph_inbox": {
+      "sha256": "981f837ca8eb7f88848e8756e89321aee2a6b139e52b4c8828683afc712674e2",
+      "old_model": {
+        "decision_threshold": 0.5,
+        "n": 1664,
+        "ham": 65,
+        "spam": 1599,
+        "confusion": {
+          "tp": 687,
+          "fp": 16,
+          "tn": 49,
+          "fn": 912
+        },
+        "precision": 0.9772403982930299,
+        "precision_wilson95": [
+          0.9633505956914655,
+          0.9859429009287064
+        ],
+        "recall": 0.42964352720450283,
+        "recall_wilson95": [
+          0.4055772802615596,
+          0.45404701460441804
+        ],
+        "fpr": 0.24615384615384617,
+        "fpr_wilson95": [
+          0.15757986855897985,
+          0.3630578319587784
+        ],
+        "fnr": 0.5703564727954972,
+        "fnr_wilson95": [
+          0.545952985395582,
+          0.5944227197384403
+        ],
+        "by_category": {
+          "ads": {
+            "ham": 0,
+            "spam": 870,
+            "false_positives": 0,
+            "false_negatives": 587,
+            "fnr": 0.674712643678161,
+            "fnr_wilson95": [
+              0.6428734336793143,
+              0.7050157594132952
+            ]
+          },
+          "gov": {
+            "ham": 55,
+            "spam": 0,
+            "false_positives": 15,
+            "false_negatives": 0,
+            "fpr": 0.2727272727272727,
+            "fpr_wilson95": [
+              0.17280751939105835,
+              0.40232198111670814
+            ]
+          },
+          "notifs": {
+            "ham": 10,
+            "spam": 0,
+            "false_positives": 1,
+            "false_negatives": 0,
+            "fpr": 0.1,
+            "fpr_wilson95": [
+              0.01787621309507289,
+              0.4041500267952385
+            ]
+          },
+          "spam": {
+            "ham": 0,
+            "spam": 729,
+            "false_positives": 0,
+            "false_negatives": 325,
+            "fnr": 0.4458161865569273,
+            "fnr_wilson95": [
+              0.4101119023881123,
+              0.48208851961431004
+            ]
+          }
+        },
+        "calibration": {
+          "brier": 0.4155145552529001,
+          "ece": 0.49512948951681046,
+          "bins_populated": 10,
+          "min_bin_n": 49,
+          "bin_counts": [
+            409,
+            218,
+            155,
+            127,
+            52,
+            61,
+            49,
+            52,
+            73,
+            468
+          ]
+        }
+      },
+      "new_model": {
+        "decision_threshold": 0.5,
+        "n": 1664,
+        "ham": 65,
+        "spam": 1599,
+        "confusion": {
+          "tp": 913,
+          "fp": 8,
+          "tn": 57,
+          "fn": 686
+        },
+        "precision": 0.991313789359392,
+        "precision_wilson95": [
+          0.9829539802085602,
+          0.9955921169290024
+        ],
+        "recall": 0.5709818636647905,
+        "recall_wilson95": [
+          0.5465812379903462,
+          0.595042251189312
+        ],
+        "fpr": 0.12307692307692308,
+        "fpr_wilson95": [
+          0.06370467509869225,
+          0.22451494082161527
+        ],
+        "fnr": 0.4290181363352095,
+        "fnr_wilson95": [
+          0.40495774881068813,
+          0.4534187620096538
+        ],
+        "by_category": {
+          "ads": {
+            "ham": 0,
+            "spam": 870,
+            "false_positives": 0,
+            "false_negatives": 586,
+            "fnr": 0.6735632183908046,
+            "fnr_wilson95": [
+              0.6417008794606252,
+              0.7038995689405856
+            ]
+          },
+          "gov": {
+            "ham": 55,
+            "spam": 0,
+            "false_positives": 7,
+            "false_negatives": 0,
+            "fpr": 0.12727272727272726,
+            "fpr_wilson95": [
+              0.06304210427364633,
+              0.24017027655909076
+            ]
+          },
+          "notifs": {
+            "ham": 10,
+            "spam": 0,
+            "false_positives": 1,
+            "false_negatives": 0,
+            "fpr": 0.1,
+            "fpr_wilson95": [
+              0.01787621309507289,
+              0.4041500267952385
+            ]
+          },
+          "spam": {
+            "ham": 0,
+            "spam": 729,
+            "false_positives": 0,
+            "false_negatives": 100,
+            "fnr": 0.13717421124828533,
+            "fnr_wilson95": [
+              0.11409547630412327,
+              0.16405671659817328
+            ]
+          }
+        },
+        "calibration": {
+          "brier": 0.3261605372249289,
+          "ece": 0.4038863632986192,
+          "bins_populated": 10,
+          "min_bin_n": 62,
+          "bin_counts": [
+            363,
+            143,
+            111,
+            64,
+            62,
+            84,
+            66,
+            78,
+            78,
+            615
+          ]
+        }
+      }
+    },
+    "synthetic_holdout": {
+      "sha256": "ec5ff937c0e2b55e160fa45cb5639b8afd9b1d86c481c230dd3213608a16ac51",
+      "old_model": {
+        "decision_threshold": 0.5,
+        "n": 264,
+        "ham": 124,
+        "spam": 140,
+        "confusion": {
+          "tp": 125,
+          "fp": 4,
+          "tn": 120,
+          "fn": 15
+        },
+        "precision": 0.9689922480620154,
+        "precision_wilson95": [
+          0.9229832552530715,
+          0.9878769616866007
+        ],
+        "recall": 0.8928571428571429,
+        "recall_wilson95": [
+          0.8307429595750218,
+          0.9339878829918681
+        ],
+        "fpr": 0.03225806451612903,
+        "fpr_wilson95": [
+          0.012614619069790335,
+          0.08001150495858557
+        ],
+        "fnr": 0.10714285714285714,
+        "fnr_wilson95": [
+          0.06601211700813188,
+          0.1692570404249783
+        ],
+        "by_category": {
+          "appointment": {
+            "ham": 9,
+            "spam": 0,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fpr": 0.0,
+            "fpr_wilson95": [
+              0.0,
+              0.2991450484195441
+            ]
+          },
+          "bank_alert": {
+            "ham": 16,
+            "spam": 0,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fpr": 0.0,
+            "fpr_wilson95": [
+              0.0,
+              0.1936076805344365
+            ]
+          },
+          "bank_phishing": {
+            "ham": 0,
+            "spam": 24,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fnr": 0.0,
+            "fnr_wilson95": [
+              1.1962983316807505e-17,
+              0.1379762046749802
+            ]
+          },
+          "bill": {
+            "ham": 3,
+            "spam": 0,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fpr": 0.0,
+            "fpr_wilson95": [
+              4.8683609171202235e-17,
+              0.5614970317550455
+            ]
+          },
+          "community": {
+            "ham": 8,
+            "spam": 0,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fpr": 0.0,
+            "fpr_wilson95": [
+              0.0,
+              0.32440756488388023
+            ]
+          },
+          "delivery": {
+            "ham": 11,
+            "spam": 0,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fpr": 0.0,
+            "fpr_wilson95": [
+              0.0,
+              0.2588329669680317
+            ]
+          },
+          "delivery_scam": {
+            "ham": 0,
+            "spam": 1,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fnr": 0.0,
+            "fnr_wilson95": [
+              0.0,
+              0.7934506856227626
+            ]
+          },
+          "ewallet_phishing": {
+            "ham": 0,
+            "spam": 12,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fnr": 0.0,
+            "fnr_wilson95": [
+              2.1025014877572554e-17,
+              0.24249400665524087
+            ]
+          },
+          "ewallet_receipt": {
+            "ham": 8,
+            "spam": 0,
+            "false_positives": 3,
+            "false_negatives": 0,
+            "fpr": 0.375,
+            "fpr_wilson95": [
+              0.13684428582359737,
+              0.6942576053973727
+            ]
+          },
+          "government_impersonation": {
+            "ham": 0,
+            "spam": 20,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fnr": 0.0,
+            "fnr_wilson95": [
+              0.0,
+              0.16112515805281938
+            ]
+          },
+          "government_subsidy_scam": {
+            "ham": 0,
+            "spam": 1,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fnr": 0.0,
+            "fnr_wilson95": [
+              0.0,
+              0.7934506856227626
+            ]
+          },
+          "impersonation_scam": {
+            "ham": 0,
+            "spam": 1,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fnr": 0.0,
+            "fnr_wilson95": [
+              0.0,
+              0.7934506856227626
+            ]
+          },
+          "investment_scam": {
+            "ham": 0,
+            "spam": 9,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fnr": 0.0,
+            "fnr_wilson95": [
+              0.0,
+              0.2991450484195441
+            ]
+          },
+          "job_scam": {
+            "ham": 0,
+            "spam": 13,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fnr": 0.0,
+            "fnr_wilson95": [
+              0.0,
+              0.22809537235419838
+            ]
+          },
+          "legit_link": {
+            "ham": 9,
+            "spam": 0,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fpr": 0.0,
+            "fpr_wilson95": [
+              0.0,
+              0.2991450484195441
+            ]
+          },
+          "load_scam": {
+            "ham": 0,
+            "spam": 2,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fnr": 0.0,
+            "fnr_wilson95": [
+              0.0,
+              0.6576197724933469
+            ]
+          },
+          "loan_scam": {
+            "ham": 0,
+            "spam": 9,
+            "false_positives": 0,
+            "false_negatives": 4,
+            "fnr": 0.4444444444444444,
+            "fnr_wilson95": [
+              0.18877852109766458,
+              0.7333487065045069
+            ]
+          },
+          "otp": {
+            "ham": 11,
+            "spam": 0,
+            "false_positives": 1,
+            "false_negatives": 0,
+            "fpr": 0.09090909090909091,
+            "fpr_wilson95": [
+              0.01623217288588484,
+              0.37735843645159567
+            ]
+          },
+          "otp_social_engineering": {
+            "ham": 0,
+            "spam": 1,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fnr": 0.0,
+            "fnr_wilson95": [
+              0.0,
+              0.7934506856227626
+            ]
+          },
+          "otp_theft": {
+            "ham": 0,
+            "spam": 8,
+            "false_positives": 0,
+            "false_negatives": 7,
+            "fnr": 0.875,
+            "fnr_wilson95": [
+              0.5291118177871466,
+              0.9775825085499433
+            ]
+          },
+          "parcel_scam": {
+            "ham": 0,
+            "spam": 9,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fnr": 0.0,
+            "fnr_wilson95": [
+              0.0,
+              0.2991450484195441
+            ]
+          },
+          "personal": {
+            "ham": 32,
+            "spam": 0,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fpr": 0.0,
+            "fpr_wilson95": [
+              0.0,
+              0.1071791982550706
+            ]
+          },
+          "personal_taglish": {
+            "ham": 5,
+            "spam": 0,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fpr": 0.0,
+            "fpr_wilson95": [
+              0.0,
+              0.43448246478317476
+            ]
+          },
+          "prize_scam": {
+            "ham": 0,
+            "spam": 11,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fnr": 0.0,
+            "fnr_wilson95": [
+              0.0,
+              0.2588329669680317
+            ]
+          },
+          "promo": {
+            "ham": 3,
+            "spam": 0,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fpr": 0.0,
+            "fpr_wilson95": [
+              4.8683609171202235e-17,
+              0.5614970317550455
+            ]
+          },
+          "relative_scam": {
+            "ham": 0,
+            "spam": 1,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fnr": 0.0,
+            "fnr_wilson95": [
+              0.0,
+              0.7934506856227626
+            ]
+          },
+          "romance_scam": {
+            "ham": 0,
+            "spam": 9,
+            "false_positives": 0,
+            "false_negatives": 4,
+            "fnr": 0.4444444444444444,
+            "fnr_wilson95": [
+              0.18877852109766458,
+              0.7333487065045069
+            ]
+          },
+          "school": {
+            "ham": 1,
+            "spam": 0,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fpr": 0.0,
+            "fpr_wilson95": [
+              0.0,
+              0.7934506856227626
+            ]
+          },
+          "sim_registration_scam": {
+            "ham": 0,
+            "spam": 9,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fnr": 0.0,
+            "fnr_wilson95": [
+              0.0,
+              0.2991450484195441
+            ]
+          },
+          "work": {
+            "ham": 8,
+            "spam": 0,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fpr": 0.0,
+            "fpr_wilson95": [
+              0.0,
+              0.32440756488388023
+            ]
+          }
+        },
+        "calibration": {
+          "brier": 0.0609992562567853,
+          "ece": 0.047706292285161586,
+          "bins_populated": 6,
+          "min_bin_n": 1,
+          "bin_counts": [
+            127,
+            7,
+            1,
+            1,
+            11,
+            117
+          ]
+        }
+      },
+      "new_model": {
+        "decision_threshold": 0.5,
+        "n": 264,
+        "ham": 124,
+        "spam": 140,
+        "confusion": {
+          "tp": 115,
+          "fp": 1,
+          "tn": 123,
+          "fn": 25
+        },
+        "precision": 0.9913793103448276,
+        "precision_wilson95": [
+          0.9527801658718213,
+          0.9984766122233615
+        ],
+        "recall": 0.8214285714285714,
+        "recall_wilson95": [
+          0.7496696703597743,
+          0.8760192008313173
+        ],
+        "fpr": 0.008064516129032258,
+        "fpr_wilson95": [
+          0.0014250064581251712,
+          0.04426798605447707
+        ],
+        "fnr": 0.17857142857142858,
+        "fnr_wilson95": [
+          0.12398079916868263,
+          0.2503303296402257
+        ],
+        "by_category": {
+          "appointment": {
+            "ham": 9,
+            "spam": 0,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fpr": 0.0,
+            "fpr_wilson95": [
+              0.0,
+              0.2991450484195441
+            ]
+          },
+          "bank_alert": {
+            "ham": 16,
+            "spam": 0,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fpr": 0.0,
+            "fpr_wilson95": [
+              0.0,
+              0.1936076805344365
+            ]
+          },
+          "bank_phishing": {
+            "ham": 0,
+            "spam": 24,
+            "false_positives": 0,
+            "false_negatives": 13,
+            "fnr": 0.5416666666666666,
+            "fnr_wilson95": [
+              0.3507486535891948,
+              0.72108666268789
+            ]
+          },
+          "bill": {
+            "ham": 3,
+            "spam": 0,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fpr": 0.0,
+            "fpr_wilson95": [
+              4.8683609171202235e-17,
+              0.5614970317550455
+            ]
+          },
+          "community": {
+            "ham": 8,
+            "spam": 0,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fpr": 0.0,
+            "fpr_wilson95": [
+              0.0,
+              0.32440756488388023
+            ]
+          },
+          "delivery": {
+            "ham": 11,
+            "spam": 0,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fpr": 0.0,
+            "fpr_wilson95": [
+              0.0,
+              0.2588329669680317
+            ]
+          },
+          "delivery_scam": {
+            "ham": 0,
+            "spam": 1,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fnr": 0.0,
+            "fnr_wilson95": [
+              0.0,
+              0.7934506856227626
+            ]
+          },
+          "ewallet_phishing": {
+            "ham": 0,
+            "spam": 12,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fnr": 0.0,
+            "fnr_wilson95": [
+              2.1025014877572554e-17,
+              0.24249400665524087
+            ]
+          },
+          "ewallet_receipt": {
+            "ham": 8,
+            "spam": 0,
+            "false_positives": 1,
+            "false_negatives": 0,
+            "fpr": 0.125,
+            "fpr_wilson95": [
+              0.022417491450056667,
+              0.47088818221285345
+            ]
+          },
+          "government_impersonation": {
+            "ham": 0,
+            "spam": 20,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fnr": 0.0,
+            "fnr_wilson95": [
+              0.0,
+              0.16112515805281938
+            ]
+          },
+          "government_subsidy_scam": {
+            "ham": 0,
+            "spam": 1,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fnr": 0.0,
+            "fnr_wilson95": [
+              0.0,
+              0.7934506856227626
+            ]
+          },
+          "impersonation_scam": {
+            "ham": 0,
+            "spam": 1,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fnr": 0.0,
+            "fnr_wilson95": [
+              0.0,
+              0.7934506856227626
+            ]
+          },
+          "investment_scam": {
+            "ham": 0,
+            "spam": 9,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fnr": 0.0,
+            "fnr_wilson95": [
+              0.0,
+              0.2991450484195441
+            ]
+          },
+          "job_scam": {
+            "ham": 0,
+            "spam": 13,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fnr": 0.0,
+            "fnr_wilson95": [
+              0.0,
+              0.22809537235419838
+            ]
+          },
+          "legit_link": {
+            "ham": 9,
+            "spam": 0,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fpr": 0.0,
+            "fpr_wilson95": [
+              0.0,
+              0.2991450484195441
+            ]
+          },
+          "load_scam": {
+            "ham": 0,
+            "spam": 2,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fnr": 0.0,
+            "fnr_wilson95": [
+              0.0,
+              0.6576197724933469
+            ]
+          },
+          "loan_scam": {
+            "ham": 0,
+            "spam": 9,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fnr": 0.0,
+            "fnr_wilson95": [
+              0.0,
+              0.2991450484195441
+            ]
+          },
+          "otp": {
+            "ham": 11,
+            "spam": 0,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fpr": 0.0,
+            "fpr_wilson95": [
+              0.0,
+              0.2588329669680317
+            ]
+          },
+          "otp_social_engineering": {
+            "ham": 0,
+            "spam": 1,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fnr": 0.0,
+            "fnr_wilson95": [
+              0.0,
+              0.7934506856227626
+            ]
+          },
+          "otp_theft": {
+            "ham": 0,
+            "spam": 8,
+            "false_positives": 0,
+            "false_negatives": 7,
+            "fnr": 0.875,
+            "fnr_wilson95": [
+              0.5291118177871466,
+              0.9775825085499433
+            ]
+          },
+          "parcel_scam": {
+            "ham": 0,
+            "spam": 9,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fnr": 0.0,
+            "fnr_wilson95": [
+              0.0,
+              0.2991450484195441
+            ]
+          },
+          "personal": {
+            "ham": 32,
+            "spam": 0,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fpr": 0.0,
+            "fpr_wilson95": [
+              0.0,
+              0.1071791982550706
+            ]
+          },
+          "personal_taglish": {
+            "ham": 5,
+            "spam": 0,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fpr": 0.0,
+            "fpr_wilson95": [
+              0.0,
+              0.43448246478317476
+            ]
+          },
+          "prize_scam": {
+            "ham": 0,
+            "spam": 11,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fnr": 0.0,
+            "fnr_wilson95": [
+              0.0,
+              0.2588329669680317
+            ]
+          },
+          "promo": {
+            "ham": 3,
+            "spam": 0,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fpr": 0.0,
+            "fpr_wilson95": [
+              4.8683609171202235e-17,
+              0.5614970317550455
+            ]
+          },
+          "relative_scam": {
+            "ham": 0,
+            "spam": 1,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fnr": 0.0,
+            "fnr_wilson95": [
+              0.0,
+              0.7934506856227626
+            ]
+          },
+          "romance_scam": {
+            "ham": 0,
+            "spam": 9,
+            "false_positives": 0,
+            "false_negatives": 5,
+            "fnr": 0.5555555555555556,
+            "fnr_wilson95": [
+              0.26665129349549305,
+              0.8112214789023354
+            ]
+          },
+          "school": {
+            "ham": 1,
+            "spam": 0,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fpr": 0.0,
+            "fpr_wilson95": [
+              0.0,
+              0.7934506856227626
+            ]
+          },
+          "sim_registration_scam": {
+            "ham": 0,
+            "spam": 9,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fnr": 0.0,
+            "fnr_wilson95": [
+              0.0,
+              0.2991450484195441
+            ]
+          },
+          "work": {
+            "ham": 8,
+            "spam": 0,
+            "false_positives": 0,
+            "false_negatives": 0,
+            "fpr": 0.0,
+            "fpr_wilson95": [
+              0.0,
+              0.32440756488388023
+            ]
+          }
+        },
+        "calibration": {
+          "brier": 0.07563485657161045,
+          "ece": 0.10270481777958794,
+          "bins_populated": 10,
+          "min_bin_n": 1,
+          "bin_counts": [
+            113,
+            22,
+            8,
+            4,
+            1,
+            1,
+            7,
+            12,
+            27,
+            69
+          ]
+        }
+      }
+    }
+  },
+  "tagalog_heldout_split": {
+    "method": "stratified_group_kfold",
+    "seed": 42,
+    "group_fingerprint": "8c4b3a3344a75cf36e1ed74c07c8aaaeda077c72c9f9a713dc6ac35c020dec2c",
+    "fingerprint_matches_recorded_benchmark": true,
+    "heldout_rows": 372,
+    "heldout_labels": {
+      "ham": 270,
+      "spam": 102
+    },
+    "note": "Held-out rows come from the test portion of the same fingerprint-matched group-isolated split the candidate trained on; they were never trained on by the candidate and are entirely out-of-domain for the incumbent."
+  },
+  "critical_category_gates": {
+    "tagalog_heldout_groups/otp": {
+      "n_ham": 57,
+      "false_positives": 4,
+      "fpr": 0.07017543859649122,
+      "fpr_wilson95": [
+        0.027626420229066022,
+        0.1670017009603369
+      ],
+      "gate_fpr_le_5pct": false,
+      "gate_wilson_upper_le_8pct": false
+    },
+    "tagalog_heldout_groups/notifs": {
+      "n_ham": 202,
+      "false_positives": 7,
+      "fpr": 0.034653465346534656,
+      "fpr_wilson95": [
+        0.01688566932506946,
+        0.0697900612246037
+      ],
+      "gate_fpr_le_5pct": true,
+      "gate_wilson_upper_le_8pct": true
+    },
+    "tagalog_heldout_groups/gov": {
+      "n_ham": 11,
+      "false_positives": 1,
+      "fpr": 0.09090909090909091,
+      "fpr_wilson95": [
+        0.01623217288588484,
+        0.37735843645159567
+      ],
+      "gate_fpr_le_5pct": false,
+      "gate_wilson_upper_le_8pct": false
+    },
+    "ph_inbox/notifs": {
+      "n_ham": 10,
+      "false_positives": 1,
+      "fpr": 0.1,
+      "fpr_wilson95": [
+        0.01787621309507289,
+        0.4041500267952385
+      ],
+      "gate_fpr_le_5pct": false,
+      "gate_wilson_upper_le_8pct": false
+    },
+    "ph_inbox/gov": {
+      "n_ham": 55,
+      "false_positives": 7,
+      "fpr": 0.12727272727272726,
+      "fpr_wilson95": [
+        0.06304210427364633,
+        0.24017027655909076
+      ],
+      "gate_fpr_le_5pct": false,
+      "gate_wilson_upper_le_8pct": false
+    }
+  },
+  "gates_all_met": false
+}

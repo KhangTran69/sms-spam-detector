@@ -1,0 +1,209 @@
+{
+  "record": "group-isolated recalibration experiment on the CC0 Tagalog corpus",
+  "corpus": {
+    "path": "data/external/tagalog-sms.csv",
+    "sha256": "cc7506627eec4de0018bd8ede7d22ffbc2febde428c5d72138e0d0f85134fee8",
+    "rows": 2739
+  },
+  "note": "Aggregate calibration statistics only; no message text.",
+  "incumbent_recalibration": {
+    "design": "group-isolated split of the CC0 corpus (template-family keys, seed 43, ~15% of groups held out); calibrators fitted on the train portion's incumbent scores only, applied to the held-out portion",
+    "train_rows": 2380,
+    "heldout_rows": 359,
+    "train_group_count": 1325,
+    "heldout_group_count": 234,
+    "raw": {
+      "brier": 0.3041421361941606,
+      "log_loss": 1.2939989457939363,
+      "ece": 0.28714169572534975,
+      "mce": 0.5718332951010472,
+      "bins_populated": 10,
+      "min_bin_n": 2,
+      "bin_counts": [
+        134,
+        27,
+        16,
+        8,
+        6,
+        2,
+        4,
+        8,
+        14,
+        140
+      ]
+    },
+    "post_platt": {
+      "brier": 0.21080484212112108,
+      "log_loss": 0.6081702725092689,
+      "ece": 0.08962573413177394,
+      "mce": 0.20889713512393465,
+      "bins_populated": 3,
+      "min_bin_n": 21,
+      "bin_counts": [
+        21,
+        245,
+        93
+      ]
+    },
+    "post_isotonic": {
+      "brier": 0.19838601886006338,
+      "log_loss": 0.5692733894400283,
+      "ece": 0.08244786162145298,
+      "mce": 0.10840976160669247,
+      "bins_populated": 3,
+      "min_bin_n": 35,
+      "bin_counts": [
+        35,
+        117,
+        207
+      ]
+    },
+    "per_category_raw_heldout": {
+      "ads": {
+        "n": 23,
+        "ham": 0,
+        "spam": 23,
+        "recall": 0.8260869565217391,
+        "ece": 0.20494943514769962
+      },
+      "gov": {
+        "n": 6,
+        "ham": 6,
+        "spam": 0,
+        "fpr": 0.3333333333333333,
+        "ece": null,
+        "note": "ece omitted below 10 rows"
+      },
+      "notifs": {
+        "n": 165,
+        "ham": 165,
+        "spam": 0,
+        "fpr": 0.47878787878787876,
+        "ece": 0.49964564549759605
+      },
+      "otp": {
+        "n": 70,
+        "ham": 70,
+        "spam": 0,
+        "fpr": 0.1,
+        "ece": 0.14133488703604907
+      },
+      "spam": {
+        "n": 95,
+        "ham": 0,
+        "spam": 95,
+        "recall": 0.6421052631578947,
+        "ece": 0.322682104591609
+      }
+    },
+    "per_category_train": {
+      "ads": {
+        "n": 136,
+        "ham": 0,
+        "spam": 136,
+        "recall": 0.5073529411764706,
+        "ece": 0.45976234966851165
+      },
+      "gov": {
+        "n": 46,
+        "ham": 46,
+        "spam": 0,
+        "fpr": 0.391304347826087,
+        "ece": 0.46915681150518074
+      },
+      "notifs": {
+        "n": 1274,
+        "ham": 1274,
+        "spam": 0,
+        "fpr": 0.4631083202511774,
+        "ece": 0.4905644288250822
+      },
+      "otp": {
+        "n": 434,
+        "ham": 434,
+        "spam": 0,
+        "fpr": 0.1935483870967742,
+        "ece": 0.25786228259345917
+      },
+      "spam": {
+        "n": 490,
+        "ham": 0,
+        "spam": 490,
+        "recall": 0.5448979591836735,
+        "ece": 0.4091693469781907
+      }
+    }
+  },
+  "candidate_heldout_calibration": {
+    "heldout_rows": 372,
+    "labels": {
+      "ham": 270,
+      "spam": 102
+    },
+    "group_fingerprint": "8c4b3a3344a75cf36e1ed74c07c8aaaeda077c72c9f9a713dc6ac35c020dec2c",
+    "fingerprint_matches_recorded_benchmark": true,
+    "raw": {
+      "brier": 0.038095903330337265,
+      "log_loss": 0.1450463430816104,
+      "ece": 0.030555249579502966,
+      "mce": 0.3723382447564317,
+      "bins_populated": 10,
+      "min_bin_n": 3,
+      "bin_counts": [
+        244,
+        7,
+        4,
+        5,
+        3,
+        4,
+        3,
+        4,
+        11,
+        87
+      ]
+    },
+    "per_category": {
+      "ads": {
+        "n": 22,
+        "ham": 0,
+        "spam": 22,
+        "recall": 0.8636363636363636,
+        "ece": 0.19248691660126097
+      },
+      "gov": {
+        "n": 11,
+        "ham": 11,
+        "spam": 0,
+        "fpr": 0.09090909090909091,
+        "ece": 0.16306826722268164
+      },
+      "notifs": {
+        "n": 202,
+        "ham": 202,
+        "spam": 0,
+        "fpr": 0.034653465346534656,
+        "ece": 0.05087246496875489
+      },
+      "otp": {
+        "n": 57,
+        "ham": 57,
+        "spam": 0,
+        "fpr": 0.07017543859649122,
+        "ece": 0.08443383478830979
+      },
+      "spam": {
+        "n": 80,
+        "ham": 0,
+        "spam": 80,
+        "recall": 0.975,
+        "ece": 0.05666280374791498
+      }
+    },
+    "ui_wording_rule": {
+      "ece_le_0.05": true,
+      "min_populated_bin_ge_30": false,
+      "keep_uncalibrated_wording": true
+    },
+    "contamination_note": "No clean calibration-fit data exists for the candidate beyond its held-out rows, so no post-hoc calibrator is fitted for it here; fitting one on the candidate's own training rows would not be held-out evidence."
+  }
+}
