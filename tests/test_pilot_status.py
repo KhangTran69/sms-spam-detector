@@ -465,3 +465,66 @@ def test_unexpected_exceptions_reduce_to_the_type_name(tmp_path, capsys, monkeyp
     assert "Traceback" not in captured.err
     assert captured.out == ""
     _assert_message_free(captured.err)
+
+
+@pytest.mark.parametrize("field", ["category", "language"])
+def test_non_categorical_intake_metadata_is_refused(tmp_path, capsys, field):
+    marker = "Synthetic private metadata with spaces"
+    row = {**BELOW_ROWS[0], field: marker}
+    csv_path = _write_csv(tmp_path / "intake.csv", [row])
+
+    exit_code, _report, file_text, output = _run_with_output(tmp_path, [str(csv_path)])
+
+    captured = capsys.readouterr()
+    assert exit_code == 2
+    assert "non-categorical metadata" in captured.err
+    assert marker not in captured.err + captured.out + file_text
+    assert not output.exists()
+
+
+def test_private_input_path_is_not_printed(tmp_path, capsys):
+    missing = tmp_path / "synthetic-private-identifier.csv"
+
+    assert main([str(missing)]) == 2
+    captured = capsys.readouterr()
+    assert missing.name not in captured.err
+    assert "Could not read intake CSV" in captured.err
+
+
+def test_report_cannot_overwrite_intake_or_plan(tmp_path, capsys):
+    csv_path = _write_csv(tmp_path / "intake.csv", BELOW_ROWS)
+    plan = tmp_path / "plan.json"
+    plan.write_bytes((ROOT / "docs" / "templates" / "consented-evaluation-plan.json").read_bytes())
+
+    for source in (csv_path, plan):
+        original = source.read_bytes()
+        assert main([str(csv_path), "--plan", str(plan), "--output", str(source)]) == 2
+        assert source.read_bytes() == original
+
+    captured = capsys.readouterr()
+    assert "must not overwrite" in captured.err
+
+
+def test_report_refuses_case_variant_private_identifier_in_metadata(tmp_path, capsys):
+    row = {**BELOW_ROWS[0], "category": CONSENT_A.upper()}
+    csv_path = _write_csv(tmp_path / "intake.csv", [row])
+
+    exit_code, _report, _file_text, output = _run_with_output(tmp_path, [str(csv_path)])
+
+    captured = capsys.readouterr()
+    assert exit_code == 2
+    assert not output.exists()
+    assert CONSENT_A not in captured.out + captured.err
+    assert CONSENT_A.upper() not in captured.out + captured.err
+
+
+def test_invalid_plan_metadata_key_is_not_printed(tmp_path, capsys):
+    csv_path = _write_csv(tmp_path / "intake.csv", BELOW_ROWS)
+    plan = tmp_path / "plan.json"
+    marker = "Synthetic private plan metadata"
+    plan.write_text(json.dumps({"minimum_coverage": {"language": {marker: 1}}}), encoding="utf-8")
+
+    assert main([str(csv_path), "--plan", str(plan)]) == 2
+    captured = capsys.readouterr()
+    assert "non-categorical metadata keys" in captured.err
+    assert marker not in captured.err + captured.out
