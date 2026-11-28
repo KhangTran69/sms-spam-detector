@@ -73,4 +73,6 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD ["python", "-c", "import sys, urllib.request; r = urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3); sys.exit(0 if r.status == 200 else 1)"]
 
 # Host/port flags are uvicorn CLI options; the app reads no PORT env var.
-CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# --no-access-log keeps client IPs and request paths out of container logs,
+# matching the message-free logging guarantee in docs/PRIVACY.md.
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]

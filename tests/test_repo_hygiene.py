@@ -585,3 +585,12 @@ def test_field_evaluation_readiness_is_not_misrepresented_as_results() -> None:
     index = _text("docs/README.md")
     assert "PH_FIELD_EVALUATION_READINESS.md" in index
     assert "OPERATIONAL_AND_ACCESSIBILITY_REVIEW.md" in index
+
+
+def test_dockerfile_disables_uvicorn_access_log() -> None:
+    dockerfile = _text("Dockerfile")
+    cmd_lines = [line for line in dockerfile.splitlines() if line.strip().startswith("CMD ")]
+    assert cmd_lines, "Dockerfile must declare a CMD"
+    assert any("--no-access-log" in line for line in cmd_lines), (
+        "container deployments must not emit Uvicorn access logs with client IPs"
+    )
