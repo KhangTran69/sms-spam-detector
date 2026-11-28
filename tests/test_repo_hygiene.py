@@ -609,3 +609,12 @@ def test_evaluation_plan_template_prefills_registration_fields() -> None:
     assert template["minimum_coverage"]["language"] == {"en": 100, "tl": 100, "tl-en": 100}
     assert template["minimum_coverage"]["category"]["otp"] == 150
     assert template["registered_at"] is None, "registration happens at sealed-test setup, not before"
+
+
+def test_tagalog_sms_attempt_is_recorded() -> None:
+    record = (ROOT / "docs" / "benchmarks" / "tagalog-sms-attempt-20261128.md").read_text(encoding="utf-8")
+    assert "make datasets DATASET=tagalog-sms" in record
+    assert "2026-11-28" in record
+    assert "Kaggle credentials are required" in record or "normalized" in record.lower()
+    inventory = (ROOT / "docs" / "DATASET_INVENTORY.md").read_text(encoding="utf-8")
+    assert "download attempt recorded 2026-11-28" in inventory

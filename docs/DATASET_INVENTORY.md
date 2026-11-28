@@ -7,6 +7,8 @@ distributed. Counts are computed after exact and normalized duplicate removal.
 The PH Spam + Marketing SMS raw CSV was fetched locally on 2026-11-01 after
 this count snapshot; it remains ignored and local-only. A group-isolated
 internal split diagnostic was produced on 2026-11-06 and is recorded below.
+A Tagalog-SMS download attempt on 2026-11-28 was blocked on Kaggle
+credentials; no rows were fetched and the attempt is recorded below.
 No real or public Philippine SMS data was added to Git.
 
 | Source | Role / rows | Labels | Provenance and limitations |
@@ -21,7 +23,7 @@ No real or public Philippine SMS data was added to Git.
 | `data/raw/ph_holdout.csv` | 264 | ham 124; spam 140 | Synthetic diagnostic only. All 264 rows marked synthetic; languages: English 149, Taglish 91, Filipino (`tl`) 24. SHA-256: `ec5ff937c0e2b55e160fa45cb5639b8afd9b1d86c481c230dd3213608a16ac51`. Current exact/normalized message and derived/explicit group overlap checks against training are zero. |
 | Public UCI SMS Spam Collection | Not present in this workspace | — | UCI lists the historical English corpus under CC BY 4.0. It is not Philippine data; importing it requires the operator to obtain the source and preserve attribution. See the official [UCI record](https://archive.ics.uci.edu/dataset/228/sms%2Bspam%2Bcollection). |
 | PH Spam + Marketing SMS (w/ timestamps) | 8,895 raw rows fetched locally; 1,664 unique labeled rows after normalization; internal group-split diagnostic recorded 2026-11-06 | `spam`, `ads`, `gov`, `notifs`, and `OTP` source categories; normalized to spam/ham | Publisher documentation says CC BY 4.0. This is one person's inbox, not a representative sample. The result is not an independent-corpus or consented evaluation; see the [message-free diagnostic report](benchmarks/ph-public-inbox-diagnostic-20261106.json), [evaluation.md](evaluation.md), and [data/external/README.md](../data/external/README.md). |
-| Tagalog-SMS | CC0 local downloader added; not fetched in this workspace | — | Kaggle metadata identifies CC0: Public Domain. The raw personal-inbox export includes sender metadata; normalization drops the sender field. Privacy concerns remain, and the corpus is not representative Philippine traffic. See [data/external/README.md](../data/external/README.md). |
+| Tagalog-SMS | download attempt recorded 2026-11-28; blocked on Kaggle credentials; no rows fetched | — | Kaggle metadata identifies CC0: Public Domain. The fetch requires the operator's Kaggle API credentials; none were exported, so the downloader refused before any network access and no rows or hashes exist. The raw personal-inbox export includes sender metadata; normalization drops the sender field. Privacy concerns remain, and the corpus is not representative Philippine traffic. See the [message-free attempt record](benchmarks/tagalog-sms-attempt-20261128.md) and [data/external/README.md](../data/external/README.md). |
 
 The project does not state a separate license for its synthetic CSV content.
 Do not infer redistribution rights from the synthetic label. The local
