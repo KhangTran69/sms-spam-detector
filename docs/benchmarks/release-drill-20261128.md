@@ -13,8 +13,10 @@ The drill followed the attested canonical release:
 
 - Release: <https://github.com/KhangTran69/sms-spam-detector/releases/tag/v2.0.0>
   (tag `v2.0.0` at source revision `deedcb863a7d28352c31899963623a52cd4dd25d`),
-  published 2026-11-28 with exactly `models/spam_detector_v1.pkl` +
-  `models/spam_detector_v1.metadata.json` attached.
+  published 2026-11-28 with the model bundle and its metadata attached
+  (`models/spam_detector_v1.pkl` + `models/spam_detector_v1.metadata.json`;
+  the provenance workflow adds its own attestation assets to the final
+  release).
 - Release-provenance workflow run (passed):
   <https://github.com/KhangTran69/sms-spam-detector/actions/runs/46125116202>.
   Its SLSA provenance attestation names `spam_detector_v1.pkl` at
@@ -52,14 +54,14 @@ poll interval is the measurement granularity.
 ## Commands
 
 Run as one script from the repository root of the `chore/roadmap-t0-hygiene`
-worktree (`/Users/khangtran/smsd-worktrees/roadmap-completion`):
+worktree:
 
 ```sh
 #!/bin/zsh
 # Timed rollback drill 2026-11-28 — port 8001 (8000 is the operator's live server).
 set -u
-cd /Users/khangtran/smsd-worktrees/roadmap-completion || exit 1
-PY=/Users/khangtran/Documents/sms-spam-detector/.venv/bin/python
+cd "$(git rev-parse --show-toplevel)" || exit 1
+PY=.venv/bin/python
 now() { $PY -I -c 'import time; print(f"{time.time():.6f}")'; }
 BASE=http://127.0.0.1:8001
 

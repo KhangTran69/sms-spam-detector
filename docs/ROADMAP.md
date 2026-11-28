@@ -312,9 +312,13 @@ block on it.
   result reveal, WCAG token-pair audit test (16 pairs x 2 dials), 200%/400% zoom
   smoke checks, aria-current on tabs. Shell smsd-shell-v27 / ui22-editorial-polish.
   Word-budget copy trimming remains deferred to the comprehension re-review round.
-- Queued next: T2.1 Tagalog-SMS fetch+eval (needs Kaggle credentials),
-  T4.1 comprehension study (needs owner approval per HUMAN_REVIEW.md), T5.3
-  coverage ratchet toward 85%, T5.6 quarterly ritual scheduling.
+- Queued next: T2.1 Tagalog-SMS fetch+eval (attempted 2026-11-28 — done as far
+  as the workspace can go, blocked on Kaggle credentials from the operator;
+  see the 2026-11-28 completion entry below), T4.1 comprehension study +
+  qualified-reviewer countersign + pilot kits (pending on humans), T5.3
+  coverage ratchet and T5.6 quarterly ritual scheduling (done — see the
+  2026-11-28 completion entry below: floor at 80 with the 85% checkpoint
+  dated 2027-03-31, Q1-2027 ritual dates scheduled).
 
 ### 2026-11-28 — Roadmap-completion plan executed (PR #45)
 

@@ -591,7 +591,7 @@ def test_field_evaluation_readiness_is_not_misrepresented_as_results() -> None:
 def test_owner_decisions_record_ratification() -> None:
     text = (ROOT / "docs" / "OWNER_DECISIONS.md").read_text(encoding="utf-8")
     assert text.count("Decided 2026-11-28") == 6
-    assert "pending qualified-reviewer countersign" in text
+    assert text.count("pending qualified-reviewer countersign") == 2
     assert text.count("Pending") == 0, "no decision row may remain Pending"
 
 

@@ -14,9 +14,8 @@ CC0: Public Domain) with the repository's approved downloader:
 make datasets DATASET=tagalog-sms
 ```
 
-Run from the repository root of the `chore/roadmap-t0-hygiene` worktree
-(`the repository root of the `chore/roadmap-t0-hygiene` worktree`) with no
-`KAGGLE_USERNAME`/`KAGGLE_KEY` exported in the environment.
+Run from the repository root of the `chore/roadmap-t0-hygiene` worktree with
+no `KAGGLE_USERNAME`/`KAGGLE_KEY` exported in the environment.
 
 ## Result: blocked before any network access
 
