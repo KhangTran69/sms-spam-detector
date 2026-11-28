@@ -268,7 +268,47 @@ block on it.
 
 ---
 
+## Quarterly ritual (dated checklist)
+
+Quarterly from 2026-11-28: **next: 2027-02-28**, then 2027-05-28,
+2027-08-28, 2027-11-28. One PR, one afternoon; if a date slips, the item
+moves to the following week — the ritual is never silently skipped. Actions
+only, no claims: record dated, message-free outputs under `docs/benchmarks/`
+(or the progress log below) in the same PR. This checklist folds the
+artifact/provenance workflow into the T5.6 ritual; the benchmark /
+DATASET_INVENTORY / IMPROVEMENT_EXECUTION / roadmap-review items of T5.6 keep
+their already-scheduled dates (2027-01-15 → 2027-03-31, see the progress log).
+
+- [ ] **Verify the immutable release copies** (next: 2027-02-28): compare
+      `models/releases/v2.0.0/spam_detector_v1.pkl` (sha256) against the
+      `artifact_sha256` recorded in
+      `models/releases/v2.0.0/spam_detector_v1.metadata.json` and against the
+      current canonical `models/spam_detector_v1.pkl` sidecar when it exists;
+      record the comparison in the progress log.
+- [ ] **Re-run the timed rollback drill** per
+      [RETRAINING.md §7](RETRAINING.md#7-rollback-procedure) (next: 2027-02-28)
+      and record the measured per-direction durations in a dated,
+      message-free report under `docs/benchmarks/` (precedents:
+      [release-drill-20261128.md](benchmarks/release-drill-20261128.md),
+      [rollback-drill-v2-1-0-candidate-20261128.md](benchmarks/rollback-drill-v2-1-0-candidate-20261128.md)).
+- [ ] **Re-run `gh attestation verify`** on the release artifact —
+      `gh attestation verify models/releases/v2.0.0/spam_detector_v1.pkl` —
+      and record the workflow/run reference (next: 2027-02-28).
+- [ ] **Review D1/D3 countersign status** in
+      [OWNER_DECISIONS.md](OWNER_DECISIONS.md) (next: 2027-02-28): if a
+      qualified-reviewer countersign landed during the quarter, update the
+      register rows; if still pending, date this review in the progress log.
+- [ ] **Run `python scripts/pilot_status.py <private intake CSVs>`** against
+      the private intake CSVs (next: 2027-02-28) and compare the reported
+      coverage gaps with the ratified minimums in
+      [templates/consented-evaluation-plan.json](templates/consented-evaluation-plan.json);
+      keep the counts in the progress log — the CSVs themselves stay private.
+- [ ] **Re-run `make pilot-preflight`** (synthetic fixtures only) and confirm
+      the preflight output stays message-free (next: 2027-02-28).
+
 ## Progress log
+
+
 
 ### 2026-11-28 — Transfer-gap experiment: adding real training data closes the gap
 
