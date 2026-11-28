@@ -38,8 +38,8 @@ real-holdout promotion gate in the [model card](docs/MODEL_CARD.md).
 
 ## Evaluation
 
-The latest [clean-main UCI and synthetic report](docs/benchmarks/clean-main-f756098-20261121.json)
-reproduces `main` at commit `f75609881dd518b8f9c34c534f103b42c05b1d3d`. It
+A [clean-main UCI and synthetic report](docs/benchmarks/clean-main-f756098-20261121.json)
+was generated from `main` at commit `f75609881dd518b8f9c34c534f103b42c05b1d3d`. It
 separates public English results from synthetic Philippine fixture checks;
 neither is real-world Philippine accuracy.
 The earlier [diagnostic report](docs/benchmarks/uci-synthetic-ph-diagnostic-20261022.json)
@@ -52,7 +52,8 @@ It is not an independent corpus holdout or a consented Philippine performance
 estimate. See [evaluation methods and data status](docs/evaluation.md) and the
 [dataset inventory](docs/DATASET_INVENTORY.md). The reproducible clean-main
 run and its near-duplicate audit are documented in the
-[benchmark runbook](docs/BENCHMARKING.md).
+[benchmark runbook](docs/BENCHMARKING.md). That report is a pinned historical
+snapshot, not a claim about the current commit.
 
 ## API
 

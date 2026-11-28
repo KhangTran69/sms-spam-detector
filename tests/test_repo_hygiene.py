@@ -587,6 +587,20 @@ def test_field_evaluation_readiness_is_not_misrepresented_as_results() -> None:
     assert "OPERATIONAL_AND_ACCESSIBILITY_REVIEW.md" in index
 
 
+def test_architecture_docs_do_not_describe_unimplemented_behavior() -> None:
+    architecture = _doc("docs/ARCHITECTURE.md")
+    for stale in (
+        "deduplication.py",
+        "HistGradientBoosting",
+        "RandomForest",
+        "max_length=1600",
+        "sms_spam_model.joblib",
+        "masked text, confidence, consent",
+        "Generate candidate retraining batch",
+    ):
+        assert stale not in architecture, f"stale architecture claim: {stale}"
+
+
 def test_dockerfile_disables_uvicorn_access_log() -> None:
     dockerfile = _text("Dockerfile")
     cmd_lines = [line for line in dockerfile.splitlines() if line.strip().startswith("CMD ")]

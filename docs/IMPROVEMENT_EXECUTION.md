@@ -212,7 +212,10 @@ human review and does not establish a verified error rate.
 
 ## 7. Validation and remaining work
 
-Validation completed on 2026-10-24:
+Validation completed on 2026-10-24. The figures below are a historical
+snapshot from that date; later CI runs report different counts and coverage.
+
+Historical snapshot (2026-10-24):
 
 - Python suite: 326 passed. One existing Starlette deprecation warning notes
   the TestClient/httpx integration.
