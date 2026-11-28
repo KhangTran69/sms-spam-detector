@@ -270,6 +270,19 @@ block on it.
 
 ## Progress log
 
+### 2026-11-28 — Transfer-gap experiment: adding real training data closes the gap
+
+- Candidate trained on the canonical recipe + 2,738 Tagalog-SMS rows (group-isolated;
+  1 cross-source label conflict excluded - a bare 'Ok' text labeled spam in the corpus,
+  ham in the UCI base; base label kept).
+- On the identical 372 held-out Tagalog rows (out-of-sample for both): incumbent
+  precision 0.546 / recall 0.696 / FPR 0.219 -> candidate precision 0.890 / recall 0.951
+  / FPR 0.044. Critical-category FPs: notifs 43 -> 7, otp 11 -> 4, gov 5 -> 1.
+- Record (aggregates only): docs/benchmarks/tagalog-transfer-experiment-20261128.json.
+  Honest caveats in the record: directional evidence on 372 rows; same-domain training;
+  matched 0.50 threshold; no real-world accuracy claim. The experiment is diagnostic -
+  the attested v2.0.0 release artifact is unchanged (still trained without real data).
+
 ### 2026-11-28 — T2.1 executed: Tagalog-SMS fetched, normalized, and diagnosed
 
 - Kaggle credentials installed by the owner (token file outside the repo; never committed).
