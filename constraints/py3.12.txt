@@ -73,7 +73,7 @@ packaging==26.3
     # via
     #   matplotlib
     #   pytest
-pandas==3.0.6
+pandas==3.1.1
     # via philippine-sms-spam-detector (pyproject.toml)
 pathspec==1.1.1
     # via mypy
