@@ -432,6 +432,16 @@ def test_required_docs_are_present_and_linked_from_index() -> None:
         assert len(_text(relative_path)) > 500, f"{relative_path} looks empty"
 
 
+def test_documentation_index_local_links_resolve() -> None:
+    index = _text("docs/README.md")
+    for target in re.findall(r"\]\(([^)]+)\)", index):
+        if target.startswith(("https://", "http://", "mailto:")):
+            continue
+        local_path = target.split("#", 1)[0]
+        if local_path:
+            assert (ROOT / "docs" / local_path).is_file(), f"Documentation index link is missing: {local_path}"
+
+
 def test_docs_state_synthetic_only_and_privacy_limits() -> None:
     data = _doc("docs/DATA_COLLECTION.md").lower()
     assert "synthetic" in data
