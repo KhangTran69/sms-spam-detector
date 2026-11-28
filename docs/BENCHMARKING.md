@@ -262,3 +262,37 @@ ensemble must remain disabled until the project owner registers the comparison
 procedure and minimum margin, and an authorized run evaluates both candidates
 against the same approved, hash-bound real holdout. Synthetic checks, local
 plumbing tests, and public corpus scores cannot satisfy that gate.
+
+## Cross-corpus overlap audit (T2.3)
+
+Run the aggregate-only audit on existing, normalized approved public files and
+the tracked fictional fixtures. It does not download, fit a classifier, open
+consented data, or modify the model.
+
+```bash
+python -m src.corpus_audit \
+  --uci data/raw/imported/uci_sms_spam.csv \
+  --ph-inbox data/external/ph-spam-marketing-sms.csv \
+  --tagalog data/external/tagalog-sms.csv \
+  --include-synthetic
+```
+
+Omit unavailable public inputs; at least two roles must remain. The
+`--include-synthetic` switch supplies both tracked training and holdout
+fixtures, so the command can be rehearsed without private data. The report
+records file-level SHA-256 digests, class counts, exact and normalized
+overlap, category-independent template overlap, conflicting-label pairs, and
+near-duplicate candidate counts. It does not emit messages, source paths,
+individual identifiers, or template signatures. Exact and normalized counts
+are deliberately separate from the near-duplicate counts; row-pair counts
+include repeats to expose duplication rather than remove it.
+
+The pair-local similarity screen follows the historical 0.90 cosine and 0.90
+sequence thresholds. It is a heuristic diagnostic, not evidence of confirmed
+duplicates or population independence. Review candidate overlap privately
+before any future development split; do not automatically relabel or delete
+rows. Keep the blocked merged and bwandowando corpora out of the audit. No
+consented or sealed data is accepted by this command. Never use this output
+as a release gate or as model performance evidence. A full real-corpus run
+requires the existing local approved snapshots; CI exercises fictional data
+only.
