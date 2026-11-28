@@ -19,7 +19,7 @@ def test_bootstrap_is_idempotent_and_records_current_schema(tmp_path):
     bootstrap_database(database)
 
     with closing(sqlite3.connect(database)) as connection, connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 3
         columns = {row[1] for row in connection.execute("PRAGMA table_info(donations)")}
     assert {
         "record_id",
@@ -81,7 +81,7 @@ def test_v1_rows_migrate_closed_to_research_and_authorization(tmp_path):
     bootstrap_database(database)
 
     with closing(sqlite3.connect(database)) as connection, connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 3
         assert (
             connection.execute(
                 "SELECT dflt_value FROM pragma_table_info('donations') WHERE name='model_research_consent'"
@@ -319,3 +319,41 @@ def test_database_refuses_tracked_repository_paths(tmp_path, monkeypatch):
         )
 
     assert not (repo / "docs" / "accidental-donation.sqlite3").exists()
+
+
+def test_submission_key_serializes_concurrent_retries_and_preserves_expiry(tmp_path):
+    from concurrent.futures import ThreadPoolExecutor
+
+    from api.donations import DonationConflict
+
+    database = tmp_path / "donations.sqlite3"
+    kwargs = {
+        "message": "Synthetic retry fixture",
+        "label_hint": None,
+        "language": "tl",
+        "notice_version": "fixture-v1",
+        "review_consent": True,
+        "authorized_to_share": True,
+        "submission_key": "a" * 32,
+    }
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        receipts = list(pool.map(lambda _: create_donation(database, **kwargs), range(8)))
+    assert len(set(receipts)) == 1
+    assert donation_summary(database)["records"] == 1
+    with closing(sqlite3.connect(database)) as connection, connection:
+        original = connection.execute("SELECT consented_at, expires_at, submission_key_hash FROM donations").fetchone()
+    assert original[2] != kwargs["submission_key"]
+    assert create_donation(database, **kwargs) == receipts[0]
+    with closing(sqlite3.connect(database)) as connection, connection:
+        assert (
+            connection.execute("SELECT consented_at, expires_at, submission_key_hash FROM donations").fetchone() == original
+        )
+    with pytest.raises(DonationConflict):
+        create_donation(database, **{**kwargs, "model_research_consent": True})
+    assert delete_donation(database, receipts[0])
+    with pytest.raises(DonationConflict):
+        create_donation(database, **kwargs)
+    assert donation_summary(database) == {"records": 1, "withdrawn": 1, "active": 0}
+    export = tmp_path / "export.csv"
+    export_donations(database, export)
+    assert "submission_key" not in export.read_text(encoding="utf-8")

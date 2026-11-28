@@ -95,6 +95,26 @@ async function main() {
   assert.equal(stalledSubmitDocument.nodes['#donation-withdrawal-id'].value, '',
     'a stale withdrawal ID is cleared when a new valid submission begins');
 
+  const retryDocument = donationDocument();
+  const sent = [];
+  createDonationForm({
+    documentRef: retryDocument,
+    fetchImpl: async (_url, options) => {
+      sent.push(JSON.parse(options.body));
+      if (sent.length === 1) throw new Error('simulated lost receipt');
+      return { ok: true, status: 201, json: async () => ({ record_id: 'c'.repeat(32) }) };
+    },
+  });
+  await submit(retryDocument.nodes['#donation-form']);
+  retryDocument.nodes['#donation-message'].value = 'Edited fictional fixture';
+  await submit(retryDocument.nodes['#donation-form']);
+  assert.equal(sent.length, 1, 'uncertain request cannot be replaced by an edited retry');
+  retryDocument.nodes['#donation-message'].value = 'Synthetic local fixture';
+  await submit(retryDocument.nodes['#donation-form']);
+  assert.equal(sent.length, 2);
+  assert.match(sent[0].submission_key, /^[a-f0-9]{32}$/);
+  assert.deepEqual(sent[0], sent[1], 'manual retry reuses the opaque key and exact choices');
+
   const stalledWithdrawalDocument = donationDocument();
   let stalledWithdrawalRequests = 0;
   createDonationForm({

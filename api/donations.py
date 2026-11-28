@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import contextlib
 import csv
+import hashlib
 import os
 import re
 import sqlite3
@@ -23,9 +24,11 @@ from src.privacy.storage import ensure_private_directory
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DONATION_DB = ROOT / "data" / "donations" / "donations.sqlite3"
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
+EXPORT_SCHEMA_VERSION = 2
 RETENTION_DAYS = 90
 _LANGUAGE_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,15}$")
+_SUBMISSION_KEY_RE = re.compile(r"^[a-f0-9]{32}$")
 _NOTICE_VERSION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 EXPORT_COLUMNS = (
     "label",
@@ -48,6 +51,10 @@ EXPORT_COLUMNS = (
     "consented_at",
     "expires_at",
 )
+
+
+class DonationConflict(ValueError):
+    """A submission key was already used for a different or withdrawn record."""
 
 
 def _timestamp(value: datetime) -> str:
@@ -117,6 +124,7 @@ def bootstrap_database(path: Path) -> None:
     try:
         _create_private_database_file(database)
         with _connect(database) as connection:
+            connection.execute("BEGIN IMMEDIATE")
             version = int(connection.execute("PRAGMA user_version").fetchone()[0])
             if version > SCHEMA_VERSION:
                 raise RuntimeError("Donation database schema is newer than this application supports.")
@@ -133,13 +141,19 @@ def bootstrap_database(path: Path) -> None:
                     withdrawn_at TEXT,
                     review_consent INTEGER NOT NULL DEFAULT 0,
                     model_research_consent INTEGER NOT NULL DEFAULT 0,
-                    authorized_to_share INTEGER NOT NULL DEFAULT 0
+                    authorized_to_share INTEGER NOT NULL DEFAULT 0,
+                    submission_key_hash TEXT
                 )"""
             )
             columns = {row[1] for row in connection.execute("PRAGMA table_info(donations)")}
             for name in ("review_consent", "model_research_consent", "authorized_to_share"):
                 if name not in columns:
                     connection.execute(f"ALTER TABLE donations ADD COLUMN {name} INTEGER NOT NULL DEFAULT 0")
+            if "submission_key_hash" not in columns:
+                connection.execute("ALTER TABLE donations ADD COLUMN submission_key_hash TEXT")
+            connection.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS donations_submission_key ON donations(submission_key_hash)"
+            )
             connection.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
             expired = _purge_expired(connection)
         if expired:
@@ -162,6 +176,7 @@ def create_donation(
     authorized_to_share: bool,
     model_research_consent: bool = False,
     consented_at: datetime | None = None,
+    submission_key: str | None = None,
 ) -> str:
     """Persist one donation after the API has checked consent and PII."""
     if not isinstance(message, str) or not message.strip() or len(message) > 10_000:
@@ -180,6 +195,9 @@ def create_donation(
         raise ValueError("The submitter must confirm they are authorized to share this message.")
     if type(model_research_consent) is not bool:
         raise ValueError("Model research consent must be an explicit yes or no.")
+    if submission_key is not None and not _SUBMISSION_KEY_RE.fullmatch(submission_key):
+        raise ValueError("Invalid submission key.")
+    key_hash = hashlib.sha256(submission_key.encode("ascii")).hexdigest() if submission_key is not None else None
     accepted_at = consented_at or datetime.now(UTC)
     accepted_stamp = _timestamp(accepted_at)
     now = datetime.now(UTC)
@@ -194,11 +212,33 @@ def create_donation(
     bootstrap_database(path)
     try:
         with _connect(Path(path)) as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            if key_hash is not None:
+                existing = connection.execute(
+                    """SELECT record_id, message, label_hint, language, notice_version,
+                              review_consent, model_research_consent, authorized_to_share, withdrawn_at
+                       FROM donations WHERE submission_key_hash=?""",
+                    (key_hash,),
+                ).fetchone()
+                if existing is not None:
+                    expected = (
+                        message,
+                        label_hint,
+                        language,
+                        notice_version,
+                        int(review_consent),
+                        int(model_research_consent),
+                        int(authorized_to_share),
+                        None,
+                    )
+                    if existing[1:] != expected:
+                        raise DonationConflict("Submission key already used.")
+                    return str(existing[0])
             connection.execute(
                 """INSERT INTO donations
                    (record_id, message, label_hint, language, notice_version, consented_at, created_at, expires_at,
-                    review_consent, model_research_consent, authorized_to_share)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    review_consent, model_research_consent, authorized_to_share, submission_key_hash)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     record_id,
                     message,
@@ -211,6 +251,7 @@ def create_donation(
                     int(review_consent),
                     int(model_research_consent),
                     int(authorized_to_share),
+                    key_hash,
                 ),
             )
     except sqlite3.Error as exc:
@@ -295,7 +336,7 @@ def export_donations(path: Path, output: Path) -> dict[str, int]:
             "received_at": "",
             "data_kind": "consented",
             "dataset_id": "local-consented-donation",
-            "dataset_version": SCHEMA_VERSION,
+            "dataset_version": EXPORT_SCHEMA_VERSION,
             "license": "consented-private",
             "record_id": record_id,
             "review_status": "pending_review",

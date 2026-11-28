@@ -379,3 +379,31 @@ def test_blocked_storage_does_not_block_liveness(tmp_path, monkeypatch):
         finally:
             release.set()
         assert donation.result(timeout=5).status_code == 201
+
+
+def test_keyed_donation_retry_and_conflict_do_not_duplicate_or_echo_capability(tmp_path, caplog):
+    payload = {**VALID_PAYLOAD, "submission_key": "a" * 32}
+    with donation_client(tmp_path, rate_limit=20) as client:
+        first = client.post("/donate", json=payload)
+        second = client.post("/v1/donate", json=payload)
+        assert first.status_code == second.status_code == 201
+        assert first.json() == second.json()
+        record_id = first.json()["record_id"]
+        conflict = client.post("/donate", json={**payload, "model_research_consent": True})
+        assert conflict.status_code == 409
+        assert conflict.json()["error"]["code"] == "submission_conflict"
+        assert record_id not in conflict.text
+        assert client.request("DELETE", "/donate", json={"record_id": record_id}).status_code == 200
+        revoked = client.post("/donate", json=payload)
+        assert revoked.status_code == 409
+        assert record_id not in revoked.text
+        assert payload["submission_key"] not in caplog.text
+    with closing(sqlite3.connect(tmp_path / "donations.sqlite3")) as connection, connection:
+        assert connection.execute("SELECT message FROM donations").fetchall() == [("",)]
+
+
+@pytest.mark.parametrize("key", ["short", "A" * 32, "g" * 32, "a" * 33, 42])
+def test_invalid_submission_key_is_rejected(tmp_path, key):
+    with donation_client(tmp_path) as client:
+        assert client.post("/donate", json={**VALID_PAYLOAD, "submission_key": key}).status_code == 422
+    assert not (tmp_path / "donations.sqlite3").exists()

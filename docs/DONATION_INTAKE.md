@@ -162,4 +162,16 @@ SQLite operations run outside the async request loop while retaining the
 write-admission slot until the operation finishes. Storage failures return
 a generic 503 without private exception details. An uncertain response is
 not proof of rejection: do not automatically resend a donation. The browser
-guard prevents simultaneous form submissions, not durable API idempotency.
+guard prevents simultaneous submissions. A new optional 32-character opaque
+submission key provides durable idempotency across worker/process restarts.
+An exact retry returns the original withdrawal ID and does not refresh consent
+or extend retention. A different payload or withdrawn record returns a generic
+409; withdrawal does not recreate the message. The database stores only a
+hash of the random key, never a message fingerprint or raw submission key.
+Key hashes are purged with their donation rows after the retention period;
+idempotency is therefore bounded by that period. Legacy unkeyed clients remain
+supported but must not assume safe retry. The browser keeps the key and pending
+choices only in memory, refuses changed retries after uncertain outcomes, and
+never retries automatically. Reloading loses that state: consult the operator
+before repeating the donation. Version 3 adds the nullable key hash and unique
+index; exported review CSV format remains version 2.

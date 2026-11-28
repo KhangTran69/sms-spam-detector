@@ -26,7 +26,7 @@ from pydantic import ValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from api.blocking import run_blocking
-from api.donations import RETENTION_DAYS, create_donation, delete_donation
+from api.donations import RETENTION_DAYS, DonationConflict, create_donation, delete_donation
 from api.ops_metrics import operations_monitor
 from api.rate_limiter import RateLimiterUnavailable, RedisRateLimiter, UnavailableRateLimiter
 from api.schemas import (
@@ -470,6 +470,11 @@ async def donate(request: Request) -> Response:
             review_consent=payload.consent,
             authorized_to_share=payload.authorized_to_share,
             model_research_consent=payload.model_research_consent,
+            submission_key=payload.submission_key,
+        )
+    except DonationConflict:
+        return _donation_error(
+            409, "submission_conflict", "This submission key was already used. Contact the operator before trying again."
         )
     except (OSError, RuntimeError, ValueError) as exc:
         _state().logger.error("Could not save local donation (%s)", type(exc).__name__)

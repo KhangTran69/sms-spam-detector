@@ -91,6 +91,9 @@ export function createDonationForm({
   const withdrawalId = documentRef.querySelector("#donation-withdrawal-id");
   const withdrawalButton = documentRef.querySelector("#donation-withdraw");
 
+  // Pending choices and the opaque key live only in this page's memory.
+  let pendingSubmission = null;
+
   function setStatus(text) {
     status.textContent = text;
   }
@@ -123,6 +126,18 @@ export function createDonationForm({
       return;
     }
 
+    const body = JSON.stringify(payload);
+    if (pendingSubmission && pendingSubmission.body !== body) {
+      setStatus("The previous submission outcome may be uncertain. Restore the previous choices to retry the same request, or contact the operator before starting another donation.");
+      return;
+    }
+    if (!pendingSubmission) {
+      if (!globalThis.crypto?.randomUUID) {
+        setStatus("A secure submission key is unavailable. Open the local detector at its loopback address using a supported browser.");
+        return;
+      }
+      pendingSubmission = { body, key: globalThis.crypto.randomUUID().replaceAll("-", "") };
+    }
     withdrawalId.value = "";
     submitButton.disabled = true;
     setStatus("Submitting once to this local detector service…");
@@ -130,11 +145,15 @@ export function createDonationForm({
       const { response, data } = await fetchBounded(fetchImpl, "/donate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...payload, submission_key: pendingSubmission.key }),
         cache: "no-store",
       }, timeoutMs, { parseJson: true });
       const error = data?.error;
       if (!response.ok) {
+        // Only a definitive validation rejection permits editing and a fresh key.
+        if ([400, 415, 422].includes(response.status) || error?.code === "notice_version_mismatch") {
+          pendingSubmission = null;
+        }
         if (error?.code === "pii_detected" && Array.isArray(error.details)) {
           renderPiiFindings(findings, error.details, documentRef);
           message.setAttribute("aria-invalid", "true");
@@ -146,6 +165,7 @@ export function createDonationForm({
       }
       const recordId = typeof data?.record_id === "string" ? data.record_id : null;
       if (!response.ok || !recordId) throw new Error("The service response did not include a withdrawal ID.");
+      pendingSubmission = null;
       withdrawalId.value = recordId;
       message.value = "";
       consent.checked = false;
@@ -157,9 +177,9 @@ export function createDonationForm({
       setStatus(`Received for local review. Stored for up to ${data?.retention_days || 90} days. It is not a verified label.${researchStatus}`);
     } catch (error) {
       if (error.timeout) {
-        setStatus("The local service timed out. The donation outcome may be uncertain; it was not automatically resent. Check with the operator before submitting again.");
+        setStatus("The local service timed out. The donation outcome may be uncertain; it was not automatically resent. To retry, submit the unchanged form on this page with the same key, or check with the operator.");
       } else {
-        setStatus("Could not confirm whether the donation was stored. It was not automatically resent. Check with the local operator before submitting again.");
+        setStatus("Could not confirm whether the donation was stored. It was not automatically resent. To retry, submit the unchanged form on this page with the same key, or check with the local operator.");
       }
     } finally {
       submitButton.disabled = false;

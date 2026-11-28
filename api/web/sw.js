@@ -3,7 +3,7 @@
  */
 "use strict";
 
-const CACHE_NAME = "smsd-shell-v29";
+const CACHE_NAME = "smsd-shell-v30";
 const SHELL_ASSETS = [
   "/",
   "/static/tokens.css?v=ui23-meter-clip-20261128",
@@ -21,7 +21,7 @@ const SHELL_ASSETS = [
   "/static/connection-status.js?v=ui23-meter-clip-20261128",
   "/static/result-format.js?v=ui23-meter-clip-20261128",
   "/static/demo-examples.js?v=ui23-meter-clip-20261128",
-  "/static/donate.js?v=donate-v7",
+  "/static/donate.js?v=donate-v8",
   "/static/donate.css?v=donate-v6",
   "/manifest.webmanifest",
 ];

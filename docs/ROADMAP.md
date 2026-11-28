@@ -473,3 +473,7 @@ F1 0.9425. Raise the enforced per-PR coverage floor from 82% to the ratified
 85% in pyproject and its hygiene regression together. This is an engineering
 coverage milestone only, not a field accuracy or model acceptance result.
 Retain the unchanged OTP, bank-alert, delivery and calibration release gates.
+
+### Donation reliability and optional spreadsheet coverage
+
+Persist opaque retry keys transactionally with the original donation; preserve consent and expiration on replay, refuse conflicting or withdrawn keys, and test concurrent calls. Retain local-only controls and message-free logging. The browser only retries at the user's explicit request while its unchanged pending form remains in memory.

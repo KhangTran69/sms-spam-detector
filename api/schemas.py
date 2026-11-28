@@ -168,6 +168,7 @@ class DonationRequest(BaseModel):
     authorized_to_share: bool = Field(strict=True)
     model_research_consent: bool = Field(default=False, strict=True)
     notice_version: str = Field(..., min_length=1, max_length=64)
+    submission_key: str | None = Field(default=None, min_length=32, max_length=32, pattern=r"^[a-f0-9]{32}$")
 
 
 class DonationWithdrawalRequest(BaseModel):
