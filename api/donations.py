@@ -13,6 +13,8 @@ import hashlib
 import os
 import re
 import sqlite3
+import stat
+import tempfile
 import uuid
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
@@ -93,8 +95,10 @@ def _create_private_database_file(path: Path) -> None:
     try:
         descriptor = os.open(path, os.O_CREAT | os.O_EXCL | os.O_RDWR, 0o600)
     except FileExistsError:
-        with contextlib.suppress(OSError):
-            os.chmod(path, 0o600)
+        info = path.stat()
+        if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+            raise ValueError("Donation storage must be a regular, unshared file.")
+        os.chmod(path, 0o600)
     else:
         os.close(descriptor)
 
@@ -154,11 +158,9 @@ def bootstrap_database(path: Path) -> None:
             connection.execute(
                 "CREATE UNIQUE INDEX IF NOT EXISTS donations_submission_key ON donations(submission_key_hash)"
             )
+            connection.execute("CREATE INDEX IF NOT EXISTS donations_expiry ON donations(expires_at)")
             connection.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
-            expired = _purge_expired(connection)
-        if expired:
-            with _connect(database) as connection:
-                connection.execute("VACUUM")
+            _purge_expired(connection)
         with contextlib.suppress(OSError):
             os.chmod(database, 0o600)
     except sqlite3.Error as exc:
@@ -213,10 +215,13 @@ def create_donation(
     try:
         with _connect(Path(path)) as connection:
             connection.execute("BEGIN IMMEDIATE")
+            # Recheck after acquiring the write lock: admission can wait on SQLite.
+            if expires_stamp <= _timestamp(datetime.now(UTC)):
+                raise ValueError("The donation retention period has already expired.")
             if key_hash is not None:
                 existing = connection.execute(
                     """SELECT record_id, message, label_hint, language, notice_version,
-                              review_consent, model_research_consent, authorized_to_share, withdrawn_at
+                              review_consent, model_research_consent, authorized_to_share, withdrawn_at, expires_at
                        FROM donations WHERE submission_key_hash=?""",
                     (key_hash,),
                 ).fetchone()
@@ -231,7 +236,7 @@ def create_donation(
                         int(authorized_to_share),
                         None,
                     )
-                    if existing[1:] != expected:
+                    if existing[1:-1] != expected or existing[-1] <= _timestamp(datetime.now(UTC)):
                         raise DonationConflict("Submission key already used.")
                     return str(existing[0])
             connection.execute(
@@ -274,9 +279,9 @@ def delete_donation(path: Path, record_id: str) -> bool:
                 (withdrawn_at, record_id),
             )
             changed = cursor.rowcount == 1
-        if changed:
-            with _connect(Path(path)) as connection:
-                connection.execute("VACUUM")
+        # secure_delete is enabled on the transaction itself. Do not turn a
+        # committed erasure into a reported failure because optional compaction
+        # could not acquire an additional exclusive database lock.
         return changed
     except sqlite3.Error as exc:
         raise RuntimeError(f"Could not withdraw the donation ({type(exc).__name__}).") from None
@@ -350,18 +355,25 @@ def export_donations(path: Path, output: Path) -> dict[str, int]:
         }
         writer.writerow({key: _spreadsheet_safe_cell(value) for key, value in row.items()})
         exported += 1
+    # Publish a complete file exclusively; never unlink a destination we did
+    # not create. A same-directory hard link prevents partial CSV visibility.
+    temporary: Path | None = None
     try:
-        descriptor = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-        with os.fdopen(descriptor, "w", encoding="utf-8", newline="") as handle:
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", newline="", dir=destination.parent, prefix=".review-", delete=False
+        ) as handle:
+            temporary = Path(handle.name)
             handle.write(stream.getvalue())
             handle.flush()
             os.fsync(handle.fileno())
+        os.link(temporary, destination)
     except FileExistsError:
         raise
     except OSError as exc:
-        with contextlib.suppress(OSError):
-            destination.unlink()
         raise RuntimeError(f"Could not write donation export ({type(exc).__name__}).") from None
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
     return {"exported": exported, "withdrawn": withdrawn, "pending_review": exported, "pii_blocked": pii_blocked}
 
 
@@ -374,3 +386,37 @@ def donation_summary(path: Path) -> dict[str, int]:
             connection.execute("SELECT COUNT(*) FROM donations WHERE withdrawn_at IS NOT NULL").fetchone()[0]
         )
     return {"records": total, "withdrawn": withdrawn, "active": total - withdrawn}
+
+
+def maintain_donations(path: Path, *, compact: bool = False) -> dict[str, int | bool]:
+    """Purge expired records in an existing private store; optionally compact.
+
+    This is an operator operation, not a request-path requirement. Report only
+    aggregate counts. Never initialize a missing database by mistake.
+    """
+    database = _validated_database_path(path)
+    if not database.is_file():
+        raise ValueError("Existing donation database required.")
+    _secure_parent(database)
+    _create_private_database_file(database)
+    try:
+        with _connect(database) as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            version = int(connection.execute("PRAGMA user_version").fetchone()[0])
+            if version != SCHEMA_VERSION:
+                raise ValueError("Donation storage requires the supported schema before maintenance.")
+            purged = _purge_expired(connection)
+            remaining = int(connection.execute("SELECT COUNT(*) FROM donations").fetchone()[0])
+    except sqlite3.Error as exc:
+        raise RuntimeError(f"Donation maintenance failed ({type(exc).__name__}).") from None
+
+    compacted = False
+    if compact:
+        try:
+            with _connect(database) as connection:
+                connection.execute("VACUUM")
+            compacted = True
+        except sqlite3.Error:
+            # The purge already committed; retry only the compaction later.
+            pass
+    return {"purged": purged, "remaining": remaining, "compaction_requested": compact, "compacted": compacted}

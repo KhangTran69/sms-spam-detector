@@ -485,3 +485,7 @@ Add a fingerprint-bound, group-isolated class-weight and formatting experiment t
 ### Independent review and coverage readiness
 
 Require actual separate review outcomes and independent disagreement resolution. Reject default-derived agreement and prevent duplicate or incomplete message checks from reporting minimums-met status. Keep native-language and qualified-reviewer approval outstanding.
+
+### Local retention and recovery follow-up
+
+Separate committed erasure from optional compaction, publish private exports exclusively, reject shared database files, and add explicit existing-store retention maintenance plus a disposable stale-backup withdrawal reconciliation rehearsal. No actual operator backup or participant store is accessed.

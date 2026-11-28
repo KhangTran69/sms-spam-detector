@@ -175,3 +175,25 @@ choices only in memory, refuses changed retries after uncertain outcomes, and
 never retries automatically. Reloading loses that state: consult the operator
 before repeating the donation. Version 3 adds the nullable key hash and unique
 index; exported review CSV format remains version 2.
+
+
+### Retention maintenance and recovery (local only)
+
+Run `python -m scripts.maintain_donations --database /private/donations.sqlite3`
+against the explicitly selected existing database, including on days with no
+intake. A purge commits with SQLite secure_delete enabled. Optional
+`--compact` separately attempts VACUUM; exit 1 means purge committed but
+compaction needs another maintenance window. Exit 2 means maintenance was
+refused. Avoid concurrent collection during planned maintenance. Neither
+SQLite secure_delete nor VACUUM guarantees physical erasure of filesystem
+snapshots, SSD blocks or backups.
+
+Run `python -m scripts.rehearse_donation_recovery` for the disposable
+fictional backup/restore test. A pre-withdrawal backup really can restore
+withdrawn content: never reopen a restored store for intake or export until
+the custodian has reconciled it with current consent, withdrawal and expiry
+records, verified integrity, and removed expired copies. If the current
+register is unavailable, quarantine the restore; do not assume active consent.
+The rehearsal uses no actual data, does not restore an operator database and
+does not establish that an actual backup is safe. Record the operator's
+maintenance results privately without message text or receipt IDs.

@@ -358,3 +358,78 @@ def test_submission_key_serializes_concurrent_retries_and_preserves_expiry(tmp_p
     export = tmp_path / "export.csv"
     export_donations(database, export)
     assert "submission_key" not in export.read_text(encoding="utf-8")
+
+
+def _retry_fixture(database, **overrides):
+    return create_donation(
+        database,
+        **{
+            "message": "Synthetic retention fixture",
+            "label_hint": None,
+            "language": "en",
+            "notice_version": "fixture-v1",
+            "review_consent": True,
+            "authorized_to_share": True,
+            "submission_key": "b" * 32,
+            **overrides,
+        },
+    )
+
+
+def test_maintenance_purges_expired_and_withdrawn_rows_without_creating_missing_database(tmp_path):
+    from api.donations import maintain_donations
+
+    database = tmp_path / "donations.sqlite3"
+    with pytest.raises(ValueError, match="Existing donation database"):
+        maintain_donations(database)
+    assert not database.exists()
+    record = _retry_fixture(database)
+    expired = _retry_fixture(database, submission_key="c" * 32, message="Fictional expired fixture")
+    assert delete_donation(database, expired)
+    with closing(sqlite3.connect(database)) as connection, connection:
+        connection.execute("UPDATE donations SET expires_at=? WHERE record_id=?", ("2000-01-01T00:00:00+00:00", expired))
+    assert maintain_donations(database, compact=True) == {
+        "purged": 1,
+        "remaining": 1,
+        "compaction_requested": True,
+        "compacted": True,
+    }
+    assert _retry_fixture(database) == record
+
+
+def test_maintenance_contention_does_not_report_success_and_recovers(tmp_path):
+    from api.donations import maintain_donations
+
+    database = tmp_path / "donations.sqlite3"
+    _retry_fixture(database)
+    with closing(sqlite3.connect(database)) as connection:
+        connection.execute("BEGIN EXCLUSIVE")
+        with pytest.raises(RuntimeError, match="Donation maintenance failed"):
+            maintain_donations(database)
+        connection.rollback()
+    assert maintain_donations(database)["remaining"] == 1
+
+
+def test_export_publish_failure_preserves_existing_destination(tmp_path, monkeypatch):
+    database = tmp_path / "donations.sqlite3"
+    _retry_fixture(database)
+    output = tmp_path / "review.csv"
+    output.write_text("existing private record", encoding="utf-8")
+
+    def unavailable(*args, **kwargs):
+        raise PermissionError("private fixture error")
+
+    monkeypatch.setattr(os, "link", unavailable)
+    with pytest.raises(RuntimeError, match="Could not write donation export"):
+        export_donations(database, output)
+    assert output.read_text(encoding="utf-8") == "existing private record"
+    assert not list(tmp_path.glob(".review-*"))
+
+
+def test_existing_database_hard_link_is_refused(tmp_path):
+    database = tmp_path / "donations.sqlite3"
+    _retry_fixture(database)
+    alias = tmp_path / "alias.sqlite3"
+    os.link(database, alias)
+    with pytest.raises(ValueError, match="regular, unshared file"):
+        donation_summary(database)
