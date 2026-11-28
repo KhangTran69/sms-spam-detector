@@ -7,6 +7,25 @@ import sys
 from scripts import benchmark_performance
 
 
+def test_performance_budget_rejects_slow_p95():
+    from scripts.check_performance_budget import check_budget
+
+    result = {"model_load": {"load_time_ms": 100.0}, "single_prediction_latency_ms": {"p95": 50.0}}
+
+    failures = check_budget(result, max_p95_ms=25.0, max_load_ms=500.0)
+
+    assert failures
+    assert any("p95" in failure for failure in failures)
+
+
+def test_performance_budget_accepts_within_budget():
+    from scripts.check_performance_budget import check_budget
+
+    result = {"model_load": {"load_time_ms": 100.0}, "single_prediction_latency_ms": {"p95": 10.0}}
+
+    assert check_budget(result, max_p95_ms=25.0, max_load_ms=500.0) == []
+
+
 def test_missing_model_does_not_train_or_create_artifacts(monkeypatch, tmp_path, capsys):
     model_path = tmp_path / "missing.pkl"
     output_dir = tmp_path / "benchmark-reports"
