@@ -51,6 +51,8 @@ smsd-benchmark = "src.benchmark:main"
 smsd-evaluate-public = "src.public_evaluation:main"
 smsd-split-consented = "src.consented_split:main"
 smsd-consented-rehearsal = "src.consented_rehearsal:main"
+smsd-feedback = "src.feedback:_main"
+smsd-triage = "src.active_learning:main"
 
 [tool.setuptools.package-data]
 # The no-build web UI ships inside the api package so `pip install .` serves it.
