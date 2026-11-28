@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+
 from scripts import doctor
 
 BASE = "http://doctor-fixtures.test:8000"

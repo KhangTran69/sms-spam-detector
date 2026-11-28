@@ -20,13 +20,13 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
+
 from scripts.label_import import (
     OWNER_ADJUDICATION_EXCEPTION_EXPIRED,
     OWNER_ADJUDICATION_PENDING_INDEPENDENT_REVIEWER,
     _validate_output_path,
     main,
 )
-
 from src.consented_data import REQUIRED_COLUMNS, validate_csv
 
 ROOT = Path(__file__).resolve().parents[1]

@@ -4,9 +4,9 @@ import csv
 from pathlib import Path
 
 import pytest
-from scripts.export_donations import main
 
 from api.donations import DEFAULT_DONATION_DB, EXPORT_COLUMNS, create_donation, delete_donation, export_donations
+from scripts.export_donations import main
 
 ROOT = Path(__file__).resolve().parents[1]
 

@@ -308,8 +308,6 @@ their already-scheduled dates (2027-01-15 → 2027-03-31, see the progress log).
 
 ## Progress log
 
-
-
 ### 2026-11-28 — Transfer-gap experiment: adding real training data closes the gap
 
 - Candidate trained on the canonical recipe + 2,738 Tagalog-SMS rows (group-isolated;

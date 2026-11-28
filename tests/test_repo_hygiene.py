@@ -247,7 +247,7 @@ def test_pyproject_configures_pytest_ruff_and_mypy() -> None:
     assert ruff["line-length"] == 120
     selected = set(ruff["lint"]["select"])
     assert {"E", "F", "I", "UP", "B", "SIM"} <= selected
-    assert ruff["lint"]["isort"]["known-first-party"] == ["src", "api"]
+    assert ruff["lint"]["isort"]["known-first-party"] == ["src", "api", "scripts"]
 
     mypy = config["tool"]["mypy"]
     assert mypy["python_version"] == "3.11"

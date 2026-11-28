@@ -13,6 +13,10 @@ import re
 from pathlib import Path
 
 import pytest
+
+import api.donations
+import api.main as api_main
+from api import routes
 from scripts.pilot_preflight import (
     DONATION_FIXTURE_MESSAGE,
     FIXTURE_MESSAGES,
@@ -23,10 +27,6 @@ from scripts.pilot_preflight import (
     run_preflight,
     write_report,
 )
-
-import api.donations
-import api.main as api_main
-from api import routes
 from src.privacy.scrub import detect_pii
 
 ROOT = Path(__file__).resolve().parents[1]

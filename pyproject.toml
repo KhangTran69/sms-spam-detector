@@ -100,7 +100,7 @@ ignore = ["E501", "B905", "SIM108"]
 extend-ignore = ["B008"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["src", "api"]
+known-first-party = ["src", "api", "scripts"]
 
 [tool.mypy]
 python_version = "3.11"

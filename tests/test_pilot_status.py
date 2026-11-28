@@ -21,6 +21,7 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
+
 from scripts.pilot_status import _validate_output_path, main
 
 ROOT = Path(__file__).resolve().parents[1]
