@@ -2,7 +2,37 @@
 
 from __future__ import annotations
 
-from src.active_learning import triage_feedback
+import json
+
+from src.active_learning import main, triage_feedback
+
+
+def test_cli_writes_a_json_report(tmp_path, capsys):
+    path = tmp_path / "reports.jsonl"
+    path.write_text(
+        json.dumps(
+            {
+                "predicted_label": "spam",
+                "expected_label": "ham",
+                "category": "otp",
+                "server_model_version": "v2.0",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    output = tmp_path / "triage.json"
+
+    assert main(["--path", str(path), "--output", str(output)]) == 0
+
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert payload["false_positive_count"] == 1
+    assert "Triage report written" in capsys.readouterr().out
+
+
+def test_cli_prints_an_empty_report_to_stdout(tmp_path, capsys):
+    assert main(["--path", str(tmp_path / "missing.jsonl")]) == 0
+    assert json.loads(capsys.readouterr().out)["total_reports"] == 0
 
 
 def test_triage_empty_reports():
