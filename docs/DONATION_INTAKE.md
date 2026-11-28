@@ -148,3 +148,18 @@ Primary references: [Republic Act No. 10173 (Official Gazette)](https://official
 [NPC Circular No. 2023-04, Guidelines on Consent](https://privacy.gov.ph/wp-content/uploads/2023/11/NPC-Circular-No.-2023-04_Guidelines-on-Consent_07Nov2023.pdf),
 [NPC data-subject rights](https://privacy.gov.ph/data-subject-rights/),
 and [NPC Advisory No. 2026-01 on scraping publicly available personal data](https://privacy.gov.ph/wp-content/uploads/2026/04/SGD_A_1.pdf). RA 10173 §11 addresses purpose limitation and retention, §12 sets lawful-processing criteria including consent, and §16 describes data-subject rights; the IRR elaborates transparency, legitimate purpose, proportionality, and revocable/time-bounded consent. The operator must assess how these rules apply; the software does not make that legal determination.
+
+### Donation request boundary and availability
+
+Consent values must be actual JSON booleans, not strings or numbers. Duplicate
+JSON keys and nonfinite JSON constants are rejected. The literal loopback
+authority must be well formed; conflicting or duplicate browser authority
+headers and non-same-origin Fetch Metadata on writes are refused. Local CLI
+requests may omit browser headers. These controls are not authentication and
+do not authorize public collection.
+
+SQLite operations run outside the async request loop while retaining the
+write-admission slot until the operation finishes. Storage failures return
+a generic 503 without private exception details. An uncertain response is
+not proof of rejection: do not automatically resend a donation. The browser
+guard prevents simultaneous form submissions, not durable API idempotency.

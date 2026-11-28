@@ -309,3 +309,10 @@ Artifact and corpus digests bind the report. No SMS text or row-level scores
 are emitted. CI runs this diagnostic on its synthetic smoke model; no error
 rate from this exercise is a real-data acceptance gate or an estimate of field
 performance. Never use its results to retune a frozen test threshold.
+
+The overlap report also records within-corpus normalized duplicate excess,
+conflicting-label keys and conflicting-label row pairs, plus distinct
+left/right row counts involved in near-duplicate candidates. These supplement,
+rather than replace, exact cross-corpus pair counts. The 0.90 similarity
+cutoffs are unchanged; boundary tests cover equality, below-cutoff values,
+and rejection by the separate sequence gate.

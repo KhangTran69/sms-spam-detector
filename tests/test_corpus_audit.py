@@ -7,9 +7,12 @@ import hashlib
 import json
 from pathlib import Path
 
+import numpy as np
 import pytest
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
-from src.corpus_audit import PUBLIC_IDS, Corpus, audit, load_corpus, main
+from src.corpus_audit import COSINE_THRESHOLD, PUBLIC_IDS, SEQUENCE_THRESHOLD, Corpus, audit, load_corpus, main
 
 PRIVATE_MARKER = "Synthetic fixture for overlap detection only"
 SECOND = "This fictional long notice confirms the scheduled delivery window for the parcel tomorrow."
@@ -54,6 +57,12 @@ def test_near_duplicates_are_separate_from_normalized_and_template_overlap():
     assert pair["category_independent_template"]["row_pairs"] == 2
     assert pair["near_duplicate_pairs_excluding_normalized"] == 1
     assert pair["near_duplicate_conflicting_label_pairs"] == 1
+    assert pair["near_duplicate_left_rows"] == pair["near_duplicate_right_rows"] == 1
+    vectors = TfidfVectorizer(analyzer="char_wb", ngram_range=(3, 5)).fit_transform(
+        [SECOND.casefold(), SECOND.casefold(), VARIANT.casefold()]
+    )
+    assert cosine_similarity(vectors[:1], vectors[2:])[0, 0] >= COSINE_THRESHOLD
+    assert COSINE_THRESHOLD == SEQUENCE_THRESHOLD == 0.90
 
 
 @pytest.mark.parametrize("kind", ["consented", "synthetic", "unknown"])
@@ -109,3 +118,46 @@ def test_sequence_work_limit_refuses_instead_of_emitting_partial_counts(monkeypa
     monkeypatch.setattr("src.corpus_audit.MAX_SEQUENCE_WORK", 1)
     with pytest.raises(ValueError, match="sequence comparison work budget"):
         audit([left, right])
+
+
+@pytest.mark.parametrize("cosine,expected", [(0.899999, 0), (0.90, 1), (0.900001, 1)])
+def test_cosine_boundary_is_inclusive_without_counting_exact_pairs(monkeypatch, cosine, expected):
+    left = Corpus("uci", (SECOND,), ("ham",), ("left",))
+    right = Corpus("tagalog", (SECOND, VARIANT), ("ham", "spam"), ("right",))
+    monkeypatch.setattr("src.corpus_audit.cosine_similarity", lambda *args: np.array([[1.0, cosine]]))
+    pair = audit([left, right])["comparisons"][0]
+    assert pair["normalized"]["row_pairs"] == 1
+    assert pair["near_duplicate_pairs_excluding_normalized"] == expected
+
+
+def test_high_cosine_alone_does_not_pass_sequence_gate(monkeypatch):
+    left = Corpus("uci", ("Fictional alphabetical text",), ("ham",), ("left",))
+    right = Corpus("tagalog", ("Unrelated imaginary notice",), ("spam",), ("right",))
+    monkeypatch.setattr("src.corpus_audit.cosine_similarity", lambda *args: np.array([[1.0]]))
+    assert audit([left, right])["comparisons"][0]["near_duplicate_pairs_excluding_normalized"] == 0
+
+
+def test_within_corpus_conflict_pairs_preserve_multiplicity():
+    left = Corpus("uci", (SECOND, SECOND.upper(), SECOND), ("ham", "spam", "ham"), ("left",))
+    right = Corpus("tagalog", (VARIANT,), ("ham",), ("right",))
+    report = audit([left, right])
+    assert report["corpora"][0]["within_corpus"] == {
+        "normalized_duplicate_rows": 2,
+        "normalized_conflicting_keys": 1,
+        "normalized_conflicting_label_pairs": 2,
+    }
+
+
+@pytest.mark.parametrize("role", ["unknown", "consented"])
+def test_unsupported_role_refused_before_opening(role, tmp_path):
+    with pytest.raises(ValueError, match="Unsupported corpus role"):
+        load_corpus(role, [tmp_path / "absent"])
+
+
+def test_empty_and_malformed_csv_are_not_partial_successes(tmp_path):
+    path = _write(tmp_path / "empty.csv", "uci", [])
+    with pytest.raises(ValueError, match="empty"):
+        load_corpus("uci", [path])
+    path.write_text("message,label,data_kind,dataset_id\nmissing columns,ham\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="Malformed CSV row"):
+        load_corpus("uci", [path])

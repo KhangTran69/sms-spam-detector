@@ -828,3 +828,77 @@ def test_annotation_gate_rejects_unavailable_or_insufficient_agreement():
     assert diagnostics["spam_label"]["met"] is False
     assert diagnostics["scam_assessment"]["met"] is False
     assert "review_quality" not in record.as_dict()
+
+
+@pytest.mark.parametrize(
+    "overrides,blocker",
+    [
+        ({"intended_use": ""}, "evaluation_plan_intended_use_missing"),
+        ({"coverage_rationale": "short"}, "evaluation_plan_acceptance_rationale_missing"),
+        ({"registered_at": "invalid"}, "evaluation_plan_registration_time_invalid"),
+        ({"registered_at": "2026-01-01"}, "evaluation_plan_registration_time_invalid"),
+        ({"dataset_sha256": "wrong"}, "evaluation_plan_dataset_hash_mismatch"),
+        ({"training_dataset_sha256": "wrong"}, "evaluation_plan_training_hash_mismatch"),
+        ({"training_membership_sha256": "wrong"}, "evaluation_plan_training_membership_mismatch"),
+        ({"test_membership_sha256": "wrong"}, "evaluation_plan_test_membership_mismatch"),
+        ({"model_sha256": "wrong"}, "evaluation_plan_model_hash_mismatch"),
+        ({"model_version": "wrong"}, "evaluation_plan_model_version_mismatch"),
+        ({"decision_threshold": True}, "evaluation_plan_threshold_mismatch"),
+        ({"decision_threshold": 0.6}, "evaluation_plan_threshold_mismatch"),
+        ({"split_method": "random"}, "evaluation_plan_campaign_time_split_required"),
+        ({"campaign_overlap_checked": False}, "evaluation_plan_campaign_overlap_not_verified"),
+        ({"test_split_sealed": False}, "evaluation_plan_test_set_not_sealed"),
+        ({"minimum_campaign_groups": True}, "evaluation_plan_campaign_group_minimum_invalid"),
+        ({"minimum_coverage": []}, "evaluation_plan_coverage_requirements_invalid"),
+        ({"minimum_coverage": {"language": {}, "category": {"otp": 1}}}, "evaluation_plan_coverage_requirements_invalid"),
+        ({"minimum_coverage": {"language": {"fil": True}, "category": {"otp": 1}}}, "evaluation_plan_coverage_requirements_invalid"),
+        ({"maximum_cluster_interval_width": {}}, "evaluation_plan_uncertainty_requirements_invalid"),
+        ({"minimum_valid_cluster_fraction": 0}, "evaluation_plan_valid_replicate_fraction_invalid"),
+        ({"minimum_cluster_lower_bound": {}}, "evaluation_plan_performance_bounds_invalid"),
+        ({"annotation_quality_gates": {}}, "evaluation_plan_annotation_gates_invalid"),
+        ({"subgroup_error_gates": []}, "evaluation_plan_subgroup_gates_invalid"),
+    ],
+)
+def test_preregistered_plan_rejects_individual_invalid_fields(tmp_path, overrides, blocker):
+    training, dataset = write_consent_splits(tmp_path)
+    model = tmp_path / "fixture.pkl"
+    model.write_bytes(b"fictional artifact")
+    path = write_evaluation_plan(tmp_path / "plan.json", dataset, model, training_path=training)
+    valid = json.loads(path.read_text(encoding="utf-8"))
+    expected = {
+        "dataset_sha256": valid["dataset_sha256"],
+        "training_sha256": valid["training_dataset_sha256"],
+        "training_membership_sha256": valid["training_membership_sha256"],
+        "test_membership_sha256": valid["test_membership_sha256"],
+        "model_sha256": valid["model_sha256"],
+        "model_version": valid["model_version"],
+        "threshold": valid["decision_threshold"],
+    }
+    accepted, blockers = public_evaluation._validate_consent_evaluation_plan(path, **expected)
+    assert accepted is not None and not blockers
+    valid.update(overrides)
+    path.write_text(json.dumps(valid), encoding="utf-8")
+    accepted, blockers = public_evaluation._validate_consent_evaluation_plan(path, **expected)
+    assert accepted is None
+    assert blocker in blockers
+
+
+def test_public_cli_reports_blocked_without_metrics(monkeypatch, capsys):
+    monkeypatch.setattr(
+        public_evaluation,
+        "evaluate_public_dataset",
+        lambda *args, **kwargs: {
+            "status": "blocked",
+            "dataset": {"name": "fixture"},
+            "readiness": {"blockers": ["evaluation_plan_missing"]},
+            "metrics": None,
+        },
+    )
+    assert public_evaluation.main(["--dataset", "fixture.csv", "--model", "fixture.pkl"]) == 2
+    result = json.loads(capsys.readouterr().out)
+    assert result == {
+        "status": "blocked",
+        "dataset": "fixture",
+        "blockers": ["evaluation_plan_missing"],
+        "metrics_generated": False,
+    }

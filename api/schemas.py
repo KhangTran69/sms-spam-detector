@@ -164,9 +164,9 @@ class DonationRequest(BaseModel):
     message: MessageText
     label_hint: Literal["ham", "spam"] | None = None
     language: str | None = Field(default=None, min_length=2, max_length=16, pattern=r"^[A-Za-z][A-Za-z0-9_-]*$")
-    consent: bool
-    authorized_to_share: bool
-    model_research_consent: bool = False
+    consent: bool = Field(strict=True)
+    authorized_to_share: bool = Field(strict=True)
+    model_research_consent: bool = Field(default=False, strict=True)
     notice_version: str = Field(..., min_length=1, max_length=64)
 
 

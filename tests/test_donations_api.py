@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
+import threading
 from contextlib import closing, contextmanager
 from pathlib import Path
 
@@ -284,3 +285,95 @@ def test_local_donation_form_refuses_non_loopback_host(tmp_path):
             assert client.request(method, "/donate", headers={"Host": "external.example.test"}).status_code == 404
         assert client.get("/donate", headers={"Host": "localhost:8000"}).status_code == 200
         assert client.get("/donate", headers={"Host": "[::1]:8000"}).status_code == 200
+
+
+@pytest.mark.parametrize("field", ["consent", "authorized_to_share", "model_research_consent"])
+@pytest.mark.parametrize("value", [1, "true", "yes", None])
+def test_consent_requires_actual_json_booleans(tmp_path, field, value):
+    with donation_client(tmp_path) as client:
+        response = client.post("/donate", json={**VALID_PAYLOAD, field: value})
+    assert response.status_code == 422
+    assert not (tmp_path / "donations.sqlite3").exists()
+    assert VALID_PAYLOAD["message"] not in response.text
+
+
+@pytest.mark.parametrize("method", ["POST", "DELETE"])
+@pytest.mark.parametrize("body", ['{"consent":true,"consent":false}', '{"record_id":NaN}', '{"nested":{"x":1,"x":2}}', "{"])
+def test_ambiguous_or_invalid_json_is_refused_without_storage(tmp_path, method, body):
+    with donation_client(tmp_path) as client:
+        response = client.request(method, "/donate", content=body, headers={"content-type": "application/json"})
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "invalid_json"
+    assert response.headers["cache-control"] == "no-store"
+    assert not (tmp_path / "donations.sqlite3").exists()
+
+
+@pytest.mark.parametrize(
+    "headers",
+    [
+        [("Host", "127.0.0.1:8000"), ("Host", "127.0.0.1:8000")],
+        [("Origin", "http://127.0.0.1:8000"), ("Origin", "http://127.0.0.1:8000")],
+        [("Origin", "http://127.0.0.1:8000?")],
+        [("Host", "[::1]extra")],
+        [("Host", "localhost:")],
+        [("Host", "localhost:0")],
+        [("Host", "localhost:65536")],
+        [("Sec-Fetch-Site", "same-site")],
+        [("Sec-Fetch-Site", "same-origin"), ("Sec-Fetch-Site", "cross-site")],
+    ],
+)
+def test_ambiguous_local_authority_rejected(tmp_path, headers):
+    with donation_client(tmp_path) as client:
+        response = client.post("/donate", json=VALID_PAYLOAD, headers=headers)
+    assert response.status_code == 404
+    assert not (tmp_path / "donations.sqlite3").exists()
+
+
+@pytest.mark.parametrize("method", ["POST", "DELETE"])
+def test_storage_failure_is_content_free_and_recoverable(tmp_path, monkeypatch, caplog, method):
+    from api import routes
+
+    target = "create_donation" if method == "POST" else "delete_donation"
+    original = getattr(routes, target)
+
+    def fail(*args, **kwargs):
+        raise RuntimeError("private storage detail")
+
+    with donation_client(tmp_path) as client:
+        monkeypatch.setattr(routes, target, fail)
+        payload = VALID_PAYLOAD if method == "POST" else {"record_id": "a" * 32}
+        response = client.request(method, "/donate", json=payload)
+        assert response.status_code == 503
+        assert response.json()["error"]["code"] == "donation_unavailable"
+        assert "private storage detail" not in response.text
+        assert "private storage detail" not in caplog.text
+        assert client.get("/health").status_code == 200
+        monkeypatch.setattr(routes, target, original)
+        assert client.request(method, "/donate", json=payload).status_code == (201 if method == "POST" else 200)
+
+
+def test_blocked_storage_does_not_block_liveness(tmp_path, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+
+    from api import routes
+
+    started = threading.Event()
+    release = threading.Event()
+    original = routes.create_donation
+
+    def slow(*args, **kwargs):
+        started.set()
+        if not release.wait(5):
+            raise RuntimeError("fixture timed out")
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(routes, "create_donation", slow)
+    with donation_client(tmp_path) as client, ThreadPoolExecutor(max_workers=2) as pool:
+        donation = pool.submit(client.post, "/donate", json=VALID_PAYLOAD)
+        try:
+            assert started.wait(3)
+            health = pool.submit(client.get, "/health")
+            assert health.result(timeout=2).status_code == 200
+        finally:
+            release.set()
+        assert donation.result(timeout=5).status_code == 201

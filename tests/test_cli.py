@@ -79,3 +79,15 @@ def test_cli_detects_an_actually_occupied_port(monkeypatch, capsys) -> None:
         assert "port is already in use" in capsys.readouterr().err
     finally:
         listener.close()
+
+
+def test_dependency_discovery_handles_unimportable_packages(monkeypatch):
+    def find_spec(name):
+        if name == "numpy":
+            raise ValueError("bad module specification")
+        if name == "pandas":
+            return None
+        return object()
+
+    monkeypatch.setattr(cli.importlib.util, "find_spec", find_spec)
+    assert cli.missing_runtime_dependencies() == ["numpy", "pandas"]

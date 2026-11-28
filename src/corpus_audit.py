@@ -101,6 +101,21 @@ def _overlap(left: list[str], right: list[str]) -> dict[str, int]:
     }
 
 
+def _within_corpus(corpus: Corpus) -> dict[str, int]:
+    normalized = [_normalized_message_key(message) for message in corpus.messages]
+    counts = Counter(normalized)
+    labeled = Counter(zip(normalized, corpus.labels))
+    return {
+        "normalized_duplicate_rows": len(normalized) - len(counts),
+        "normalized_conflicting_keys": sum(
+            bool(labeled[(key, "ham")] and labeled[(key, "spam")]) for key in counts
+        ),
+        "normalized_conflicting_label_pairs": sum(
+            labeled[(key, "ham")] * labeled[(key, "spam")] for key in counts
+        ),
+    }
+
+
 def compare_corpora(left: Corpus, right: Corpus) -> dict[str, Any]:
     """Compare one pair without reporting individual texts, keys, or row IDs."""
     a = [_normalized_message_key(message) for message in left.messages]
@@ -115,6 +130,8 @@ def compare_corpora(left: Corpus, right: Corpus) -> dict[str, Any]:
     right_vectors = vectors[len(a) :]
     candidates = 0
     near_conflicts = 0
+    left_matches: set[int] = set()
+    right_matches: set[int] = set()
     sequence_work = 0
     for start in range(0, len(a), BLOCK_SIZE):
         scores = cosine_similarity(vectors[start : min(start + BLOCK_SIZE, len(a))], right_vectors)
@@ -129,6 +146,8 @@ def compare_corpora(left: Corpus, right: Corpus) -> dict[str, Any]:
             matcher = SequenceMatcher(None, a[i], b[j], autojunk=False)
             if matcher.quick_ratio() >= SEQUENCE_THRESHOLD and matcher.ratio() >= SEQUENCE_THRESHOLD:
                 candidates += 1
+                left_matches.add(i)
+                right_matches.add(j)
                 near_conflicts += int(left.labels[i] != right.labels[j])
     return {
         "left": left.role,
@@ -142,6 +161,8 @@ def compare_corpora(left: Corpus, right: Corpus) -> dict[str, Any]:
         "normalized_conflicting_label_pairs": conflicts,
         "near_duplicate_pairs_excluding_normalized": candidates,
         "near_duplicate_conflicting_label_pairs": near_conflicts,
+        "near_duplicate_left_rows": len(left_matches),
+        "near_duplicate_right_rows": len(right_matches),
     }
 
 
@@ -166,6 +187,7 @@ def audit(corpora: list[Corpus]) -> dict[str, Any]:
                 "source_sha256": list(corpus.source_hashes),
                 "rows": len(corpus.messages),
                 "class_counts": {label: corpus.labels.count(label) for label in ("ham", "spam")},
+                "within_corpus": _within_corpus(corpus),
             }
             for corpus in corpora
         ],

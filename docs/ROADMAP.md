@@ -442,3 +442,15 @@ their already-scheduled dates (2027-01-15 → 2027-03-31, see the progress log).
 - T3: paired synthetic formatting robustness diagnostic with fixed artifact
   threshold, aggregate error transitions and regression tests. CI exercises it
   using the synthetic smoke model; field robustness remains unmeasured.
+
+### 2026-11-29 — Consent boundary, storage availability and leakage regression follow-up
+
+- Tighten explicit JSON consent types, refuse duplicate-key/nonfinite JSON,
+  ambiguous local authorities and duplicate operator token headers; preserve
+  local-only donation policy and the existing withdrawal non-enumeration rule.
+- Offload blocking SQLite operations while retaining admission through
+  completion. Add failure/recovery and concurrent liveness regressions.
+- Expand overlap diagnostics with within-corpus label conflicts and distinct
+  row participation; keep both historical similarity cutoffs at 0.90.
+- Exercise individual malformed preregistration fields, blocked CLI reporting,
+  missing split inputs and dependency discovery. No release gates changed.
