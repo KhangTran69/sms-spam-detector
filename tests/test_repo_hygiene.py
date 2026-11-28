@@ -622,7 +622,7 @@ def test_tagalog_sms_attempt_is_recorded() -> None:
     assert "2026-11-28" in record
     assert "Kaggle credentials are required" in record or "normalized" in record.lower()
     inventory = (ROOT / "docs" / "DATASET_INVENTORY.md").read_text(encoding="utf-8")
-    assert "download attempt recorded 2026-11-28" in inventory
+    assert "fetched + normalized 2026-11-28" in inventory
 
 
 def test_human_task_kits_exist_and_are_ready_to_run() -> None:

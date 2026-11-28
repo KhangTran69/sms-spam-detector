@@ -1,0 +1,478 @@
+{
+  "breakdowns": {
+    "category": [
+      {
+        "accuracy": 0.5534591194968553,
+        "category": "ads",
+        "confidence_intervals_95": {
+          "false_positive_rate": null,
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.9581729333351078,
+            1.0
+          ],
+          "recall": [
+            0.4758323313246307,
+            0.6285636874970798
+          ]
+        },
+        "f1": 0.7125506072874495,
+        "false_positive_rate": null,
+        "fn": 71,
+        "fp": 0,
+        "precision": 1.0,
+        "predicted_spam_rate": 0.5534591194968553,
+        "recall": 0.5534591194968553,
+        "support": 159,
+        "support_ham": 0,
+        "support_spam": 159,
+        "threshold": 0.5,
+        "tn": 0,
+        "tp": 88
+      },
+      {
+        "accuracy": 0.6153846153846154,
+        "category": "gov",
+        "confidence_intervals_95": {
+          "false_positive_rate": [
+            0.26470463780216213,
+            0.5204012628418061
+          ],
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.0,
+            0.16112515805281938
+          ],
+          "recall": null
+        },
+        "f1": 0.0,
+        "false_positive_rate": 0.38461538461538464,
+        "fn": 0,
+        "fp": 20,
+        "precision": 0.0,
+        "predicted_spam_rate": 0.38461538461538464,
+        "recall": null,
+        "support": 52,
+        "support_ham": 52,
+        "support_spam": 0,
+        "threshold": 0.5,
+        "tn": 32,
+        "tp": 0
+      },
+      {
+        "accuracy": 0.5350938151494093,
+        "category": "notifs",
+        "confidence_intervals_95": {
+          "false_positive_rate": [
+            0.43926372464526714,
+            0.4907355144377627
+          ],
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.0,
+            0.005709307549845614
+          ],
+          "recall": null
+        },
+        "f1": 0.0,
+        "false_positive_rate": 0.4649061848505907,
+        "fn": 0,
+        "fp": 669,
+        "precision": 0.0,
+        "predicted_spam_rate": 0.4649061848505907,
+        "recall": null,
+        "support": 1439,
+        "support_ham": 1439,
+        "support_spam": 0,
+        "threshold": 0.5,
+        "tn": 770,
+        "tp": 0
+      },
+      {
+        "accuracy": 0.8194444444444444,
+        "category": "otp",
+        "confidence_intervals_95": {
+          "false_positive_rate": [
+            0.149430683807121,
+            0.21651316656747005
+          ],
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.0,
+            0.04050400392888021
+          ],
+          "recall": null
+        },
+        "f1": 0.0,
+        "false_positive_rate": 0.18055555555555555,
+        "fn": 0,
+        "fp": 91,
+        "precision": 0.0,
+        "predicted_spam_rate": 0.18055555555555555,
+        "recall": null,
+        "support": 504,
+        "support_ham": 504,
+        "support_spam": 0,
+        "threshold": 0.5,
+        "tn": 413,
+        "tp": 0
+      },
+      {
+        "accuracy": 0.5606837606837607,
+        "category": "spam",
+        "confidence_intervals_95": {
+          "false_positive_rate": null,
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.9884238128823745,
+            1.0
+          ],
+          "recall": [
+            0.5201995693372822,
+            0.6003761797653636
+          ]
+        },
+        "f1": 0.7185104052573932,
+        "false_positive_rate": null,
+        "fn": 257,
+        "fp": 0,
+        "precision": 1.0,
+        "predicted_spam_rate": 0.5606837606837607,
+        "recall": 0.5606837606837607,
+        "support": 585,
+        "support_ham": 0,
+        "support_spam": 585,
+        "threshold": 0.5,
+        "tn": 0,
+        "tp": 328
+      }
+    ],
+    "language": [
+      {
+        "accuracy": 0.5954728002920774,
+        "confidence_intervals_95": {
+          "false_positive_rate": [
+            0.36979393844075836,
+            0.4125799971806051
+          ],
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.32135949881002557,
+            0.3752670868742448
+          ],
+          "recall": [
+            0.5232507680826675,
+            0.5944212317269864
+          ]
+        },
+        "f1": 0.4288659793814433,
+        "false_positive_rate": 0.39097744360902253,
+        "fn": 328,
+        "fp": 780,
+        "language": "unknown",
+        "precision": 0.34782608695652173,
+        "predicted_spam_rate": 0.4366557137641475,
+        "recall": 0.5591397849462365,
+        "support": 2739,
+        "support_ham": 1995,
+        "support_spam": 744,
+        "threshold": 0.5,
+        "tn": 1215,
+        "tp": 416
+      }
+    ],
+    "source": [
+      {
+        "accuracy": 0.5954728002920774,
+        "confidence_intervals_95": {
+          "false_positive_rate": [
+            0.36979393844075836,
+            0.4125799971806051
+          ],
+          "method": "Wilson score; binomial marginal intervals",
+          "precision": [
+            0.32135949881002557,
+            0.3752670868742448
+          ],
+          "recall": [
+            0.5232507680826675,
+            0.5944212317269864
+          ]
+        },
+        "f1": 0.4288659793814433,
+        "false_positive_rate": 0.39097744360902253,
+        "fn": 328,
+        "fp": 780,
+        "precision": 0.34782608695652173,
+        "predicted_spam_rate": 0.4366557137641475,
+        "recall": 0.5591397849462365,
+        "source": "tagalog_sms",
+        "support": 2739,
+        "support_ham": 1995,
+        "support_spam": 744,
+        "threshold": 0.5,
+        "tn": 1215,
+        "tp": 416
+      }
+    ]
+  },
+  "calibration": {
+    "bins": [
+      {
+        "bin_lower": 0.0,
+        "bin_upper": 0.1,
+        "count": 850,
+        "mean_probability": 0.04124348253426862,
+        "observed_rate": 0.1188235294117647
+      },
+      {
+        "bin_lower": 0.1,
+        "bin_upper": 0.2,
+        "count": 392,
+        "mean_probability": 0.1386963246942965,
+        "observed_rate": 0.20408163265306123
+      },
+      {
+        "bin_lower": 0.2,
+        "bin_upper": 0.30000000000000004,
+        "count": 142,
+        "mean_probability": 0.24312323349963755,
+        "observed_rate": 0.4647887323943662
+      },
+      {
+        "bin_lower": 0.30000000000000004,
+        "bin_upper": 0.4,
+        "count": 100,
+        "mean_probability": 0.3458822519942559,
+        "observed_rate": 0.51
+      },
+      {
+        "bin_lower": 0.4,
+        "bin_upper": 0.5,
+        "count": 59,
+        "mean_probability": 0.4478209209359856,
+        "observed_rate": 0.5084745762711864
+      },
+      {
+        "bin_lower": 0.5,
+        "bin_upper": 0.6000000000000001,
+        "count": 47,
+        "mean_probability": 0.5575696649399657,
+        "observed_rate": 0.5106382978723404
+      },
+      {
+        "bin_lower": 0.6000000000000001,
+        "bin_upper": 0.7000000000000001,
+        "count": 54,
+        "mean_probability": 0.6551627488343925,
+        "observed_rate": 0.3888888888888889
+      },
+      {
+        "bin_lower": 0.7000000000000001,
+        "bin_upper": 0.8,
+        "count": 46,
+        "mean_probability": 0.7498074452051336,
+        "observed_rate": 0.4782608695652174
+      },
+      {
+        "bin_lower": 0.8,
+        "bin_upper": 0.9,
+        "count": 91,
+        "mean_probability": 0.8593281886906031,
+        "observed_rate": 0.4175824175824176
+      },
+      {
+        "bin_lower": 0.9,
+        "bin_upper": 1.0,
+        "count": 958,
+        "mean_probability": 0.9805782383488988,
+        "observed_rate": 0.3246346555323591
+      }
+    ],
+    "brier_score": 0.346066049589522,
+    "expected_calibration_error": 0.3069402864373391,
+    "log_loss": 1.6628985668763325,
+    "max_calibration_error": 0.6559435828165396,
+    "n": 2739,
+    "n_bins": 10
+  },
+  "dataset": {
+    "evaluation_membership_sha256": "33a52a32e5834aa179b95291e34f51995d413a32174ec71af723dab2b59613af",
+    "kind": "public",
+    "name": "tagalog-sms",
+    "provenance": {
+      "collection_period": "unknown",
+      "dataset_id": "tagalog-sms",
+      "dataset_version": "snapshot-2026-11-28",
+      "license": "CC0: Public Domain"
+    },
+    "rows": 2739,
+    "sha256": "cc7506627eec4de0018bd8ede7d22ffbc2febde428c5d72138e0d0f85134fee8"
+  },
+  "evaluation_plan": null,
+  "generated_at_utc": "2026-11-28T11:25:25.317705+00:00",
+  "limitations": [
+    "This report describes only the supplied dataset and is not evidence of representative Philippine real-world accuracy.",
+    "Scores are spam-versus-ham model outputs, not fraud probabilities or safety guarantees.",
+    "Threshold diagnostics are descriptive and not a production recommendation."
+  ],
+  "metrics": {
+    "accuracy": 0.5954728002920774,
+    "campaign_bootstrap_95": {
+      "available": true,
+      "confidence_level": 0.95,
+      "group_column": "group",
+      "group_count": 1559,
+      "intervals": {
+        "f1": [
+          0.3602892252625301,
+          0.4930579337899544
+        ],
+        "false_negative_rate": [
+          0.38865084412580947,
+          0.49504635807575487
+        ],
+        "false_positive_rate": [
+          0.29916205603931395,
+          0.49764616869233447
+        ],
+        "precision": [
+          0.2657020218386064,
+          0.42960502759995844
+        ],
+        "recall": [
+          0.5049536419242451,
+          0.6113491558741906
+        ]
+      },
+      "method": "percentile cluster bootstrap; resample whole group IDs with replacement",
+      "note": "Group validity depends on source metadata; template families may not be independent real campaigns.",
+      "replicates": 1000,
+      "seed": 42,
+      "valid_replicates": {
+        "f1": 1000,
+        "false_negative_rate": 1000,
+        "false_positive_rate": 1000,
+        "precision": 1000,
+        "recall": 1000
+      }
+    },
+    "confidence_intervals_95": {
+      "false_negative_rate": [
+        0.40557876827301353,
+        0.47674923191733254
+      ],
+      "false_positive_rate": [
+        0.36979393844075836,
+        0.4125799971806051
+      ],
+      "method": "Wilson score; binomial marginal intervals",
+      "precision": [
+        0.32135949881002557,
+        0.3752670868742448
+      ],
+      "recall": [
+        0.5232507680826675,
+        0.5944212317269864
+      ]
+    },
+    "confusion_matrix": {
+      "fn": 328,
+      "fp": 780,
+      "tn": 1215,
+      "tp": 416
+    },
+    "f1": 0.4288659793814433,
+    "false_negative_rate": 0.44086021505376344,
+    "false_negative_rate_status": "available",
+    "false_positive_rate": 0.39097744360902253,
+    "pr_auc": 0.3314315909908281,
+    "precision": 0.34782608695652173,
+    "recall": 0.5591397849462365,
+    "roc_auc": 0.6354899345137037,
+    "support": 2739,
+    "support_ham": 1995,
+    "support_spam": 744,
+    "threshold": 0.5
+  },
+  "model": {
+    "probability_calibrated": true,
+    "sha256": "daa8a7c192bf9e02a068f5c60b15bec1cba0db6522b4bf68d69b5b9633815daf",
+    "version": "spam_detector_v1-2026-11-28"
+  },
+  "operating_threshold": {
+    "interpretation": "Descriptive threshold analysis on this dataset only; it is not a production recommendation and does not guarantee the same false-positive rate on future messages.",
+    "max_false_positive_rate": 0.05,
+    "metrics": {
+      "accuracy": 0.6995253742241694,
+      "confidence_intervals_95": {
+        "false_positive_rate": [
+          0.040929999528560086,
+          0.06004922417624516
+        ],
+        "method": "Wilson score; binomial marginal intervals",
+        "precision": [
+          0.11151323137795995,
+          0.24538141348853776
+        ],
+        "recall": [
+          0.017468081064485566,
+          0.04115592045828339
+        ]
+      },
+      "f1": 0.04634994206257242,
+      "false_positive_rate": 0.04962406015037594,
+      "fn": 724,
+      "fp": 99,
+      "precision": 0.16806722689075632,
+      "predicted_spam_rate": 0.043446513326031395,
+      "recall": 0.026881720430107527,
+      "support": 2739,
+      "support_ham": 1995,
+      "support_spam": 744,
+      "threshold": 0.9997313474501786,
+      "tn": 1896,
+      "tp": 20
+    },
+    "status": "available_empirical_only",
+    "threshold": 0.9997313474501786
+  },
+  "performance_acceptance": null,
+  "privacy": {
+    "pii_redaction": {
+      "enabled": false,
+      "findings_by_category": {},
+      "rows_redacted": 0,
+      "rows_with_findings": 0,
+      "screening_performed": false,
+      "url_spans_retained": true
+    }
+  },
+  "run": {
+    "configuration": {
+      "calibration_bins": 10,
+      "decision_threshold": 0.5,
+      "operating_false_positive_rate_bound": 0.05,
+      "operating_threshold_method": "maximize observed recall subject to the configured empirical false-positive-rate bound",
+      "redact_pii_in_memory": false,
+      "uncertainty_method": "Wilson score 95% marginal intervals plus campaign-cluster bootstrap when supported"
+    },
+    "libraries": {
+      "fastapi": "0.156.0",
+      "joblib": "1.6.0",
+      "numpy": "2.5.4",
+      "pandas": "3.0.6",
+      "pydantic": "2.14.1",
+      "scikit-learn": "1.9.1",
+      "scipy": "1.18.1",
+      "uvicorn": "0.54.0"
+    },
+    "python_version": "3.13.3",
+    "source_revision": "7d154cc3b8dba827eecae46856601021cbf6e0ca",
+    "source_tree_dirty": true
+  },
+  "schema_version": 1,
+  "split_inputs": null,
+  "status": "evaluated",
+  "subgroup_acceptance": null
+}

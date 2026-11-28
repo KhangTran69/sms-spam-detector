@@ -80,8 +80,9 @@ Two additional public Kaggle corpora were identified by the owner on
 - Owner-flagged alongside the two corpora above and the already-fetched
   `scottleechua/ph-spam-marketing-sms-w-timestamps`.
 
-Fetch requires a Kaggle session (browser download or an API token at
-`~/.kaggle/kaggle.json`). Until the file lands in `data/external/` and its
-license is verified, no evaluation is permitted for either corpus. The
-`scottleechua` PH-inbox corpus remains the only fetched public PH dataset;
-its diagnostic record is unchanged.
+UPDATE 2026-11-28: an API token was installed and both corpora were resolved.
+Tagalog-SMS: fetched, normalized, and diagnosed (see
+`docs/benchmarks/tagalog-sms_spam_detector_v1-2026-11-28.json`).
+Philippine Spam/Scam SMS (bwandowando): license verified **CC BY-NC-SA 4.0** via
+the Kaggle API — still not fetched; a diagnostic on it is available on request
+(non-commercial use with attribution; the corpus stays local-only).
