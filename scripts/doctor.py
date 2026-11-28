@@ -21,7 +21,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 OPERATIONAL_MODEL_FILES = (ROOT / "Makefile", ROOT / "docker-compose.yml", ROOT / "Dockerfile")
 DOCS_INDEX = ROOT / "docs" / "README.md"
-ARCHIVE_SENTINEL = ROOT / "docs" / "superpowers"
 LOCAL_API = "http://127.0.0.1:8000/health"
 
 FAILURES: list[str] = []
@@ -71,13 +70,10 @@ def check_git_state() -> None:
     else:
         check("git-unpushed", True, "no unpushed main commits")
     untracked = [line for line in _git("status", "--porcelain").splitlines() if line.startswith("?? ")]
-    if ARCHIVE_SENTINEL.is_dir():
-        check(
-            "plan-archive",
-            False,
-            f"{ARCHIVE_SENTINEL.relative_to(ROOT)} exists; executed plans belong in docs/history/",
-        )
-    elif untracked:
+    # Active specs/plans live tracked under docs/superpowers/ (committed with their PR);
+    # only untracked plan files are drift. Executed plans belong in docs/history/ --
+    # enforced by review, not here.
+    if untracked:
         check("plan-archive", False, f"untracked files present: {[line[3:] for line in untracked[:5]]}", warn_only=True)
     else:
         check("plan-archive", True, "no untracked plan files or stale directories")
