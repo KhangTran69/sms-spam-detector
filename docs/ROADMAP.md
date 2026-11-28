@@ -315,3 +315,33 @@ block on it.
 - Queued next: T2.1 Tagalog-SMS fetch+eval (needs Kaggle credentials),
   T4.1 comprehension study (needs owner approval per HUMAN_REVIEW.md), T5.3
   coverage ratchet toward 85%, T5.6 quarterly ritual scheduling.
+
+### 2026-11-28 — Roadmap-completion plan executed (PR #45)
+
+- Plan executed 2026-11-28 in PR #45: D1–D6 ratified and recorded
+  (OWNER_DECISIONS.md register + pre-filled consented-evaluation-plan
+  template); Tagalog-SMS download attempt honestly recorded as blocked on
+  Kaggle credentials (0 rows fetched); three human-task kits drafted
+  (comprehension-session script, labeling worksheet, pilot-recruitment
+  draft); coverage floor raised 78 → 80; release `v2.0.0` published with
+  provenance attestation (workflow run 46125116202) and the timed rollback
+  drill recorded at 6.279 s total (`docs/benchmarks/release-drill-20261128.md`);
+  headline-claims sweep exit 0; consented rehearsal re-verified PASS
+  (`make rehearse-consented`, spec exit criterion G5: consent gates, blind
+  two-reviewer review-stage export, withdrawal blocking, message-free
+  reports). **Still pending on humans: the qualified-reviewer countersign on
+  D1/D3 and the owner review of the pilot-recruitment kit.**
+
+### 2026-11-28 — Q1-2027 quarterly ritual scheduled (T5.6)
+
+- Checklist with target dates (one PR, one afternoon; if a target slips, the
+  item moves to the following week — the ritual is never silently skipped):
+  - **2027-01-15:** re-run the dated benchmark (`python -m src.benchmark` per
+    `docs/BENCHMARKING.md`; dated message-free report under `docs/benchmarks/`).
+  - **2027-02-01:** refresh `docs/DATASET_INVENTORY.md` row counts and
+    per-source status, including anything fetched or blocked since 2026-11-28.
+  - **2027-02-15:** update `docs/IMPROVEMENT_EXECUTION.md` with everything
+    that landed during the quarter.
+  - **2027-03-31:** review this roadmap (evidence-state changes, the
+    owner-decision register, sequencing; this is also the D6 checkpoint for
+    the 85% coverage-floor target).
