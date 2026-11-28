@@ -402,6 +402,10 @@ textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
   --scam: 70%;
   position: relative;
   height: 12px;
+  /* The marker track translates by the score percentage; clip it horizontally so a
+     high score cannot widen the document. clip (not hidden) keeps the marker's
+     deliberate 7px vertical protrusion visible. */
+  overflow-x: clip;
   border-radius: 0;
   background: linear-gradient(to right,
     var(--green) 0%, var(--green) var(--suspect),
