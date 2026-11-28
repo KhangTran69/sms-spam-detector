@@ -13,6 +13,7 @@ metrics, which change whenever the artifact is retrained.
 from __future__ import annotations
 
 import fnmatch
+import json
 import re
 import tomllib
 from pathlib import Path
@@ -585,3 +586,26 @@ def test_field_evaluation_readiness_is_not_misrepresented_as_results() -> None:
     index = _text("docs/README.md")
     assert "PH_FIELD_EVALUATION_READINESS.md" in index
     assert "OPERATIONAL_AND_ACCESSIBILITY_REVIEW.md" in index
+
+
+def test_owner_decisions_record_ratification() -> None:
+    text = (ROOT / "docs" / "OWNER_DECISIONS.md").read_text(encoding="utf-8")
+    assert text.count("Decided 2026-11-28") == 6
+    assert "pending qualified-reviewer countersign" in text
+    assert text.count("Pending") == 0, "no decision row may remain Pending"
+
+
+def test_evaluation_plan_template_prefills_registration_fields() -> None:
+    template = json.loads((ROOT / "docs" / "templates" / "consented-evaluation-plan.json").read_text(encoding="utf-8"))
+    widths = template["maximum_cluster_interval_width"]
+    assert widths == {
+        "precision": 0.10,
+        "recall": 0.15,
+        "f1": 0.12,
+        "false_positive_rate": 0.10,
+        "false_negative_rate": 0.15,
+    }
+    assert template["minimum_campaign_groups"] == 12
+    assert template["minimum_coverage"]["language"] == {"en": 100, "tl": 100, "tl-en": 100}
+    assert template["minimum_coverage"]["category"]["otp"] == 150
+    assert template["registered_at"] is None, "registration happens at sealed-test setup, not before"

@@ -66,6 +66,13 @@ resolved rows `review_status=adjudicated`; unresolved, withdrawn, expired,
 privacy-flagged, or low-confidence rows are excluded. Never overwrite review
 history silently.
 
+**Dated, expiring exception (owner-ratified 2026-11-28):** until a third
+independent reviewer is named, the project owner may serve as the second
+first-pass reviewer alongside one recruited independent reviewer and adjudicate
+disagreements; rows adjudicated under this exception are recorded as
+owner-adjudicated, and the exception expires when a third reviewer is
+onboarded.
+
 Assign an opaque campaign group from documented message-template/campaign
 evidence and a restricted grouping register. Do not retain, hash, or derive
 group IDs from sender phone numbers or other direct identifiers. Record only
