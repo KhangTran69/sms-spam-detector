@@ -63,9 +63,7 @@ def test_cli_normalizes_a_kaggle_export_into_external_storage(tmp_path, monkeypa
     (tmp_path / "data" / "external").mkdir(parents=True)
     source = tmp_path / "kaggle.csv"
     source.write_text(
-        "text,category,date_received,language\n"
-        "Salamat po,otp,2026-01-01,tl\n"
-        "Win a prize now,spam,2026-01-02,en\n",
+        "text,category,date_received,language\nSalamat po,otp,2026-01-01,tl\nWin a prize now,spam,2026-01-02,en\n",
         encoding="utf-8",
     )
     output = tmp_path / "data" / "external" / "ph-spam.csv"
