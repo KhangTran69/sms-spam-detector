@@ -73,8 +73,12 @@ def test_snapshot_hash_and_frozen_inputs_fail_closed(tmp_path, capsys):
 
 def test_duplicate_and_conflicting_labels_refused():
     digest = "1" * 64
-    corpus = Corpus("synthetic_training", ("Test one", "TEST ONE", "Test two", "Test three"),
-                    ("ham", "spam", "ham", "spam"), (digest,))
+    corpus = Corpus(
+        "synthetic_training",
+        ("Test one", "TEST ONE", "Test two", "Test three"),
+        ("ham", "spam", "ham", "spam"),
+        (digest,),
+    )
     with pytest.raises(ValueError, match="duplicates"):
         study(corpus, digest, folds=2)
 

@@ -118,7 +118,9 @@ def study(corpus: Corpus, expected_sha256: str, *, folds: int = 3) -> dict[str, 
             altered_scores: dict[str, list[float]] = {name: [] for name in FORMATS}
             for train, validation in prepared:
                 pipeline = make_model(
-                    LogisticRegression(C=1.0, class_weight=weight, solver="liblinear", max_iter=5000, random_state=SEED),
+                    LogisticRegression(
+                        C=1.0, class_weight=weight, solver="liblinear", max_iter=5000, random_state=SEED
+                    ),
                     text_features="combined",
                 )
                 training = [canonical_message(message) for message in train.messages] if canonical else train.messages
@@ -135,8 +137,7 @@ def study(corpus: Corpus, expected_sha256: str, *, folds: int = 3) -> dict[str, 
                 altered = binary_metrics(labels, scores, THRESHOLD)
                 variants[name] = {
                     "prediction_flips": sum(
-                        (before >= THRESHOLD) != (after >= THRESHOLD)
-                        for before, after in zip(original_scores, scores)
+                        (before >= THRESHOLD) != (after >= THRESHOLD) for before, after in zip(original_scores, scores)
                     ),
                     "fp": altered["fp"],
                     "fn": altered["fn"],
@@ -185,7 +186,10 @@ def main(argv: list[str] | None = None) -> int:
         corpus = load_corpus(args.role, [args.development])
         report = study(corpus, args.approved_sha256, folds=args.folds)
     except (OSError, ValueError, csv.Error, RuntimeError):
-        print("Development study refused: check provenance, class support, duplicates and fold separation.", file=sys.stderr)
+        print(
+            "Development study refused: check provenance, class support, duplicates and fold separation.",
+            file=sys.stderr,
+        )
         return 2
     print(json.dumps(report, sort_keys=True, indent=2, allow_nan=False))
     return 0
