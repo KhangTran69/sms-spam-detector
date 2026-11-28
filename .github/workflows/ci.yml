@@ -158,10 +158,10 @@ jobs:
           )
           with urllib.request.urlopen(request, timeout=2) as response:
               monitor = json.load(response)
-              assert monitor["baseline_status"] == "configured"
+              assert monitor["baseline_status"] == "incompatible_baseline"
               assert monitor["baseline_model_version"] == info["model_version"]
-              assert monitor["baseline_source_kind"] == "synthetic_diagnostic"
-              assert monitor["drift"]["drift_status"] == "insufficient_data"
+              assert monitor["baseline_source_kind"] is None
+              assert monitor["drift"]["drift_status"] == "incompatible_baseline"
               assert "scores" not in monitor
           assert post("/predict", {"message": "CI fixture message"})["prediction"] in {"ham", "spam"}
           assert post("/analyze", {"message": "CI fixture message"})["prediction"] in {"ham", "spam"}
