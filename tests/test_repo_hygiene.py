@@ -634,3 +634,12 @@ def test_human_task_kits_exist_and_are_ready_to_run() -> None:
         assert column in worksheet
     draft = (ROOT / "docs" / "templates" / "pilot-recruitment-draft.md").read_text(encoding="utf-8")
     assert "2026-11-01-v4" in draft and "withdraw" in draft
+
+
+def test_dockerfile_disables_uvicorn_access_log() -> None:
+    dockerfile = _text("Dockerfile")
+    cmd_lines = [line for line in dockerfile.splitlines() if line.strip().startswith("CMD ")]
+    assert cmd_lines, "Dockerfile must declare a CMD"
+    assert any("--no-access-log" in line for line in cmd_lines), (
+        "container deployments must not emit Uvicorn access logs with client IPs"
+    )
