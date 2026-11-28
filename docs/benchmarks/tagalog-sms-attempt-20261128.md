@@ -15,7 +15,7 @@ make datasets DATASET=tagalog-sms
 ```
 
 Run from the repository root of the `chore/roadmap-t0-hygiene` worktree
-(`/Users/khangtran/smsd-worktrees/roadmap-completion`) with no
+(`the repository root of the `chore/roadmap-t0-hygiene` worktree`) with no
 `KAGGLE_USERNAME`/`KAGGLE_KEY` exported in the environment.
 
 ## Result: blocked before any network access
