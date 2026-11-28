@@ -296,8 +296,10 @@ def validate_batch(
         if consent_date is None or consent_date > today:
             findings.append(Finding(row_number, "consent_date_invalid"))
         retention_until = _valid_iso_date(values["retention_until"])
-        if retention_until is None or retention_until < today or (
-            consent_date is not None and retention_until < consent_date
+        if (
+            retention_until is None
+            or retention_until < today
+            or (consent_date is not None and retention_until < consent_date)
         ):
             findings.append(Finding(row_number, "retention_expired_or_invalid"))
         if (
@@ -309,10 +311,7 @@ def validate_batch(
             findings.append(Finding(row_number, "retention_exceeds_ratified_notice"))
         if purpose == "evaluation" and not values.get("received_at", ""):
             findings.append(Finding(row_number, "received_at_required_for_evaluation"))
-        elif (
-            "received_at" in values
-            and values["received_at"]
-        ):
+        elif "received_at" in values and values["received_at"]:
             received = pd.to_datetime(values["received_at"], errors="coerce", utc=True)
             if pd.isna(received) or received.date() > today:
                 findings.append(Finding(row_number, "received_at_invalid"))

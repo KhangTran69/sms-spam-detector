@@ -15,9 +15,9 @@ import re
 import threading
 import time
 import uuid
-from urllib.parse import urlsplit
 from collections.abc import Callable
 from typing import Any, Protocol
+from urllib.parse import urlsplit
 
 logger = logging.getLogger("api.rate_limiter")
 

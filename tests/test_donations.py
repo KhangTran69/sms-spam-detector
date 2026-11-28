@@ -387,7 +387,9 @@ def test_maintenance_purges_expired_and_withdrawn_rows_without_creating_missing_
     expired = _retry_fixture(database, submission_key="c" * 32, message="Fictional expired fixture")
     assert delete_donation(database, expired)
     with closing(sqlite3.connect(database)) as connection, connection:
-        connection.execute("UPDATE donations SET expires_at=? WHERE record_id=?", ("2000-01-01T00:00:00+00:00", expired))
+        connection.execute(
+            "UPDATE donations SET expires_at=? WHERE record_id=?", ("2000-01-01T00:00:00+00:00", expired)
+        )
     assert maintain_donations(database, compact=True) == {
         "purged": 1,
         "remaining": 1,

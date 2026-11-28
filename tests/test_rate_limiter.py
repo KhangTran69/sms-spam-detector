@@ -267,13 +267,16 @@ def test_malformed_redis_replies_fail_closed_and_recover():
         assert limiter.check("prediction", "fixture", 2, 60) == (True, 0)
 
 
-@pytest.mark.parametrize("url", [
-    "redis://cache.example.test/0?socket_timeout=0",
-    "rediss://cache.example.test/0?ssl_cert_reqs=none",
-    "redis://cache.example.test/0?retry_on_timeout=true",
-    "redis://cache.example.test:0/0",
-    "redis://cache.example.test/invalid",
-])
+@pytest.mark.parametrize(
+    "url",
+    [
+        "redis://cache.example.test/0?socket_timeout=0",
+        "rediss://cache.example.test/0?ssl_cert_reqs=none",
+        "redis://cache.example.test/0?retry_on_timeout=true",
+        "redis://cache.example.test:0/0",
+        "redis://cache.example.test/invalid",
+    ],
+)
 def test_invalid_redis_url_never_constructs_backend(url, monkeypatch):
     from api.rate_limiter import UnavailableRateLimiter
 

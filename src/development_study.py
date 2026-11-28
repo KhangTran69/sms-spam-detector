@@ -66,14 +66,16 @@ def _score(pipeline: Any, messages: list[str], *, canonical: bool) -> list[float
     return [float(row[list(pipeline.classes_).index("spam")]) for row in probabilities]
 
 
-def error_transitions(
-    labels: list[str], before: list[float], after: list[float]
-) -> dict[str, int]:
+def error_transitions(labels: list[str], before: list[float], after: list[float]) -> dict[str, int]:
     """Paired error transitions, without individual probabilities or messages."""
     if not len(labels) == len(before) == len(after):
         raise ValueError("Paired score vectors must align.")
-    counts = {"new_false_positives": 0, "corrected_false_positives": 0,
-              "new_false_negatives": 0, "corrected_false_negatives": 0}
+    counts = {
+        "new_false_positives": 0,
+        "corrected_false_positives": 0,
+        "new_false_negatives": 0,
+        "corrected_false_negatives": 0,
+    }
     for label, original, changed in zip(labels, before, after, strict=True):
         first, second = original >= THRESHOLD, changed >= THRESHOLD
         if first == second:

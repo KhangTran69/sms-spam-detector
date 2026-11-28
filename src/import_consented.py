@@ -83,7 +83,9 @@ def import_consented(
     if (output_dir == repository or repository in output_dir.parents) and not any(
         output_dir == private or private in output_dir.parents for private in private_roots
     ):
-        raise DatasetError("Consented imports must stay outside the repository or in dedicated ignored private storage.")
+        raise DatasetError(
+            "Consented imports must stay outside the repository or in dedicated ignored private storage."
+        )
     try:
         output_dir = ensure_private_directory(output_dir)
     except ValueError as exc:
