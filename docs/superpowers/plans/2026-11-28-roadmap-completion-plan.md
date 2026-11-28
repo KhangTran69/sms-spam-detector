@@ -53,10 +53,16 @@ def test_owner_decisions_record_ratification():
 
 def test_evaluation_plan_template_prefills_registration_fields():
     import json
+
     template = json.loads((ROOT / "docs" / "templates" / "consented-evaluation-plan.json").read_text(encoding="utf-8"))
     widths = template["maximum_cluster_interval_width"]
-    assert widths == {"precision": 0.10, "recall": 0.15, "f1": 0.12,
-                      "false_positive_rate": 0.10, "false_negative_rate": 0.15}
+    assert widths == {
+        "precision": 0.10,
+        "recall": 0.15,
+        "f1": 0.12,
+        "false_positive_rate": 0.10,
+        "false_negative_rate": 0.15,
+    }
     assert template["minimum_campaign_groups"] == 12
     assert template["minimum_coverage"]["language"] == {"en": 100, "tl": 100, "tl-en": 100}
     assert template["minimum_coverage"]["category"]["otp"] == 150
