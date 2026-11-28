@@ -216,10 +216,12 @@ def select_threshold(
     """Pick a spam threshold on validation data with a documented tradeoff.
 
     Strategy: among thresholds that reach ``target_precision`` (and optionally
-    ``min_recall``), choose the lowest threshold — i.e. the one that catches the
-    most spam while keeping the precision promise. If no threshold reaches the
-    target, fall back to the threshold maximising F0.5 (precision-weighted) and
-    say so explicitly; never silently pretend the target was met.
+    ``min_recall``), choose the one with the best precision-weighted F0.5,
+    breaking ties toward the lower threshold. This favours fewer false alarms
+    on unseen data over the lowest threshold that merely clears the validation
+    floor. If no threshold reaches the target, fall back to the threshold
+    maximising F0.5 (precision-weighted) and say so explicitly; never silently
+    pretend the target was met.
     """
     if (false_positive_cost is None) != (false_negative_cost is None):
         raise ValueError("false_positive_cost and false_negative_cost must be provided together")
