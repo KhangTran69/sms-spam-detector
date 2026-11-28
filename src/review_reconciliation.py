@@ -12,7 +12,8 @@ import os
 import re
 import sqlite3
 import stat
-from contextlib import closing
+from collections.abc import Iterator
+from contextlib import closing, contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -95,3 +96,40 @@ def verify_export(database: Path, export: Path, *, require_model_research: bool 
         "model_research_required": require_model_research,
         "consent_approval_verified": False,
     }
+
+
+@contextmanager
+def current_review_rows(database: Path, export: Path) -> Iterator[dict[str, dict[str, str]]]:
+    """Hold a short write reservation through a private intake publication.
+
+    No human review or training is performed while locked. Withdrawals and
+    maintenance either precede this check or follow publication. The output
+    is still a revocable copy, not permanent consent.
+    """
+    database = _private_file(_validated_database_path(database))
+    rows = _read_export(export)
+    if not rows:
+        raise ValueError("Nonempty review export required.")
+    try:
+        with closing(sqlite3.connect(database.as_uri() + "?mode=rw", uri=True, timeout=2.0)) as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            if int(connection.execute("PRAGMA user_version").fetchone()[0]) != SCHEMA_VERSION:
+                raise ValueError("Current supported donation schema required.")
+            current: dict[str, dict[str, str]] = {}
+            cutoff = _timestamp(datetime.now(UTC))
+            for row in rows:
+                stored = connection.execute(
+                    """SELECT record_id, message, language, notice_version, consented_at, expires_at,
+                              review_consent, model_research_consent, authorized_to_share
+                       FROM donations WHERE record_id=? AND withdrawn_at IS NULL AND expires_at>?
+                         AND review_consent=1 AND authorized_to_share=1 AND model_research_consent=1""",
+                    (row["record_id"], cutoff),
+                ).fetchone()
+                if stored is None or review_export_row(stored) != row:
+                    raise ValueError("Review export is no longer eligible.")
+                current[row["record_id"]] = row
+            yield current
+            # This transaction made no database changes.
+            connection.rollback()
+    except sqlite3.Error as exc:
+        raise RuntimeError(f"Current review reservation unavailable ({type(exc).__name__}).") from None

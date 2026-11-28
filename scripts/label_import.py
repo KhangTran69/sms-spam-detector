@@ -86,6 +86,7 @@ import contextlib
 import json
 import os
 import sys
+import tempfile
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -95,6 +96,7 @@ import pandas as pd
 
 from src.consented_data import (
     CONSENT_SCOPES,
+    RATIFIED_NOTICE,
     REQUIRED_COLUMNS,
     REVIEW_CONFIDENCE,
     SAFE_CODE,
@@ -109,6 +111,7 @@ from src.consented_data import (
 )
 from src.dataset_schema import _normalized_message_key
 from src.privacy.storage import ensure_private_directory
+from src.review_reconciliation import current_review_rows
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -650,22 +653,20 @@ def write_intake_csv(frame: pd.DataFrame, destination: Path) -> None:
     """
     ensure_private_directory(destination.parent)
     payload = frame.to_csv(index=False, lineterminator="\n")
+    temporary: Path | None = None
     try:
-        descriptor = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    except FileExistsError:
-        raise
-    except OSError:
-        raise LabelImportError("could_not_write_output") from None
-    with os.fdopen(descriptor, "w", encoding="utf-8", newline="") as handle:
-        try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", newline="", dir=destination.parent, prefix=".intake-", delete=False
+        ) as handle:
+            temporary = Path(handle.name)
             handle.write(payload)
             handle.flush()
             os.fsync(handle.fileno())
-        except OSError:
+        os.link(temporary, destination)
+    finally:
+        if temporary is not None:
             with contextlib.suppress(OSError):
-                destination.unlink()
-            raise LabelImportError("could_not_write_output") from None
-    os.chmod(destination, 0o600)
+                temporary.unlink()
 
 
 def _translate_findings(report: Any, worksheet_rows: list[int]) -> list[dict[str, Any]]:
@@ -727,12 +728,41 @@ def run_import(args: argparse.Namespace) -> dict[str, Any]:
         "policy_notes": list(POLICY_NOTES),
     }
     _assert_report_message_free(summary, worksheet)
+    database, export = args.current_database, args.review_export
+    if bool(database) != bool(export):
+        raise LabelImportError("current_database_and_export_required")
+    if RATIFIED_NOTICE in set(build.frame["consent_version"]) and not database:
+        raise LabelImportError("current_database_and_export_required")
     try:
-        write_intake_csv(build.frame, destination)
+        if database and export:
+            with current_review_rows(database, export) as current:
+                for index, row_number in enumerate(build.worksheet_rows):
+                    original = worksheet.iloc[row_number - 2]
+                    record_id = str(original["record_id"]).strip()
+                    source_row = current.get(record_id)
+                    final = build.frame.iloc[index]
+                    if (
+                        source_row is None
+                        or str(original["message"]) != source_row["message"]
+                        or final["message"] != source_row["message"]
+                        or final["language"] != source_row["language"]
+                        or final["consent_version"] != source_row["consent_notice_version"]
+                        or final["consent_date"] != source_row["consented_at"][:10]
+                        or final["retention_until"] > source_row["expires_at"][:10]
+                        or source_row["expires_at"] <= datetime.now(UTC).isoformat(timespec="seconds")
+                    ):
+                        raise LabelImportError("current_review_evidence_mismatch")
+                write_intake_csv(build.frame, destination)
+        else:
+            write_intake_csv(build.frame, destination)
     except FileExistsError:
         raise LabelImportError("output_file_already_exists") from None
     except OSError as exc:
         raise LabelImportError("could_not_write_output", [{"os_error": type(exc).__name__}]) from None
+    except LabelImportError:
+        raise
+    except (ValueError, RuntimeError):
+        raise LabelImportError("current_review_reconciliation_refused") from None
     return summary
 
 
@@ -787,6 +817,8 @@ def main(argv: list[str] | None = None) -> int:
         required=True,
         help="New CSV destination outside the repository or under ignored data/donations/ storage.",
     )
+    parser.add_argument("--current-database", type=Path, help="Current authoritative local donation store.")
+    parser.add_argument("--review-export", type=Path, help="Unmodified private review export from that store.")
     parser.add_argument("--source", default=SOURCE_DEFAULT, help="Fixed pseudonymous source code for the pilot batch.")
     parser.add_argument(
         "--today", type=_iso_date, default=None, help="ISO date used for expiry/retention checks (default: today)."

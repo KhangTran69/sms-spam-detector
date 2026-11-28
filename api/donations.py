@@ -107,8 +107,10 @@ def _create_private_database_file(path: Path) -> None:
 def _connect(path: Path) -> Iterator[sqlite3.Connection]:
     connection = sqlite3.connect(path, timeout=2.0)
     try:
-        connection.execute("PRAGMA journal_mode=DELETE")
-        connection.execute("PRAGMA secure_delete=ON")
+        mode = connection.execute("PRAGMA journal_mode=DELETE").fetchone()[0]
+        secure = connection.execute("PRAGMA secure_delete=ON").fetchone()[0]
+        if str(mode).lower() != "delete" or int(secure) != 1:
+            raise sqlite3.OperationalError("Required private storage pragmas unavailable.")
         with connection:
             yield connection
     finally:

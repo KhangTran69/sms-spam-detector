@@ -656,3 +656,67 @@ def test_chronological_worksheet_refuses_derived_campaign_groups(tmp_path, capsy
     assert main(_write_sidecars(tmp_path, rows)) == 1
     assert "explicit_campaign_group_required_for_chronology" in capsys.readouterr().err
     assert not (tmp_path / "intake.csv").exists()
+
+
+def _current_review_fixture(tmp_path):
+    from datetime import UTC, datetime, timedelta
+
+    from api.donations import create_donation, export_donations
+
+    database = tmp_path / "current.sqlite3"
+    export = tmp_path / "review.csv"
+    accepted = datetime.now(UTC).replace(microsecond=0)
+    receipt = create_donation(
+        database,
+        message=MSG_A,
+        label_hint=None,
+        language="en",
+        notice_version="2026-11-01-v4",
+        review_consent=True,
+        authorized_to_share=True,
+        model_research_consent=True,
+        consented_at=accepted,
+    )
+    export_donations(database, export)
+    rows = [_row(receipt, MSG_A)]
+    register = {
+        receipt: _entry(
+            receipt,
+            consent_version="2026-11-01-v4",
+            consent_date=accepted.date().isoformat(),
+            retention_until=(accepted + timedelta(days=90)).date().isoformat(),
+        )
+    }
+    argv = _write_sidecars(tmp_path, rows, register=register)
+    argv[argv.index("--today") + 1] = accepted.date().isoformat()
+    return database, export, receipt, argv
+
+
+def test_ratified_notice_requires_current_export_at_import(tmp_path, capsys):
+    database, export, _, argv = _current_review_fixture(tmp_path)
+    assert main(argv) == 1
+    assert "current_database_and_export_required" in capsys.readouterr().err
+    assert not (tmp_path / "intake.csv").exists()
+    assert main([*argv, "--current-database", str(database), "--review-export", str(export)]) == 0
+    assert (tmp_path / "intake.csv").exists()
+
+
+def test_withdrawal_after_export_blocks_actual_import(tmp_path, capsys):
+    from api.donations import delete_donation
+
+    database, export, receipt, argv = _current_review_fixture(tmp_path)
+    assert delete_donation(database, receipt)
+    assert main([*argv, "--current-database", str(database), "--review-export", str(export)]) == 1
+    assert "current_review_reconciliation_refused" in capsys.readouterr().err
+    assert not (tmp_path / "intake.csv").exists()
+
+
+def test_modified_worksheet_cannot_pass_current_review(tmp_path, capsys):
+    database, export, _, argv = _current_review_fixture(tmp_path)
+    path = tmp_path / "worksheet.csv"
+    frame = _read_csv(path)
+    frame.loc[0, "message"] = MSG_D
+    frame.to_csv(path, index=False)
+    assert main([*argv, "--current-database", str(database), "--review-export", str(export)]) == 1
+    assert "current_review_evidence_mismatch" in capsys.readouterr().err
+    assert not (tmp_path / "intake.csv").exists()

@@ -505,3 +505,7 @@ Add a bounded, read-only private review-export reconciliation command that check
 ### Pilot coverage and direct-loopback boundary
 
 Use bounded strict intake parsing for pooled coverage, require legitimate-class support for critical categories without changing ratified minimums, block missing identifiers, and publish reports exclusively. Keep review reconciliation in the installed library, with its CLI wrapper in scripts. Refuse recognizable forwarding metadata on the local-only donation route and retain external isolation requirements.
+
+### Guard current donation consumption
+
+Bind ratified-notice worksheet import to the current authoritative store and original export under a short transaction reservation, publish the validated CSV exclusively, and explicitly verify private SQLite journaling/deletion settings. Preserve historical register-only compatibility and document residual revocation and backup obligations.
