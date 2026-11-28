@@ -601,6 +601,15 @@ def test_architecture_docs_do_not_describe_unimplemented_behavior() -> None:
         assert stale not in architecture, f"stale architecture claim: {stale}"
 
 
+def test_feedback_targets_are_wired() -> None:
+    makefile = _text("Makefile")
+    assert "feedback-summary:" in makefile
+    assert "triage-feedback:" in makefile
+    pyproject = _text("pyproject.toml")
+    assert 'smsd-feedback = "src.feedback:_main"' in pyproject
+    assert 'smsd-triage = "src.active_learning:main"' in pyproject
+
+
 def test_dockerfile_disables_uvicorn_access_log() -> None:
     dockerfile = _text("Dockerfile")
     cmd_lines = [line for line in dockerfile.splitlines() if line.strip().startswith("CMD ")]

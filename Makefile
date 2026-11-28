@@ -14,6 +14,8 @@
 #   make eval           evaluate a model on a normalized external CSV
 #   make split-consented create private development and sealed evaluation CSVs
 #   make rehearse-consented run a disposable synthetic consent/evaluation rehearsal
+#   make feedback-summary summarize the anonymous feedback queue
+#   make triage-feedback rank feedback by error category for human review
 #   make demo           train/evaluate using tracked synthetic fixtures only
 #   make serve          run the FastAPI service with reload
 #   make macos-install  install persistent per-user macOS service
@@ -32,10 +34,10 @@ BENCHMARK_DIR ?= data/processed/benchmark-run
 OPERATING_FPR ?= 0.05
 DATASET ?= ph-spam-marketing-sms
 
-.PHONY: help install dev-install package-install redis-install test lint format typecheck check-headlines train evaluate datasets eval split-consented rehearse-consented export-donations benchmark benchmark-perf demo serve macos-install macos-status macos-stop macos-restart macos-uninstall docker-build docker-run clean
+.PHONY: help install dev-install package-install redis-install test lint format typecheck check-headlines train evaluate datasets eval split-consented rehearse-consented export-donations feedback-summary triage-feedback benchmark benchmark-perf demo serve macos-install macos-status macos-stop macos-restart macos-uninstall docker-build docker-run clean
 
 help:
-	@sed -n '1,25p' Makefile
+	@sed -n '1,27p' Makefile
 
 install:
 	$(PIP) install -r requirements.txt
@@ -90,6 +92,12 @@ rehearse-consented:
 export-donations:
 	@test -n "$(OUTPUT)" || { echo "Set OUTPUT to a private, new CSV path outside the repository (or under ignored data/donations/)" >&2; exit 2; }
 	$(PYTHON) scripts/export_donations.py $(if $(DATABASE),--database "$(DATABASE)",) --output "$(OUTPUT)"
+
+feedback-summary:
+	$(PYTHON) -m src.feedback $(if $(FEEDBACK_PATH),--path "$(FEEDBACK_PATH)",) $(if $(OUTPUT),--output "$(OUTPUT)",)
+
+triage-feedback:
+	$(PYTHON) -m src.active_learning $(if $(FEEDBACK_PATH),--path "$(FEEDBACK_PATH)",) $(if $(OUTPUT),--output "$(OUTPUT)",)
 
 benchmark:
 	@test -n "$(DATA)" || { echo "Set DATA to an approved training CSV; see docs/BENCHMARKING.md" >&2; exit 2; }
