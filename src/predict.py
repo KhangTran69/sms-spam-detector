@@ -238,12 +238,15 @@ def load_model(path: str | Path | None = None, *, identify_artifact: bool = Fals
 
     metadata_path_value = os.environ.get("SMSD_MODEL_METADATA_PATH", "").strip()
     metadata_path = Path(metadata_path_value) if metadata_path_value else None
+    # Production must not deserialize an unverified pickle. An explicit
+    # SMSD_MODEL_SHA256 is an equivalent pin for operators who ship no sidecar.
+    production = os.environ.get("SMSD_ENV", "development").strip().lower() == "production"
     try:
         artifact_sha256, integrity_warning = verify_artifact_sidecar(
             artifact_path,
             model_bytes,
             metadata_path,
-            require_hash=bool(metadata_path_value),
+            require_hash=bool(metadata_path_value) or (production and not expected_sha256),
         )
     except ArtifactIntegrityError as exc:
         raise ModelArtifactError(str(exc)) from exc

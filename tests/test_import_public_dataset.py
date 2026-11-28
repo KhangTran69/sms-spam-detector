@@ -37,6 +37,43 @@ def test_import_uci_tsv_adds_attribution_and_public_provenance(tmp_path, monkeyp
     assert manifest["sources"][0]["class_counts"] == dataset.class_counts
 
 
+def test_cli_imports_uci_and_prints_attribution(tmp_path, monkeypatch, capsys):
+    raw = use_temporary_raw_dir(tmp_path, monkeypatch)
+    source = tmp_path / "uci.tsv"
+    source.write_text("ham\tSalamat po\nspam\tClaim your prize now\n", encoding="utf-8")
+    output = raw / "imported" / "uci.csv"
+
+    assert public_import.main(["--input", str(source), "--output", str(output)]) == 0
+
+    assert output.is_file()
+    printed = capsys.readouterr().out
+    assert UCI_LICENSE in printed
+    assert "uci-sms-spam-collection" not in printed
+
+
+def test_cli_rejects_a_missing_input_with_a_data_error(tmp_path, monkeypatch):
+    use_temporary_raw_dir(tmp_path, monkeypatch)
+
+    with pytest.raises(DatasetError, match="Input dataset not found"):
+        public_import.main(["--input", str(tmp_path / "missing.csv")])
+
+
+def test_cli_normalizes_a_kaggle_export_into_external_storage(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(public_import, "ROOT", tmp_path)
+    (tmp_path / "data" / "external").mkdir(parents=True)
+    source = tmp_path / "kaggle.csv"
+    source.write_text(
+        "text,category,date_received,language\nSalamat po,otp,2026-01-01,tl\nWin a prize now,spam,2026-01-02,en\n",
+        encoding="utf-8",
+    )
+    output = tmp_path / "data" / "external" / "ph-spam.csv"
+
+    assert public_import.main(["--input", str(source), "--source", "kaggle-ph", "--output", str(output)]) == 0
+
+    assert output.is_file()
+    assert "Normalized Kaggle PH SMS rows: 2" in capsys.readouterr().out
+
+
 def test_import_refuses_output_outside_ignored_raw_dir(tmp_path, monkeypatch):
     use_temporary_raw_dir(tmp_path, monkeypatch)
     source = tmp_path / "uci.tsv"

@@ -634,3 +634,45 @@ def test_human_task_kits_exist_and_are_ready_to_run() -> None:
         assert column in worksheet
     draft = (ROOT / "docs" / "templates" / "pilot-recruitment-draft.md").read_text(encoding="utf-8")
     assert "2026-11-01-v4" in draft and "withdraw" in draft
+
+
+def test_architecture_docs_do_not_describe_unimplemented_behavior() -> None:
+    architecture = _doc("docs/ARCHITECTURE.md")
+    for stale in (
+        "deduplication.py",
+        "HistGradientBoosting",
+        "RandomForest",
+        "max_length=1600",
+        "sms_spam_model.joblib",
+        "masked text, confidence, consent",
+        "Generate candidate retraining batch",
+    ):
+        assert stale not in architecture, f"stale architecture claim: {stale}"
+
+
+def test_security_workflow_and_dependabot_exist() -> None:
+    workflow = _text(".github/workflows/security.yml")
+    assert "pip-audit" in workflow or "pip_audit" in workflow
+    assert "permissions:" in workflow
+    assert "contents: read" in workflow
+    assert "npm audit" in workflow
+    dependabot = _text(".github/dependabot.yml")
+    assert "pip" in dependabot and "npm" in dependabot
+
+
+def test_feedback_targets_are_wired() -> None:
+    makefile = _text("Makefile")
+    assert "feedback-summary:" in makefile
+    assert "triage-feedback:" in makefile
+    pyproject = _text("pyproject.toml")
+    assert 'smsd-feedback = "src.feedback:_main"' in pyproject
+    assert 'smsd-triage = "src.active_learning:main"' in pyproject
+
+
+def test_dockerfile_disables_uvicorn_access_log() -> None:
+    dockerfile = _text("Dockerfile")
+    cmd_lines = [line for line in dockerfile.splitlines() if line.strip().startswith("CMD ")]
+    assert cmd_lines, "Dockerfile must declare a CMD"
+    assert any("--no-access-log" in line for line in cmd_lines), (
+        "container deployments must not emit Uvicorn access logs with client IPs"
+    )

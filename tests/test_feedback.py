@@ -51,6 +51,35 @@ def test_queue_rejects_any_sms_text_or_unknown_field(tmp_path):
     assert "private SMS text" not in str(error.value)
 
 
+def test_cli_writes_an_aggregate_summary_without_identifiers(tmp_path, capsys):
+    from src.feedback import _main
+
+    path = tmp_path / "reports.jsonl"
+    path.write_text(json.dumps(_report()) + "\n", encoding="utf-8")
+    output = tmp_path / "summary.json"
+
+    assert _main(["--path", str(path), "--output", str(output)]) == 0
+
+    rendered = output.read_text(encoding="utf-8")
+    payload = json.loads(rendered)
+    assert payload["report_count"] == 1
+    assert "receipt-id" not in rendered
+    assert "Aggregate summary saved" in capsys.readouterr().out
+
+
+def test_cli_rejects_an_unsafe_queue_without_echoing_text(tmp_path, capsys):
+    from src.feedback import _main
+
+    path = tmp_path / "unsafe.jsonl"
+    path.write_text(json.dumps(_report(message="private SMS text")) + "\n", encoding="utf-8")
+
+    with pytest.raises(SystemExit) as error:
+        _main(["--path", str(path)])
+
+    assert error.value.code == 2
+    assert "private SMS text" not in capsys.readouterr().err
+
+
 def test_queue_rejects_matching_labels_and_invalid_categories(tmp_path):
     for payload in (
         _report(predicted_label="ham", expected_label="ham"),
