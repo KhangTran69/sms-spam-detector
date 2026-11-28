@@ -66,6 +66,7 @@ def _valid_rows() -> list[dict[str, str]]:
             "label": "spam",
             "message": "Claim your reward now at URLTOKEN.",
             "group": "campaign_scam_02",
+            "consent_record_id": "consent_002",
             "reviewer_a_label": "spam",
             "reviewer_b_label": "spam",
             "adjudicated_label": "spam",
