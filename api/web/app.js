@@ -1,10 +1,11 @@
-import { API, createApiClient } from "./api-client.js?v=ui19-synthetic-examples-20261101";
-import { I18N } from "./i18n.js?v=ui19-synthetic-examples-20261101";
-import { applyPrivacyMasks, buildPrivacyReview, clearPrivacyReview, detectSensitiveSpans } from "./privacy-preview.js?v=ui19-synthetic-examples-20261101";
-import { createHistoryStore } from "./history-store.js?v=ui19-synthetic-examples-20261101";
-import { createConnectionStatus } from "./connection-status.js?v=ui19-synthetic-examples-20261101";
-import { createResultFormatting, normalizeModelInfo } from "./result-format.js?v=ui19-synthetic-examples-20261101";
-import { EXAMPLES } from "./demo-examples.js?v=ui19-synthetic-examples-20261101";
+import { API, activeRequestCount, createApiClient } from "./api-client.js?v=ui22-editorial-polish-20261128";
+import { createShellUpdates } from "./shell-updates.js?v=ui22-editorial-polish-20261128";
+import { I18N } from "./i18n.js?v=ui22-editorial-polish-20261128";
+import { applyPrivacyMasks, buildPrivacyReview, clearPrivacyReview, detectSensitiveSpans } from "./privacy-preview.js?v=ui22-editorial-polish-20261128";
+import { createHistoryStore } from "./history-store.js?v=ui22-editorial-polish-20261128";
+import { createConnectionStatus } from "./connection-status.js?v=ui22-editorial-polish-20261128";
+import { createResultFormatting, normalizeModelInfo } from "./result-format.js?v=ui22-editorial-polish-20261128";
+import { EXAMPLES } from "./demo-examples.js?v=ui22-editorial-polish-20261128";
 
 /* PH SMS Scam Detector — UI logic (no build step, vanilla JS). */
 "use strict";
@@ -128,9 +129,8 @@ function setLanguage(nextLang) {
   if (currentComparison) renderComparison(currentComparison.results);
 }
 
-/* ---------- Theme (light ↔ dark, persisted) ---------- */
+/* ---------- Theme (light dark, persisted) ---------- */
 const THEME_STATES = ["light", "dark"];
-const THEME_ICONS = { light: "🌙", dark: "☀️" };
 
 function readTheme() {
   try {
@@ -146,9 +146,11 @@ function applyTheme(theme) {
 }
 
 function updateThemeButton() {
-  const button = $("btn-theme");
-  button.textContent = THEME_ICONS[currentTheme];
+  // Action semantics: the control names the mode it switches to, not the
+  // current one (pinned by the browser smoke).
   const nextTheme = currentTheme === "dark" ? "light" : "dark";
+  const button = $("btn-theme");
+  button.textContent = t(`theme.${nextTheme}Label`);
   button.setAttribute("aria-label", t(`theme.${nextTheme}`));
   button.title = t(`theme.${nextTheme}`);
 }
@@ -171,12 +173,23 @@ const connectionStatus = createConnectionStatus({
   element: $, translate: t, browserOnline: () => window.navigator.onLine, offlineBanner: $("offline-banner"),
 });
 
+/* Shell updates: discover redeployed shells and either reload a hidden idle
+   tab or show a reload banner. Created before the API client so the client
+   can notify it when responses look newer than this shell. */
+const shellUpdates = createShellUpdates({
+  translate: t,
+  activeRequestCount,
+  banner: $("update-banner"),
+  reloadButton: $("btn-apply-update"),
+});
+
 const apiClient = createApiClient({
   translate: t,
   setApiAvailability: connectionStatus.setApiAvailability,
   setModelReadiness: connectionStatus.setModelReadiness,
   hideOfflineBanner: connectionStatus.hideOfflineBanner,
   showOfflineBanner: connectionStatus.showOfflineBanner,
+  onStaleShell: () => shellUpdates.showBanner(),
 });
 
 /* ---------- Banding ---------- */
@@ -253,6 +266,7 @@ function nextExample(kind) {
 
 function describeError(failure) {
   if (!failure) return t("error.generic");
+  if (failure.staleShell) return t("update.staleShellError");
   let message = failure.message || t("error.generic");
   const modelUnavailable = failure.code === "model_unavailable";
   if (modelUnavailable && !message.includes("src.train")) message += t("error.trainHint");
@@ -303,6 +317,8 @@ function selectTab(tab) {
     const selected = candidate === tab;
     candidate.classList.toggle("active", selected);
     candidate.setAttribute("aria-selected", String(selected));
+    if (selected) candidate.setAttribute("aria-current", "true");
+    else candidate.removeAttribute("aria-current");
     candidate.tabIndex = selected ? 0 : -1;
   }
   for (const panel of document.querySelectorAll(".panel")) {
@@ -444,7 +460,6 @@ function renderVerdict(analysis) {
   const band = bandOf(analysis);
   const view = bandView(band);
   $("verdict-card").className = `card verdict ${view.css}`;
-  $("verdict-icon").textContent = view.icon;
   $("verdict-title").textContent = bandTitle(band);
   const decisionThreshold = validFraction(analysis.decision_threshold)
     ?? (resultMatchesLoadedModel(analysis) ? validFraction(modelInfo.decision_threshold) : null);
@@ -472,7 +487,8 @@ function renderMeter(analysis) {
     : calibration === false ? t("meter.aria") : t("meter.aria.unavailable"));
   meter.setAttribute("aria-valuetext", value === null ? t("value.unavailable")
     : `${value}% ${scoreLabel(analysis)} — ${bandTitle(band)}`);
-  $("meter-marker").style.left = value === null ? "0%" : `${value}%`;
+  // Floor-compliant settle: animate transform on a full-width track, never left.
+  $("meter-marker-track").style.transform = `translateX(${value === null ? 0 : value}%)`;
   const output = $("meter-value");
   output.textContent = value === null ? t("value.unavailable") : `${value}%`;
   output.style.color = { spam: "var(--red)", suspicious: "var(--amber)", safe: "var(--green)" }[bandView(band).css] || "var(--muted)";
@@ -982,10 +998,10 @@ function miniMeter(probability, band = bandFromProbability(probability)) {
   const wrap = document.createElement("div");
   wrap.className = "mini-meter";
   const fill = document.createElement("div");
+  fill.className = `mini-meter-fill-${bandView(band).css}`;
   const score = validFraction(probability);
-  fill.style.width = score === null ? "0%" : `${Math.round(score * 100)}%`;
-  fill.style.background = score === null ? "var(--muted)"
-    : ({ spam: "var(--red)", suspicious: "var(--amber)", safe: "var(--green)" }[bandView(band).css] || "var(--muted)");
+  // Floor: animate transform, never width.
+  fill.style.transform = `scaleX(${score === null ? 0 : Math.max(0, Math.min(1, score))})`;
   if (score === null) wrap.classList.add("mini-meter-unavailable");
   wrap.append(fill);
   return wrap;
@@ -1896,8 +1912,10 @@ function initServiceWorker() {
   const host = location.hostname;
   if (location.protocol !== "https:" && host !== "localhost" && host !== "127.0.0.1") return;
   navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" }).then((registration) => {
-    // Check the release on normal visits so updated shell assets arrive without
-    // asking users to perform a hard refresh.
+    // Watch for activated updates (banner or hidden-tab reload) and check the
+    // release on normal visits so updated shell assets arrive without asking
+    // users to perform a hard refresh.
+    shellUpdates.attach(registration);
     return registration.update();
   }).catch(() => {
     /* Offline shell support is a bonus; ignore registration failures. */

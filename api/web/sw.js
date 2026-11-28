@@ -3,21 +3,26 @@
  */
 "use strict";
 
-const CACHE_NAME = "smsd-shell-v25";
+const CACHE_NAME = "smsd-shell-v27";
 const SHELL_ASSETS = [
   "/",
-  "/static/styles.css?v=ui19-synthetic-examples-20261101",
-  "/static/app.js?v=ui19-synthetic-examples-20261101",
+  "/static/tokens.css?v=ui22-editorial-polish-20261128",
+  "/static/styles.css?v=ui22-editorial-polish-20261128",
+  "/static/app.js?v=ui22-editorial-polish-20261128",
+  "/static/shell-updates.js?v=ui22-editorial-polish-20261128",
+  "/static/fonts/BricolageGrotesque-var-latin.woff2",
+  "/static/fonts/SourceSerif4-var-latin.woff2",
+  "/static/fonts/SourceSerif4-Italic-var-latin.woff2",
   "/static/theme-init.js?v=theme-v1",
-  "/static/api-client.js?v=ui19-synthetic-examples-20261101",
-  "/static/i18n.js?v=ui19-synthetic-examples-20261101",
-  "/static/privacy-preview.js?v=ui19-synthetic-examples-20261101",
-  "/static/history-store.js?v=ui19-synthetic-examples-20261101",
-  "/static/connection-status.js?v=ui19-synthetic-examples-20261101",
-  "/static/result-format.js?v=ui19-synthetic-examples-20261101",
-  "/static/demo-examples.js?v=ui19-synthetic-examples-20261101",
+  "/static/api-client.js?v=ui22-editorial-polish-20261128",
+  "/static/i18n.js?v=ui22-editorial-polish-20261128",
+  "/static/privacy-preview.js?v=ui22-editorial-polish-20261128",
+  "/static/history-store.js?v=ui22-editorial-polish-20261128",
+  "/static/connection-status.js?v=ui22-editorial-polish-20261128",
+  "/static/result-format.js?v=ui22-editorial-polish-20261128",
+  "/static/demo-examples.js?v=ui22-editorial-polish-20261128",
   "/static/donate.js?v=donate-v5",
-  "/static/donate.css?v=donate-v5",
+  "/static/donate.css?v=donate-v6",
   "/manifest.webmanifest",
 ];
 const SHELL_REQUESTS = new Set(SHELL_ASSETS.map((asset) => {
@@ -74,6 +79,12 @@ self.addEventListener("activate", (event) => {
     const keys = await caches.keys();
     await Promise.all(keys.filter((key) => key.startsWith("smsd-shell-") && key !== CACHE_NAME)
       .map((key) => caches.delete(key)));
+    // Tell every open tab which shell generation is active so shell-updates.js
+    // can name the reload guard key and decide between banner and auto-reload.
+    const clients = await self.clients.matchAll({ includeUncontrolled: true });
+    for (const client of clients) {
+      client.postMessage({ type: "shell-activated", cache: CACHE_NAME });
+    }
   })());
 });
 

@@ -8,15 +8,56 @@ export const API = Object.freeze({
   feedback: "/feedback",
 });
 
+/* In-flight request count across every client instance. The shell-update
+   module reads it so an auto-reload never interrupts an analysis. */
+let activeRequests = 0;
+export function activeRequestCount() {
+  return activeRequests;
+}
+
 export function createApiClient({
   translate,
   setApiAvailability,
   setModelReadiness,
   hideOfflineBanner,
   showOfflineBanner,
+  onStaleShell = null,
   timeoutMs = 20000,
 }) {
   let requestSequence = 0;
+
+  /* Stale-shell guard: a response whose shape this shell does not recognize
+     means the deployed backend is newer than the running page. The caller
+     surfaces the shell-update banner; the error still carries staleShell so
+     describeError can produce the right copy. */
+  function assertKnownShape(path, data) {
+    const known = data && typeof data === "object" && typeof data.model_version === "string";
+    if (path === API.modelInfo) {
+      if (!known) throwStaleShell();
+      return;
+    }
+    if (path === API.analyze) {
+      if (!known || typeof data.risk_band !== "string") throwStaleShell();
+      return;
+    }
+    if (path === API.analyzeBatch) {
+      const first = known && Array.isArray(data.results) ? data.results[0] : null;
+      if (!first || typeof first.risk_band !== "string" || typeof first.model_version !== "string") throwStaleShell();
+    }
+  }
+
+  function throwStaleShell() {
+    if (typeof onStaleShell === "function") {
+      try {
+        onStaleShell();
+      } catch {
+        /* Notification is best-effort. */
+      }
+    }
+    const failure = new Error(translate("update.staleShellError"));
+    failure.staleShell = true;
+    throw failure;
+  }
 
   function errorMessageFromResponse(data, response) {
     const error = data && typeof data.error === "object" && data.error ? data.error : null;
@@ -57,6 +98,7 @@ export function createApiClient({
 
   async function requestJson(path, options = {}) {
     const sequence = ++requestSequence;
+    activeRequests += 1;
     const controller = new AbortController();
     const externalSignal = options.signal;
     let callerAborted = false;
@@ -101,6 +143,7 @@ export function createApiClient({
     if (setApiAvailability(true, sequence)) hideOfflineBanner();
     try {
       const data = await parseResponse(response);
+      assertKnownShape(path, data);
       if (path === API.ready) setModelReadiness(true, sequence);
       return data;
     } catch (failure) {
@@ -122,6 +165,7 @@ export function createApiClient({
       }
       throw failure;
     } finally {
+      activeRequests = Math.max(0, activeRequests - 1);
       clearTimeout(timeoutId);
       if (externalSignal) externalSignal.removeEventListener("abort", abortFromCaller);
     }

@@ -284,24 +284,33 @@ def test_service_worker_installs_complete_static_shell_and_never_caches_api(html
     assert "await cache.put(request" not in sw, "runtime responses must not mutate an installed release"
     for path in ("/analyze", "/analyze/batch", "/predict", "/feedback", "/model-info"):
         assert f'"{path}"' in sw
-    assert "smsd-shell-v25" in sw
-    assert '"/static/theme-init.js?v=theme-v1"' in sw
-    for asset in ("styles.css", "app.js"):
-        assert f'"/static/{asset}?v=ui19-synthetic-examples-20261101"' in sw
+    cache_match = re.search(r"smsd-shell-v(\d+)", sw)
+    assert cache_match, "sw.js must pin a shell cache generation"
+    ui_stamp = re.search(r"/static/app\.js\?v=([a-z0-9-]+)", html)
+    assert ui_stamp, "index.html must pin the app.js asset version"
+    stamp = ui_stamp.group(1)
     for asset in (
+        "styles.css",
+        "app.js",
         "api-client.js",
         "i18n.js",
         "privacy-preview.js",
         "history-store.js",
         "connection-status.js",
         "result-format.js",
+        "demo-examples.js",
+        "shell-updates.js",
     ):
-        assert f'"/static/{asset}?v=ui19-synthetic-examples-20261101"' in sw
-    assert '"/static/donate.js?v=donate-v5"' in sw
-    assert '"/static/donate.css?v=donate-v5"' in sw
+        assert f'"/static/{asset}?v={stamp}"' in sw, f"shell must cache the current {asset}"
+    assert '"/static/theme-init.js?v=theme-v1"' in sw
+    donate_html = (ROOT / "api" / "web" / "donate.html").read_text(encoding="utf-8")
+    donate_stamp = re.search(r"/static/donate\.css\?v=([a-z0-9-]+)", donate_html)
+    assert donate_stamp, "donate.html must pin the donate.css version"
+    assert f'"/static/donate.css?v={donate_stamp.group(1)}"' in sw
+    donate_js = re.search(r"/static/donate\.js\?v=([a-z0-9-]+)", donate_html)
+    assert donate_js and f'"/static/donate.js?v={donate_js.group(1)}"' in sw
     assert '"/donate"' in sw and '"/privacy-notice"' in sw
-    assert '"/static/demo-examples.js?v=ui19-synthetic-examples-20261101"' in sw
-    assert 'type="module" src="/static/app.js?v=ui19-synthetic-examples-20261101"' in html
+    assert f'type="module" src="/static/app.js?v={stamp}"' in html
     assert '<script src="/static/theme-init.js?v=theme-v1"></script>' in html
     assert "<script>" not in html
     assert 'id="single-privacy-review"' in html
@@ -410,6 +419,62 @@ def test_score_bands_use_cautious_spam_signal_terminology(js, html):
     assert 'id="model-details"' in html
 
 
+# ----------------------------- token contrast audit (WCAG AA) -----------------------------
+
+
+def _srgb_channels(hex_color: str) -> tuple[float, float, float]:
+    value = hex_color.lstrip("#")
+    return tuple(int(value[i : i + 2], 16) / 255 for i in (0, 2, 4))
+
+
+def _relative_luminance(hex_color: str) -> float:
+    def linear(channel: float) -> float:
+        return channel / 12.92 if channel <= 0.04045 else ((channel + 0.055) / 1.055) ** 2.4
+
+    r, g, b = (linear(c) for c in _srgb_channels(hex_color))
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def _contrast(foreground: str, background: str) -> float:
+    light, dark = sorted((_relative_luminance(foreground), _relative_luminance(background)), reverse=True)
+    return (light + 0.05) / (dark + 0.05)
+
+
+def test_token_pairs_meet_wcag_aa_in_both_dials():
+    tokens = (ROOT / "api" / "web" / "tokens.css").read_text(encoding="utf-8")
+    light_block = tokens.split(':root[data-theme="dark"]', 1)[0]
+    dark_block = tokens.split(':root[data-theme="dark"]', 1)[1]
+    # (foreground var, background var, minimum ratio, why)
+    pairs = [
+        ("--ink", "--bg", 4.5, "primary reading text"),
+        ("--ink-2", "--bg", 4.5, "body text"),
+        ("--muted", "--bg", 4.5, "hints and meta"),
+        ("--ink-2", "--surface", 4.5, "text on wells"),
+        ("--red-ink", "--bg", 4.5, "spam verdict title"),
+        ("--amber-ink", "--bg", 4.5, "suspicious verdict title"),
+        ("--green-ink", "--bg", 4.5, "safe verdict title"),
+        ("--red-ink", "--red-bg", 4.5, "error banner"),
+        ("--amber-ink", "--amber-bg", 4.5, "warning banner"),
+        ("--on-primary", "--primary", 4.5, "primary button label"),
+        ("--focus", "--bg", 3.0, "focus outline"),
+        ("--sig-url", "--bg", 3.0, "link signal underline"),
+        ("--sig-phone", "--bg", 3.0, "phone signal underline"),
+        ("--sig-money", "--bg", 3.0, "money signal underline"),
+        ("--sig-urgency", "--bg", 3.0, "urgency signal underline"),
+        ("--sig-brand", "--bg", 3.0, "brand signal underline"),
+    ]
+    failures = []
+    for dial_name, block in (("light", light_block), ("dark", dark_block)):
+        values = dict(re.findall(r"^\s*(--[a-z0-9-]+):\s*#([0-9a-fA-F]{6})", block, re.MULTILINE))
+        for foreground, background, minimum, why in pairs:
+            fg, bg = values.get(foreground), values.get(background)
+            assert fg and bg, f"{dial_name} dial is missing {foreground}/{background}"
+            ratio = _contrast(fg, bg)
+            if ratio < minimum:
+                failures.append(f"{dial_name}: {foreground} on {background} = {ratio:.2f} (< {minimum}, {why})")
+    assert not failures, "contrast failures:\n" + "\n".join(failures)
+
+
 def test_message_signals_are_described_as_text_patterns(html, js, css):
     normalized = collapse_whitespace(html)
     versioned_assets = re.findall(r"/static/(?:styles\.css|app\.js)\?v=([a-z0-9-]+)", html)
@@ -514,19 +579,22 @@ def test_signal_terminology_is_consistent_across_languages(js):
 
 
 def test_dark_mode_variables_and_toggle(css, js, html):
+    tokens = (ROOT / "api" / "web" / "tokens.css").read_text(encoding="utf-8")
     assert 'id="btn-theme"' in html
     assert 'data-i18n-aria-label="theme.aria"' in html
     assert 'id="offline-banner"' in html
-    assert ':root[data-theme="dark"]' in css, "manual dark theme must define its own variables"
-    assert "prefers-color-scheme: dark" not in css, "theme must have only the explicit light/dark modes"
-    assert "color-scheme: light" in css and "color-scheme: dark" in css
+    assert ':root[data-theme="dark"]' in tokens, "manual dark theme must define its own variables"
+    assert "prefers-color-scheme" not in tokens, "theme must have only the explicit light/dark modes"
+    assert "color-scheme: light" in tokens and "color-scheme: dark" in tokens
+    assert "/static/tokens.css" in html, "both pages must load the shared tokens"
+    assert '"tokens.css"' in (ROOT / "api" / "main.py").read_text(encoding="utf-8"), "tokens.css must be allowlisted"
     assert "THEME_KEY" in js and "localStorage.setItem(THEME_KEY" in js, "theme choice must persist"
     assert 'const THEME_STATES = ["light", "dark"]' in js
     assert "readTheme" in js and "applyTheme" in js and "toggleTheme" in js
     assert "cycleTheme" not in js and '"theme.auto"' not in js
     for state in ("light", "dark"):
         assert f'"{state}"' in js
-    # Both themes must define the core palette variables (WCAG baseline).
+    # Both dials must define the core palette variables (WCAG baseline).
     for variable in (
         "--bg",
         "--card",
@@ -539,8 +607,9 @@ def test_dark_mode_variables_and_toggle(css, js, html):
         "--amber",
         "--green",
     ):
-        light_section = css.split(':root[data-theme="dark"]', 1)[0]
-        dark_section = css.split(':root[data-theme="dark"]', 1)[1]
+        tokens = (ROOT / "api" / "web" / "tokens.css").read_text(encoding="utf-8")
+        light_section = tokens.split(':root[data-theme="dark"]', 1)[0]
+        dark_section = tokens.split(':root[data-theme="dark"]', 1)[1]
         assert light_section.count(variable) >= 1 and dark_section.count(variable) >= 1, variable
 
 
@@ -613,6 +682,183 @@ def test_service_worker_never_caches_messages(js, html, api_source):
     manifest = (ROOT / "api" / "web" / "manifest.webmanifest").read_text(encoding="utf-8")
     assert '"start_url": "/"' in manifest
     assert "icons" in manifest
+
+
+# ----------------------------- shell update self-healing -----------------------------
+
+
+def test_shell_and_asset_versions_move_in_lockstep(html):
+    """A release bumps the page stamp and the service-worker shell together.
+
+    If index.html references asset versions the shell does not cache, a
+    redeployed tab mixes generations; this is the drift behind stale-shell
+    bug reports."""
+    html_stamps = set(re.findall(r"\?v=([a-z0-9-]+)", html))
+    donate_html = ROOT / "api" / "web" / "donate.html"
+    if donate_html.is_file():
+        html_stamps |= set(re.findall(r"\?v=([a-z0-9-]+)", donate_html.read_text(encoding="utf-8")))
+    sw = (ROOT / "api" / "web" / "sw.js").read_text(encoding="utf-8")
+    sw_stamps = set(re.findall(r'"/static/[^"]+\?v=([a-z0-9-]+)"', sw))
+    untracked = sw_stamps - html_stamps
+    assert not untracked, f"sw.js caches asset versions index.html does not reference: {sorted(untracked)}"
+
+
+def test_shell_updates_module_is_wired(js, html):
+    shell = (ROOT / "api" / "web" / "shell-updates.js").read_text(encoding="utf-8")
+    sw = (ROOT / "api" / "web" / "sw.js").read_text(encoding="utf-8")
+    i18n = (ROOT / "api" / "web" / "i18n.js").read_text(encoding="utf-8")
+    api_client = (ROOT / "api" / "web" / "api-client.js").read_text(encoding="utf-8")
+
+    assert 'id="update-banner"' in html and 'id="btn-apply-update"' in html
+    assert 'aria-live="polite"' in html.split('id="update-banner"')[1][:300]
+    assert 'data-i18n="update.banner"' in html and 'data-i18n="update.reloadButton"' in html
+
+    # Update discovery: focus/visibility re-check plus controller takeover hook.
+    assert "registration.update()" in shell or "registrationRef.update()" in shell
+    assert 'addEventListener("controllerchange"' in shell
+    assert "shouldAutoReload" in shell and "visibilitychange" in shell
+
+    # app.js consumes the module and hands it the in-flight counter.
+    assert "createShellUpdates" in js and "shellUpdates.attach(registration)" in js
+    assert "activeRequestCount" in js and "onStaleShell" in js
+    assert "failure.staleShell" in js, "describeError must map stale-shell failures to update copy"
+
+    # The API client detects responses newer than the shell.
+    assert "activeRequests += 1" in api_client and "export function activeRequestCount()" in api_client
+    assert "assertKnownShape" in api_client and "staleShell" in api_client
+
+    # The worker announces the activated generation for the reload guard.
+    assert "shell-activated" in sw and "postMessage" in sw
+    assert "skipWaiting" in sw
+
+    # Both dictionaries carry the banner copy.
+    for lang_name in ("en", "taglish"):
+        block = i18n.split(f"{lang_name}: {{", 1)[1].split("\n  }", 1)[0]
+        for key in ("update.banner", "update.reloadButton", "update.staleShellError"):
+            assert f'"{key}"' in block, f"{lang_name} dictionary must translate {key}"
+
+
+def test_every_module_imported_by_app_js_is_served_by_the_api():
+    """A module missing from the static allowlist breaks the whole page (the
+    import graph fails before any UI code runs) — pin imports to the allowlist."""
+    app_source = (ROOT / "api" / "web" / "app.js").read_text(encoding="utf-8")
+    api_main = (ROOT / "api" / "main.py").read_text(encoding="utf-8")
+    imported = re.findall(r'from "\./([a-z0-9-]+\.js)\?v=', app_source)
+    assert imported, "expected explicit versioned module imports in app.js"
+    for module in imported:
+        assert f'"{module}"' in api_main, f"{module} is imported by app.js but missing from api/main.py _STATIC_ASSETS"
+
+
+def test_shell_update_auto_reload_never_interrupts_analysis(shell_source=None):
+    shell = (ROOT / "api" / "web" / "shell-updates.js").read_text(encoding="utf-8")
+    assert "activeRequests > 0" in shell, "auto-reload must check the in-flight counter"
+    assert "hidden" in shell, "auto-reload applies only to hidden tabs"
+    assert "RELOAD_GUARD_PREFIX" in shell, "reload guard must be scoped per shell generation"
+
+
+# ----------------------------- Hallmark design floor -----------------------------
+# Ported from the Hallmark method's non-waivable Floor
+# (github.com/Nutlope/hallmark): tokens only, no banned transitions, no
+# eyebrow labels, no emoji icons, no gradient slop. These are regression
+# gates for the UI's design language; waiver-worthy changes must update
+# these checks deliberately, on the record.
+
+FLOOR_FILES = (
+    "api/web/index.html",
+    "api/web/app.js",
+    "api/web/i18n.js",
+    "api/web/result-format.js",
+    "api/web/shell-updates.js",
+    "api/web/connection-status.js",
+    "api/web/history-store.js",
+    "api/web/privacy-preview.js",
+    "api/web/demo-examples.js",
+)
+
+EMOJI_RE = re.compile("[\U0001f000-\U0001faff\u2190-\u21ff\u2300-\u27bf\u2b00-\u2bff\ufe0f\U0001f1e6-\U0001f1ff]")
+
+
+def _styles() -> str:
+    return STYLES_CSS.read_text(encoding="utf-8")
+
+
+def _token_free_styles() -> str:
+    """Strip the token blocks so 'tokens only' can be checked on the rest.
+
+    Tokens live in tokens.css (shared with the donation page); styles.css
+    must carry none of its own. donate.css is token-only by the same rule."""
+    body = re.sub(r":root[^{]*\{.*?\n\}", "", _styles(), flags=re.DOTALL)
+    tokens = (ROOT / "api" / "web" / "tokens.css").read_text(encoding="utf-8")
+    tokens_free = re.sub(r":root[^{]*\{.*?\n\}", "", tokens, flags=re.DOTALL)
+    donate = (ROOT / "api" / "web" / "donate.css").read_text(encoding="utf-8")
+    donate_free = re.sub(r":root[^{]*\{.*?\n\}", "", donate, flags=re.DOTALL)
+    return body + "\n" + tokens_free + "\n" + donate_free
+
+
+def test_floor_no_eyebrow_labels(css):
+    assert "text-transform: uppercase" not in css, "tracked capitals are an eyebrow tell"
+    assert "letter-spacing: 0.6px" not in css
+
+
+def test_floor_no_gradient_slop(css):
+    gradients = re.findall(r"linear-gradient[^;]+", css)
+    # Waived on the record: the skeleton shimmer (loading affordance) and the
+    # meter's tri-color verdict zones, which carry data, not decoration.
+    waived = [g for g in gradients if ("--surface" in g and "--line" in g) or "--suspect" in g]
+    assert gradients == waived, (
+        f"decorative gradients are banned; waived: skeleton shimmer + meter verdict zones; found: {gradients}"
+    )
+
+
+def test_floor_no_banned_transitions(css):
+    for banned in ("transition: left", "transition: width", "transition: top", "transition: height", "transition: all"):
+        assert banned not in css, f"animating {banned.split(': ')[1]} is banned by the floor"
+
+
+def test_floor_tokens_only(css):
+    naked = _token_free_styles()
+    hexes = re.findall(r"#[0-9a-fA-F]{3,8}\b", naked)
+    assert not hexes, f"literal colors outside tokens: {hexes[:8]}"
+
+
+def test_floor_no_emoji_icons():
+    for rel in FLOOR_FILES:
+        text = (ROOT / rel).read_text(encoding="utf-8")
+        found = EMOJI_RE.findall(text)
+        assert not found, f"emoji icons are banned in {rel}: {found[:6]}"
+
+
+def test_floor_job_first_layout(html):
+    """The checker's job (input + primary action) leads the page; meta comes last."""
+    check_pos = html.index('id="panel-check"')
+    for meta_id in ('id="model-status"', 'id="connection-status"'):
+        pos = html.find(meta_id)
+        if pos != -1:
+            assert pos > check_pos, f"{meta_id} must follow the check panel (job-first layout)"
+    assert html.count('class="btn primary"') <= 3, "at most one primary action per panel"
+
+
+def test_floor_meter_labels_are_short_and_dedicated(html):
+    """Meter edge labels reuse verdict sentences at 10.5px until this fix;
+    they now carry their own short keys so they cannot collide at 360px."""
+    assert 'data-i18n="meter.safe"' in html and 'data-i18n="meter.scam"' in html
+    assert 'data-i18n="meter.suspicious"' in html
+    for key in ("meter.safe", "meter.suspicious", "meter.scam"):
+        assert f'"{key}"' in (ROOT / "api" / "web" / "i18n.js").read_text(encoding="utf-8")
+
+
+def test_floor_hallmark_stamp(css):
+    first = css.split("\n", 1)[0]
+    assert first.startswith("/* Hallmark:"), "first CSS line must carry the material stamp"
+
+
+def test_every_font_declared_in_css_is_served_by_the_api():
+    css = _styles()
+    api_main = (ROOT / "api" / "main.py").read_text(encoding="utf-8")
+    fonts = re.findall(r'url\("/static/([^"]+\.woff2)"\)', css)
+    assert fonts, "expected self-hosted @font-face declarations"
+    for font in fonts:
+        assert f'"{font}"' in api_main, f"{font} is used by styles.css but missing from _STATIC_ASSETS"
 
 
 def test_mobile_batch_cards_use_data_labels(css, js):

@@ -42,7 +42,7 @@ busyCheckButton.setAttribute('aria-busy', 'true');
 const storedValues = new Map();
 const requests = [];
 let copiedClipboard = '';
-const context = vm.createContext({ console, AbortController, setTimeout, clearTimeout, tabs, panels, busyCheckButton, requests,
+const context = vm.createContext({ console, AbortController, setTimeout, clearTimeout, setInterval: () => 0, clearInterval() {}, tabs, panels, busyCheckButton, requests,
   navigator: { clipboard: { async writeText(value) { copiedClipboard = value; } } },
   localStorage: { getItem: key => storedValues.get(key) || null,
     setItem(key, value) { storedValues.set(key, String(value)); }, removeItem: key => storedValues.delete(key) },
@@ -61,7 +61,7 @@ const context = vm.createContext({ console, AbortController, setTimeout, clearTi
     addEventListener() {}, createElement: tagName => element(tagName), createTextNode: text => ({ textContent: text }) } });
 const webDir = path.join(__dirname, '../api/web');
 context.window.localStorage = context.localStorage;
-for (const moduleName of ['demo-examples.js', 'api-client.js', 'i18n.js', 'privacy-preview.js', 'history-store.js', 'connection-status.js', 'result-format.js']) {
+for (const moduleName of ['demo-examples.js', 'api-client.js', 'i18n.js', 'privacy-preview.js', 'history-store.js', 'connection-status.js', 'result-format.js', 'shell-updates.js']) {
   const moduleSource = fs.readFileSync(path.join(webDir, moduleName), 'utf8').replace(/^export /gm, '');
   vm.runInContext(moduleSource, context, { filename: moduleName });
 }
@@ -311,14 +311,14 @@ run('lang = "en"');
   run('lang = "en"; currentTheme = "light"; toggleTheme()');
   assert.equal(run('currentTheme'), 'dark');
   assert.equal(run('document.documentElement.getAttribute("data-theme")'), 'dark');
-  assert.equal(run('localStorage.getItem(THEME_KEY)'), 'dark', 'dark preference should persist');
-  assert.equal(run('$("btn-theme").textContent'), '☀️');
+  assert.equal(run('localStorage.getItem(THEME_KEY)'), 'dark', 'dark preference should persist (theme button shows the mode label, no emoji)');
+  assert.equal(run('$("btn-theme").textContent'), 'Light');
   assert.equal(run('$("btn-theme").getAttribute("aria-label")'), 'Switch to light mode');
   run('toggleTheme()');
   assert.equal(run('currentTheme'), 'light');
   assert.equal(run('document.documentElement.getAttribute("data-theme")'), 'light');
   assert.equal(run('localStorage.getItem(THEME_KEY)'), 'light', 'light preference should persist');
-  assert.equal(run('$("btn-theme").textContent'), '🌙');
+  assert.equal(run('$("btn-theme").textContent'), 'Dark');
   assert.equal(run('$("btn-theme").getAttribute("aria-label")'), 'Switch to dark mode');
   storedValues.set('smsd_theme_v1', 'auto');
   assert.equal(run('readTheme()'), 'light', 'legacy auto setting should resolve to the two-mode default');

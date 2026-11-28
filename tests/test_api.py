@@ -1095,6 +1095,13 @@ def test_strict_redis_readiness_detects_runtime_failure_and_recovery(client, mon
 # ---------------------------------------------------------------------------
 # CORS defaults
 # ---------------------------------------------------------------------------
+def test_legacy_rate_limit_wrappers():
+    """The legacy global-limit wrappers reset and check limiter state."""
+    api_main._reset_rate_limits()
+    verdict, retry_after = api_main._check_rate_limit("127.0.0.1")
+    assert isinstance(verdict, bool) and retry_after >= 0
+
+
 def test_cors_defaults_are_not_wildcard():
     assert "*" not in api_main.CORS_ORIGINS
     assert "http://127.0.0.1:8000" in api_main.CORS_ORIGINS

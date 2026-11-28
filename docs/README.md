@@ -22,6 +22,10 @@ evidence status, and API examples; this directory covers the
 | [OPERATIONAL_AND_ACCESSIBILITY_REVIEW.md](OPERATIONAL_AND_ACCESSIBILITY_REVIEW.md) | Production resilience, safe failure handling, security review, and manual accessibility checklist. |
 | [PH_FIELD_EVALUATION_READINESS.md](PH_FIELD_EVALUATION_READINESS.md) | Preregistered methodology and consent-first go/no-go procedure for future Philippine field evaluation; no field result. |
 | [IMPROVEMENT_EXECUTION.md](IMPROVEMENT_EXECUTION.md) | Current baseline reproduction, proposed provisional release criteria, collection plan, UX changes, and remaining pilot work. |
+| [ROADMAP.md](ROADMAP.md) | Long-term improvement tracks (T0–T5), sequencing, owner-decision register, and progress log. |
+| [OWNER_DECISIONS.md](OWNER_DECISIONS.md) | The owner-only decision register (D1–D6): what must be approved, where each decision is defined, and current status. |
+| [UI_UX_DESIGN_PLAN.md](UI_UX_DESIGN_PLAN.md) | Hallmark-method design plan: floor audit of the current UI, the chosen Editorial material, phased de-slop work, and new regression gates. |
+| [history/README.md](history/README.md) | Archived, already-executed plan documents; provenance only, do not re-execute. |
 
 ## Scope of current evidence
 

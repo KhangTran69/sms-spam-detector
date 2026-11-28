@@ -32,7 +32,7 @@ BENCHMARK_DIR ?= data/processed/benchmark-run
 OPERATING_FPR ?= 0.05
 DATASET ?= ph-spam-marketing-sms
 
-.PHONY: help install dev-install package-install redis-install test lint format typecheck check-headlines train evaluate datasets eval split-consented rehearse-consented export-donations benchmark benchmark-perf demo serve macos-install macos-status macos-stop macos-restart macos-uninstall docker-build docker-run clean
+.PHONY: help install dev-install package-install redis-install test lint format typecheck doctor check-headlines train evaluate datasets eval split-consented rehearse-consented export-donations benchmark benchmark-perf demo serve macos-install macos-status macos-stop macos-restart macos-uninstall docker-build docker-run clean
 
 help:
 	@sed -n '1,25p' Makefile
@@ -61,6 +61,9 @@ format:
 
 typecheck:
 	$(PYTHON) -m mypy src api
+
+doctor:
+	$(PYTHON) scripts/doctor.py
 
 train:
 	$(PYTHON) -m src.train

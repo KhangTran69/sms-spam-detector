@@ -153,6 +153,13 @@ final decision. Follow the practical workflow in
 [`HUMAN_REVIEW.md`](HUMAN_REVIEW.md). Do not recruit or contact participants as
 part of repository development.
 
+**Dated, expiring exception (owner-ratified 2026-11-28):** until a third
+independent reviewer is named, the project owner may serve as the second
+first-pass reviewer alongside one recruited independent reviewer and adjudicate
+disagreements; rows adjudicated under this exception are recorded as
+owner-adjudicated, and the exception expires when a third reviewer is
+onboarded.
+
 ## 3. Local validation and review queue
 
 Start with the blank template in an encrypted workspace outside Git. Use an

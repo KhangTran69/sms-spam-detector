@@ -38,6 +38,18 @@ real-holdout promotion gate in the [model card](docs/MODEL_CARD.md).
 
 ## Evaluation
 
+The canonical artifact is `spam_detector_v1-2026-11-28` (trained
+2026-11-28T08:09:43+00:00, decision threshold 0.50; sidecar
+`models/spam_detector_v1.metadata.json`, which is authoritative for that exact
+artifact). Internal-split diagnostics at the served threshold, from that
+sidecar — they describe only this data and split and are **not** real-world
+Philippine accuracy (see the [model card](docs/MODEL_CARD.md#4-evaluation-and-the-synthetic-only-caveat)):
+
+| Internal split | Spam precision | Spam recall | FP / FN | Support |
+|---|---:|---:|---:|---:|
+| Internal test (group-isolated) | 94.78% (Wilson 95% interval: 89.61%–97.45%) | 96.95% (Wilson 95% interval: 92.41%–98.81%) | 7 / 4 | 810 (131 spam, 679 ham) |
+| Synthetic PH holdout (synthetic-only check) | 96.90% (Wilson 95% interval: 92.30%–98.79%) | 89.29% (Wilson 95% interval: 83.07%–93.40%) | 4 / 15 | 264 (140 spam, 124 ham) |
+
 The latest [clean-main UCI and synthetic report](docs/benchmarks/clean-main-f756098-20261121.json)
 reproduces `main` at commit `f75609881dd518b8f9c34c534f103b42c05b1d3d`. It
 separates public English results from synthetic Philippine fixture checks;
@@ -77,7 +89,11 @@ curl -X POST http://127.0.0.1:8000/predict -H 'Content-Type: application/json' \
 
 ## Web app and privacy
 
-The no-build UI supports single-message, batch, and comparison checks. Privacy
+The no-build UI supports single-message, batch, and comparison checks. Its
+design language is the Hallmark-method **Editorial material**
+([docs/UI_UX_DESIGN_PLAN.md](docs/UI_UX_DESIGN_PLAN.md)): self-hosted OFL
+fonts, shared tokens (`tokens.css`), and non-waivable floor tests that gate
+every UI change in CI. Privacy
 Preview runs in the browser; history is opt-in and browser-local. Prediction
 requests are processed in memory and are not logged, persisted, or cached by the
 app. Full details about comparison, masking, the safety checklist, history, and

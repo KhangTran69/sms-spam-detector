@@ -1,0 +1,80 @@
+/* Editorial tokens — single source for the detector UI and the donation page.
+   Extracted from styles.css so both pages share one material. Two explicit
+   dials (light default, dark via [data-theme] / manual toggle); the Hallmark
+   stamp and component styles live in styles.css. */
+:root {
+  color-scheme: light;
+  --bg: #f7f5f0;
+  --card: #f7f5f0;
+  --surface: #eeebe4;
+  --surface-2: #e5e1d9;
+  --ink: #0c0d12;
+  --ink-2: #2a2b31;
+  --muted: #56524b;
+  --line: #d0cdc7;
+  --rule-2: #8f8c85;
+  --primary: #007136;
+  --primary-dark: #005c24;
+  --on-primary: #faf8f5;
+  --focus: #007e3f;
+  --red: #a03f3c;
+  --red-bg: #f5e3e1;
+  --red-ink: #6f2120;
+  --red-line: #dba9a4;
+  --amber: #9d6300;
+  --amber-bg: #f4ead5;
+  --amber-ink: #663900;
+  --amber-line: #d6b98a;
+  --green: #10703a;
+  --green-bg: #dcede0;
+  --green-ink: #00481e;
+  --green-line: #9bc3a5;
+  --chip-bg: #e5e1d9;
+  --sig-url: #1f6f3d;
+  --sig-phone: #4c4f86;
+  --sig-money: #875814;
+  --sig-urgency: #9c433f;
+  --sig-brand: #5c4a7b;
+  --rule-heavy: 4px;
+  --radius: 0px;
+  --radius-small: 0px;
+  --font-display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Source Serif 4", ui-serif, Georgia, serif;
+  --shadow: none;
+}
+
+/* Manual dark choice: one derived dial of the same warm material. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f0d00;
+  --card: #0f0d00;
+  --surface: #181610;
+  --surface-2: #201c16;
+  --ink: #edebe5;
+  --ink-2: #cac7c0;
+  --muted: #96918a;
+  --line: #33302a;
+  --rule-2: #56524b;
+  --primary: #6fc087;
+  --primary-dark: #86d29b;
+  --on-primary: #0f0d00;
+  --focus: #86d29b;
+  --red: #e27e76;
+  --red-bg: #2c1a18;
+  --red-ink: #f7b4ad;
+  --red-line: #643a37;
+  --amber: #dba15c;
+  --amber-bg: #282014;
+  --amber-ink: #edcc95;
+  --amber-line: #5e4925;
+  --green: #73bf88;
+  --green-bg: #162319;
+  --green-ink: #a7ddb4;
+  --green-line: #2d5137;
+  --chip-bg: #201c16;
+  --sig-url: #79bd8c;
+  --sig-phone: #a2a7d7;
+  --sig-money: #d3a46e;
+  --sig-urgency: #e18881;
+  --sig-brand: #ab9bcb;
+}

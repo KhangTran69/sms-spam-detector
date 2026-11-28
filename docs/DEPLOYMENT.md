@@ -513,7 +513,9 @@ git-ignored. Do not add TLS keys, registry tokens, or API keys to the image,
 compose file, or CI. CI uses the default `GITHUB_TOKEN` with `contents: read`
 only and does not deploy.
 
-**Rollback to a previous artifact.** Because the artifact is mounted, rollback
+**Rollback to a previous artifact.** The v2.0.0 immutable copies live in
+   `models/releases/v2.0.0/` on the operator disk (drill baseline: 2026-11-28).
+ Because the artifact is mounted, rollback
 does not require rebuilding the image:
 
 1. Keep previous bundles (and their `.metadata.json` sidecars) under versioned
@@ -526,6 +528,21 @@ does not require rebuilding the image:
 4. To roll back the code as well, redeploy the previous image tag/digest and the
    matching artifact; never pair mismatched schema versions — `/ready` will
    fail if the artifact is incompatible.
+
+**Rehearsed 2026-11-28:** a timed local drill against the attested `v2.0.0`
+release re-pointed `SMSD_MODEL_PATH` to the previous known-good
+`demo_synthetic` artifact and back to the canonical
+`spam_detector_v1-2026-11-28` artifact, restarting and verifying `/ready` and
+`/model-info` in each direction (3.250 s and 2.801 s; 6.279 s for the whole
+drill). Commands and verified versions:
+[benchmarks/release-drill-20261128.md](benchmarks/release-drill-20261128.md).
+
+**Client shells follow the deploy automatically.** Long-lived tabs discover a
+new shell generation through the service-worker update banner
+(`api/web/shell-updates.js`); a hidden, idle tab reloads itself once per
+generation, and visible tabs show a reload button. After a rollback the same
+mechanism returns clients to the previous shell — users never need a hard
+refresh, and no in-flight analysis is interrupted.
 
 **Browser history privacy.** The UI may store the last few checks in
 `localStorage` only when the user opts in; nothing is stored server-side and the

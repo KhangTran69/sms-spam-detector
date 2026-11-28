@@ -1,8 +1,8 @@
 /* Shared score and threshold interpretation for single, batch, history, and compare views. */
 const BAND_VIEW = Object.freeze({
-  likely_scam: { css: "spam", icon: "🚨", key: "band.likely_scam" },
-  suspicious: { css: "suspicious", icon: "⚠️", key: "band.suspicious" },
-  looks_safe: { css: "safe", icon: "✅", key: "band.looks_safe" },
+  likely_scam: { css: "spam", key: "band.likely_scam" },
+  suspicious: { css: "suspicious", key: "band.suspicious" },
+  looks_safe: { css: "safe", key: "band.looks_safe" },
 });
 
 export function normalizeModelInfo(info, validFraction) {
@@ -59,7 +59,7 @@ export function createResultFormatting({ translate, validFraction, getModelInfo,
   }
 
   function bandView(band) {
-    return BAND_VIEW[band] || { css: "unknown", icon: "ℹ️", key: "band.unavailable" };
+    return BAND_VIEW[band] || { css: "unknown", key: "band.unavailable" };
   }
 
   function isKnownBand(band) {

@@ -13,6 +13,7 @@ metrics, which change whenever the artifact is retrained.
 from __future__ import annotations
 
 import fnmatch
+import json
 import re
 import tomllib
 from pathlib import Path
@@ -238,7 +239,7 @@ def test_pyproject_configures_pytest_ruff_and_mypy() -> None:
 
     pytest_options = config["tool"]["pytest"]["ini_options"]
     assert pytest_options["testpaths"] == ["tests"]
-    assert pytest_options["addopts"] == "-ra --cov=src --cov=api --cov-report=term-missing --cov-fail-under=78"
+    assert pytest_options["addopts"] == "-ra --cov=src --cov=api --cov-report=term-missing --cov-fail-under=82"
 
     ruff = config["tool"]["ruff"]
     assert ruff["target-version"] == "py311"
@@ -585,3 +586,51 @@ def test_field_evaluation_readiness_is_not_misrepresented_as_results() -> None:
     index = _text("docs/README.md")
     assert "PH_FIELD_EVALUATION_READINESS.md" in index
     assert "OPERATIONAL_AND_ACCESSIBILITY_REVIEW.md" in index
+
+
+def test_owner_decisions_record_ratification() -> None:
+    text = (ROOT / "docs" / "OWNER_DECISIONS.md").read_text(encoding="utf-8")
+    assert text.count("Decided 2026-11-28") == 6
+    assert text.count("pending qualified-reviewer countersign") == 2
+    assert text.count("Pending") == 0, "no decision row may remain Pending"
+
+
+def test_evaluation_plan_template_prefills_registration_fields() -> None:
+    template = json.loads((ROOT / "docs" / "templates" / "consented-evaluation-plan.json").read_text(encoding="utf-8"))
+    widths = template["maximum_cluster_interval_width"]
+    assert widths == {
+        "precision": 0.10,
+        "recall": 0.15,
+        "f1": 0.12,
+        "false_positive_rate": 0.10,
+        "false_negative_rate": 0.15,
+    }
+    assert template["minimum_campaign_groups"] == 12
+    assert template["minimum_coverage"]["language"] == {"en": 100, "tl": 100, "tl-en": 100}
+    assert template["minimum_coverage"]["category"] == {
+        "otp": 150,
+        "bank_alert": 150,
+        "delivery": 150,
+        "spam_top3": 300,
+    }
+    assert template["registered_at"] is None, "registration happens at sealed-test setup, not before"
+
+
+def test_tagalog_sms_attempt_is_recorded() -> None:
+    record = (ROOT / "docs" / "benchmarks" / "tagalog-sms-attempt-20261128.md").read_text(encoding="utf-8")
+    assert "make datasets DATASET=tagalog-sms" in record
+    assert "2026-11-28" in record
+    assert "Kaggle credentials are required" in record or "normalized" in record.lower()
+    inventory = (ROOT / "docs" / "DATASET_INVENTORY.md").read_text(encoding="utf-8")
+    assert "download attempt recorded 2026-11-28" in inventory
+
+
+def test_human_task_kits_exist_and_are_ready_to_run() -> None:
+    script = (ROOT / "docs" / "templates" / "comprehension-session-script.md").read_text(encoding="utf-8")
+    assert script.count("| ") >= 12, "fixture table with 12 rows"
+    assert "low score" in script and "guarantee" in script, "guarantee probe required"
+    worksheet = (ROOT / "docs" / "templates" / "labeling-worksheet.md").read_text(encoding="utf-8")
+    for column in ("record_id", "labeler_1_label", "labeler_2_label", "adjudicated_label", "adjudicator"):
+        assert column in worksheet
+    draft = (ROOT / "docs" / "templates" / "pilot-recruitment-draft.md").read_text(encoding="utf-8")
+    assert "2026-11-01-v4" in draft and "withdraw" in draft

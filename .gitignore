@@ -41,3 +41,6 @@ benchmarks/*
 !data/raw/ph_supplement_4.csv
 !data/raw/ph_supplement_5.csv
 !data/raw/ph_holdout.csv
+
+# Immutable release copies (operator disk convention, RETRAINING.md §4)
+models/releases/**

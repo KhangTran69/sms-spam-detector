@@ -74,7 +74,7 @@ ambiguous or low-confidence data as unresolved and disclose exclusions.
    holdout. Do not tune on test results, rename an internal split as an
    external holdout or substitute UCI/synthetic performance for field evidence.
 
-## Acceptance gates: owner must preregister numerical thresholds
+## Acceptance gates: owner-preregistered numerical thresholds (ratified 2026-11-28)
 
 The following fields are **mandatory decisions, not preapproved values**.
 The owner and qualified reviewer must specify the exact numerical criterion,
@@ -93,6 +93,8 @@ interval type, and action if it fails *before* the sealed evaluation.
 | Uncertainty | Maximum cluster interval width for precision, recall, F1, FPR and FNR in `templates/consented-evaluation-plan.json` |
 | Operational safety | No raw-content leakage, acceptable p95 latency on named hardware, recovery and rollback demonstrated, critical-category regressions reviewed |
 | Comprehension | Qualified human review finds no material false-safety interpretation or blocking keyboard/screen-reader barrier |
+
+Ratified 2026-11-28, see [OWNER_DECISIONS.md](OWNER_DECISIONS.md); countersign pending.
 
 A number-filled plan must be justified and signed. Do **not** invent a universal
 sample count or configure the final thresholds using the sealed test. An

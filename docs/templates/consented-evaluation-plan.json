@@ -12,19 +12,19 @@
   "split_method": "chronological_campaign_holdout",
   "campaign_overlap_checked": false,
   "test_split_sealed": false,
-  "minimum_campaign_groups": null,
+  "minimum_campaign_groups": 12,
   "coverage_rationale": "",
   "uncertainty_rationale": "",
   "minimum_coverage": {
-    "language": {},
-    "category": {}
+    "language": {"en": 100, "tl": 100, "tl-en": 100},
+    "category": {"otp": 150, "bank_alert": 150, "delivery": 150, "spam_top3": 300}
   },
   "maximum_cluster_interval_width": {
-    "precision": null,
-    "recall": null,
-    "f1": null,
-    "false_positive_rate": null,
-    "false_negative_rate": null
+    "precision": 0.1,
+    "recall": 0.15,
+    "f1": 0.12,
+    "false_positive_rate": 0.1,
+    "false_negative_rate": 0.15
   },
   "performance_rationale": "",
   "minimum_valid_cluster_fraction": null,
@@ -67,6 +67,5 @@
       "minimum_agreement": null,
       "minimum_kappa": null,
       "rationale": ""
-    }
-  }
+    }  }
 }
