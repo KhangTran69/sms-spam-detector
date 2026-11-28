@@ -120,9 +120,15 @@ capture working-tree status, so a clean-tree reproduction cannot be claimed.
 The project supports downloading and evaluating the licensed
 [PH Spam + Marketing SMS corpus](https://www.kaggle.com/datasets/scottleechua/ph-spam-marketing-sms-w-timestamps)
 and [Tagalog-SMS](https://www.kaggle.com/datasets/onzero0/tagalog-sms)
-locally. Tagalog-SMS has not been fetched or evaluated; its normalizer removes
-the sender field, and raw local downloads must still be treated as sensitive.
-Either inbox can support conclusions only about that particular corpus, not
+locally. Tagalog-SMS was fetched and diagnosed on 2026-11-28 (see the
+real-corpus diagnostic below); its normalizer removes the sender field, and
+raw local downloads must still be treated as sensitive. The
+bwandowando Philippine Spam/Scam corpus is **blocked**: its archive contains
+real personal data beyond SMS text (partially-masked sender numbers,
+phone-number hashes, timestamps, at least one apparently-unmasked sender), so
+no normalization, diagnostic, or cross-corpus evaluation was run — see the
+[stop report](benchmarks/bwandowando-stop-report-20261128.md). Either
+permitted inbox can support conclusions only about that particular corpus, not
 representative Philippine performance. Other submitted resources remain out of
 scope or blocked due to data-task mismatch or unresolved reuse terms. See
 [evaluation.md](evaluation.md) and the
@@ -163,6 +169,54 @@ The base corpus had 415 exact or normalized duplicate messages removed before
 splitting (recorded in the sidecar warnings); the dataset was 5,672 rows
 (ham 4,754, spam 918) across 5,322 groups, including the 513 tracked synthetic
 supplement rows.
+
+### v2.1.0 candidate gates — NOT met (2026-11-28), no release
+
+The transfer-experiment recipe (real Tagalog-SMS training supplement) was
+reproduced fingerprint-exactly and trained into a candidate artifact
+(`spam_detector_v1-2026-11-28-v2.1.0-candidate`, decision threshold 0.50 from
+validation data only). Both the attested v2.0.0 artifact and this candidate
+were scored on the same three frozen evaluation sets. The preregistered
+critical-category gate set — each critical legitimate category at false-positive
+rate ≤ 5% with Wilson 95% upper bound ≤ 8% on held-out real data — **was not
+met**, so no version bump and no release were made:
+
+| Gate (candidate, real held-out data) | Support | FPR | Wilson 95% upper | Verdict |
+|---|---:|---:|---:|---|
+| OTP (Tagalog held-out groups) | 57 ham | 7.02% | 16.7% | not_met (incumbent: 19.3%) |
+| bank_alert (any real set) | 0 rows | — | — | insufficient_evidence |
+| delivery (any real set) | 0 rows | — | — | insufficient_evidence |
+
+On the candidate's own domain the improvement is large and replicated
+(held-out precision 0.890 vs 0.546; FPR 4.4% vs 21.9%; identical confusion
+counts to the recorded transfer experiment). On a different single-inbox
+corpus (PH-inbox, 1,599 spam / 65 ham) transfer is only partial: the candidate
+still misses 42.9% of that corpus's spam. On the synthetic-only holdout the
+candidate false-flags less (1 vs 4) but misses more scam templates (25 vs 15
+FN; bank_phishing FN 13/24 vs 0) — a flagged regression for any future
+promotion attempt. These numbers describe only these data and sets; they are
+not real-world Philippine accuracy. Full per-category numbers, the power
+calculation, and the pilot's quantified recruitment targets (≈200–320 rows per
+critical category, after model-side improvement) are in the
+[gates-not-met record](benchmarks/v2-1-0-gates-not-met-20261128.md) and its
+[machine-readable report](benchmarks/v2-1-0-gates-20261128.json).
+
+### Recalibration on real data (2026-11-28)
+
+In a group-isolated experiment on the CC0 Tagalog corpus, post-hoc calibration
+of the incumbent (Platt / isotonic fitted on 2,380 rows) reduced held-out ECE
+only 0.287 → 0.082 (Brier 0.304 → 0.198) — better, but still above the
+registered ≤ 0.05 bar, and the calibrated output collapses into three score
+bins. The candidate's raw held-out ECE is 0.031 (Brier 0.038) on its 372 truly
+held-out rows, but its largest populated bin holds 3 samples, far below the
+registered ≥ 30-per-bin support clause. **Both clauses must hold to present
+percentages as calibrated; neither artifact meets them, so the user-facing
+wording stays "uncalibrated model score."** Worst-calibrated/worst-recall
+categories (incumbent, held-out): legitimate notifications (ECE 0.500, FPR
+47.9%) and the generic spam category (ECE 0.323, recall 64.2%). Candidate
+per-category numbers are in the
+[recalibration record](benchmarks/v2-1-0-calibration-experiment-20261128.md)
+and its [machine-readable report](benchmarks/v2-1-0-calibration-experiment-20261128.json).
 
 ### Metrics source
 

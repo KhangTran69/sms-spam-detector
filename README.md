@@ -67,6 +67,27 @@ run and its near-duplicate audit are documented in the
 [benchmark runbook](docs/BENCHMARKING.md). That report is a pinned historical
 snapshot, not a claim about the current commit.
 
+**Real-corpus evidence status (2026-11-28):** the shipped model's real-data
+gap is now measured on three fronts, all message-free records. (1) The
+v2.1.0-candidate gate evaluation scored the attested artifact and a
+real-data-trained candidate on the same frozen sets — the preregistered
+critical-category gates were **not met** (OTP false-positive rate 7.0% on
+57 held-out legitimate OTPs, Wilson 95% upper 16.7%; bank/delivery categories
+have zero real rows), so **no release was made**; the record doubles as the
+pilot's quantified recruitment target
+([gates-not-met record](docs/benchmarks/v2-1-0-gates-not-met-20261128.md),
+[report JSON](docs/benchmarks/v2-1-0-gates-20261128.json)). (2) A
+group-isolated recalibration experiment shows post-hoc calibration cannot fix
+the incumbent's real-data miscalibration (held-out ECE 0.287 → 0.082, bar
+0.05) and the candidate's held-out ECE (0.031) lacks the registered bin
+support, so the UI keeps its "uncalibrated model score" wording
+([calibration record](docs/benchmarks/v2-1-0-calibration-experiment-20261128.md)).
+(3) The bwandowando public corpus was **not** processed: its archive contains
+real personal data beyond SMS text
+([stop report](docs/benchmarks/bwandowando-stop-report-20261128.md)). None of
+these are accuracy or readiness claims; they are measured misses and blocked
+work, recorded so the next step (the consented pilot) starts from numbers.
+
 ## API
 
 The versioned routes use `/v1/*`; root aliases remain available for
