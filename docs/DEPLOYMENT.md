@@ -523,6 +523,14 @@ does not require rebuilding the image:
    matching artifact; never pair mismatched schema versions — `/ready` will
    fail if the artifact is incompatible.
 
+**Rehearsed 2026-11-28:** a timed local drill against the attested `v2.0.0`
+release re-pointed `SMSD_MODEL_PATH` to the previous known-good
+`demo_synthetic` artifact and back to the canonical
+`spam_detector_v1-2026-11-28` artifact, restarting and verifying `/ready` and
+`/model-info` in each direction (3.250 s and 2.801 s; 6.279 s for the whole
+drill). Commands and verified versions:
+[benchmarks/release-drill-20261128.md](benchmarks/release-drill-20261128.md).
+
 **Client shells follow the deploy automatically.** Long-lived tabs discover a
 new shell generation through the service-worker update banner
 (`api/web/shell-updates.js`); a hidden, idle tab reloads itself once per

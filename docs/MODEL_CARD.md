@@ -2,7 +2,7 @@
 
 Version: see `GET /model-info` (`model_version`, `artifact_schema_version`,
 `trained_at`) and the sidecar for the configured artifact. Owner: repository
-maintainers. Last reviewed: 2026-11-06.
+maintainers. Last reviewed: 2026-11-28.
 
 ## 1. What this model is
 
@@ -139,6 +139,30 @@ false positives on legitimate categories, language/category/message-length
 coverage, and uncertainty. These describe only the input data and split
 recorded in that run. A synthetic holdout is reported separately. Do not use
 it to select features, calibrate the model, or tune a threshold.
+
+### Canonical artifact refresh (2026-11-28)
+
+A fresh canonical retrain (`make train` over the operator-supplied base file
+plus the tracked synthetic supplements) wrote `models/spam_detector_v1.pkl`
+with sidecar `models/spam_detector_v1.metadata.json` (`model_version`
+`spam_detector_v1-2026-11-28`, trained 2026-11-28T08:09:43+00:00, decision
+threshold 0.50, feature version 2.2.0, artifact schema 2, sigmoid-calibrated).
+Both files are git-ignored local artifacts; the exact bundle bytes are
+published as the `v2.0.0` release asset pinned by the sidecar's
+`artifact_sha256` (`daa8a7c192bf9e02a068f5c60b15bec1cba0db6522b4bf68d69b5b9633815daf`).
+Internal-split diagnostics at the served threshold, recorded from that sidecar;
+they describe only this data and split and are not real-world Philippine
+accuracy:
+
+| Internal split | Spam precision | Spam recall | FP / FN | Support |
+|---|---:|---:|---:|---:|
+| Internal test (group-isolated) | 94.78% (Wilson 95% interval: 89.61%–97.45%) | 96.95% (Wilson 95% interval: 92.41%–98.81%) | 7 / 4 | 810 (131 spam, 679 ham) |
+| Synthetic PH holdout (synthetic-only check) | 96.90% (Wilson 95% interval: 92.30%–98.79%) | 89.29% (Wilson 95% interval: 83.07%–93.40%) | 4 / 15 | 264 (140 spam, 124 ham) |
+
+The base corpus had 415 exact or normalized duplicate messages removed before
+splitting (recorded in the sidecar warnings); the dataset was 5,672 rows
+(ham 4,754, spam 918) across 5,322 groups, including the 513 tracked synthetic
+supplement rows.
 
 ### Metrics source
 

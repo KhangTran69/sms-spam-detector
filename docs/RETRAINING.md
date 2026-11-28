@@ -181,6 +181,18 @@ Drift evaluation:
 7. If the incident involved PII exposure, follow the privacy incident path in
    [PRIVACY.md](PRIVACY.md) in addition to the model rollback.
 
+**Rehearsal record (2026-11-28).** A timed local drill against the attested
+`v2.0.0` release measured both rollback directions end to end (re-point
+`SMSD_MODEL_PATH`, restart, verify `/ready` + `/model-info`): 3.250 s to the
+previous known-good `demo_synthetic` artifact (`synthetic-demo`) and 2.801 s
+back to the canonical `spam_detector_v1-2026-11-28` artifact (6.279 s for the
+whole drill including the teardown gap), on port 8001 with the operator's
+8000 server untouched. Commands, timestamps, and verified versions:
+[release-drill-20261128.md](benchmarks/release-drill-20261128.md). One local
+rehearsal is not a production rollback or a performance guarantee; repeat it
+whenever the serving path changes (compose, service manager, or artifact
+layout).
+
 ## 8. Incident response
 
 | Severity | Examples | Immediate action |
