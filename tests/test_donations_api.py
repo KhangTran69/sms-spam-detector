@@ -272,7 +272,9 @@ def test_same_origin_local_browser_can_donate_and_withdraw(tmp_path):
         headers = {"Origin": "http://127.0.0.1:8000", "Sec-Fetch-Site": "same-origin"}
         accepted = client.post("/v1/donate", json=VALID_PAYLOAD, headers=headers)
         assert accepted.status_code == 201
-        withdrawal = client.request("DELETE", "/v1/donate", json={"record_id": accepted.json()["record_id"]}, headers=headers)
+        withdrawal = client.request(
+            "DELETE", "/v1/donate", json={"record_id": accepted.json()["record_id"]}, headers=headers
+        )
         assert withdrawal.status_code == 200
 
 
