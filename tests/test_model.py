@@ -412,6 +412,31 @@ def test_explicit_metadata_path_requires_a_matching_sidecar(trained_artifact, tm
         load_model(model_path)
 
 
+def test_production_requires_verified_model_sidecar(trained_artifact, tmp_path, monkeypatch):
+    _, model_path = trained_artifact
+    bare_path = tmp_path / "production-no-sidecar.pkl"
+    shutil.copyfile(model_path, bare_path)
+    monkeypatch.setenv("SMSD_ENV", "production")
+    monkeypatch.delenv("SMSD_MODEL_METADATA_PATH", raising=False)
+    monkeypatch.delenv("SMSD_MODEL_SHA256", raising=False)
+
+    with pytest.raises(ModelArtifactError, match="sidecar"):
+        load_model(bare_path)
+
+
+def test_production_accepts_an_explicit_artifact_sha256(trained_artifact, tmp_path, monkeypatch):
+    _, model_path = trained_artifact
+    bare_path = tmp_path / "production-explicit-hash.pkl"
+    shutil.copyfile(model_path, bare_path)
+    monkeypatch.setenv("SMSD_ENV", "production")
+    monkeypatch.delenv("SMSD_MODEL_METADATA_PATH", raising=False)
+    monkeypatch.setenv("SMSD_MODEL_SHA256", hashlib.sha256(bare_path.read_bytes()).hexdigest())
+
+    bundle = load_model(bare_path)
+
+    assert bundle.path == bare_path
+
+
 def test_training_without_metadata_removes_stale_sidecar(tmp_path):
     data_path = make_tiny_dataset(tmp_path / "tiny.csv")
     model_path = tmp_path / "model.pkl"
