@@ -249,6 +249,32 @@ def test_missing_plan_is_a_clean_error(tmp_path, capsys):
     assert captured.out == ""
 
 
+def test_plan_missing_minimum_coverage_is_a_clean_error(tmp_path, capsys):
+    csv_path = _write_csv(tmp_path / "below" / "intake.csv", BELOW_ROWS)
+    incomplete = tmp_path / "incomplete-plan.json"
+    incomplete.write_text(json.dumps({"schema_version": 2, "minimum_campaign_groups": 2}), encoding="utf-8")
+
+    exit_code = main([str(csv_path), "--plan", str(incomplete)])
+
+    assert exit_code == 2
+    captured = capsys.readouterr()
+    assert '"status": "error"' in captured.err
+    assert "missing the minimum_coverage object" in captured.err
+    assert captured.out == ""
+    _assert_message_free(captured.err)
+
+
+def test_missing_message_column_skips_duplicate_detection(tmp_path):
+    rows = [{key: value for key, value in row.items() if key != "message"} for row in BELOW_ROWS]
+    csv_path = _write_csv(tmp_path / "no-message" / "intake.csv", rows)
+
+    _exit_code, report, _file_text, _output = _run_with_output(tmp_path, [str(csv_path)])
+
+    assert report["inputs"] == {"file_count": 1, "duplicate_detection_applied": False}
+    assert report["warnings"] == {"duplicate_messages": 0, "unrecognized_label_rows": 0}
+    assert report["totals"] == {"messages": 3, "donors": 2, "campaign_groups": 2}
+
+
 def test_multiple_csvs_are_pooled_with_optional_columns_tolerated(tmp_path):
     first = _write_csv(tmp_path / "batch-one" / "intake.csv", BELOW_ROWS)
     second_rows = [

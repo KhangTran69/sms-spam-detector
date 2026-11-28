@@ -234,7 +234,9 @@ def load_minimums(path: str | Path = DEFAULT_PLAN) -> CoverageMinimums:
         raise ValueError(f"Could not read the coverage minimums plan {Path(path)} ({type(exc).__name__}).") from None
     if not isinstance(payload, dict):
         raise ValueError("The coverage minimums plan must be a JSON object.")
-    coverage = payload.get("minimum_coverage") or {}
+    coverage = payload.get("minimum_coverage")
+    if coverage is None:
+        raise ValueError("The coverage minimums plan is missing the minimum_coverage object.")
     if not isinstance(coverage, dict):
         raise ValueError("The coverage plan's minimum_coverage must be an object.")
     raw_groups = payload.get("minimum_campaign_groups")
@@ -454,7 +456,7 @@ def main(argv: list[str] | None = None) -> int:
         summary = format_summary(report)
         _assert_report_message_free(summary, pooled.forbidden)
         destination = write_report(report, args.output, pooled.forbidden) if args.output else None
-    except ValueError as exc:
+    except (ValueError, OSError) as exc:
         payload = {"status": STATUS_ERROR, "detail": str(exc)}
         print(json.dumps(payload, indent=2, sort_keys=True), file=sys.stderr)
         return 2
