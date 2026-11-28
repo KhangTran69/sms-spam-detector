@@ -438,3 +438,7 @@ their already-scheduled dates (2027-01-15 → 2027-03-31, see the progress log).
   index link regression checks remain in PR #60.
 - No consented collection, sealed-test interaction, model release, or public
   deployment occurred. D5 remains local-only; coverage target remains 85%.
+
+- T3: paired synthetic formatting robustness diagnostic with fixed artifact
+  threshold, aggregate error transitions and regression tests. CI exercises it
+  using the synthetic smoke model; field robustness remains unmeasured.

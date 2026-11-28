@@ -77,6 +77,8 @@ jobs:
             --monitor-baseline-source synthetic_diagnostic
           # The isolated non-root container needs read access to this synthetic fixture.
           chmod 644 models/ci-smoke-baseline.json
+      - name: Exercise paired synthetic formatting robustness diagnostic
+        run: python -m src.robustness_audit --model models/ci-smoke.pkl
       - name: Benchmark inference latency against a budget
         run: |
           python scripts/benchmark_performance.py --model models/ci-smoke.pkl --output-dir benchmarks-ci --iterations 50

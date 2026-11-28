@@ -297,3 +297,15 @@ consented or sealed data is accepted by this command. Never use this output
 as a release gate or as model performance evidence. A full real-corpus run
 requires the existing local approved snapshots; CI exercises fictional data
 only.
+
+## Synthetic formatting robustness diagnostic
+
+Run `python -m src.robustness_audit --model models/ci-smoke.pkl` after training
+or selecting a trusted local fixture artifact. The command reads only the
+tracked synthetic holdout. It pairs each row with predefined formatting changes,
+keeps the stored decision threshold fixed, and reports class counts, aggregate
+FP/FN changes, new and corrected errors, changed rows and prediction flips.
+Artifact and corpus digests bind the report. No SMS text or row-level scores
+are emitted. CI runs this diagnostic on its synthetic smoke model; no error
+rate from this exercise is a real-data acceptance gate or an estimate of field
+performance. Never use its results to retune a frozen test threshold.
