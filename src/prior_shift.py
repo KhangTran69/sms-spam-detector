@@ -52,7 +52,10 @@ def analyze_report(path: Path) -> dict[str, Any]:
     if len(content) > MAX_REPORT_BYTES:
         raise ValueError("Aggregate report exceeds the input size limit.")
     report = json.loads(content)
-    if not isinstance(report, dict) or report.get("record") != "v2.1.0-candidate preregistered gate evaluation on frozen sets":
+    if (
+        not isinstance(report, dict)
+        or report.get("record") != "v2.1.0-candidate preregistered gate evaluation on frozen sets"
+    ):
         raise ValueError("Expected the published v2.1.0 gate diagnostic record.")
     output: dict[str, Any] = {}
     for corpus in PUBLIC_SETS:
