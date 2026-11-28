@@ -270,6 +270,36 @@ block on it.
 
 ## Progress log
 
+### 2026-11-28 — Transfer-gap experiment: adding real training data closes the gap
+
+- Candidate trained on the canonical recipe + 2,738 Tagalog-SMS rows (group-isolated;
+  1 cross-source label conflict excluded - a bare 'Ok' text labeled spam in the corpus,
+  ham in the UCI base; base label kept).
+- On the identical 372 held-out Tagalog rows (out-of-sample for both): incumbent
+  precision 0.546 / recall 0.696 / FPR 0.219 -> candidate precision 0.890 / recall 0.951
+  / FPR 0.044. Critical-category FPs: notifs 43 -> 7, otp 11 -> 4, gov 5 -> 1.
+- Record (aggregates only): docs/benchmarks/tagalog-transfer-experiment-20261128.json.
+  Honest caveats in the record: directional evidence on 372 rows; same-domain training;
+  matched 0.50 threshold; no real-world accuracy claim. The experiment is diagnostic -
+  the attested v2.0.0 release artifact is unchanged (still trained without real data).
+
+### 2026-11-28 — T2.1 executed: Tagalog-SMS fetched, normalized, and diagnosed
+
+- Kaggle credentials installed by the owner (token file outside the repo; never committed).
+- `make datasets DATASET=tagalog-sms`: 3,455 raw rows → 2,739 normalized (715 duplicates excluded;
+  0 blank/redacted). The archive ships one .xlsx workbook — the downloader now converts a
+  one-xlsx archive via a new `datasets` extra (openpyxl) with a focused conversion test.
+- Diagnostic (message-free, committed): `docs/benchmarks/tagalog-sms_spam_detector_v1-2026-11-28.json`.
+  At threshold 0.50: precision 0.348, recall 0.559 — **the transfer gap to real Tagalog traffic is
+  now empirically established**: 669 of 1,439 notifications false-flagged, 91 of 504 OTPs flagged,
+  257 of 585 scam texts missed. ROC-AUC 0.635; Brier 0.346 / ECE 0.307 (badly miscalibrated here).
+- T2 exit criterion met: two public PH corpora now have published message-free diagnostic reports
+  (PH-inbox 2026-11-06; Tagalog-SMS 2026-11-28). License CC0 verified via the Kaggle API.
+- New bwandowando corpus identified: license verified CC BY-NC-SA 4.0 (non-commercial OK for this
+  project's diagnostic; corpus stays local-only). Fetch deferred until the owner requests it.
+- Consequence for T3: model work now has a real-corpus evidence base — the UCI+synthetic pipeline
+  does not transfer as-is; any model improvement must train/validate on real Philippine data.
+
 ### 2026-11-27 — T0 executed
 
 - **T0.1 done.** Local `main` fast-forwarded to `origin/main` at `acec960`

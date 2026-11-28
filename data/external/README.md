@@ -67,3 +67,22 @@ or follow-up, but are not approved additions to the download/evaluation path:
 Recheck these sources before any later use. Do not infer a dataset license from
 a repository's public visibility or from a license attached to a different
 upstream source.
+
+
+## Identified, pending fetch + license verification (2026-11-28)
+
+Two additional public Kaggle corpora were identified by the owner on
+2026-11-28 but are **not fetched, not verified, and not evaluated**:
+
+- **Philippine Spam/Scam SMS** — `kaggle.com/datasets/bwandowando/philippine-spam-sms-messages`
+  (license unverified; a companion EDA notebook exists at
+  `kaggle.com/code/bwandowando/philippine-spam-sms-quick-eda`).
+- Owner-flagged alongside the two corpora above and the already-fetched
+  `scottleechua/ph-spam-marketing-sms-w-timestamps`.
+
+UPDATE 2026-11-28: an API token was installed and both corpora were resolved.
+Tagalog-SMS: fetched, normalized, and diagnosed (see
+`docs/benchmarks/tagalog-sms_spam_detector_v1-2026-11-28.json`).
+Philippine Spam/Scam SMS (bwandowando): license verified **CC BY-NC-SA 4.0** via
+the Kaggle API — still not fetched; a diagnostic on it is available on request
+(non-commercial use with attribution; the corpus stays local-only).

@@ -180,6 +180,43 @@ def test_downloader_refuses_to_overwrite_output(tmp_path):
         download_kaggle_ph(output, "kaggle-user", "kaggle-token")
 
 
+def test_tagalog_downloader_converts_xlsx_archive(tmp_path, monkeypatch):
+    pytest.importorskip("openpyxl")
+    import io as io_module
+
+    import openpyxl
+
+    workbook = openpyxl.Workbook()
+    sheet = workbook.active
+    sheet.title = "Sheet1"
+    sheet.append(("Date", "sender", "text", "category"))
+    sheet.append(("2026-04-01 08:00:00", "BDO", "Your OTP is 123456. Do not share it.", "otp"))
+    sheet.append(("2026-04-02 09:30:00", "GOMO", "Get GOMO FIBER and enjoy speeds like never before.", "ads"))
+    sheet.append(("2026-04-03 10:00:00", "Unknown", "Mag-ingat sa mga SCAM. Maging mapanuri.", "gov"))
+    buffer = io_module.BytesIO()
+    workbook.save(buffer)
+    xlsx_bytes = buffer.getvalue()
+
+    monkeypatch.setattr(dataset_downloader, "ROOT", tmp_path)
+    monkeypatch.setattr("src.import_public_dataset.ROOT", tmp_path)
+    external = tmp_path / "data" / "external"
+    external.mkdir(parents=True)
+    archive = zip_bytes(("tagalog-sms.xlsx", xlsx_bytes))
+    mock_kaggle_opener(monkeypatch, archive)
+    monkeypatch.setenv("KAGGLE_USERNAME", "kaggle-user")
+    monkeypatch.setenv("KAGGLE_KEY", "kaggle-token")
+    output = external / "tagalog-sms-raw.csv"
+
+    main(["--dataset", "tagalog-sms", "--output", str(output)])
+
+    raw_text = output.read_text(encoding="utf-8")
+    assert raw_text.splitlines()[0] == "Date,sender,text,category"
+    normalized_text = (external / "tagalog-sms.csv").read_text(encoding="utf-8")
+    assert "Example sender" not in normalized_text, "sender metadata is dropped"
+    assert "Your OTP is 123456" in normalized_text and "GOMO FIBER" in normalized_text
+    assert normalized_text.count("\nspam,") == 1 and normalized_text.count("\nham,") == 2
+
+
 def test_tagalog_downloader_records_cc0_source_metadata(tmp_path, monkeypatch):
     content = b"Date,Sender,Text,Category\n2026-01-01,Example sender,Synthetic spam,spam\n"
     archive = zip_bytes(("tagalog-sms.csv", content))

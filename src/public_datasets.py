@@ -285,7 +285,7 @@ def import_kaggle_tagalog_dataset(path: str | Path, output_path: str | Path) -> 
     )
 
 
-def _safe_csv_member(archive: zipfile.ZipFile) -> zipfile.ZipInfo:
+def _safe_data_member(archive: zipfile.ZipFile) -> tuple[zipfile.ZipInfo, str]:
     members = archive.infolist()
     for member in members:
         normalized_name = member.filename.replace("\\", "/")
@@ -294,10 +294,41 @@ def _safe_csv_member(archive: zipfile.ZipFile) -> zipfile.ZipInfo:
             raise ValueError("Kaggle archive contains an unsafe archive path.")
         if member.file_size < 0 or member.file_size > MAX_CSV_BYTES:
             raise ValueError("Kaggle archive CSV exceeds the supported size limit.")
-    csv_members = [member for member in members if PurePosixPath(member.filename).suffix.lower() == ".csv"]
-    if len(csv_members) != 1:
+    data_members = [
+        member
+        for member in members
+        if PurePosixPath(member.filename.replace("\\", "/")).suffix.lower() in {".csv", ".xlsx"}
+    ]
+    if len(data_members) != 1:
         raise ValueError("Kaggle archive must contain exactly one CSV dataset file.")
-    return csv_members[0]
+    member = data_members[0]
+    suffix = PurePosixPath(member.filename.replace("\\", "/")).suffix.lower()
+    return member, suffix
+
+
+def _xlsx_member_csv_bytes(archive: zipfile.ZipFile, member: zipfile.ZipInfo) -> bytes:
+    """Convert a one-sheet Excel member into the expected text/category CSV.
+
+    The Tagalog-SMS export ships as an .xlsx workbook with
+    Date/sender/text/category columns; the shared normalizer consumes the
+    text/category pair and deliberately drops the sender column.
+    """
+    try:
+        import openpyxl
+    except ImportError as exc:  # pragma: no cover - depends on the datasets extra
+        raise ValueError(
+            "The Kaggle archive ships an Excel workbook; install the datasets extra: pip install -e '.[datasets]'"
+        ) from exc
+    workbook = openpyxl.load_workbook(io.BytesIO(archive.read(member)), read_only=True, data_only=True)
+    sheet = workbook.worksheets[0]
+    rows = list(sheet.iter_rows(values_only=True))
+    if not rows:
+        raise ValueError("Kaggle Excel workbook has no header row.")
+    buffer = io.StringIO()
+    writer = csv.writer(buffer, lineterminator="\n")
+    for row in rows:
+        writer.writerow(["" if value is None else str(value) for value in row])
+    return buffer.getvalue().encode("utf-8")
 
 
 def _same_origin(left: str, right: str) -> bool:
@@ -380,8 +411,11 @@ def _download_kaggle_csv(
         raise ValueError("Kaggle archive exceeds the supported download size limit.")
     try:
         with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
-            member = _safe_csv_member(archive)
-            csv_bytes = archive.read(member)
+            member, member_suffix = _safe_data_member(archive)
+            if member_suffix == ".xlsx":
+                csv_bytes = _xlsx_member_csv_bytes(archive, member)
+            else:
+                csv_bytes = archive.read(member)
     except (zipfile.BadZipFile, KeyError, OSError):
         raise ValueError("Kaggle returned an invalid dataset archive.") from None
     from src.import_public_dataset import ROOT
