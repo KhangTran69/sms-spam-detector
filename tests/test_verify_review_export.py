@@ -100,3 +100,37 @@ def test_duplicate_or_missing_store_refused_without_creating_database(tmp_path, 
     missing = tmp_path / "missing.sqlite3"
     assert main(["--database", str(missing), "--export", str(export)]) == 2
     assert not missing.exists()
+
+
+def test_reservation_serializes_withdrawal_and_refuses_locked_store(tmp_path):
+    from src.review_reconciliation import current_review_rows
+
+    database = tmp_path / "private.sqlite3"
+    export = tmp_path / "review.csv"
+    receipt = _create(database)
+    export_donations(database, export)
+    with current_review_rows(database, export) as rows:
+        assert receipt in rows
+        with closing(sqlite3.connect(database, timeout=0.05)) as competing:
+            with pytest.raises(sqlite3.OperationalError):
+                competing.execute("BEGIN IMMEDIATE")
+    assert delete_donation(database, receipt)
+    with pytest.raises(ValueError, match="no longer eligible"), current_review_rows(database, export):
+        pytest.fail("Withdrawn rows must not be yielded")
+    with closing(sqlite3.connect(database)) as competing:
+        competing.execute("BEGIN IMMEDIATE")
+        with pytest.raises(RuntimeError, match="reservation unavailable"), current_review_rows(database, export):
+            pytest.fail("Locked database must not yield a review reservation")
+        competing.rollback()
+
+
+def test_reservation_releases_on_consumer_failure(tmp_path):
+    from src.review_reconciliation import current_review_rows
+
+    database = tmp_path / "private.sqlite3"
+    export = tmp_path / "review.csv"
+    receipt = _create(database)
+    export_donations(database, export)
+    with pytest.raises(OSError, match="fictional publication failure"), current_review_rows(database, export):
+        raise OSError("fictional publication failure")
+    assert delete_donation(database, receipt)

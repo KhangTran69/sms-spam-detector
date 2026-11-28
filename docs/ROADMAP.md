@@ -509,3 +509,7 @@ Use bounded strict intake parsing for pooled coverage, require legitimate-class 
 ### Guard current donation consumption
 
 Bind ratified-notice worksheet import to the current authoritative store and original export under a short transaction reservation, publish the validated CSV exclusively, and explicitly verify private SQLite journaling/deletion settings. Preserve historical register-only compatibility and document residual revocation and backup obligations.
+
+### Reservation contention and supported test transport
+
+Exercise competing SQLite writers and release of reservations after failed publication. Add the supported current Starlette TestClient transport to dev dependencies and constrained security auditing, retaining old-client compatibility without adding it to production runtime requirements.

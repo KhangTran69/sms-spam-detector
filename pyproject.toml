@@ -29,6 +29,7 @@ dev = [
     "mypy>=1.8,<3",
     "pytest>=7.4,<10",
     "httpx>=0.24,<1",
+    "httpx2>=2.16.2,<3",
     "pytest-cov>=4.1,<8",
 ]
 redis = [
