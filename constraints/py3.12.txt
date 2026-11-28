@@ -87,7 +87,7 @@ pydantic==2.14.1
     # via
     #   philippine-sms-spam-detector (pyproject.toml)
     #   fastapi
-pydantic-core==2.50.5
+pydantic-core==2.50.1
     # via pydantic
 pygments==2.21.0
     # via pytest
