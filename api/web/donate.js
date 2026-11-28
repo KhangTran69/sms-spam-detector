@@ -91,13 +91,32 @@ export function createDonationForm({
   const withdrawalId = documentRef.querySelector("#donation-withdrawal-id");
   const withdrawalButton = documentRef.querySelector("#donation-withdraw");
 
+  // Pending choices and the opaque key live only in this page's memory.
+  let pendingSubmission = null;
+
+  const submissionFields = [message, labelHint, language, consent, authorizedToShare, modelResearchConsent];
+  function setSubmitting(active) {
+    for (const field of submissionFields) field.disabled = active;
+    submitButton.disabled = active;
+    withdrawalButton.disabled = active;
+    withdrawalId.disabled = active;
+  }
+
   function setStatus(text) {
     status.textContent = text;
   }
 
+  function clearPiiFindings() {
+    renderPiiFindings(findings, [], documentRef);
+    message.removeAttribute("aria-invalid");
+    message.setAttribute("aria-describedby", "donation-message-help");
+  }
+
+  message.addEventListener("input", clearPiiFindings);
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    renderPiiFindings(findings, [], documentRef);
+    if (submitButton.disabled || withdrawalButton.disabled) return;
+    clearPiiFindings();
     if (!form.reportValidity()) return;
 
     let payload;
@@ -115,26 +134,56 @@ export function createDonationForm({
       return;
     }
 
+    const body = JSON.stringify(payload);
+    if (pendingSubmission && pendingSubmission.body !== body) {
+      setStatus("The previous submission outcome may be uncertain. Restore the previous choices to retry the same request, or contact the operator before starting another donation.");
+      return;
+    }
+    if (!pendingSubmission) {
+      if (!globalThis.crypto?.randomUUID) {
+        setStatus("A secure submission key is unavailable. Open the local detector at its loopback address using a supported browser.");
+        return;
+      }
+      pendingSubmission = { body, key: globalThis.crypto.randomUUID().replaceAll("-", ""), uncertain: false };
+    }
     withdrawalId.value = "";
-    submitButton.disabled = true;
+    setSubmitting(true);
     setStatus("Submitting once to this local detector service…");
     try {
       const { response, data } = await fetchBounded(fetchImpl, "/donate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...payload, submission_key: pendingSubmission.key }),
         cache: "no-store",
       }, timeoutMs, { parseJson: true });
       const error = data?.error;
       if (!response.ok) {
+        // A later rejection cannot settle an earlier ambiguous attempt.
+        const definitiveRejection = [400, 415, 422].includes(response.status)
+          || error?.code === "notice_version_mismatch";
+        if (definitiveRejection && !pendingSubmission.uncertain) {
+          pendingSubmission = null;
+        } else {
+          pendingSubmission.uncertain = true;
+        }
+        setSubmitting(false);
         if (error?.code === "pii_detected" && Array.isArray(error.details)) {
           renderPiiFindings(findings, error.details, documentRef);
+          message.setAttribute("aria-invalid", "true");
+          message.setAttribute("aria-describedby", "donation-message-help donation-pii-findings");
+          message.focus();
         }
-        setStatus(error?.message || "Could not submit. Review the form and choose Submit again to retry manually.");
+        const failure = error?.message || "Could not submit. Review the form and choose Submit again to retry manually.";
+        setStatus(pendingSubmission?.uncertain
+          ? failure + " The earlier submission outcome may still be uncertain. Keep the same form and check with the operator."
+          : failure);
         return;
       }
       const recordId = typeof data?.record_id === "string" ? data.record_id : null;
-      if (!response.ok || !recordId) throw new Error("The service response did not include a withdrawal ID.");
+      if (!recordId || !/^[a-f0-9]{32}$/.test(recordId)) {
+        throw new Error("The service response did not include a valid withdrawal ID.");
+      }
+      pendingSubmission = null;
       withdrawalId.value = recordId;
       message.value = "";
       consent.checked = false;
@@ -145,21 +194,25 @@ export function createDonationForm({
         : " No model-research consent was given.";
       setStatus(`Received for local review. Stored for up to ${data?.retention_days || 90} days. It is not a verified label.${researchStatus}`);
     } catch (error) {
+      if (pendingSubmission) pendingSubmission.uncertain = true;
       if (error.timeout) {
-        setStatus("The local service timed out. The donation outcome may be uncertain; it was not automatically resent. Check with the operator before submitting again.");
+        setStatus("The local service timed out. The donation outcome may be uncertain; it was not automatically resent. To retry, submit the unchanged form on this page with the same key, or check with the operator.");
       } else {
-        setStatus("Could not confirm whether the donation was stored. It was not automatically resent. Check with the local operator before submitting again.");
+        setStatus("Could not confirm whether the donation was stored. It was not automatically resent. To retry, submit the unchanged form on this page with the same key, or check with the local operator.");
       }
     } finally {
-      submitButton.disabled = false;
+      setSubmitting(false);
     }
   });
 
   withdrawalForm.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (submitButton.disabled || withdrawalButton.disabled) return;
     if (!withdrawalForm.reportValidity()) return;
     const recordId = withdrawalId.value.trim();
     withdrawalButton.disabled = true;
+    withdrawalId.disabled = true;
+    submitButton.disabled = true;
     setStatus("Withdrawing the local donation…");
     try {
       const { response } = await fetchBounded(fetchImpl, "/donate", {
@@ -180,6 +233,8 @@ export function createDonationForm({
       }
     } finally {
       withdrawalButton.disabled = false;
+      withdrawalId.disabled = false;
+      submitButton.disabled = false;
     }
   });
 }

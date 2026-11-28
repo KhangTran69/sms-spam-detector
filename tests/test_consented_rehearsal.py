@@ -13,6 +13,8 @@ def test_synthetic_rehearsal_exercises_the_governed_path_and_cleans_all_inputs()
     assert report["evidence_class"] == "synthetic_rehearsal"
     assert report["intake"]["explicit_consent"] is True
     assert report["intake"]["reserved_example_url_rejected"] is True
+    assert report["intake"]["current_export_matched"] is True
+    assert report["intake"]["withdrawn_export_blocked"] is True
     assert report["review"]["reviewer_count"] == 2
     assert report["review"]["blind"] is True
     assert report["review"]["donor_hints_used_as_labels"] is False

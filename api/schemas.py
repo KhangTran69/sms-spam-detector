@@ -80,7 +80,7 @@ class PredictResponse(BaseModel):
         description="Score for the returned prediction label; use probability_calibrated to interpret it."
     )
     probability_calibrated: bool = Field(
-        description="Whether the spam-versus-ham score is calibrated against the artifact's training labels."
+        description="Whether the score is calibrated against the artifact's training labels AND real-data calibration verification has met the registered bar (held-out ECE <= 0.05 with >= 30 samples per populated bin; see docs/ROADMAP.md) — artifacts trained before 2026-11-28 may report true on the first clause alone."
     )
     flags: list[str]
     decision_threshold: float
@@ -104,7 +104,7 @@ class AnalyzeResponse(BaseModel):
         description="Model score for the spam label; it does not estimate probability of fraud."
     )
     probability_calibrated: bool = Field(
-        description="Whether the spam-versus-ham score is calibrated against the artifact's training labels."
+        description="Whether the score is calibrated against the artifact's training labels AND real-data calibration verification has met the registered bar (held-out ECE <= 0.05 with >= 30 samples per populated bin; see docs/ROADMAP.md) — artifacts trained before 2026-11-28 may report true on the first clause alone."
     )
     probability: float = Field(description="Score for the returned prediction label; retained for compatibility.")
     decision_threshold: float
@@ -164,10 +164,11 @@ class DonationRequest(BaseModel):
     message: MessageText
     label_hint: Literal["ham", "spam"] | None = None
     language: str | None = Field(default=None, min_length=2, max_length=16, pattern=r"^[A-Za-z][A-Za-z0-9_-]*$")
-    consent: bool
-    authorized_to_share: bool
-    model_research_consent: bool = False
+    consent: bool = Field(strict=True)
+    authorized_to_share: bool = Field(strict=True)
+    model_research_consent: bool = Field(default=False, strict=True)
     notice_version: str = Field(..., min_length=1, max_length=64)
+    submission_key: str | None = Field(default=None, min_length=32, max_length=32, pattern=r"^[a-f0-9]{32}$")
 
 
 class DonationWithdrawalRequest(BaseModel):

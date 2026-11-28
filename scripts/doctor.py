@@ -3,25 +3,39 @@
 
 Fast (<60s), read-only checks that catch the drift this project actually
 experiences: a stale checkout, untracked plan files re-appearing, dangling
-model-artifact references, a served model that no metadata sidecar knows, and
-docs that are not linked from the documentation index.
+model-artifact references, a served model that no metadata sidecar knows,
+operations/drift telemetry from the optional local API, and docs that are not
+linked from the documentation index.
 
 Exit codes: 0 = no failures (warnings allowed), 1 = at least one failure.
-Run locally with `make doctor`. It never trains, downloads, or writes.
+Run locally with `make doctor`. It never trains, downloads, or writes. The
+operations checks only read content-free telemetry endpoints and set
+SMSD_DOCTOR_ENDPOINT to override the default local base URL.
 """
 
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
+import urllib.error
 import urllib.request
 from pathlib import Path
+from typing import Any
+from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 OPERATIONAL_MODEL_FILES = (ROOT / "Makefile", ROOT / "docker-compose.yml", ROOT / "Dockerfile")
 DOCS_INDEX = ROOT / "docs" / "README.md"
 LOCAL_API = "http://127.0.0.1:8000/health"
+# Opt-in override for the served-API checks; failure of the service is always
+# a WARN because it is optional, never a FAIL.
+OPERATIONS_API_BASE = os.environ.get("SMSD_DOCTOR_ENDPOINT", "").strip().rstrip("/") or "http://127.0.0.1:8000"
+CANONICAL_MODEL_SIDECAR = ROOT / "models" / "spam_detector_v1.metadata.json"
+# Drift statuses the monitor reports that need no operator attention.
+DRIFT_OK_STATUSES = frozenset({"insufficient_data", "stable"})
+MAX_DOCTOR_RESPONSE_BYTES = 1024 * 1024
 
 FAILURES: list[str] = []
 WARNINGS: list[str] = []
@@ -148,6 +162,159 @@ def check_served_model() -> None:
         )
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Do not forward operator credentials to redirected destinations."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def _fetch_json(url: str) -> Any:
+    parsed = urlsplit(url)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username or parsed.password:
+        raise ValueError("Invalid doctor endpoint.")
+    if parsed.query or parsed.fragment:
+        raise ValueError("Doctor endpoint must not contain a query or fragment.")
+    headers = {"Accept": "application/json"}
+    token = os.environ.get("SMSD_METRICS_TOKEN", "").strip()
+    if token and parsed.path.endswith(("/metrics/operations", "/metrics/distribution")):
+        if parsed.scheme != "https" and parsed.hostname not in {"127.0.0.1", "::1", "localhost"}:
+            raise ValueError("Metrics credentials require HTTPS or a loopback HTTP endpoint.")
+        headers["X-SMSD-Metrics-Token"] = token
+    request = urllib.request.Request(url, headers=headers)
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect())
+    with opener.open(request, timeout=2) as response:
+        content = response.read(MAX_DOCTOR_RESPONSE_BYTES + 1)
+    if len(content) > MAX_DOCTOR_RESPONSE_BYTES:
+        raise ValueError("Doctor response exceeds the JSON size limit.")
+    return json.loads(content.decode("utf-8"))
+
+
+def _expected_sidecar() -> Path:
+    """Sidecar of the artifact the local API is expected to serve.
+
+    ``SMSD_MODEL_PATH`` (the serving override used by docker/rollback drills)
+    wins; otherwise the canonical ``make train`` output slot is expected.
+    """
+    override = os.environ.get("SMSD_MODEL_PATH", "").strip()
+    if not override:
+        return CANONICAL_MODEL_SIDECAR
+    path = Path(override)
+    if not path.is_absolute():
+        path = ROOT / path
+    return path.with_suffix(".metadata.json")
+
+
+def _sidecar_model_version(sidecar: Path) -> str | None:
+    try:
+        payload = json.loads(sidecar.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    value = payload.get("model_version") if isinstance(payload, dict) else None
+    return value if isinstance(value, str) and value else None
+
+
+def _display_path(path: Path) -> str:
+    try:
+        return str(path.relative_to(ROOT))
+    except ValueError:
+        return str(path)
+
+
+def check_operations_baseline() -> None:
+    """Report the served model's content-free operations and drift signals.
+
+    The local API is optional, so every outcome here stays warn_only. All
+    reported values are monitor aggregates (counts, latencies, drift status,
+    score summary) -- never message text or sender data -- and nothing is
+    acted on automatically.
+    """
+    try:
+        operations = _fetch_json(f"{OPERATIONS_API_BASE}/metrics/operations")
+        distribution = _fetch_json(f"{OPERATIONS_API_BASE}/metrics/distribution")
+        model_info = _fetch_json(f"{OPERATIONS_API_BASE}/model-info")
+    except urllib.error.HTTPError as exc:
+        detail = (
+            "metrics unavailable or authorization rejected; check SMSD_METRICS_TOKEN and endpoint configuration"
+            if exc.code in {401, 403, 404}
+            else f"operator endpoint returned HTTP {exc.code}; inspect service health"
+        )
+        check("ops-baseline", False, detail, warn_only=True)
+        return
+    except ValueError:
+        check("ops-baseline", False, "invalid endpoint, unsafe credential transport or JSON response", warn_only=True)
+        return
+    except OSError:
+        check(
+            "ops-baseline",
+            False,
+            "no local API answering at the configured endpoint (optional; start with make serve)",
+            warn_only=True,
+        )
+        return
+
+    snapshot = operations if isinstance(operations, dict) else {}
+    check(
+        "ops-metrics",
+        snapshot.get("request_count") is not None,
+        f"request_count={snapshot.get('request_count')} latency_p50_ms={snapshot.get('latency_p50_ms')} "
+        f"latency_p95_ms={snapshot.get('latency_p95_ms')} (content-free /metrics/operations)",
+        warn_only=True,
+    )
+
+    served = model_info.get("model_version") if isinstance(model_info, dict) else None
+    sidecar = _expected_sidecar()
+    expected = _sidecar_model_version(sidecar)
+    sidecar_label = _display_path(sidecar)
+    if expected is None:
+        check(
+            "ops-served-version",
+            False,
+            f"served model_version is {served!r}; expected sidecar {sidecar_label} is missing or records none",
+            warn_only=True,
+        )
+    elif served == expected:
+        check("ops-served-version", True, f"served model_version is {served!r}, matching {sidecar_label}")
+    else:
+        check(
+            "ops-served-version",
+            False,
+            f"served model_version is {served!r} but the expected sidecar {sidecar_label} records {expected!r}",
+            warn_only=True,
+        )
+
+    payload = distribution if isinstance(distribution, dict) else {}
+    drift = payload.get("drift")
+    drift = drift if isinstance(drift, dict) else {}
+    summary = payload.get("score_distribution")
+    summary = summary if isinstance(summary, dict) else {}
+    percentiles = summary.get("percentiles")
+    percentiles = percentiles if isinstance(percentiles, dict) else {}
+    status = drift.get("drift_status")
+    measured = (
+        f"psi={drift.get('psi')} window_samples={payload.get('samples_in_window')} "
+        f"score mean={summary.get('mean')} p50={percentiles.get('p50')} p90={percentiles.get('p90')}"
+    )
+    if status == "no_baseline_configured":
+        check(
+            "ops-drift",
+            False,
+            f"monitor reports drift_status=no_baseline_configured (baseline_status={payload.get('baseline_status')!r}; "
+            f"{measured}); export a reference with python -m src.train --monitor-baseline-output <new private file> "
+            "--monitor-baseline-source synthetic_diagnostic|approved_development and serve it via SMSD_MONITOR_BASELINE_PATH",
+            warn_only=True,
+        )
+    elif status in DRIFT_OK_STATUSES:
+        check("ops-drift", True, f"drift_status={status!r} ({measured})")
+    else:
+        check(
+            "ops-drift",
+            False,
+            f"drift_status={status!r} reported for review ({measured}); measured values only, never auto-act",
+            warn_only=True,
+        )
+
+
 def check_docs_index() -> None:
     if not DOCS_INDEX.is_file():
         check("docs-index", False, f"{DOCS_INDEX.relative_to(ROOT)} is missing")
@@ -167,6 +334,7 @@ def main() -> int:
     check_git_state()
     check_artifact_references()
     check_served_model()
+    check_operations_baseline()
     check_docs_index()
     print()
     if FAILURES:

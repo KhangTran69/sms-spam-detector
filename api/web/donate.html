@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="/static/tokens.css?v=ui22-editorial-polish-20261128" />
   <link rel="stylesheet" href="/static/styles.css?v=ui22-editorial-polish-20261128" />
   <link rel="stylesheet" href="/static/donate.css?v=donate-v6" />
-  <script type="module" src="/static/donate.js?v=donate-v5"></script>
+  <script type="module" src="/static/donate.js?v=donate-v9"></script>
 </head>
 <body>
   <a class="skip-link" href="#donation-main">Skip to donation form</a>
@@ -31,12 +31,12 @@
         <p id="donation-message-help" class="hint">Up to 10,000 characters. If a detail is flagged, edit it here and submit again yourself.</p>
 
         <label for="donation-label-hint">Optional label hint</label>
-        <select id="donation-label-hint">
+        <select id="donation-label-hint" aria-describedby="donation-label-hint-help">
           <option value="">No hint</option>
           <option value="spam">Spam signal</option>
           <option value="ham">Legitimate / ham</option>
         </select>
-        <p class="hint">This is only your suggestion. It is not a verified label.</p>
+        <p id="donation-label-hint-help" class="hint">This is only your suggestion. It is not a verified label.</p>
 
         <label for="donation-language">Optional language</label>
         <select id="donation-language">
@@ -62,7 +62,7 @@
           <label for="donation-research-consent">Optional: I separately consent to this message being considered for future model research, including training or evaluation, after independent review and approval.</label>
           <p id="donation-research-help" class="hint">Leave unchecked for review-only handling. This choice is not required and does not guarantee inclusion or use.</p>
         </fieldset>
-        <p class="hint">The server records this notice version and a consent timestamp. Messages expire after 90 days. You can withdraw after submission using the withdrawal ID below.</p>
+        <p class="hint">The server records this notice version and a consent timestamp. Messages expire after 90 days. A random retry-key hash is retained with the record to avoid duplicate storage. You can withdraw after submission using the withdrawal ID below.</p>
 
         <ul id="donation-pii-findings" class="donation-findings" role="alert" aria-live="assertive" aria-label="Personal details to review" hidden></ul>
         <p id="donation-status" class="donation-status" role="status" aria-live="polite" aria-atomic="true"></p>
@@ -79,7 +79,7 @@
           <button type="submit" id="donation-withdraw" class="btn ghost danger">Withdraw and erase</button>
         </form>
       </section>
-      <p class="hint">No message is submitted until you press the button. The service does not retry automatically. Verify suspicious requests through trusted official channels.</p>
+      <p class="hint">No message is submitted until you press the button. The service does not retry automatically. If the result is uncertain, retry the unchanged form on this page; after reloading, check with the operator first. <span lang="fil">Kung hindi tiyak ang resulta, huwag baguhin ang form kung susubukan muli sa pahinang ito.</span> Verify suspicious requests through trusted official channels.</p>
     </section>
   </main>
   <footer class="site-footer"><p>Local collection is operator-enabled and off by default.</p></footer>

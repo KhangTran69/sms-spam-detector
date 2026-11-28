@@ -268,6 +268,44 @@ block on it.
 
 ---
 
+## Quarterly ritual (dated checklist)
+
+Quarterly from 2026-11-28: **next: 2027-02-28**, then 2027-05-28,
+2027-08-28, 2027-11-28. One PR, one afternoon; if a date slips, the item
+moves to the following week — the ritual is never silently skipped. Actions
+only, no claims: record dated, message-free outputs under `docs/benchmarks/`
+(or the progress log below) in the same PR. This checklist folds the
+artifact/provenance workflow into the T5.6 ritual; the benchmark /
+DATASET_INVENTORY / IMPROVEMENT_EXECUTION / roadmap-review items of T5.6 keep
+their already-scheduled dates (2027-01-15 → 2027-03-31, see the progress log).
+
+- [ ] **Verify the immutable release copies** (next: 2027-02-28): compare
+      `models/releases/v2.0.0/spam_detector_v1.pkl` (sha256) against the
+      `artifact_sha256` recorded in
+      `models/releases/v2.0.0/spam_detector_v1.metadata.json` and against the
+      current canonical `models/spam_detector_v1.pkl` sidecar when it exists;
+      record the comparison in the progress log.
+- [ ] **Re-run the timed rollback drill** per
+      [RETRAINING.md §7](RETRAINING.md#7-rollback-procedure) (next: 2027-02-28)
+      and record the measured per-direction durations in a dated,
+      message-free report under `docs/benchmarks/` (precedents:
+      [release-drill-20261128.md](benchmarks/release-drill-20261128.md),
+      [rollback-drill-v2-1-0-candidate-20261128.md](benchmarks/rollback-drill-v2-1-0-candidate-20261128.md)).
+- [ ] **Re-run `gh attestation verify`** on the release artifact —
+      `gh attestation verify models/releases/v2.0.0/spam_detector_v1.pkl` —
+      and record the workflow/run reference (next: 2027-02-28).
+- [ ] **Review D1/D3 countersign status** in
+      [OWNER_DECISIONS.md](OWNER_DECISIONS.md) (next: 2027-02-28): if a
+      qualified-reviewer countersign landed during the quarter, update the
+      register rows; if still pending, date this review in the progress log.
+- [ ] **Run `python scripts/pilot_status.py <private intake CSVs>`** against
+      the private intake CSVs (next: 2027-02-28) and compare the reported
+      coverage gaps with the ratified minimums in
+      [templates/consented-evaluation-plan.json](templates/consented-evaluation-plan.json);
+      keep the counts in the progress log — the CSVs themselves stay private.
+- [ ] **Re-run `make pilot-preflight`** (synthetic fixtures only) and confirm
+      the preflight output stays message-free (next: 2027-02-28).
+
 ## Progress log
 
 ### 2026-11-28 — Transfer-gap experiment: adding real training data closes the gap
@@ -379,3 +417,103 @@ block on it.
   - **2027-03-31:** review this roadmap (evidence-state changes, the
     owner-decision register, sequencing; this is also the D6 checkpoint for
     the 85% coverage-floor target).
+
+### 2026-11-29 — Roadmap continuation: privacy, audit tooling and pilot review
+
+- T2.3: aggregate-only cross-corpus overlap command in `src/corpus_audit.py`
+  with bounded comparison work, source fingerprints and synthetic regression
+  tests. Approved local snapshots still need a real execution; no new
+  cross-corpus measurements are claimed.
+- T2.2: fixed-threshold class-prior sensitivity calculated from the existing
+  public aggregate report, [public-prior-shift-diagnostic-20261129.md](benchmarks/public-prior-shift-diagnostic-20261129.md).
+  Separate class-weighted training study requires approved development inputs.
+- T4/T5: donation loopback Host and browser Origin validation, PII correction
+  focus and ARIA relationships, and expanded browser checks. The bilingual
+  facilitator draft avoids coaching before the recorded comprehension probes.
+  Human review, native-speaker review and the signed pilot prerequisites remain
+  outstanding.
+- T5: doctor supports operator metrics authentication with bounded JSON,
+  redirect refusal and HTTPS/loopback transport; distinguishes denied metrics
+  requests from connection failure. The prior pilot status hardening and docs
+  index link regression checks remain in PR #60.
+- No consented collection, sealed-test interaction, model release, or public
+  deployment occurred. D5 remains local-only; coverage target remains 85%.
+
+- T3: paired synthetic formatting robustness diagnostic with fixed artifact
+  threshold, aggregate error transitions and regression tests. CI exercises it
+  using the synthetic smoke model; field robustness remains unmeasured.
+
+### 2026-11-29 — Consent boundary, storage availability and leakage regression follow-up
+
+- Tighten explicit JSON consent types, refuse duplicate-key/nonfinite JSON,
+  ambiguous local authorities and duplicate operator token headers; preserve
+  local-only donation policy and the existing withdrawal non-enumeration rule.
+- Offload blocking SQLite operations while retaining admission through
+  completion. Add failure/recovery and concurrent liveness regressions.
+- Expand overlap diagnostics with within-corpus label conflicts and distinct
+  row participation; keep both historical similarity cutoffs at 0.90.
+- Exercise individual malformed preregistration fields, blocked CLI reporting,
+  missing split inputs and dependency discovery. No release gates changed.
+
+
+- Reject malformed classifier probability matrices before generating a verdict;
+  maintain the stored threshold. Correct calibration calculation for one-shot
+  score iterables. Exercise real synthetic training/evaluation CLI output,
+  plots and artifact verification; test malformed Redis reply recovery.
+- Add the native assistive-technology evidence worksheet. It remains unfilled
+  until actual qualified review; no accessibility acceptance is asserted.
+
+### 2026-11-29 — Coverage ratchet reaches the D6 target
+
+On commit `720496bf90f4bb0cb0c24cfd4c6caa2b096bae0f`, CI run
+[46170305718](https://github.com/KhangTran69/sms-spam-detector/actions/runs/46170305718)
+reported identical results on Python 3.11, 3.12 and 3.13: 825 passed,
+4 skipped, 87.03% coverage. The UCI diagnostic quality gate passed at
+F1 0.9425. Raise the enforced per-PR coverage floor from 82% to the ratified
+85% in pyproject and its hygiene regression together. This is an engineering
+coverage milestone only, not a field accuracy or model acceptance result.
+Retain the unchanged OTP, bank-alert, delivery and calibration release gates.
+
+### Donation reliability and optional spreadsheet coverage
+
+Persist opaque retry keys transactionally with the original donation; preserve consent and expiration on replay, refuse conflicting or withdrawn keys, and test concurrent calls. Retain local-only controls and message-free logging. The browser only retries at the user's explicit request while its unchanged pending form remains in memory.
+
+### Development-only model-quality and deployment review
+
+Add a fingerprint-bound, group-isolated class-weight and formatting experiment that refuses known frozen inputs and cross-fold duplicates. Exercise it with fictional data; approved Philippine development snapshots and qualified independent review remain necessary. Add an offline gateway configuration reviewer with value-free findings, which cannot grant deployment authorization. Keep all production feature semantics, existing acceptance gates and historical evidence unchanged.
+
+### Independent review and coverage readiness
+
+Require actual separate review outcomes and independent disagreement resolution. Reject default-derived agreement and prevent duplicate or incomplete message checks from reporting minimums-met status. Keep native-language and qualified-reviewer approval outstanding.
+
+### Local retention and recovery follow-up
+
+Separate committed erasure from optional compaction, publish private exports exclusively, reject shared database files, and add explicit existing-store retention maintenance plus a disposable stale-backup withdrawal reconciliation rehearsal. No actual operator backup or participant store is accessed.
+
+### Consented intake integrity follow-up
+
+Bound private CSV/JSON reads, reject ambiguous headers and duplicate sidecar keys, constrain import destinations, enforce ratified-notice retention and chronology, and refuse category-hidden template leakage or campaign aliases. Preserve explicit worksheet chronology for later independently sealed evaluation.
+
+### Development experiment and Redis configuration follow-up
+
+Union declared campaign groups with template families before development cross-validation; enforce complete disjoint membership and report paired class-specific error transitions. Reject Redis URL options that can override bounded connection settings or TLS verification, consistently in runtime and offline preflight. No deployed model or real-data acceptance criteria changed.
+
+### Current export reconciliation and strict chronological holdout
+
+Add a bounded, read-only private review-export reconciliation command that checks complete encoded rows against current active, unexpired storage and optional research consent. Exercise withdrawal invalidation in the disposable end-to-end rehearsal. Refuse chronological campaign partitions whose actual row timestamps overlap. These checks do not establish human consent or authorize release.
+
+### Pilot coverage and direct-loopback boundary
+
+Use bounded strict intake parsing for pooled coverage, require legitimate-class support for critical categories without changing ratified minimums, block missing identifiers, and publish reports exclusively. Keep review reconciliation in the installed library, with its CLI wrapper in scripts. Refuse recognizable forwarding metadata on the local-only donation route and retain external isolation requirements.
+
+### Guard current donation consumption
+
+Bind ratified-notice worksheet import to the current authoritative store and original export under a short transaction reservation, publish the validated CSV exclusively, and explicitly verify private SQLite journaling/deletion settings. Preserve historical register-only compatibility and document residual revocation and backup obligations.
+
+### Reservation contention and supported test transport
+
+Exercise competing SQLite writers and release of reservations after failed publication. Add the supported current Starlette TestClient transport to dev dependencies and constrained security auditing, retaining old-client compatibility without adding it to production runtime requirements.
+
+### Consistent evaluator coverage and source isolation
+
+Align actual sealed-evaluation preflight with the existing pilot coverage interpretation, computing top-three spam support and critical legitimate-category support separately. Reject unregistered additional training sources, campaign case aliases and category-hidden cross-split template overlap. No real evaluation executed.

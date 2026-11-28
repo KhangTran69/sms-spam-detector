@@ -611,6 +611,13 @@ curl -fsS -H "X-SMSD-Metrics-Token: $SMSD_METRICS_TOKEN" \
   http://127.0.0.1:8000/metrics/operations
 ```
 
+For the read-only `make doctor` operator check, export the same
+`SMSD_METRICS_TOKEN` in the operator environment. The doctor forwards it only
+to the two metrics endpoints, rejects credential-bearing or query-bearing
+URLs, does not follow redirects or ambient HTTP proxies, and requires HTTPS
+for non-loopback authenticated requests. A denied metrics request is reported
+as an authorization/configuration warning rather than a connection outage.
+
 Operational metrics are **bounded, process-local snapshots**: cumulative
 counts grouped into fixed route/status categories, plus rolling latency
 percentiles. They reset on process restart and cannot be summed into a
@@ -757,3 +764,19 @@ journals can outlive key expiry. The CI AOF exercise uses fictional identifiers
 and deletes its disposable storage. It does not authorize persisting actual
 client identities. Compose also accepts the independent SMSD_MODEL_SHA256
 pin and per-minute rate setting. Confirm both on target infrastructure.
+
+### Offline gateway configuration review (planning only)
+
+Run `python scripts/deployment_preflight.py --workers 2 --gateway-confirmed` with the proposed deployment environment only after the operator has separately reviewed the gateway checklist. The report contains finding codes, not token values or Redis credentials. It checks production mode, disabled donation/feedback collection, explicit artifact digest, shared fail-closed rate limiting, operator metrics token, valid HTTPS CORS origins and bounded positive settings. The gateway flag is an attestation, not a network probe; the report always marks gateway verification and deployment authorization false. Do not expose the service on this basis. Current D5 local-only policy remains in effect.
+
+The spreadsheet reader and its XML dependency are pinned for CI's fictional workbook ingestion test and included in the dependency audit. The three legacy-base tests still require the original operator-provided `data/raw/spam.csv`; do not substitute the separately licensed UCI import under that name.
+
+Redis configuration accepts `redis://` and `rediss://` URLs with an optional numeric database path. Query strings and fragments are refused in the runtime and offline reviewer: redis-py URL options could otherwise override bounded socket timeouts or TLS certificate verification. Put credentials in the secret store, use the trusted network/TLS gateway and configure the database through the path. A closed-policy invalid configuration keeps protected requests unavailable; correct it and restart. No production gateway was accessed.
+
+Donation routes reject common forwarding headers even when a peer is loopback and the Host has been rewritten. This is defense in depth, not proof that a connection was direct: a proxy can omit forwarding metadata. Keep the donation origin isolated and inaccessible from any external gateway; production collection remains disabled. Never forward a public donation route to a development instance.
+
+### TestClient maintenance
+
+Starlette's current TestClient documentation (https://starlette.dev/testclient/) recommends httpx2 instead of its deprecated httpx backend. The dev group and legacy dev requirements include httpx2, with CI constraints pinning the 2.16.2 client/transport and truststore 0.10.5. Retain httpx for older supported FastAPI/Starlette environments and direct legacy test uses. The security workflow audits the added test client and its dependencies; production requirements and model versions are unchanged. These are manually updated constraint entries, not a claim that an entire lockfile was regenerated.
+
+The disposable pilot preflight quiets both legacy and current HTTP client transport logger families only during its in-process fixture run, restores their prior levels afterward, and continues scanning application diagnostics. The transport migration exposed this compatibility issue in CI; the fix does not disable the message-free application-log gate.

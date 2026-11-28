@@ -278,3 +278,67 @@ def test_consent_record_cannot_be_reused_for_a_second_message():
     second = valid_batch_row(message="A distinct fictional school announcement.", group="campaign_002")
     report = validate_batch(pd.DataFrame([first, second]), today=date(2026, 10, 21))
     assert "duplicate_consent_record_id" in {item.rule for item in report.findings}
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["label,label\nham,spam\n", "Label, label \nham,spam\n", "label,message\nham\n", "label,message\nham,text,extra\n"],
+)
+def test_intake_reader_refuses_ambiguous_raw_csv(tmp_path, text):
+    from src.consented_data import _read_intake_csv
+
+    path = tmp_path / "private.csv"
+    path.write_text(text, encoding="utf-8")
+    with pytest.raises(ValueError):
+        _read_intake_csv(path)
+
+
+def test_intake_reader_enforces_byte_and_row_budgets(tmp_path, monkeypatch):
+    from src import consented_data
+
+    path = tmp_path / "private.csv"
+    path.write_text("label,message\nham,fictional\nspam,fictional\n", encoding="utf-8")
+    monkeypatch.setattr(consented_data, "MAX_INTAKE_BYTES", 10)
+    with pytest.raises(ValueError, match="byte budget"):
+        consented_data._read_intake_csv(path)
+    monkeypatch.setattr(consented_data, "MAX_INTAKE_BYTES", 1000)
+    monkeypatch.setattr(consented_data, "MAX_INTAKE_ROWS", 1)
+    with pytest.raises(ValueError, match="row budget"):
+        consented_data._read_intake_csv(path)
+
+
+def test_ratified_notice_retention_and_chronology_are_enforced():
+    row = valid_batch_row(
+        consent_version="2026-11-01-v4",
+        consent_date="2026-11-01",
+        retention_until="2027-02-01",
+        received_at="2026-11-02T12:00:00Z",
+    )
+    report = validate_batch(pd.DataFrame([row]), today=date(2026, 11, 28), purpose="training")
+    assert {finding.rule for finding in report.findings} >= {
+        "retention_exceeds_ratified_notice",
+        "received_at_after_consent",
+    }
+
+
+def test_category_metadata_cannot_mask_template_overlap():
+    first = valid_batch_row(message="Your scheduled service notification is ready for review today.")
+    second = valid_batch_row(
+        message="Your scheduled service notification is ready for review tomorrow.",
+        group="campaign_002",
+        consent_record_id="consent_002",
+        category="delivery",
+    )
+    report = validate_batch(pd.DataFrame([first, second]), today=date(2026, 10, 21))
+    assert "near_duplicate_template_spans_campaign_groups" in {item.rule for item in report.findings}
+
+
+def test_case_aliases_cannot_create_separate_campaign_groups():
+    first = valid_batch_row(group="Campaign_alpha")
+    second = valid_batch_row(
+        message="Fictional delivery update for the morning.",
+        group="campaign_ALPHA",
+        consent_record_id="consent_002",
+    )
+    report = validate_batch(pd.DataFrame([first, second]), today=date(2026, 10, 21))
+    assert "inconsistent_campaign_group_spelling" in {item.rule for item in report.findings}

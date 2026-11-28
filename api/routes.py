@@ -18,6 +18,7 @@ import uuid
 from datetime import UTC, datetime
 from types import ModuleType
 from typing import Any
+from urllib.parse import urlsplit
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse, Response
@@ -25,7 +26,7 @@ from pydantic import ValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from api.blocking import run_blocking
-from api.donations import RETENTION_DAYS, create_donation, delete_donation
+from api.donations import RETENTION_DAYS, DonationConflict, create_donation, delete_donation
 from api.ops_metrics import operations_monitor
 from api.rate_limiter import RateLimiterUnavailable, RedisRateLimiter, UnavailableRateLimiter
 from api.schemas import (
@@ -139,7 +140,8 @@ def _authorize_metrics(request: Request) -> None:
     if state.SMSD_ENV != "production":
         return
     token = state.METRICS_TOKEN
-    provided = request.headers.get("x-smsd-metrics-token", "")
+    supplied = request.headers.getlist("x-smsd-metrics-token")
+    provided = supplied[0] if len(supplied) == 1 else ""
     if not token or not token.isascii() or not provided.isascii() or not hmac.compare_digest(provided, token):
         raise HTTPException(status_code=404, detail="Not found", headers={"Cache-Control": "no-store"})
 
@@ -280,12 +282,9 @@ def _donations_enabled() -> bool:
     return bool(_state().DONATIONS_ENABLED and _state().DONATIONS_OPERATOR_CONTACT.strip())
 
 
-def _donation_request_is_local(request: Request) -> bool:
-    """Restrict the optional unauthenticated intake to a local development host."""
-    if _state().SMSD_ENV == "production" or request.client is None:
-        return False
+def _loopback_ip(value: str) -> bool:
     try:
-        address = ipaddress.ip_address(request.client.host.split("%", maxsplit=1)[0])
+        address = ipaddress.ip_address(value.split("%", maxsplit=1)[0])
     except ValueError:
         return False
     return address.is_loopback or (
@@ -293,6 +292,79 @@ def _donation_request_is_local(request: Request) -> bool:
         and address.ipv4_mapped is not None
         and address.ipv4_mapped.is_loopback
     )
+
+
+def _local_origin(value: str) -> tuple[str, str, int] | None:
+    """Accept only a literal loopback origin; never resolve an arbitrary hostname."""
+    if any(char.isspace() or ord(char) < 32 for char in value) or any(char in value for char in "?#\\"):
+        return None
+    try:
+        parsed = urlsplit(value)
+        hostname = parsed.hostname
+        port = parsed.port
+    except ValueError:
+        return None
+    if (
+        parsed.scheme not in {"http", "https"}
+        or hostname is None
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.path
+        or parsed.query
+        or parsed.fragment
+        or not re.fullmatch(r"(?:localhost|[0-9.]+|\[[0-9a-f:.]+\])(?::[0-9]{1,5})?", parsed.netloc, re.IGNORECASE)
+        or port == 0
+        or (hostname != "localhost" and not _loopback_ip(hostname))
+    ):
+        return None
+    return parsed.scheme, hostname, port if port is not None else (443 if parsed.scheme == "https" else 80)
+
+
+def _donation_request_is_local(request: Request) -> bool:
+    """Require a local peer, loopback authority, and matching browser origin."""
+    if _state().SMSD_ENV == "production" or request.client is None:
+        return False
+    if not _loopback_ip(request.client.host):
+        return False
+    # Donations are direct-loopback only. A reverse proxy can itself be a
+    # loopback peer; reject recognizable forwarding metadata even if Host
+    # has been rewritten. This is not a substitute for isolating the origin.
+    if any(
+        name in request.headers
+        for name in ("forwarded", "x-forwarded-for", "x-forwarded-host", "x-forwarded-proto", "x-real-ip")
+    ):
+        return False
+    hosts = request.headers.getlist("host")
+    if len(hosts) != 1 or not hosts[0] or any(char.isspace() for char in hosts[0]):
+        return False
+    authority = _local_origin(f"{request.scope['scheme']}://{hosts[0]}")
+    if authority is None:
+        return False
+    origins = request.headers.getlist("origin")
+    if origins and (len(origins) != 1 or _local_origin(origins[0]) != authority):
+        return False
+    # Local CLI requests may omit browser headers. Browser writes must be
+    # same-origin, not merely same-site (which includes other local ports).
+    sites = request.headers.getlist("sec-fetch-site")
+    return request.method in {"GET", "HEAD"} or not sites or sites == ["same-origin"]
+
+
+def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("Duplicate JSON object key.")
+        result[key] = value
+    return result
+
+
+def _reject_json_constant(_value: str) -> None:
+    raise ValueError("Nonfinite JSON constant.")
+
+
+async def _donation_json(request: Request) -> Any:
+    # Do not allow ambiguous consent/withdrawal objects or nonstandard JSON.
+    return json.loads(await request.body(), object_pairs_hook=_unique_json_object, parse_constant=_reject_json_constant)
 
 
 def _render_notice_contact(response: Response, *, fallback: str) -> Response:
@@ -349,8 +421,8 @@ async def donate(request: Request) -> Response:
     if content_type != "application/json":
         return _donation_error(415, "unsupported_media_type", "Submit the donation as application/json.")
     try:
-        payload_data = await request.json()
-    except (json.JSONDecodeError, UnicodeDecodeError):
+        payload_data = await _donation_json(request)
+    except (ValueError, RecursionError):
         return _donation_error(400, "invalid_json", "The request body must contain valid JSON.")
     details: list[dict[str, Any]]
     try:
@@ -396,7 +468,8 @@ async def donate(request: Request) -> Response:
             details,
         )
     try:
-        record_id = create_donation(
+        record_id = await run_blocking(
+            create_donation,
             _state().DONATION_DB_PATH,
             message=payload.message,
             label_hint=payload.label_hint,
@@ -405,6 +478,13 @@ async def donate(request: Request) -> Response:
             review_consent=payload.consent,
             authorized_to_share=payload.authorized_to_share,
             model_research_consent=payload.model_research_consent,
+            submission_key=payload.submission_key,
+        )
+    except DonationConflict:
+        return _donation_error(
+            409,
+            "submission_conflict",
+            "This submission key was already used. Contact the operator before trying again.",
         )
     except (OSError, RuntimeError, ValueError) as exc:
         _state().logger.error("Could not save local donation (%s)", type(exc).__name__)
@@ -440,8 +520,8 @@ async def withdraw_donation(request: Request) -> Response:
     if content_type != "application/json":
         return _donation_error(415, "unsupported_media_type", "Submit the withdrawal as application/json.")
     try:
-        payload_data = await request.json()
-    except (json.JSONDecodeError, UnicodeDecodeError):
+        payload_data = await _donation_json(request)
+    except (ValueError, RecursionError):
         return _donation_error(400, "invalid_json", "The request body must contain valid JSON.")
     try:
         payload = DonationWithdrawalRequest.model_validate(payload_data)
@@ -461,7 +541,7 @@ async def withdraw_donation(request: Request) -> Response:
         return _donation_error(422, "validation_error", "Check the withdrawal field and try again.", details)
     try:
         if re.fullmatch(r"[a-f0-9]{32}", payload.record_id):
-            delete_donation(_state().DONATION_DB_PATH, payload.record_id)
+            await run_blocking(delete_donation, _state().DONATION_DB_PATH, payload.record_id)
     except (OSError, RuntimeError) as exc:
         _state().logger.error("Could not withdraw local donation (%s)", type(exc).__name__)
         return _donation_error(503, "donation_unavailable", "Local donation storage is temporarily unavailable.")

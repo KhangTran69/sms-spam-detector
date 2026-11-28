@@ -43,15 +43,16 @@ The classifier target is **spam versus ham**. A spam label can include unwanted 
 | `data/raw/spam.csv` | Operator-supplied English-style base file; its source/license are unknown until verified | Merged into training when present | No (git-ignored) |
 | Verified UCI SMS Spam Collection | Public historical English SMS corpus, 5,574 rows, CC BY 4.0; importer does not download it | Supported import; not added by this change | No |
 | PH Spam + Marketing SMS (w/ timestamps) | Public Philippine SMS inbox; publisher identifies CC BY 4.0. One contributor's inbox, with some categories redacted | Fetched locally on 2026-11-01; sender column omitted by normalization; a local, group-isolated internal split diagnostic is recorded below | No |
-| [Tagalog-SMS](https://www.kaggle.com/datasets/onzero0/tagalog-sms) | Kaggle metadata reports CC0; one contributor's inbox includes sender metadata, which normalized output omits; raw local download remains sensitive | Approved local-only downloader and evaluation path; **not yet downloaded or evaluated** | No |
+| [Tagalog-SMS](https://www.kaggle.com/datasets/onzero0/tagalog-sms) | Kaggle metadata reports CC0; one contributor's inbox includes sender metadata, which normalized output omits; raw local download remains sensitive | Approved local-only downloader and evaluation path; **fetched and diagnosed 2026-11-28** (diagnostic below and in the [dataset inventory](DATASET_INVENTORY.md)) | No |
 | `data/raw/ph_supplement.csv`, `_2.csv`, `_3.csv`, `_4.csv`, `_5.csv` | **Synthetic**, developer-authored Philippine scam and legitimate examples. `_2` was deduped and capped at 2 rows per template family (311 → 141). `_5` adds 129 generated rows from 20 families (`scripts/generate_synthetic_ph.py`) | 513 rows merged into training: ham 237, spam 276 | Yes (synthetic text only) |
 | `data/raw/ph_holdout.csv` | **Synthetic** holdout: 264 rows (ham 124, spam 140), 23 generated families plus 46 earlier hand-written rows | Evaluation only, never training. Current exact/normalized message and group overlap checks report zero; style overlap remains possible | Yes |
 | Consented Philippine messages | **none collected or used yet.** An optional local donation flow is disabled by default; intake submissions remain pending review and are never automatically used by the model | — | — |
 
-> **All tracked Philippine data in this repository is still synthetic.** A
-> one-person PH Spam + Marketing SMS inbox snapshot (CC BY 4.0) is now stored
-> locally outside Git; Tagalog-SMS (CC0 per Kaggle metadata) has a local
-> download/evaluation path but has not been fetched. The PH snapshot has a
+> **All tracked (Git-committed) Philippine data in this repository is still
+> synthetic.** A one-person PH Spam + Marketing SMS inbox snapshot (CC BY 4.0)
+> is stored locally outside Git, and Tagalog-SMS (CC0 per Kaggle metadata) was
+> fetched locally and diagnosed message-free on 2026-11-28 — see the
+> real-corpus diagnostic below. The PH snapshot has a
 > hash-bound internal split diagnostic, but a declared license does not
 > settle privacy rights in message content or sender metadata. Rebalancing,
 > deduplication, and a larger holdout make the pipeline checks less fragile.
@@ -120,9 +121,15 @@ capture working-tree status, so a clean-tree reproduction cannot be claimed.
 The project supports downloading and evaluating the licensed
 [PH Spam + Marketing SMS corpus](https://www.kaggle.com/datasets/scottleechua/ph-spam-marketing-sms-w-timestamps)
 and [Tagalog-SMS](https://www.kaggle.com/datasets/onzero0/tagalog-sms)
-locally. Tagalog-SMS has not been fetched or evaluated; its normalizer removes
-the sender field, and raw local downloads must still be treated as sensitive.
-Either inbox can support conclusions only about that particular corpus, not
+locally. Tagalog-SMS was fetched and diagnosed on 2026-11-28 (see the
+real-corpus diagnostic below); its normalizer removes the sender field, and
+raw local downloads must still be treated as sensitive. The
+bwandowando Philippine Spam/Scam corpus is **blocked**: its archive contains
+real personal data beyond SMS text (partially-masked sender numbers,
+phone-number hashes, timestamps, at least one apparently-unmasked sender), so
+no normalization, diagnostic, or cross-corpus evaluation was run — see the
+[stop report](benchmarks/bwandowando-stop-report-20261128.md). Either
+permitted inbox can support conclusions only about that particular corpus, not
 representative Philippine performance. Other submitted resources remain out of
 scope or blocked due to data-task mismatch or unresolved reuse terms. See
 [evaluation.md](evaluation.md) and the
@@ -146,7 +153,9 @@ A fresh canonical retrain (`make train` over the operator-supplied base file
 plus the tracked synthetic supplements) wrote `models/spam_detector_v1.pkl`
 with sidecar `models/spam_detector_v1.metadata.json` (`model_version`
 `spam_detector_v1-2026-11-28`, trained 2026-11-28T08:09:43+00:00, decision
-threshold 0.50, feature version 2.2.0, artifact schema 2, sigmoid-calibrated).
+threshold 0.50, feature version 2.2.0, artifact schema 2, sigmoid calibration
+layer fitted on training folds — its sidecar predates the 2026-11-28 flag
+change and still records `probability_calibrated: true`).
 Both files are git-ignored local artifacts; the exact bundle bytes are
 published as the `v2.0.0` release asset pinned by the sidecar's
 `artifact_sha256` (`daa8a7c192bf9e02a068f5c60b15bec1cba0db6522b4bf68d69b5b9633815daf`).
@@ -164,6 +173,54 @@ splitting (recorded in the sidecar warnings); the dataset was 5,672 rows
 (ham 4,754, spam 918) across 5,322 groups, including the 513 tracked synthetic
 supplement rows.
 
+### v2.1.0 candidate gates — NOT met (2026-11-28), no release
+
+The transfer-experiment recipe (real Tagalog-SMS training supplement) was
+reproduced fingerprint-exactly and trained into a candidate artifact
+(`spam_detector_v1-2026-11-28-v2.1.0-candidate`, decision threshold 0.50 from
+validation data only). Both the attested v2.0.0 artifact and this candidate
+were scored on the same three frozen evaluation sets. The preregistered
+critical-category gate set — each critical legitimate category at false-positive
+rate ≤ 5% with Wilson 95% upper bound ≤ 8% on held-out real data — **was not
+met**, so no version bump and no release were made:
+
+| Gate (candidate, real held-out data) | Support | FPR | Wilson 95% upper | Verdict |
+|---|---:|---:|---:|---|
+| OTP (Tagalog held-out groups) | 57 ham | 7.02% | 16.7% | not_met (incumbent: 19.3%) |
+| bank_alert (any real set) | 0 rows | — | — | insufficient_evidence |
+| delivery (any real set) | 0 rows | — | — | insufficient_evidence |
+
+On the candidate's own domain the improvement is large and replicated
+(held-out precision 0.890 vs 0.546; FPR 4.4% vs 21.9%; identical confusion
+counts to the recorded transfer experiment). On a different single-inbox
+corpus (PH-inbox, 1,599 spam / 65 ham) transfer is only partial: the candidate
+still misses 42.9% of that corpus's spam. On the synthetic-only holdout the
+candidate false-flags less (1 vs 4) but misses more scam templates (25 vs 15
+FN; bank_phishing FN 13/24 vs 0) — a flagged regression for any future
+promotion attempt. These numbers describe only these data and sets; they are
+not real-world Philippine accuracy. Full per-category numbers, the power
+calculation, and the pilot's quantified recruitment targets (≈200–320 rows per
+critical category, after model-side improvement) are in the
+[gates-not-met record](benchmarks/v2-1-0-gates-not-met-20261128.md) and its
+[machine-readable report](benchmarks/v2-1-0-gates-20261128.json).
+
+### Recalibration on real data (2026-11-28)
+
+In a group-isolated experiment on the CC0 Tagalog corpus, post-hoc calibration
+of the incumbent (Platt / isotonic fitted on 2,380 rows) reduced held-out ECE
+only 0.287 → 0.082 (Brier 0.304 → 0.198) — better, but still above the
+registered ≤ 0.05 bar, and the calibrated output collapses into three score
+bins. The candidate's raw held-out ECE is 0.031 (Brier 0.038) on its 372 truly
+held-out rows, but its largest populated bin holds 3 samples, far below the
+registered ≥ 30-per-bin support clause. **Both clauses must hold to present
+percentages as calibrated; neither artifact meets them, so the user-facing
+wording stays "uncalibrated model score."** Worst-calibrated/worst-recall
+categories (incumbent, held-out): legitimate notifications (ECE 0.500, FPR
+47.9%) and the generic spam category (ECE 0.323, recall 64.2%). Candidate
+per-category numbers are in the
+[recalibration record](benchmarks/v2-1-0-calibration-experiment-20261128.md)
+and its [machine-readable report](benchmarks/v2-1-0-calibration-experiment-20261128.json).
+
 ### Metrics source
 
 The local workspace snapshot and evaluation limits are recorded in
@@ -174,8 +231,13 @@ representative estimate of real Philippine traffic.
 
 ### Optional transformer ensemble research spike
 
-The production/default inference path remains the calibrated linear TF-IDF
-model. A local transformer ensemble is an opt-in engineering spike and is off
+The production/default inference path remains the linear TF-IDF model with a
+sigmoid calibration layer fitted on training folds; note that the artifact
+flag `probability_calibrated` is False since 2026-11-28 (real-data
+calibration verification has not met the registered bar — see the
+recalibration section above), so the UI copy reads "uncalibrated model
+score" and the optional ensemble routing below, which keys off that flag,
+stays off. A local transformer ensemble is an opt-in engineering spike and is off
 unless the operator configures `SMSD_TRANSFORMER_MODEL_PATH` and the linear
 bundle marks its spam score as calibrated. The current
 loader accepts local XLM-RoBERTa sequence-classification artifacts only; it

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
+import threading
 from contextlib import closing, contextmanager
 from pathlib import Path
 
@@ -48,7 +49,7 @@ def donation_client(
     api_main.SMSD_ENV = environment
     api_main._reset_rate_limits()
     try:
-        with TestClient(api_main.app, client=(client_host, 12345)) as client:
+        with TestClient(api_main.app, base_url="http://127.0.0.1:8000", client=(client_host, 12345)) as client:
             yield client
     finally:
         api_main.DONATIONS_ENABLED = state["enabled"]
@@ -245,3 +246,177 @@ def test_model_research_consent_is_a_separate_optional_choice(tmp_path):
             1,
             1,
         )
+
+
+@pytest.mark.parametrize(
+    "headers",
+    [
+        {"Host": "external.example.test"},
+        {"Origin": "https://external.example.test"},
+        {"Origin": "null"},
+        {"Origin": "http://127.0.0.1:9999"},
+        {"Origin": "http://localhost:8000"},
+        {"Sec-Fetch-Site": "cross-site"},
+    ],
+)
+def test_local_peer_cannot_bypass_donation_authority_boundary(tmp_path, headers):
+    with donation_client(tmp_path) as client:
+        accepted = client.post("/donate", json=VALID_PAYLOAD, headers=headers)
+        withdrawal = client.request("DELETE", "/donate", json={"record_id": "a" * 32}, headers=headers)
+        assert accepted.status_code == 404
+        assert withdrawal.status_code == 404
+    assert not (tmp_path / "donations.sqlite3").exists()
+
+
+def test_same_origin_local_browser_can_donate_and_withdraw(tmp_path):
+    with donation_client(tmp_path) as client:
+        headers = {"Origin": "http://127.0.0.1:8000", "Sec-Fetch-Site": "same-origin"}
+        accepted = client.post("/v1/donate", json=VALID_PAYLOAD, headers=headers)
+        assert accepted.status_code == 201
+        withdrawal = client.request(
+            "DELETE", "/v1/donate", json={"record_id": accepted.json()["record_id"]}, headers=headers
+        )
+        assert withdrawal.status_code == 200
+
+
+def test_local_donation_form_refuses_non_loopback_host(tmp_path):
+    with donation_client(tmp_path) as client:
+        for method in ("GET", "HEAD"):
+            assert client.request(method, "/donate", headers={"Host": "external.example.test"}).status_code == 404
+        assert client.get("/donate", headers={"Host": "localhost:8000"}).status_code == 200
+        assert client.get("/donate", headers={"Host": "[::1]:8000"}).status_code == 200
+
+
+@pytest.mark.parametrize("field", ["consent", "authorized_to_share", "model_research_consent"])
+@pytest.mark.parametrize("value", [1, "true", "yes", None])
+def test_consent_requires_actual_json_booleans(tmp_path, field, value):
+    with donation_client(tmp_path) as client:
+        response = client.post("/donate", json={**VALID_PAYLOAD, field: value})
+    assert response.status_code == 422
+    assert not (tmp_path / "donations.sqlite3").exists()
+    assert VALID_PAYLOAD["message"] not in response.text
+
+
+@pytest.mark.parametrize("method", ["POST", "DELETE"])
+@pytest.mark.parametrize(
+    "body", ['{"consent":true,"consent":false}', '{"record_id":NaN}', '{"nested":{"x":1,"x":2}}', "{"]
+)
+def test_ambiguous_or_invalid_json_is_refused_without_storage(tmp_path, method, body):
+    with donation_client(tmp_path) as client:
+        response = client.request(method, "/donate", content=body, headers={"content-type": "application/json"})
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "invalid_json"
+    assert response.headers["cache-control"] == "no-store"
+    assert not (tmp_path / "donations.sqlite3").exists()
+
+
+@pytest.mark.parametrize(
+    "headers",
+    [
+        [("Host", "127.0.0.1:8000"), ("Host", "127.0.0.1:8000")],
+        [("Origin", "http://127.0.0.1:8000"), ("Origin", "http://127.0.0.1:8000")],
+        [("Origin", "http://127.0.0.1:8000?")],
+        [("Host", "[::1]extra")],
+        [("Host", "localhost:")],
+        [("Host", "localhost:0")],
+        [("Host", "localhost:65536")],
+        [("Sec-Fetch-Site", "same-site")],
+        [("Sec-Fetch-Site", "same-origin"), ("Sec-Fetch-Site", "cross-site")],
+    ],
+)
+def test_ambiguous_local_authority_rejected(tmp_path, headers):
+    with donation_client(tmp_path) as client:
+        response = client.post("/donate", json=VALID_PAYLOAD, headers=headers)
+    assert response.status_code == 404
+    assert not (tmp_path / "donations.sqlite3").exists()
+
+
+@pytest.mark.parametrize("method", ["POST", "DELETE"])
+def test_storage_failure_is_content_free_and_recoverable(tmp_path, monkeypatch, caplog, method):
+    from api import routes
+
+    target = "create_donation" if method == "POST" else "delete_donation"
+    original = getattr(routes, target)
+
+    def fail(*args, **kwargs):
+        raise RuntimeError("private storage detail")
+
+    with donation_client(tmp_path) as client:
+        monkeypatch.setattr(routes, target, fail)
+        payload = VALID_PAYLOAD if method == "POST" else {"record_id": "a" * 32}
+        response = client.request(method, "/donate", json=payload)
+        assert response.status_code == 503
+        assert response.json()["error"]["code"] == "donation_unavailable"
+        assert "private storage detail" not in response.text
+        assert "private storage detail" not in caplog.text
+        assert client.get("/health").status_code == 200
+        monkeypatch.setattr(routes, target, original)
+        assert client.request(method, "/donate", json=payload).status_code == (201 if method == "POST" else 200)
+
+
+def test_blocked_storage_does_not_block_liveness(tmp_path, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+
+    from api import routes
+
+    started = threading.Event()
+    release = threading.Event()
+    original = routes.create_donation
+
+    def slow(*args, **kwargs):
+        started.set()
+        if not release.wait(5):
+            raise RuntimeError("fixture timed out")
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(routes, "create_donation", slow)
+    with donation_client(tmp_path) as client, ThreadPoolExecutor(max_workers=2) as pool:
+        donation = pool.submit(client.post, "/donate", json=VALID_PAYLOAD)
+        try:
+            assert started.wait(3)
+            health = pool.submit(client.get, "/health")
+            assert health.result(timeout=2).status_code == 200
+        finally:
+            release.set()
+        assert donation.result(timeout=5).status_code == 201
+
+
+def test_keyed_donation_retry_and_conflict_do_not_duplicate_or_echo_capability(tmp_path, caplog):
+    payload = {**VALID_PAYLOAD, "submission_key": "a" * 32}
+    with donation_client(tmp_path, rate_limit=20) as client:
+        first = client.post("/donate", json=payload)
+        second = client.post("/v1/donate", json=payload)
+        assert first.status_code == second.status_code == 201
+        assert first.json() == second.json()
+        record_id = first.json()["record_id"]
+        conflict = client.post("/donate", json={**payload, "model_research_consent": True})
+        assert conflict.status_code == 409
+        assert conflict.json()["error"]["code"] == "submission_conflict"
+        assert record_id not in conflict.text
+        assert client.request("DELETE", "/donate", json={"record_id": record_id}).status_code == 200
+        revoked = client.post("/donate", json=payload)
+        assert revoked.status_code == 409
+        assert record_id not in revoked.text
+        assert payload["submission_key"] not in caplog.text
+    with closing(sqlite3.connect(tmp_path / "donations.sqlite3")) as connection, connection:
+        assert connection.execute("SELECT message FROM donations").fetchall() == [("",)]
+
+
+@pytest.mark.parametrize("key", ["short", "A" * 32, "g" * 32, "a" * 33, 42])
+def test_invalid_submission_key_is_rejected(tmp_path, key):
+    with donation_client(tmp_path) as client:
+        assert client.post("/donate", json={**VALID_PAYLOAD, "submission_key": key}).status_code == 422
+    assert not (tmp_path / "donations.sqlite3").exists()
+
+
+@pytest.mark.parametrize(
+    "header",
+    ["Forwarded", "X-Forwarded-For", "X-Forwarded-Host", "X-Forwarded-Proto", "X-Real-IP"],
+)
+def test_donation_routes_reject_proxy_metadata_even_from_local_peer(tmp_path, header):
+    with donation_client(tmp_path) as client:
+        headers = {header: "127.0.0.1"}
+        assert client.get("/donate", headers=headers).status_code == 404
+        assert client.post("/v1/donate", json=VALID_PAYLOAD, headers=headers).status_code == 404
+        assert client.request("DELETE", "/donate", json={"record_id": "a" * 32}, headers=headers).status_code == 404
+    assert not (tmp_path / "donations.sqlite3").exists()

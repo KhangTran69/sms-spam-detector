@@ -44,3 +44,4 @@ benchmarks/*
 
 # Immutable release copies (operator disk convention, RETRAINING.md §4)
 models/releases/**
+.superpowers/plans/

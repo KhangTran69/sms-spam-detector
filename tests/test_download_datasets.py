@@ -6,9 +6,9 @@ import urllib.request
 import zipfile
 
 import pytest
+
 import scripts.download_datasets as dataset_downloader
 from scripts.download_datasets import main
-
 from src.public_datasets import (
     _KaggleCredentialRedirectHandler,
     download_kaggle_ph,

@@ -20,11 +20,12 @@ from typing import Any
 
 import pandas as pd
 
-from api.donations import create_donation, export_donations
+from api.donations import create_donation, delete_donation, export_donations
 from src.consented_data import REQUIRED_COLUMNS, validate_batch
 from src.consented_split import split_consented_dataset
 from src.privacy.scrub import detect_pii
 from src.public_evaluation import evaluate_public_dataset
+from src.review_reconciliation import verify_export
 from src.train import train
 
 SYNTHETIC_CAMPAIGNS = 64
@@ -428,6 +429,11 @@ def run_synthetic_rehearsal() -> dict[str, Any]:
             if len(export_rows) != export_counts["exported"]:
                 raise RehearsalError(stage)
 
+            stage = "current_export_reconciliation"
+            current = verify_export(database, staging_path, require_model_research=True)
+            if current["status"] != "matched" or current["matched"] != len(export_rows):
+                raise RehearsalError(stage)
+
             stage = "independent_review"
             reviewer_inputs = [
                 {"record_id": row["record_id"], "message": row["message"], "language": row["language"]}
@@ -537,6 +543,13 @@ def run_synthetic_rehearsal() -> dict[str, Any]:
             if evaluation["status"] != "evaluated" or evaluation["dataset"]["kind"] != "synthetic_rehearsal":
                 raise RehearsalError(stage)
 
+            stage = "withdrawal_reconciliation"
+            if not delete_donation(database, next(iter(created))):
+                raise RehearsalError(stage)
+            stale = verify_export(database, staging_path, require_model_research=True)
+            if stale["status"] != "blocked" or stale["unavailable"] != 1:
+                raise RehearsalError(stage)
+
             evaluation_metrics = evaluation["metrics"]
             summary = {
                 "status": "completed",
@@ -546,6 +559,8 @@ def run_synthetic_rehearsal() -> dict[str, Any]:
                     "explicit_consent": True,
                     "reserved_example_url_rejected": True,
                     "consent_controls": consent_controls,
+                    "current_export_matched": True,
+                    "withdrawn_export_blocked": True,
                 },
                 "review": {
                     "reviewer_count": 2,

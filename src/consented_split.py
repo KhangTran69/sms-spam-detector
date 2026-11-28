@@ -162,6 +162,15 @@ def split_consented_dataset(
     if split.method != "chronological_group_holdout" or split.as_dict(dataset.groups).get("group_leakage") != 0:
         raise DatasetError("Could not establish a chronological campaign-separated holdout; no files were written.")
 
+    # Group assignment by latest timestamp is not enough: a long-running
+    # campaign can place older rows on the newer side of the boundary.
+    dates = pd.to_datetime(dataset.frame["received_at"], errors="coerce", utc=True)
+    if (
+        dates.iloc[split.train_idx].max() >= dates.iloc[split.val_idx].min()
+        or dates.iloc[split.val_idx].max() >= dates.iloc[split.test_idx].min()
+    ):
+        raise DatasetError("Campaign dates overlap chronological split boundaries; reconcile before sealing.")
+
     normalized_frame = normalize_intake_columns(raw_frame)
     source_indices = {
         _normalized_message_key(str(message).strip()): index
@@ -234,6 +243,7 @@ def split_consented_dataset(
             "group_leakage": 0,
             "cross_split_duplicate_preflight": "passed",
             "temporal_ordering": "chronological_campaign_holdout",
+            "strict_row_chronology": True,
         },
         "run": _source_metadata(),
         "message_text_included": False,

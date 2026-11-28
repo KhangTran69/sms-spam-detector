@@ -31,8 +31,9 @@ contact is shown on both the form and notice. The optional settings are:
 | `SMSD_DONATION_RATE_LIMIT_PER_MINUTE` | `5` | In-process per-client donation request limit |
 
 The app has no authentication. CORS does not provide access control. Donation
-routes accept only loopback clients, and the intake is unavailable when
-`SMSD_ENV=production`. Keep it on localhost without a public reverse proxy;
+routes accept only loopback clients and literal loopback Host authorities.
+Browser requests with an Origin must match that authority and scheme; cross-site
+writes are refused. The intake is unavailable when `SMSD_ENV=production`. Keep it on localhost without a public reverse proxy;
 do not expose or deploy the intake publicly. Run the service with
 `python -m api.cli` / `smsd-serve`. Withdrawal IDs are sent in a JSON body,
 not a URL path; the CLI disables Uvicorn access logs for a single sanitized
@@ -56,7 +57,9 @@ recorded; they are never silently relabeled as version 4.
 Message text is length-bounded and screened with the strict PII scanner before
 SQLite storage. The storage layer repeats that check, and review export screens
 again. If likely PII appears, the API rejects the submission and returns only
-the flagged spans needed for manual redaction. URLs are flagged; the scanner can
+the flagged spans needed for manual redaction. The form returns keyboard
+focus to the message field, associates it with the error list, and clears the
+stale finding state when the donor edits. URLs are flagged; the scanner can
 miss information, so donors must review and redact messages themselves.
 
 The form collects only message text, an optional `spam`/`ham` hint, an optional
@@ -145,3 +148,62 @@ Primary references: [Republic Act No. 10173 (Official Gazette)](https://official
 [NPC Circular No. 2023-04, Guidelines on Consent](https://privacy.gov.ph/wp-content/uploads/2023/11/NPC-Circular-No.-2023-04_Guidelines-on-Consent_07Nov2023.pdf),
 [NPC data-subject rights](https://privacy.gov.ph/data-subject-rights/),
 and [NPC Advisory No. 2026-01 on scraping publicly available personal data](https://privacy.gov.ph/wp-content/uploads/2026/04/SGD_A_1.pdf). RA 10173 §11 addresses purpose limitation and retention, §12 sets lawful-processing criteria including consent, and §16 describes data-subject rights; the IRR elaborates transparency, legitimate purpose, proportionality, and revocable/time-bounded consent. The operator must assess how these rules apply; the software does not make that legal determination.
+
+### Donation request boundary and availability
+
+Consent values must be actual JSON booleans, not strings or numbers. Duplicate
+JSON keys and nonfinite JSON constants are rejected. The literal loopback
+authority must be well formed; conflicting or duplicate browser authority
+headers and non-same-origin Fetch Metadata on writes are refused. Local CLI
+requests may omit browser headers. These controls are not authentication and
+do not authorize public collection.
+
+SQLite operations run outside the async request loop while retaining the
+write-admission slot until the operation finishes. Storage failures return
+a generic 503 without private exception details. An uncertain response is
+not proof of rejection: do not automatically resend a donation. The browser
+guard prevents simultaneous submissions. A new optional 32-character opaque
+submission key provides durable idempotency across worker/process restarts.
+An exact retry returns the original withdrawal ID and does not refresh consent
+or extend retention. A different payload or withdrawn record returns a generic
+409; withdrawal does not recreate the message. The database stores only a
+hash of the random key, never a message fingerprint or raw submission key.
+Key hashes are purged with their donation rows after the retention period;
+idempotency is therefore bounded by that period. Legacy unkeyed clients remain
+supported but must not assume safe retry. The browser keeps the key and pending
+choices only in memory, refuses changed retries after uncertain outcomes, and
+never retries automatically. Reloading loses that state: consult the operator
+before repeating the donation. Version 3 adds the nullable key hash and unique
+index; exported review CSV format remains version 2.
+
+
+### Retention maintenance and recovery (local only)
+
+Run `python -m scripts.maintain_donations --database /private/donations.sqlite3`
+against the explicitly selected existing database, including on days with no
+intake. A purge commits with SQLite secure_delete enabled. Optional
+`--compact` separately attempts VACUUM; exit 1 means purge committed but
+compaction needs another maintenance window. Exit 2 means maintenance was
+refused. Avoid concurrent collection during planned maintenance. Neither
+SQLite secure_delete nor VACUUM guarantees physical erasure of filesystem
+snapshots, SSD blocks or backups.
+
+Run `python -m scripts.rehearse_donation_recovery` for the disposable
+fictional backup/restore test. A pre-withdrawal backup really can restore
+withdrawn content: never reopen a restored store for intake or export until
+the custodian has reconciled it with current consent, withdrawal and expiry
+records, verified integrity, and removed expired copies. If the current
+register is unavailable, quarantine the restore; do not assume active consent.
+The rehearsal uses no actual data, does not restore an operator database and
+does not establish that an actual backup is safe. Record the operator's
+maintenance results privately without message text or receipt IDs.
+
+While a donation submission is in progress, its text, choices and withdrawal controls are temporarily disabled, then restored for keyboard access. An invalid receipt is an uncertain outcome. A later validation rejection cannot erase the pending key if an earlier outcome was uncertain; resolve that request with the operator instead of starting a different submission. The live status explains this distinction. A page reload still loses the in-memory retry state.
+
+### Reconcile an earlier private review export before reuse
+
+Run `python -m scripts.verify_review_export --database /private/current.sqlite3 --export /private/review.csv` against the **current authoritative** store, not an unverified restored backup. Add `--require-model-research` before a research preparation step. The check opens the existing database read-only, matches all spreadsheet-safe export fields, rejects duplicates, missing/expired/withdrawn rows, changed content and insufficient research consent, and reports only aggregate counts. Exit 0 means a nonempty matching snapshot, 1 means blocked, and 2 means unreadable/unsafe input. It is not proof of actual consent or authorization. Coordinate with the custodian, repeat immediately before reuse, and quarantine stale exports; no automatic deletion of external copies occurs. A withdrawal after the check can invalidate the snapshot. The synthetic end-to-end rehearsal exercises this gate before independent review and after a fictional withdrawal.
+
+### Guarded v4 worksheet consumption
+
+For current-notice local donations the label importer requires both `--current-database /private/current.sqlite3` and `--review-export /private/review.csv`. It checks every unmodified staging row against the authoritative store and binds accepted worksheet content, language, notice and consent dates to that snapshot while holding a short SQLite write reservation through exclusive CSV publication. A stale, changed or research-ineligible export is refused; a competing withdrawal waits or returns a retryable storage error. Never hold a reservation during human review or training. Derived copies are still revocable: the custodian must reconcile again before further processing and quarantine/delete affected private copies after withdrawal or expiry. Earlier notice imports retain their historical register-only compatibility; do not use that route for v4 donations. This is not approval of the notice, consent or backup freshness. The database connection verifies DELETE journal mode and secure_delete rather than assuming PRAGMA requests took effect; inaccessible filesystem backups are not securely erased by this check.

@@ -33,9 +33,13 @@ h11==0.16.0
     #   uvicorn
 httpcore==1.0.9
     # via httpx
+httpcore2==2.16.2
+    # via httpx2
 httptools==0.9.0
     # via uvicorn
 httpx==0.28.1
+    # via philippine-sms-spam-detector (pyproject.toml)
+httpx2==2.16.2
     # via philippine-sms-spam-detector (pyproject.toml)
 idna==3.20
     # via
@@ -67,7 +71,7 @@ numpy==2.4.6
     #   pandas
     #   scikit-learn
     #   scipy
-opentelemetry-api==1.45.1
+opentelemetry-api==1.45.2
     # via fastapi
 packaging==26.3
     # via
@@ -123,6 +127,8 @@ threadpoolctl==3.7.0
     # via scikit-learn
 tomli==2.5.0
     # via coverage
+truststore==0.10.5
+    # via httpx2
 typing-extensions==4.16.0
     # via
     #   anyio

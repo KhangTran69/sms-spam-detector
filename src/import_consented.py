@@ -77,7 +77,15 @@ def import_consented(
     normalized["data_kind"] = "consented"
 
     digest = hashlib.sha256(input_bytes).hexdigest()[:16]
-    output_dir = Path(output_dir)
+    output_dir = Path(output_dir).expanduser().resolve()
+    repository = ROOT.resolve()
+    private_roots = (CONSENTED_DIR.resolve(), (repository / "data" / "donations").resolve())
+    if (output_dir == repository or repository in output_dir.parents) and not any(
+        output_dir == private or private in output_dir.parents for private in private_roots
+    ):
+        raise DatasetError(
+            "Consented imports must stay outside the repository or in dedicated ignored private storage."
+        )
     try:
         output_dir = ensure_private_directory(output_dir)
     except ValueError as exc:
@@ -100,7 +108,9 @@ def import_consented(
             delete=False,
         ) as handle:
             temporary = Path(handle.name)
-            normalized.to_csv(handle, index=False)
+            normalized.to_csv(handle, index=False, lineterminator="\n")
+            handle.flush()
+            os.fsync(handle.fileno())
         # Same-directory hard-link creation publishes atomically and fails if
         # another run already created this content-addressed destination.
         os.link(temporary, destination)

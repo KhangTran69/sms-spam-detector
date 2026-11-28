@@ -477,7 +477,7 @@ def calibration_metrics(
         "brier_score": float(brier_score_loss(y, probs)),
         "log_loss": float(log_loss(y, clipped, labels=[0, 1])),
     }
-    metrics.update(expected_calibration_error(labels, probabilities, n_bins=n_bins))
+    metrics.update(expected_calibration_error(labels, probs, n_bins=n_bins))
     return metrics
 
 

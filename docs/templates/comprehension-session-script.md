@@ -68,10 +68,9 @@ messages and must never be described as real.
 > accurate. Everything I show you today is a made-up example message; none of
 > them are real messages from a real phone.
 >
-> The tool estimates whether a message matches spam versus legitimate-message
-> patterns. It does not judge whether a sender committed fraud, and no score
-> is proof that a message is or is not safe. There are no right answers, and
-> what you tell me will not affect anything you use.
+> Please use the tool as you normally would. We are evaluating the interface,
+> not testing you. What you tell me will not affect anything you use.
+> We will explain what the model score means after recording your answers.
 >
 > I will show you one made-up message at a time and ask what you think. I may
 > take notes; I will record only your pseudonym and your answers about the
@@ -86,9 +85,11 @@ Ask these first, before the verdict, score, or pattern details are visible:
 - "Where would you verify an unexpected bank or delivery request?"
 - "What would you do if a message asked you for an OTP?"
 
-Record the answers. If a participant treats a low score as a promise of
-safety, record it as a comprehension failure for this session — that is what
-the pass criterion below exists to catch.
+Record the answers without supplying definitions or pointing to the warning.
+Repeat the guarantee probe after the participant has used the interface; keep
+the before and after responses separate. If a participant treats a low score
+as a promise of safety, record it as a comprehension failure for this session
+under the unchanged decision rule below.
 
 ## Per-example flow
 
@@ -153,3 +154,33 @@ still set any remaining decision-rule details before the session.
   interface.
 - Remember: this feedback is qualitative usability evidence, not a model
   performance estimate, and it cannot establish population-wide usability.
+
+
+## Filipino / Taglish facilitator prompts (draft for native-speaker review)
+
+Use the same neutral meaning and order as the English questions. Do not mix
+explanations into the first-response questions. These translations are
+participant-facing draft material, not a translation of the approved privacy
+notice; obtain the native-language and qualified reviewer check before use.
+
+| English probe | Filipino / Taglish draft |
+|---|---|
+| What do you think this message is? | Sa tingin mo, anong uri ng mensahe ito? |
+| What do you think the score means? | Sa tingin mo, ano ang ibig sabihin ng score? |
+| Does a low score guarantee the message is safe? | Kapag mababa ang score, sigurado bang ligtas ang mensahe? |
+| What part of the interface influenced you? | Aling bahagi ng screen ang nakaimpluwensiya sa sagot mo? |
+| What would you do next? | Ano ang susunod mong gagawin? |
+| Where would you verify an unexpected bank or delivery request? | Saan mo ibe-verify ang hindi inaasahang mensahe mula sa bangko o delivery service? |
+| What would you do if a message asked you for an OTP? | Ano ang gagawin mo kung humingi ng OTP ang mensahe? |
+
+After recording all responses, explain that the score is an assistive spam
+model score, not proof of fraud or safety. Remind participants that they
+should verify unexpected requests through official channels obtained
+independently. Do not include this explanation before the measured probes.
+For the optional donation walkthrough, use only fictional text and ask
+participants to explain the distinct review, sharing-authorization, and
+optional research choices in their own words. Do not record real messages.
+
+### Pending donation and interrupted-response walkthrough (fictional only)
+
+Use the disposable service and generated text, never participant messages. Ask the participant to explain why the form cannot be edited while a submission is in progress, what an uncertain receipt means, and what they would do if a later attempt is rejected. Filipino draft: “Ano ang gagawin mo kung hindi tiyak kung natanggap ang unang ipinadalang form?” Do not give the expected answer first. Record keyboard access after the pending operation, announcement of the status, and whether the user understands that a later rejection does not establish the earlier outcome. Native-speaker and actual screen-reader evaluation remain outstanding.

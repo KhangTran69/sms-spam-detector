@@ -29,6 +29,7 @@ dev = [
     "mypy>=1.8,<3",
     "pytest>=7.4,<10",
     "httpx>=0.24,<1",
+    "httpx2>=2.16.2,<3",
     "pytest-cov>=4.1,<8",
 ]
 redis = [
@@ -67,7 +68,7 @@ exclude = ["tests*"]
 testpaths = ["tests"]
 # Coverage ratchet: start at the measured baseline, then raise this floor when
 # coverage improves. Lower it only with a specific justification in the PR.
-addopts = "-ra --cov=src --cov=api --cov-report=term-missing --cov-fail-under=82"
+addopts = "-ra --cov=src --cov=api --cov-report=term-missing --cov-fail-under=85"
 # CI has no data/raw/spam.csv and no models/* artifact (both git-ignored, except
 # the synthetic Philippine CSVs). Tests must skip or synthesize their own data
 # instead of depending on those paths.
@@ -100,7 +101,7 @@ ignore = ["E501", "B905", "SIM108"]
 extend-ignore = ["B008"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["src", "api"]
+known-first-party = ["src", "api", "scripts"]
 
 [tool.mypy]
 python_version = "3.11"

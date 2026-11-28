@@ -262,3 +262,69 @@ ensemble must remain disabled until the project owner registers the comparison
 procedure and minimum margin, and an authorized run evaluates both candidates
 against the same approved, hash-bound real holdout. Synthetic checks, local
 plumbing tests, and public corpus scores cannot satisfy that gate.
+
+## Cross-corpus overlap audit (T2.3)
+
+Run the aggregate-only audit on existing, normalized approved public files and
+the tracked fictional fixtures. It does not download, fit a classifier, open
+consented data, or modify the model.
+
+```bash
+python -m src.corpus_audit \
+  --uci data/raw/imported/uci_sms_spam.csv \
+  --ph-inbox data/external/ph-spam-marketing-sms.csv \
+  --tagalog data/external/tagalog-sms.csv \
+  --include-synthetic
+```
+
+Omit unavailable public inputs; at least two roles must remain. The
+`--include-synthetic` switch supplies both tracked training and holdout
+fixtures, so the command can be rehearsed without private data. The report
+records file-level SHA-256 digests, class counts, exact and normalized
+overlap, category-independent template overlap, conflicting-label pairs, and
+near-duplicate candidate counts. It does not emit messages, source paths,
+individual identifiers, or template signatures. Exact and normalized counts
+are deliberately separate from the near-duplicate counts; row-pair counts
+include repeats to expose duplication rather than remove it.
+
+The pair-local similarity screen follows the historical 0.90 cosine and 0.90
+sequence thresholds. Row, byte and sequence-work budgets refuse oversized
+runs instead of reporting partial overlap counts. It is a heuristic diagnostic, not evidence of confirmed
+duplicates or population independence. Review candidate overlap privately
+before any future development split; do not automatically relabel or delete
+rows. Keep the blocked merged and bwandowando corpora out of the audit. No
+consented or sealed data is accepted by this command. Never use this output
+as a release gate or as model performance evidence. A full real-corpus run
+requires the existing local approved snapshots; CI exercises fictional data
+only.
+
+## Synthetic formatting robustness diagnostic
+
+Run `python -m src.robustness_audit --model models/ci-smoke.pkl` after training
+or selecting a trusted local fixture artifact. The command reads only the
+tracked synthetic holdout. It pairs each row with predefined formatting changes,
+keeps the stored decision threshold fixed, and reports class counts, aggregate
+FP/FN changes, new and corrected errors, changed rows and prediction flips.
+Artifact and corpus digests bind the report. No SMS text or row-level scores
+are emitted. CI runs this diagnostic on its synthetic smoke model; no error
+rate from this exercise is a real-data acceptance gate or an estimate of field
+performance. Never use its results to retune a frozen test threshold.
+
+The overlap report also records within-corpus normalized duplicate excess,
+conflicting-label keys and conflicting-label row pairs, plus distinct
+left/right row counts involved in near-duplicate candidates. These supplement,
+rather than replace, exact cross-corpus pair counts. The 0.90 similarity
+cutoffs are unchanged; boundary tests cover equality, below-cutoff values,
+and rejection by the separate sequence gate.
+
+### Development-only formatting and class-weight comparisons
+
+The original feature contract and frozen artifacts stay unchanged. Run the separate diagnostic only on a custodian-approved development snapshot, never a sealed test or a whole corpus containing frozen test membership:
+
+```bash
+python -m src.development_study --role tagalog --development /private/approved-dev.csv --approved-sha256 APPROVED_DIGEST --folds 3
+```
+
+The tool verifies the exact snapshot hash, refuses known historical frozen input fingerprints, normalized duplicates, class conflicts and cross-fold template/near-duplicate candidates at the existing 0.90 cutoffs. It compares fixed logistic-regression recipes with and without class weighting and NFKC/casefold/whitespace canonicalization on identical group-isolated folds. It reports aggregate error counts, score calibration and paired formatting changes; no model artifact, message text or row identifier is emitted. The custodian must verify independence even for changed file encodings or subsets. Synthetic fixtures exercise the complete fitting path, not independent Philippine evidence. No threshold tuning or production preprocessing change is made.
+
+Development-study schema v2 preserves declared campaign groups and unites them transitively with masked template families before assigning folds. Each row must occur in exactly one validation fold; every train/validation pair must be complete and disjoint. Reports include class support, component count, and paired false-positive/false-negative transitions against the unweighted original-input recipe and within formatting variants. These are diagnostics, not a frozen-baseline release comparison or an independent field estimate.

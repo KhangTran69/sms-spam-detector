@@ -21,7 +21,7 @@ def ensure_private_directory(path: str | Path) -> Path:
         missing.append(parent)
         parent = parent.parent
     for item in reversed(missing):
-        item.mkdir(mode=0o700)
+        item.mkdir(mode=0o700, exist_ok=True)
     if os.name == "posix":
         try:
             permissions = stat.S_IMODE(directory.stat().st_mode)

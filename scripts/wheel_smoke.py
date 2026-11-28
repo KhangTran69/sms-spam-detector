@@ -25,6 +25,7 @@ import src.benchmark
 import src.public_evaluation
 import src.consented_split
 import src.consented_rehearsal
+import src.review_reconciliation
 import src.ensemble
 import src.transformer_training
 import src.train

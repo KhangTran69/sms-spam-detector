@@ -89,3 +89,39 @@ consented intake CSV whose exact columns are `REQUIRED_COLUMNS` and
 (distinct reviewers, independent adjudication on disagreement, adjudication
 matching agreeing reviewers, no low-confidence finals) and rejects
 unrecognized extra columns, including prediction fields.
+
+
+### Independent review evidence sidecar (version 2)
+
+The import command's `--scam-assessments` option requires separate per-record
+reviewer outcomes and actual adjudication. Populate from the two separately
+returned reviewer sheets, not a common default. This example is fictional.
+
+```json
+{
+  "schema_version": 2,
+  "records": {
+    "fictional_record": {
+      "reviewer_a": {"scam": "suspected", "confidence": "medium", "category": "bank_alert"},
+      "reviewer_b": {"scam": "not_suspected", "confidence": "high", "category": "bank_alert"},
+      "adjudicated": {"scam": "not_suspected", "confidence": "high", "category": "bank_alert"}
+    }
+  }
+}
+```
+
+Record the third reviewer's pseudonymous ID whenever the labels, scam
+assessments or category disagree. The dated owner exception continues to
+exclude affected rows pending independent review. Do not invent missing
+outcomes or infer reviewer confidence from the donor's number. Preserve
+historical imports but reconcile earlier default-based assessments against
+actual reviewer sheets before future model use. Keep these files private.
+
+
+For a batch intended for chronological holdout preparation, include
+`group` and `received_at` in the master worksheet. Record the minimized,
+verified reception date in ISO format, not the donation submission date.
+An explicit campaign group is required when the date column is supplied;
+the importer does not invent a chronological grouping from a receipt ID.
+Do not fabricate missing timestamps. The training-purpose importer remains
+distinct from the later sealed evaluation preflight.

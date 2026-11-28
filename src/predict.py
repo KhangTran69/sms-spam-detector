@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any
 
 import joblib
+import numpy as np
 import sklearn
 from sklearn.pipeline import Pipeline
 
@@ -391,10 +392,23 @@ def spam_probabilities(bundle: ModelBundle, messages: Iterable[str]) -> list[flo
     if not messages:
         return []
     frame = messages_to_frame(messages)
-    probabilities = bundle.pipeline.predict_proba(frame)
+    raw = bundle.pipeline.predict_proba(frame)
     classes = list(bundle.pipeline.classes_)
-    spam_index = classes.index("spam")
-    return [float(row[spam_index]) for row in probabilities]
+    try:
+        probabilities = np.asarray(raw, dtype=float)
+    except (TypeError, ValueError, OverflowError):
+        raise ModelArtifactError("Model returned an invalid probability matrix.") from None
+    if (
+        len(classes) != 2
+        or set(classes) != {"ham", "spam"}
+        or probabilities.shape != (len(messages), 2)
+        or not np.all(np.isfinite(probabilities))
+        or np.any(probabilities < 0)
+        or np.any(probabilities > 1)
+        or not np.allclose(probabilities.sum(axis=1), 1.0, rtol=0, atol=1e-6)
+    ):
+        raise ModelArtifactError("Model returned an invalid probability matrix.")
+    return probabilities[:, classes.index("spam")].tolist()
 
 
 def decision_probability(bundle: ModelBundle, message: str) -> float:

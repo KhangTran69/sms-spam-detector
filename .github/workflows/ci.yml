@@ -77,6 +77,8 @@ jobs:
             --monitor-baseline-source synthetic_diagnostic
           # The isolated non-root container needs read access to this synthetic fixture.
           chmod 644 models/ci-smoke-baseline.json
+      - name: Exercise paired synthetic formatting robustness diagnostic
+        run: python -m src.robustness_audit --model models/ci-smoke.pkl
       - name: Benchmark inference latency against a budget
         run: |
           python scripts/benchmark_performance.py --model models/ci-smoke.pkl --output-dir benchmarks-ci --iterations 50
@@ -158,10 +160,10 @@ jobs:
           )
           with urllib.request.urlopen(request, timeout=2) as response:
               monitor = json.load(response)
-              assert monitor["baseline_status"] == "configured"
+              assert monitor["baseline_status"] == "incompatible_baseline"
               assert monitor["baseline_model_version"] == info["model_version"]
-              assert monitor["baseline_source_kind"] == "synthetic_diagnostic"
-              assert monitor["drift"]["drift_status"] == "insufficient_data"
+              assert monitor["baseline_source_kind"] is None
+              assert monitor["drift"]["drift_status"] == "incompatible_baseline"
               assert "scores" not in monitor
           assert post("/predict", {"message": "CI fixture message"})["prediction"] in {"ham", "spam"}
           assert post("/analyze", {"message": "CI fixture message"})["prediction"] in {"ham", "spam"}
@@ -343,6 +345,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt -r requirements-dev.txt -c "constraints/py${{ matrix.python-version }}.txt"
+          pip install "openpyxl==3.1.5" "et-xmlfile==2.0.0"
 
       - name: Lint (ruff)
         run: ruff check .

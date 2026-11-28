@@ -64,6 +64,7 @@ MAKEFILE_TARGETS = [
     "docker-build",
     "docker-run",
     "clean",
+    "pilot-preflight",
 ]
 
 SECRET_PATTERNS = {
@@ -239,14 +240,14 @@ def test_pyproject_configures_pytest_ruff_and_mypy() -> None:
 
     pytest_options = config["tool"]["pytest"]["ini_options"]
     assert pytest_options["testpaths"] == ["tests"]
-    assert pytest_options["addopts"] == "-ra --cov=src --cov=api --cov-report=term-missing --cov-fail-under=82"
+    assert pytest_options["addopts"] == "-ra --cov=src --cov=api --cov-report=term-missing --cov-fail-under=85"
 
     ruff = config["tool"]["ruff"]
     assert ruff["target-version"] == "py311"
     assert ruff["line-length"] == 120
     selected = set(ruff["lint"]["select"])
     assert {"E", "F", "I", "UP", "B", "SIM"} <= selected
-    assert ruff["lint"]["isort"]["known-first-party"] == ["src", "api"]
+    assert ruff["lint"]["isort"]["known-first-party"] == ["src", "api", "scripts"]
 
     mypy = config["tool"]["mypy"]
     assert mypy["python_version"] == "3.11"
@@ -381,6 +382,20 @@ def test_makefile_phony_and_targets() -> None:
         assert re.search(rf"(?m)^{re.escape(target)}:", makefile), f"Makefile target missing: {target}"
 
 
+def test_pilot_preflight_target_is_documented_in_makefile_header() -> None:
+    makefile = _text("Makefile")
+    lines = makefile.splitlines()
+    header_end = next(index for index, line in enumerate(lines) if line.strip() and not line.startswith("#"))
+    assert any(line.startswith("#   make pilot-preflight ") for line in lines[:header_end]), (
+        "Makefile header must document pilot-preflight"
+    )
+    printed = [re.search(r"sed -n '(\d+),(\d+)p'", line) for line in lines if "sed -n" in line]
+    assert printed and all(printed), "help must print the header block with a fixed sed range"
+    assert all(int(match.group(2)) > header_end for match in printed), (
+        "help must keep printing the complete documented header block"
+    )
+
+
 def test_gitignore_keeps_docs_tests_tracked_and_artifacts_ignored() -> None:
     gitignore = _text(".gitignore")
     assert "models/*.pkl" in gitignore
@@ -415,6 +430,16 @@ def test_required_docs_are_present_and_linked_from_index() -> None:
         assert relative_path in REQUIRED_FILES
         assert doc_name in index, f"docs/README.md does not link {doc_name}"
         assert len(_text(relative_path)) > 500, f"{relative_path} looks empty"
+
+
+def test_documentation_index_local_links_resolve() -> None:
+    index = _text("docs/README.md")
+    for target in re.findall(r"\]\(([^)]+)\)", index):
+        if target.startswith(("https://", "http://", "mailto:")):
+            continue
+        local_path = target.split("#", 1)[0]
+        if local_path:
+            assert (ROOT / "docs" / local_path).is_file(), f"Documentation index link is missing: {local_path}"
 
 
 def test_docs_state_synthetic_only_and_privacy_limits() -> None:
@@ -507,7 +532,14 @@ def test_public_kaggle_evaluation_is_attributed_and_explicitly_limited() -> None
     model_card = _doc("docs/MODEL_CARD.md").lower()
     assert "kaggle" in model_card
     assert "group-isolated internal split diagnostic" in model_card
-    assert "tagalog-sms has not been fetched or evaluated" in model_card
+    # The Tagalog-SMS corpus was fetched and diagnosed on 2026-11-28; the model
+    # card must state that outcome and the bwandowando stop, never a stale
+    # "not fetched" claim.
+    assert "tagalog-sms was fetched and diagnosed on 2026-11-28" in model_card
+    assert "bwandowando philippine spam/scam corpus is **blocked**" in model_card
+    assert "real personal data beyond sms text" in model_card
+    assert "no version bump and no release were made" in model_card
+    assert "uncalibrated model score" in model_card
     assert "onzero0/tagalog-sms" in model_card
     assert "cc0" in model_card
     assert "raw local downloads must still be treated as sensitive" in model_card

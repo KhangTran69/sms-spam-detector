@@ -23,6 +23,7 @@
 #   make docker-build   build the container image
 #   make docker-run     run the image with ./models mounted read-only
 #   make clean          remove caches (never touches data/ or models/)
+#   make pilot-preflight dry-run the donation intake flow with synthetic fixtures
 
 PYTHON ?= .venv/bin/python
 PIP ?= $(PYTHON) -m pip
@@ -33,11 +34,13 @@ DEMO_EVALUATION ?= data/processed/demo-synthetic.json
 BENCHMARK_DIR ?= data/processed/benchmark-run
 OPERATING_FPR ?= 0.05
 DATASET ?= ph-spam-marketing-sms
+PREFLIGHT_OUTPUT ?= data/donations/pilot-preflight.json
+PREFLIGHT_CONTACT ?= pilot-preflight@example.test
 
-.PHONY: help install dev-install package-install redis-install test lint format typecheck doctor check-headlines train evaluate datasets eval split-consented rehearse-consented export-donations benchmark benchmark-perf demo serve macos-install macos-status macos-stop macos-restart macos-uninstall docker-build docker-run clean feedback-summary triage-feedback
+.PHONY: help install dev-install package-install redis-install test lint format typecheck doctor check-headlines train evaluate datasets eval split-consented rehearse-consented export-donations pilot-preflight benchmark benchmark-perf demo serve macos-install macos-status macos-stop macos-restart macos-uninstall docker-build docker-run clean feedback-summary triage-feedback
 
 help:
-	@sed -n '1,27p' Makefile
+	@sed -n '1,28p' Makefile
 
 install:
 	$(PIP) install -r requirements.txt
@@ -95,6 +98,9 @@ rehearse-consented:
 export-donations:
 	@test -n "$(OUTPUT)" || { echo "Set OUTPUT to a private, new CSV path outside the repository (or under ignored data/donations/)" >&2; exit 2; }
 	$(PYTHON) scripts/export_donations.py $(if $(DATABASE),--database "$(DATABASE)",) --output "$(OUTPUT)"
+
+pilot-preflight:
+	SMSD_DONATIONS_ENABLED=1 SMSD_DONATIONS_OPERATOR_CONTACT="$(PREFLIGHT_CONTACT)" $(PYTHON) scripts/pilot_preflight.py --output "$(PREFLIGHT_OUTPUT)"
 
 feedback-summary:
 	$(PYTHON) -m src.feedback $(if $(FEEDBACK_PATH),--path "$(FEEDBACK_PATH)",) $(if $(OUTPUT),--output "$(OUTPUT)",)
