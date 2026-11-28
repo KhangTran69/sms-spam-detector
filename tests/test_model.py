@@ -9,6 +9,7 @@ import shutil
 from pathlib import Path
 
 import joblib
+import numpy as np
 import pytest
 from sklearn.naive_bayes import MultinomialNB
 
@@ -23,6 +24,7 @@ from src.predict import (
     load_model,
     model_info,
     predict_message,
+    spam_probabilities,
 )
 from src.train import log_experiment_run, train
 
@@ -634,3 +636,75 @@ def test_log_experiment_run(trained_artifact, tmp_path):
     assert "metrics" in data
     assert "training_config" in data
     assert data["model_path"] == str(model_path)
+
+
+@pytest.mark.parametrize(
+    "matrix",
+    [
+        [[0.1, 0.9], [0.2, 0.8]],
+        [[0.1]],
+        [[0.4, 0.4]],
+        [[0.1, 0.3, 0.6]],
+        [["invalid", 0.5]],
+        [[float("nan"), 0.5]],
+    ],
+)
+def test_probability_matrix_contract_refuses_invalid_outputs(trained_artifact, monkeypatch, matrix):
+    _, path = trained_artifact
+    bundle = load_model(path)
+    monkeypatch.setattr(bundle.pipeline, "predict_proba", lambda frame: np.asarray(matrix))
+    with pytest.raises(ModelArtifactError, match="invalid probability matrix"):
+        spam_probabilities(bundle, ["Synthetic fixture"])
+
+
+def test_training_and_evaluation_cli_roundtrip_is_message_free(tmp_path, capsys):
+    from src.evaluate import _main as evaluate_main
+    from src.train import _main as train_main
+
+    dataset = make_tiny_dataset(tmp_path / "fixture.csv")
+    artifact = tmp_path / "fixture.pkl"
+    report = tmp_path / "evaluation" / "report.json"
+    plot = tmp_path / "evaluation" / "plot.png"
+    train_args = [
+        "--data",
+        str(dataset),
+        "--output",
+        str(artifact),
+        "--no-supplements",
+        "--holdout",
+        "none",
+        "--val-size",
+        "0.2",
+        "--test-size",
+        "0.2",
+        "--seed",
+        "7",
+        "--target-precision",
+        "0.5",
+        "--min-recall",
+        "0",
+    ]
+    assert train_main(train_args) == 0
+    assert artifact.is_file()
+    assert artifact.with_suffix(".metadata.json").is_file()
+    eval_args = [
+        "--data",
+        str(dataset),
+        "--model",
+        str(artifact),
+        "--no-supplements",
+        "--holdout",
+        "none",
+        "--plot",
+        str(plot),
+        "--json-out",
+        str(report),
+    ]
+    assert evaluate_main(eval_args) == 0
+    data = json.loads(report.read_text(encoding="utf-8"))
+    assert data["threshold"] == load_model(artifact).threshold
+    assert plot.read_bytes().startswith(b"\x89PNG")
+    assert data["model"]["probability_calibrated"] is False
+    output = capsys.readouterr().out + report.read_text(encoding="utf-8")
+    assert "Calibration" in output
+    assert not any(message in output for message in SPAM + HAM)

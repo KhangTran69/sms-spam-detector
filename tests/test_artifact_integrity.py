@@ -74,3 +74,16 @@ def test_release_cli_requires_matching_hash_without_loading_pickle(tmp_path, cap
 
     assert main([str(model_path)]) == 0
     assert "Verified model artifact SHA-256" in capsys.readouterr().out
+
+
+def test_release_cli_refuses_missing_metadata_and_changed_bytes(tmp_path, capsys):
+    artifact = tmp_path / "artifact.pkl"
+    artifact.write_bytes(b"fictional bytes")
+    assert main([str(artifact)]) == 2
+    assert "sidecar is missing" in capsys.readouterr().err
+    sidecar = tmp_path / "explicit.json"
+    sidecar.write_text(json.dumps({"artifact_sha256": hashlib.sha256(artifact.read_bytes()).hexdigest()}))
+    assert main([str(artifact), "--metadata", str(sidecar)]) == 0
+    artifact.write_bytes(b"changed fictional bytes")
+    assert main([str(artifact), "--metadata", str(sidecar)]) == 2
+    assert "mismatch" in capsys.readouterr().err

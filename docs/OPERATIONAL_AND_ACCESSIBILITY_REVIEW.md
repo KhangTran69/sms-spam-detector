@@ -108,3 +108,26 @@ forwarding-header trust and a disposable persistent Redis restart. The
 normal ephemeral profile needs an independent ingress limit during complete
 counter-store restart; do not infer persistence from the pause test. Record
 CI timings separately from target-hardware capacity and recovery objectives.
+
+
+### Native assistive-technology evidence worksheet
+
+Use only fictional fixtures until the pilot is separately authorized. For
+each named device, browser, assistive technology version, language, color
+theme and zoom setting, record the expected result, actual result, severity,
+reviewer role and retest outcome. Leave unexecuted cells blank.
+
+| Task | Expected result | Actual / pass / fail / not run |
+|---|---|---|
+| Skip link and view tabs | Main focus is moved; selected tab and panel relationship are announced. | |
+| Single, batch and comparison inputs | Names and help are announced; invalid entries return actionable focus. | |
+| Donation consent choices | Independent required choices and the optional research choice are distinguishable; none is preselected. | |
+| Fictional PII correction | Error is announced and associated with the focused field; stale findings disappear after editing. | |
+| Score and risk interpretation | Score is not announced as proof of fraud or safety. | |
+| Error and recovery | Busy, unavailable, timeout and retry states are announced without automatic resubmission. | |
+| 200% / 400% zoom and handset rotation | Text and primary actions remain available; no clipped consent or error controls. | |
+
+Run English and Filipino/Taglish passes separately. A qualified reviewer
+must determine whether the language and screen-reader experience is usable;
+an automated DOM assertion or a completed worksheet with no observations is
+not a pass. Do not record participant messages, names or withdrawal IDs.

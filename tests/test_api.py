@@ -1466,3 +1466,28 @@ def test_default_admission_capacity_under_repeated_concurrent_waves(monkeypatch)
     snapshot = monitor.snapshot()
     assert snapshot["peak_active_writes"] == capacity
     assert snapshot["outcomes"]["service_busy"] == 24
+
+
+@pytest.mark.parametrize("path", ["/metrics/operations", "/v1/metrics/distribution"])
+def test_production_metrics_refuse_duplicate_tokens(client, monkeypatch, path):
+    monkeypatch.setattr(api_main, "SMSD_ENV", "production")
+    monkeypatch.setattr(api_main, "METRICS_TOKEN", "fictional-operator-token")
+    token = ("X-SMSD-Metrics-Token", "fictional-operator-token")
+    rejected = client.get(path, headers=[token, token])
+    assert rejected.status_code == 404
+    assert rejected.headers["cache-control"] == "no-store"
+    assert "fictional-operator-token" not in rejected.text
+    assert client.get(path, headers={token[0]: token[1]}).status_code == 200
+
+
+@pytest.mark.parametrize("score", [float("nan"), float("inf"), -0.1, 1.1])
+def test_invalid_classifier_scores_fail_closed(monkeypatch, caplog, score):
+    monkeypatch.setattr(api_main, "SMSD_ENV", "production")
+    broken = make_bundle(fixed_pipeline(score))
+    with patched_client(lambda: broken, broken) as broken_client:
+        response = broken_client.post("/analyze", json={"message": "Fictional private marker"})
+        assert response.status_code == 503
+        assert response.json()["error"]["code"] == "model_unavailable"
+        assert "Fictional private marker" not in response.text
+        assert "Fictional private marker" not in caplog.text
+        assert broken_client.get("/health").status_code == 200

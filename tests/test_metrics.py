@@ -7,7 +7,9 @@ import pytest
 from src.metrics import (
     binary_metrics,
     bootstrap_metrics,
+    calibration_metrics,
     campaign_bootstrap_intervals,
+    expected_calibration_error,
     per_group_metrics,
     select_threshold,
 )
@@ -141,3 +143,28 @@ def test_campaign_bootstrap_excludes_undefined_class_ratios():
     assert report["intervals"]["false_positive_rate"] == [0.0, 0.0]
     assert 0 < report["valid_replicates"]["recall"] < 200
     assert 0 < report["valid_replicates"]["false_positive_rate"] < 200
+
+
+def test_calibration_accepts_one_shot_score_iterables_and_bins_include_endpoints():
+    labels = ["ham", "spam", "ham", "spam"]
+    scores = [0.0, 0.5, 0.5, 1.0]
+    result = calibration_metrics(labels, iter(scores), n_bins=2)
+    assert result == calibration_metrics(labels, scores, n_bins=2)
+    assert [entry["count"] for entry in result["bins"]] == [1, 3]
+    assert result["brier_score"] == pytest.approx(0.125)
+    assert result["expected_calibration_error"] == pytest.approx(0)
+
+
+@pytest.mark.parametrize("scores", [[0.1], [0.1, float("nan")], [-0.1, 0.5], [0.1, 1.1], [[0.1], [0.9]]])
+def test_calibration_refuses_invalid_score_vectors(scores):
+    with pytest.raises(ValueError):
+        calibration_metrics(["ham", "spam"], scores)
+
+
+def test_calibration_rejects_empty_inputs_and_invalid_bin_counts():
+    with pytest.raises(ValueError, match="at least one"):
+        calibration_metrics([], [])
+    with pytest.raises(ValueError, match="n_bins"):
+        expected_calibration_error(["ham"], [0.0], n_bins=0)
+    with pytest.raises(ValueError, match="differ in length"):
+        expected_calibration_error(["ham"], [0.0, 0.1])

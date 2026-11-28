@@ -247,3 +247,19 @@ def test_strict_redis_rejects_invalid_backend_reply():
         client.result = invalid
         with pytest.raises(RateLimiterUnavailable):
             RedisRateLimiter(client, fail_closed=True).check("prediction", "fixture", 1, 60)
+
+
+def test_malformed_redis_replies_fail_closed_and_recover():
+    import pytest
+
+    from api.rate_limiter import RateLimiterUnavailable
+
+    for invalid in ([1], [True, 0], None):
+        client = RedisStub()
+        client.result = invalid
+        limiter = RedisRateLimiter(client, fail_closed=True)
+        with pytest.raises(RateLimiterUnavailable):
+            limiter.check("prediction", "fixture", 2, 60)
+        assert limiter.failure_count == 1
+        client.result = (1, 0)
+        assert limiter.check("prediction", "fixture", 2, 60) == (True, 0)

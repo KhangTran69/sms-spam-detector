@@ -454,3 +454,11 @@ their already-scheduled dates (2027-01-15 → 2027-03-31, see the progress log).
   row participation; keep both historical similarity cutoffs at 0.90.
 - Exercise individual malformed preregistration fields, blocked CLI reporting,
   missing split inputs and dependency discovery. No release gates changed.
+
+
+- Reject malformed classifier probability matrices before generating a verdict;
+  maintain the stored threshold. Correct calibration calculation for one-shot
+  score iterables. Exercise real synthetic training/evaluation CLI output,
+  plots and artifact verification; test malformed Redis reply recovery.
+- Add the native assistive-technology evidence worksheet. It remains unfilled
+  until actual qualified review; no accessibility acceptance is asserted.
