@@ -287,6 +287,40 @@ def delete_donation(path: Path, record_id: str) -> bool:
         raise RuntimeError(f"Could not withdraw the donation ({type(exc).__name__}).") from None
 
 
+def review_export_row(
+    stored: tuple[str, str, str | None, str, str, str, int, int, int],
+) -> dict[str, str] | None:
+    """Encode a current review-staging row identically for export and verification."""
+    (
+        record_id, message, language, notice_version, consented_at, expires_at,
+        review_consent, model_research_consent, authorized_to_share,
+    ) = stored
+    if detect_pii(message, strict=True):
+        return None
+    row = {
+        "label": "",  # No donor hint is treated as verified ground truth.
+        "message": message,
+        "source": "donation_intake",
+        "category": "unknown",
+        "language": language or "unknown",
+        "received_at": "",
+        "data_kind": "consented",
+        "dataset_id": "local-consented-donation",
+        "dataset_version": EXPORT_SCHEMA_VERSION,
+        "license": "consented-private",
+        "record_id": record_id,
+        "review_status": "pending_review",
+        "eligible_for_modeling": "false",
+        "review_consent": str(bool(review_consent)).lower(),
+        "model_research_consent": str(bool(model_research_consent)).lower(),
+        "authorized_to_share": str(bool(authorized_to_share)).lower(),
+        "consent_notice_version": notice_version,
+        "consented_at": consented_at,
+        "expires_at": expires_at,
+    }
+    return {key: _spreadsheet_safe_cell(value) for key, value in row.items()}
+
+
 def export_donations(path: Path, output: Path) -> dict[str, int]:
     """Create an exclusive, restrictive, unlabelled review-staging CSV."""
     destination = Path(output).expanduser().resolve()
@@ -299,6 +333,7 @@ def export_donations(path: Path, output: Path) -> dict[str, int]:
     now = _timestamp(datetime.now(UTC))
     try:
         with _connect(Path(path)) as connection:
+            connection.execute("BEGIN")
             rows = connection.execute(
                 """SELECT record_id, message, language, notice_version, consented_at, expires_at,
                           review_consent, model_research_consent, authorized_to_share
@@ -318,42 +353,12 @@ def export_donations(path: Path, output: Path) -> dict[str, int]:
     writer.writeheader()
     pii_blocked = 0
     exported = 0
-    for (
-        record_id,
-        message,
-        language,
-        notice_version,
-        consented_at,
-        expires_at,
-        review_consent,
-        model_research_consent,
-        authorized_to_share,
-    ) in rows:
-        if detect_pii(message, strict=True):
+    for stored in rows:
+        row = review_export_row(stored)
+        if row is None:
             pii_blocked += 1
             continue
-        row = {
-            "label": "",  # No donor hint is treated as verified ground truth.
-            "message": message,
-            "source": "donation_intake",
-            "category": "unknown",
-            "language": language or "unknown",
-            "received_at": "",
-            "data_kind": "consented",
-            "dataset_id": "local-consented-donation",
-            "dataset_version": EXPORT_SCHEMA_VERSION,
-            "license": "consented-private",
-            "record_id": record_id,
-            "review_status": "pending_review",
-            "eligible_for_modeling": "false",
-            "review_consent": str(bool(review_consent)).lower(),
-            "model_research_consent": str(bool(model_research_consent)).lower(),
-            "authorized_to_share": str(bool(authorized_to_share)).lower(),
-            "consent_notice_version": notice_version,
-            "consented_at": consented_at,
-            "expires_at": expires_at,
-        }
-        writer.writerow({key: _spreadsheet_safe_cell(value) for key, value in row.items()})
+        writer.writerow(row)
         exported += 1
     # Publish a complete file exclusively; never unlink a destination we did
     # not create. A same-directory hard link prevents partial CSV visibility.
@@ -378,13 +383,14 @@ def export_donations(path: Path, output: Path) -> dict[str, int]:
 
 
 def donation_summary(path: Path) -> dict[str, int]:
-    """Return only aggregate counts; never return message values."""
+    """Return only aggregate counts from a single snapshot; never return message values."""
+    path = _validated_database_path(path)
     bootstrap_database(path)
-    with _connect(Path(path)) as connection:
-        total = int(connection.execute("SELECT COUNT(*) FROM donations").fetchone()[0])
-        withdrawn = int(
-            connection.execute("SELECT COUNT(*) FROM donations WHERE withdrawn_at IS NOT NULL").fetchone()[0]
-        )
+    with _connect(path) as connection:
+        total, withdrawn = connection.execute(
+            "SELECT COUNT(*), COUNT(withdrawn_at) FROM donations"
+        ).fetchone()
+        total, withdrawn = int(total), int(withdrawn)
     return {"records": total, "withdrawn": withdrawn, "active": total - withdrawn}
 
 

@@ -338,3 +338,5 @@ rejected. For the ratified v4 notice, retention dates cannot extend beyond
 the custodian must still verify the actual notice and current register.
 The worksheet importer can preserve verified reception chronology with
 explicit campaign groups and validates before publishing the output.
+
+Before sealing chronological evaluation, require strictly increasing row timestamps across train, validation and test boundaries, not merely an ordering of campaigns by their last message. Long-running campaigns or equal boundary timestamps require private reconciliation before any output is written. Do not relabel or move rows to force a successful split. The evaluation custodian must independently confirm the chronology and register.

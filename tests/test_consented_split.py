@@ -225,3 +225,18 @@ def test_split_cli_rejects_missing_input_without_creating_outputs(tmp_path, caps
     assert "blocked" in capsys.readouterr().err
     assert not list(development.glob("*.csv"))
     assert not list(evaluation.glob("*.csv"))
+
+
+def test_splitter_rejects_long_running_campaign_crossing_temporal_boundary(tmp_path):
+    source = write_consent_fixture(tmp_path / "overlap.csv")
+    frame = pd.read_csv(source, dtype=str, keep_default_na=False)
+    frame.loc[0, "group"] = frame.loc[len(frame) - 1, "group"]
+    frame.to_csv(source, index=False)
+    with pytest.raises(ValueError, match="overlap chronological split boundaries"):
+        split_consented_dataset(
+            source,
+            development_output_dir=tmp_path / "development",
+            evaluation_output_dir=tmp_path / "evaluation",
+        )
+    assert not (tmp_path / "development").exists()
+    assert not (tmp_path / "evaluation").exists()

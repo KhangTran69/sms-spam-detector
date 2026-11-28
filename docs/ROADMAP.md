@@ -497,3 +497,7 @@ Bound private CSV/JSON reads, reject ambiguous headers and duplicate sidecar key
 ### Development experiment and Redis configuration follow-up
 
 Union declared campaign groups with template families before development cross-validation; enforce complete disjoint membership and report paired class-specific error transitions. Reject Redis URL options that can override bounded connection settings or TLS verification, consistently in runtime and offline preflight. No deployed model or real-data acceptance criteria changed.
+
+### Current export reconciliation and strict chronological holdout
+
+Add a bounded, read-only private review-export reconciliation command that checks complete encoded rows against current active, unexpired storage and optional research consent. Exercise withdrawal invalidation in the disposable end-to-end rehearsal. Refuse chronological campaign partitions whose actual row timestamps overlap. These checks do not establish human consent or authorize release.
