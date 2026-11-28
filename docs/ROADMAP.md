@@ -477,3 +477,7 @@ Retain the unchanged OTP, bank-alert, delivery and calibration release gates.
 ### Donation reliability and optional spreadsheet coverage
 
 Persist opaque retry keys transactionally with the original donation; preserve consent and expiration on replay, refuse conflicting or withdrawn keys, and test concurrent calls. Retain local-only controls and message-free logging. The browser only retries at the user's explicit request while its unchanged pending form remains in memory.
+
+### Development-only model-quality and deployment review
+
+Add a fingerprint-bound, group-isolated class-weight and formatting experiment that refuses known frozen inputs and cross-fold duplicates. Exercise it with fictional data; approved Philippine development snapshots and qualified independent review remain necessary. Add an offline gateway configuration reviewer with value-free findings, which cannot grant deployment authorization. Keep all production feature semantics, existing acceptance gates and historical evidence unchanged.

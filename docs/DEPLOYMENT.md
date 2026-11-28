@@ -764,3 +764,9 @@ journals can outlive key expiry. The CI AOF exercise uses fictional identifiers
 and deletes its disposable storage. It does not authorize persisting actual
 client identities. Compose also accepts the independent SMSD_MODEL_SHA256
 pin and per-minute rate setting. Confirm both on target infrastructure.
+
+### Offline gateway configuration review (planning only)
+
+Run `python scripts/deployment_preflight.py --workers 2 --gateway-confirmed` with the proposed deployment environment only after the operator has separately reviewed the gateway checklist. The report contains finding codes, not token values or Redis credentials. It checks production mode, disabled donation/feedback collection, explicit artifact digest, shared fail-closed rate limiting, operator metrics token, valid HTTPS CORS origins and bounded positive settings. The gateway flag is an attestation, not a network probe; the report always marks gateway verification and deployment authorization false. Do not expose the service on this basis. Current D5 local-only policy remains in effect.
+
+The spreadsheet reader and its XML dependency are pinned for CI's fictional workbook ingestion test and included in the dependency audit. The three legacy-base tests still require the original operator-provided `data/raw/spam.csv`; do not substitute the separately licensed UCI import under that name.

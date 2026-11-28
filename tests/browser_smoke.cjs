@@ -868,9 +868,13 @@ async function main() {
       throw new Error('editing the donation did not clear stale PII correction state');
     }
     let abortOneSubmission = true;
+    let lostReceipt = null;
     await donationPage.route('**/donate', async (route) => {
       if (route.request().method() === 'POST' && abortOneSubmission) {
         abortOneSubmission = false;
+        const stored = await route.fetch();
+        if (stored.status() !== 201) throw new Error('lost receipt fixture was not saved');
+        lostReceipt = (await stored.json()).record_id;
         await route.abort('failed');
       } else {
         await route.continue();
@@ -892,6 +896,7 @@ async function main() {
     }
     const savedWithdrawalId = await donationPage.locator('#donation-withdrawal-id').inputValue();
     if (!/^[a-f0-9]{32}$/.test(savedWithdrawalId)) throw new Error('withdrawal ID was not displayed for donor control');
+    if (savedWithdrawalId !== lostReceipt) throw new Error('retry did not recover the original stored receipt');
     for (const selector of ['#donation-consent', '#donation-authorized', '#donation-research-consent']) {
       if (await donationPage.locator(selector).isChecked()) {
         throw new Error('donation consent choices remained selected after successful submission');

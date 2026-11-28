@@ -33,7 +33,7 @@ a campaign/time-separated dataset. A donor-provided label is only a hint.
 After you submit, the service stores the message, optional label hint and
 language, this notice version, the server-recorded UTC consent time, your
 authorization and consent choices, and a random withdrawal ID in a local
-SQLite database. The form does not ask for names, phone numbers, email
+SQLite database. A hash of a random submission key, if supplied, is kept with the record so an unchanged retry can return the original receipt without storing another message. The raw key is not stored. The form does not ask for names, phone numbers, email
 addresses, account numbers, contact lists, or sender identifiers. A
 conservative scanner checks for likely personal details, URLs, and codes before
 storage and again before review export. It can miss information; inspect and
@@ -55,7 +55,7 @@ After a successful submission, the page shows a random withdrawal ID and an
 immediate erase action. The browser does not save the ID. Keep it somewhere
 private if you may need to withdraw later. Withdrawal erases the message,
 label hint, and language; only a content-free tombstone with the consent notice
-version, timestamps, and withdrawal status remains until its expiry. Contact
+version, timestamps, withdrawal status, and optional retry-key hash remains until its expiry. Contact
 the local operator about copies in backups or any downstream dataset. If
 consented data has already been used in a separately approved model or report,
 the operator must assess deletion of derived copies and explain any limits.

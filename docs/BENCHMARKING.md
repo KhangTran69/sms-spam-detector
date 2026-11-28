@@ -316,3 +316,13 @@ left/right row counts involved in near-duplicate candidates. These supplement,
 rather than replace, exact cross-corpus pair counts. The 0.90 similarity
 cutoffs are unchanged; boundary tests cover equality, below-cutoff values,
 and rejection by the separate sequence gate.
+
+### Development-only formatting and class-weight comparisons
+
+The original feature contract and frozen artifacts stay unchanged. Run the separate diagnostic only on a custodian-approved development snapshot, never a sealed test or a whole corpus containing frozen test membership:
+
+```bash
+python -m src.development_study --role tagalog --development /private/approved-dev.csv --approved-sha256 APPROVED_DIGEST --folds 3
+```
+
+The tool verifies the exact snapshot hash, refuses known historical frozen input fingerprints, normalized duplicates, class conflicts and cross-fold template/near-duplicate candidates at the existing 0.90 cutoffs. It compares fixed logistic-regression recipes with and without class weighting and NFKC/casefold/whitespace canonicalization on identical group-isolated folds. It reports aggregate error counts, score calibration and paired formatting changes; no model artifact, message text or row identifier is emitted. The custodian must verify independence even for changed file encodings or subsets. Synthetic fixtures exercise the complete fitting path, not independent Philippine evidence. No threshold tuning or production preprocessing change is made.
