@@ -534,10 +534,15 @@ def test_duplicate_or_unavailable_message_check_blocks_coverage_even_when_raw_co
     from scripts.pilot_status import build_report, load_minimums, pool_intake
 
     plan = tmp_path / "small-plan.json"
-    plan.write_text(json.dumps({
-        "minimum_coverage": {"language": {"en": 1}, "category": {"otp": 1}},
-        "minimum_campaign_groups": 1,
-    }), encoding="utf-8")
+    plan.write_text(
+        json.dumps(
+            {
+                "minimum_coverage": {"language": {"en": 1}, "category": {"otp": 1}},
+                "minimum_campaign_groups": 1,
+            }
+        ),
+        encoding="utf-8",
+    )
     row = {**BELOW_ROWS[0], "label": "ham"}
     first = _write_csv(tmp_path / "duplicate-input" / "intake.csv", [row, row])
     code, report, _, _ = _run_with_output(tmp_path, [str(first), "--plan", str(plan)])
