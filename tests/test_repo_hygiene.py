@@ -601,6 +601,16 @@ def test_architecture_docs_do_not_describe_unimplemented_behavior() -> None:
         assert stale not in architecture, f"stale architecture claim: {stale}"
 
 
+def test_security_workflow_and_dependabot_exist() -> None:
+    workflow = _text(".github/workflows/security.yml")
+    assert "pip-audit" in workflow or "pip_audit" in workflow
+    assert "permissions:" in workflow
+    assert "contents: read" in workflow
+    assert "npm audit" in workflow
+    dependabot = _text(".github/dependabot.yml")
+    assert "pip" in dependabot and "npm" in dependabot
+
+
 def test_feedback_targets_are_wired() -> None:
     makefile = _text("Makefile")
     assert "feedback-summary:" in makefile
