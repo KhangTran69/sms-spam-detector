@@ -114,6 +114,20 @@ def _register(rows: list[dict[str, str]]) -> dict[str, dict[str, object]]:
     return {row["record_id"]: _entry(row["record_id"]) for row in rows if row["record_id"].strip()}
 
 
+def _review_outcome(scam="not_suspected", confidence="high", category="unknown"):
+    return {"scam": scam, "confidence": confidence, "category": category}
+
+
+def _review_evidence(rows):
+    records = {}
+    for row in rows:
+        confidence = label_import_module.map_confidence(row.get("labeling_confidence", "")) or "medium"
+        records[row["record_id"]] = {
+            role: _review_outcome(confidence=confidence) for role in ("reviewer_a", "reviewer_b", "adjudicated")
+        }
+    return {"schema_version": 2, "records": records}
+
+
 def _write_sidecars(
     tmp_path: Path,
     rows: list[dict[str, str]],
@@ -132,7 +146,7 @@ def _write_sidecars(
     reviewer_path = tmp_path / "reviewers.json"
     reviewer_path.write_text(json.dumps(reviewers), encoding="utf-8")
     scam_path = tmp_path / "scam.json"
-    scam_path.write_text(json.dumps(scam or {"default": "not_suspected"}), encoding="utf-8")
+    scam_path.write_text(json.dumps(scam if scam is not None else _review_evidence(rows)), encoding="utf-8")
     argv = [
         "--worksheet",
         str(worksheet_path),
@@ -163,7 +177,11 @@ def test_agreement_rows_produce_a_validator_passing_intake_csv(tmp_path, capsys)
         _row(RECORD_A, MSG_A),
         _row(RECORD_B, MSG_B, labeler_1="spam", labeler_2="spam", adjudicated="spam"),
     ]
-    argv = _write_sidecars(tmp_path, rows, scam={"default": "not_suspected", "overrides": {RECORD_B: "suspected"}})
+    evidence = _review_evidence(rows)
+    evidence["records"][RECORD_B] = {
+        role: _review_outcome(scam="suspected") for role in ("reviewer_a", "reviewer_b", "adjudicated")
+    }
+    argv = _write_sidecars(tmp_path, rows, scam=evidence)
 
     assert main(argv) == 0
     output = tmp_path / "intake.csv"
@@ -483,8 +501,8 @@ def test_sidecar_and_worksheet_schema_failures(tmp_path, capsys) -> None:
     cases = [
         ({"reviewers": {"labeler_1": "reviewer_01", "labeler_2": "reviewer_01"}}, "reviewer_ids_not_distinct"),
         ({"reviewers": {"labeler_1": "reviewer 1!", "labeler_2": "reviewer_02"}}, "reviewer_id_not_pseudonymous"),
-        ({"scam": {"default": "maybe"}}, "scam_assessment_value_invalid"),
-        ({"scam": {"default": "not_suspected", "overrides": {RECORD_A: "perhaps"}}}, "scam_assessment_value_invalid"),
+        ({"scam": {"default": "maybe"}}, "scam_assessments_schema_invalid"),
+        ({"scam": {"default": "not_suspected", "overrides": {RECORD_A: "perhaps"}}}, "scam_assessments_schema_invalid"),
         (
             {"exception": {"owner_reviewer_id": "reviewer_01", "expires_on": "15/12/2026"}},
             "owner_exception_schema_invalid",
@@ -563,3 +581,44 @@ def test_unexpected_exceptions_reach_stderr_as_a_type_name_only(tmp_path, capsys
     assert captured.out == ""
     assert captured.err == "Label import aborted with an unexpected error (RuntimeError).\n"
     assert "Traceback" not in captured.err and marker not in captured.err
+
+
+def test_actual_scam_disagreement_and_distinct_confidence_are_preserved(tmp_path, capsys):
+    rows = [_row(RECORD_A, MSG_A, adjudicator="reviewer_03")]
+    evidence = _review_evidence(rows)
+    evidence["records"][RECORD_A] = {
+        "reviewer_a": _review_outcome("suspected", "medium", "bank_alert"),
+        "reviewer_b": _review_outcome("not_suspected", "high", "bank_alert"),
+        "adjudicated": _review_outcome("not_suspected", "high", "bank_alert"),
+    }
+    assert main(_write_sidecars(tmp_path, rows, scam=evidence)) == 0
+    capsys.readouterr()
+    row = _read_csv(tmp_path / "intake.csv").iloc[0]
+    assert row["reviewer_a_scam_assessment"] == "suspected"
+    assert row["reviewer_b_scam_assessment"] == row["scam_assessment"] == "not_suspected"
+    assert row["reviewer_a_label_confidence"] == "medium"
+    assert row["reviewer_b_label_confidence"] == row["adjudicated_label_confidence"] == "high"
+    assert row["category"] == "bank_alert"
+    assert validate_csv(tmp_path / "intake.csv", today=TODAY, purpose="training").valid
+
+
+def test_missing_evidence_and_scam_disagreement_without_independent_reviewer_are_excluded(tmp_path, capsys):
+    rows = [_row(RECORD_A, MSG_A), _row(RECORD_B, MSG_B), _row(RECORD_C, MSG_C)]
+    evidence = _review_evidence(rows)
+    del evidence["records"][RECORD_A]
+    evidence["records"][RECORD_B]["reviewer_a"]["scam"] = "suspected"
+    assert main(_write_sidecars(tmp_path, rows, scam=evidence)) == 0
+    summary = json.loads(capsys.readouterr().out)
+    assert summary["included_rows"] == 1
+    assert {"independent_review_evidence_missing", "adjudicator_missing_for_disagreement"} <= {
+        item["code"] for item in summary["excluded_rows"]
+    }
+
+
+def test_invalid_independent_outcome_never_writes_intake(tmp_path, capsys):
+    rows = [_row(RECORD_A, MSG_A)]
+    evidence = _review_evidence(rows)
+    evidence["records"][RECORD_A]["reviewer_b"]["confidence"] = "guess"
+    assert main(_write_sidecars(tmp_path, rows, scam=evidence)) == 1
+    assert "scam_assessment_value_invalid" in capsys.readouterr().err
+    assert not (tmp_path / "intake.csv").exists()

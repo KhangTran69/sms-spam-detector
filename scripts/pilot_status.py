@@ -91,7 +91,7 @@ NOTICE = (
     "evaluate model quality."
 )
 LIMITATIONS = (
-    "Rows are pooled across the supplied intake CSVs and counted as-is, including duplicates.",
+    "Raw counts include duplicates; duplicate or incomplete message checks block minimums_met.",
     "Coverage is counted from the declared label, language, category, group, and "
     "consent_record_id columns; consent, retention, and de-identification are not re-checked here.",
     "Exit code 1 is a coverage readiness signal only; it never measures model quality.",
@@ -123,6 +123,7 @@ class PooledIntake:
     categories: dict[str, int]
     labels: dict[str, int]
     spam_categories: dict[str, int]
+    ham_categories: dict[str, int]
     duplicate_messages: int
     duplicate_detection_applied: bool
     forbidden: tuple[str, ...]
@@ -177,12 +178,16 @@ def pool_intake(paths: Sequence[str | Path]) -> PooledIntake:
         raise ValueError("At least one intake CSV path is required.")
     frames: list[pd.DataFrame] = []
     has_message = False
+    complete_message_check = True
     for path in paths:
         frame = _read_intake_csv(path)
         missing = [column for column in STATUS_COLUMNS if column not in frame.columns]
         if missing:
             raise ValueError(f"Intake CSV is missing required status columns: {', '.join(missing)}.")
         has_message = has_message or MESSAGE_COLUMN in frame.columns
+        complete_message_check = complete_message_check and bool(
+            MESSAGE_COLUMN in frame.columns and frame[MESSAGE_COLUMN].astype(str).str.strip().ne("").all()
+        )
         frames.append(frame.reindex(columns=[*STATUS_COLUMNS, MESSAGE_COLUMN]))
     pooled = pd.concat(frames, ignore_index=True).fillna("")
 
@@ -201,6 +206,7 @@ def pool_intake(paths: Sequence[str | Path]) -> PooledIntake:
     languages = _value_counts(pooled["language"])
     categories = _value_counts(pooled["category"])
     spam_categories = _value_counts(pooled["category"][normalized_labels == "spam"])
+    ham_categories = _value_counts(pooled["category"][normalized_labels == "ham"])
 
     duplicate_messages = _duplicate_message_count(pooled[MESSAGE_COLUMN]) if has_message else 0
 
@@ -218,8 +224,9 @@ def pool_intake(paths: Sequence[str | Path]) -> PooledIntake:
         categories=categories,
         labels=labels,
         spam_categories=spam_categories,
+        ham_categories=ham_categories,
         duplicate_messages=duplicate_messages,
-        duplicate_detection_applied=has_message,
+        duplicate_detection_applied=complete_message_check,
         forbidden=forbidden,
     )
 
@@ -330,9 +337,20 @@ def build_report(pooled: PooledIntake, minimums: CoverageMinimums) -> dict[str, 
             }
         )
 
+    blockers = []
+    if not pooled.duplicate_detection_applied:
+        blockers.append("duplicate_check_incomplete")
+    if pooled.duplicate_messages:
+        blockers.append("duplicate_messages_require_reconciliation")
+    if pooled.labels[UNRECOGNIZED_LABEL]:
+        blockers.append("unrecognized_labels")
     return {
         "report_kind": "pilot_coverage_status",
-        "status": STATUS_BELOW if gaps else STATUS_MET,
+        "status": STATUS_BELOW if gaps or blockers else STATUS_MET,
+        "readiness_blockers": blockers,
+        "legitimate_category_support": {
+            code: pooled.ham_categories.get(code, 0) for code in ("otp", "bank_alert", "delivery")
+        },
         "notice": NOTICE,
         "inputs": {
             "file_count": pooled.file_count,
@@ -417,6 +435,8 @@ def format_summary(report: dict[str, Any]) -> str:
         f"unrecognized_label_rows {warnings['unrecognized_label_rows']} | "
         f"languages_outside_plan {len(vocabulary['codes'])}"
     )
+    if report["readiness_blockers"]:
+        lines.append("Coverage blockers: " + ", ".join(report["readiness_blockers"]))
     lines.append(f"Notice: {NOTICE}")
     return "\n".join(lines)
 

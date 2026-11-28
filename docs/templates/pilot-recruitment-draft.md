@@ -75,3 +75,19 @@ owner knows. It is deliberately plain and does not promise anything.
       the day of sending, and any stop condition that fires halts collection.
 - [ ] Consent records, the restricted consent register, and 90-day retention
       purging are working as the notice describes.
+
+
+## Filipino/English review addendum — draft, not authorized to send
+
+The retry-key disclosure on the local form and privacy notice has changed.
+The owner and qualified privacy reviewer must review and ratify the revised
+disclosure before enabling any real pilot. Prior D2 approval is not approval
+of the new wording.
+
+Suggested comprehension prompt (native-speaker review required): "Kung hindi
+tiyak kung natanggap ang mensahe, huwag awtomatikong ipadala ulit. Maaari mong
+subukang muli ang parehong form sa pahinang ito, o magtanong sa operator."
+Ask the participant to explain what happens if a receipt is lost, what the
+withdrawal ID is for, and whether a donation is required to use the detector.
+Record only a pseudonymous session code, language, actual comprehension
+results and copy revisions. No participant responses have been collected.

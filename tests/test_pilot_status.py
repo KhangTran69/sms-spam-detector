@@ -528,3 +528,26 @@ def test_invalid_plan_metadata_key_is_not_printed(tmp_path, capsys):
     captured = capsys.readouterr()
     assert "non-categorical metadata keys" in captured.err
     assert marker not in captured.err + captured.out
+
+
+def test_duplicate_or_unavailable_message_check_blocks_coverage_even_when_raw_counts_meet_plan(tmp_path):
+    from scripts.pilot_status import build_report, load_minimums, pool_intake
+
+    plan = tmp_path / "small-plan.json"
+    plan.write_text(json.dumps({
+        "minimum_coverage": {"language": {"en": 1}, "category": {"otp": 1}},
+        "minimum_campaign_groups": 1,
+    }), encoding="utf-8")
+    row = {**BELOW_ROWS[0], "label": "ham"}
+    first = _write_csv(tmp_path / "duplicate-input" / "intake.csv", [row, row])
+    code, report, _, _ = _run_with_output(tmp_path, [str(first), "--plan", str(plan)])
+    assert code == 1
+    assert "duplicate_messages_require_reconciliation" in report["readiness_blockers"]
+    assert report["legitimate_category_support"]["otp"] == 2
+    missing = _write_csv(
+        tmp_path / "missing-input" / "intake.csv",
+        [{key: value for key, value in row.items() if key != "message"}],
+    )
+    report = build_report(pool_intake([missing]), load_minimums(plan))
+    assert report["status"] != "minimums_met"
+    assert "duplicate_check_incomplete" in report["readiness_blockers"]

@@ -481,3 +481,7 @@ Persist opaque retry keys transactionally with the original donation; preserve c
 ### Development-only model-quality and deployment review
 
 Add a fingerprint-bound, group-isolated class-weight and formatting experiment that refuses known frozen inputs and cross-fold duplicates. Exercise it with fictional data; approved Philippine development snapshots and qualified independent review remain necessary. Add an offline gateway configuration reviewer with value-free findings, which cannot grant deployment authorization. Keep all production feature semantics, existing acceptance gates and historical evidence unchanged.
+
+### Independent review and coverage readiness
+
+Require actual separate review outcomes and independent disagreement resolution. Reject default-derived agreement and prevent duplicate or incomplete message checks from reporting minimums-met status. Keep native-language and qualified-reviewer approval outstanding.

@@ -18,10 +18,9 @@ Adjudication rules enforced here (docs/HUMAN_REVIEW.md, worksheet rules 2-5):
 - agreement rows must be adjudicated to the shared first-pass label;
 - disagreement rows need an adjudicator who is neither first-pass reviewer and
   resolve to one of the two first-pass labels;
-- reviewer and final confidence values are derived from the worksheet's
-  ``labeling_confidence`` (>= 0.8 -> high, >= 0.5 -> medium, otherwise low;
-  blank -> medium, never high). Mapped-low rows are excluded
-  (``low_confidence_review``) per worksheet rule 5.
+- confidence, scam assessments and categories come from actual separate
+  review outcomes. The historical worksheet confidence check remains an
+  additional exclusion, never a substitute for reviewer confidence.
 - the dated owner-adjudication exception (owner decision D2): the project owner
   may adjudicate a disagreement only while the exception is unexpired and only
   when the owner is one of the two first-pass reviewers (which is exactly when
@@ -54,14 +53,11 @@ reviewer id map (--reviewer-map); pseudonymous reviewer ids only, never names:
 
     {"labeler_1": "reviewer_01", "labeler_2": "reviewer_02"}
 
-scam assessments (--scam-assessments): the worksheet template carries no scam
-columns, so the coordinator records the agreed scam assessment per record:
-
-    {"default": "not_suspected", "overrides": {"<record_id>": "suspected"}}
-
-One value per record fills all four scam columns (reviewer_a, reviewer_b,
-adjudicated, final); reviewers therefore always agree on scam assessment,
-which the validator accepts without independent scam adjudication.
+independent review evidence (--scam-assessments): schema version 2, keyed by
+record ID. Every record contains reviewer_a, reviewer_b and adjudicated
+objects with scam, confidence and category values. Missing evidence excludes
+the row; defaults and copied coordinator assessments are refused. See
+docs/templates/labeling-worksheet.md.
 
 owner exception (--owner-exception, optional; decision D2 / HUMAN_REVIEW.md):
 
@@ -70,8 +66,7 @@ owner exception (--owner-exception, optional; decision D2 / HUMAN_REVIEW.md):
 Output: one new 0600 CSV outside the repository (or under ignored
 ``data/donations/`` storage), created exclusively -- an existing file is never
 overwritten. ``source`` defaults to the fixed pilot code ``pilot_round_1``;
-``category`` is the constant ``unknown`` (the worksheet template has no
-category column); ``group`` is the worksheet ``group`` column when present,
+``category`` comes from the adjudicated review outcome; ``group`` is the worksheet ``group`` column when present,
 otherwise ``grp_`` + the first 12 ``record_id`` characters -- never derived
 from message content. Exit codes: 0 when the intake CSV was produced and
 passes ``validate_csv``; 1 for every tool failure (row-level exclusions are
@@ -91,7 +86,7 @@ import contextlib
 import json
 import os
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
@@ -101,6 +96,7 @@ import pandas as pd
 from src.consented_data import (
     CONSENT_SCOPES,
     REQUIRED_COLUMNS,
+    REVIEW_CONFIDENCE,
     SAFE_CODE,
     SCAM_ASSESSMENTS,
     _is_safe_id,
@@ -192,12 +188,10 @@ DUPLICATE_MESSAGE_BEFORE_SPLIT = "duplicate_message_before_split"
 POLICY_NOTES = (
     "The label column equals adjudicated_label; the worksheet label_hint column is "
     "never read and never exported (the donor hint is not ground truth).",
-    "labeling_confidence maps to all three reviewer-confidence fields: >=0.8 high, "
-    ">=0.5 medium, otherwise low; blank maps to medium; mapped-low rows are excluded.",
+    "Worksheet confidence is an additional exclusion check; reviewer confidence is recorded independently.",
     "group is the worksheet group column when present, otherwise grp_ plus the first "
     "12 record_id characters; it is never derived from message content.",
-    "category is the constant 'unknown'; the worksheet template has no category column.",
-    "One scam assessment per record fills all four scam columns, so reviewers agree on scam assessment.",
+    "Scam assessment, confidence and category come from explicit independent review outcomes; no defaults.",
     "Owner-adjudicated disagreement rows are excluded "
     "(owner_adjudication_pending_independent_reviewer) until a third independent "
     "reviewer exists; owner adjudication after the exception expiry fails the import.",
@@ -221,14 +215,20 @@ class OwnerException:
 
 
 @dataclass(frozen=True)
+class ReviewOutcome:
+    scam: str
+    confidence: str
+    category: str
+
+
+@dataclass(frozen=True)
 class ScamAssessments:
-    """Per-record scam assessment with a coordinator default."""
+    """Explicit per-record independent assessments and adjudication."""
 
-    default: str
-    overrides: dict[str, str] = field(default_factory=dict)
+    records: dict[str, tuple[ReviewOutcome, ReviewOutcome, ReviewOutcome]]
 
-    def for_record(self, record_id: str) -> str:
-        return self.overrides.get(record_id, self.default)
+    def for_record(self, record_id: str) -> tuple[ReviewOutcome, ReviewOutcome, ReviewOutcome] | None:
+        return self.records.get(record_id)
 
 
 class LabelImportError(Exception):
@@ -314,17 +314,37 @@ def load_reviewer_map(payload: Any) -> dict[str, str]:
 
 
 def load_scam_assessments(payload: Any) -> ScamAssessments:
-    """One assessment per record (or the default) from SCAM_ASSESSMENTS."""
-    if not isinstance(payload, dict) or "default" not in payload:
+    """Refuse legacy defaults: they cannot establish independent agreement."""
+    if not isinstance(payload, dict) or set(payload) != {"schema_version", "records"} or payload["schema_version"] != 2:
         raise LabelImportError("scam_assessments_schema_invalid")
-    default = str(payload["default"]).strip()
-    overrides_raw = payload.get("overrides", {})
-    if default not in SCAM_ASSESSMENTS or not isinstance(overrides_raw, dict):
-        raise LabelImportError("scam_assessment_value_invalid")
-    overrides = {str(key): str(value).strip() for key, value in overrides_raw.items()}
-    if any(value not in SCAM_ASSESSMENTS for value in overrides.values()):
-        raise LabelImportError("scam_assessment_value_invalid")
-    return ScamAssessments(default=default, overrides=overrides)
+    records = payload["records"]
+    if not isinstance(records, dict):
+        raise LabelImportError("scam_assessments_schema_invalid")
+    parsed = {}
+    for record_id, values in records.items():
+        if (
+            not isinstance(record_id, str)
+            or not _is_safe_id(record_id)
+            or not isinstance(values, dict)
+            or set(values) != {"reviewer_a", "reviewer_b", "adjudicated"}
+        ):
+            raise LabelImportError("scam_assessments_schema_invalid")
+        outcomes = []
+        for role in ("reviewer_a", "reviewer_b", "adjudicated"):
+            outcome = values[role]
+            if not isinstance(outcome, dict) or set(outcome) != {"scam", "confidence", "category"}:
+                raise LabelImportError("scam_assessments_schema_invalid")
+            if not all(isinstance(value, str) for value in outcome.values()):
+                raise LabelImportError("scam_assessment_value_invalid")
+            if (
+                outcome["scam"] not in SCAM_ASSESSMENTS
+                or outcome["confidence"] not in REVIEW_CONFIDENCE
+                or not SAFE_CODE.fullmatch(outcome["category"])
+            ):
+                raise LabelImportError("scam_assessment_value_invalid")
+            outcomes.append(ReviewOutcome(outcome["scam"], outcome["confidence"], outcome["category"]))
+        parsed[record_id] = (outcomes[0], outcomes[1], outcomes[2])
+    return ScamAssessments(parsed)
 
 
 def load_owner_exception(payload: Any) -> OwnerException | None:
@@ -498,6 +518,25 @@ def build_intake_frame(
         )
         if adjudicator and not _is_safe_id(adjudicator):
             codes.append(INVALID_ADJUDICATOR_ID)
+        outcomes = scam.for_record(record_id)
+        if outcomes is None:
+            codes.append("independent_review_evidence_missing")
+        else:
+            a, b, final = outcomes
+            for dimension in ("scam", "category"):
+                codes.extend(
+                    _adjudication_findings(
+                        row_number,
+                        (getattr(a, dimension), getattr(b, dimension)),
+                        getattr(final, dimension),
+                        adjudicator,
+                        (reviewer_a_id, reviewer_b_id),
+                        exception,
+                        today,
+                    )
+                )
+            if "low" in (a.confidence, b.confidence, final.confidence):
+                codes.append(LOW_CONFIDENCE_REVIEW)
 
         confidence = (
             map_confidence(str(values.get("labeling_confidence", ""))) if has_confidence_column else DEFAULT_CONFIDENCE
@@ -512,8 +551,11 @@ def build_intake_frame(
             codes.append(INVALID_LANGUAGE)
 
         if codes:
-            exclusions.extend(Exclusion(row_number, code) for code in codes)
+            exclusions.extend(Exclusion(row_number, code) for code in dict.fromkeys(codes))
             continue
+        if outcomes is None:
+            raise LabelImportError("independent_review_evidence_missing")
+        a, b, final = outcomes
 
         consent_record_id = entry["consent_record_id"].strip()
         message_key = _normalized_message_key(message)
@@ -524,14 +566,13 @@ def build_intake_frame(
         elif consent_record_id.casefold() in used_consent_ids:
             exclusions.append(Exclusion(row_number, DUPLICATE_CONSENT_RECORD_ID))
         else:
-            scam_value = scam.for_record(record_id)
             row = {
                 "label": str(adjudicated),
-                "scam_assessment": scam_value,
+                "scam_assessment": final.scam,
                 "message": message,
                 "data_kind": "consented",
                 "source": source,
-                "category": DEFAULT_CATEGORY,
+                "category": final.category,
                 "language": language,
                 "group": group,
                 "consent_record_id": consent_record_id,
@@ -546,16 +587,16 @@ def build_intake_frame(
                 "retention_until": entry["retention_until"].strip(),
                 "reviewer_a_id": reviewer_a_id,
                 "reviewer_a_label": str(reviewer_labels[0]),
-                "reviewer_a_scam_assessment": scam_value,
-                "reviewer_a_label_confidence": confidence,
+                "reviewer_a_scam_assessment": a.scam,
+                "reviewer_a_label_confidence": a.confidence,
                 "reviewer_b_id": reviewer_b_id,
                 "reviewer_b_label": str(reviewer_labels[1]),
-                "reviewer_b_scam_assessment": scam_value,
-                "reviewer_b_label_confidence": confidence,
+                "reviewer_b_scam_assessment": b.scam,
+                "reviewer_b_label_confidence": b.confidence,
                 "adjudicator_id": adjudicator,
                 "adjudicated_label": str(adjudicated),
-                "adjudicated_scam_assessment": scam_value,
-                "adjudicated_label_confidence": confidence,
+                "adjudicated_scam_assessment": final.scam,
+                "adjudicated_label_confidence": final.confidence,
                 "review_status": "adjudicated",
             }
             if has_confidence_column:
@@ -565,8 +606,7 @@ def build_intake_frame(
             used_record_ids.add(record_id)
             used_message_keys.add(message_key)
             used_consent_ids.add(consent_record_id.casefold())
-            if confidence is not None:
-                confidence_counts[confidence] = confidence_counts.get(confidence, 0) + 1
+            confidence_counts[final.confidence] = confidence_counts.get(final.confidence, 0) + 1
 
     columns = list(REQUIRED_COLUMNS) + (["labeling_confidence"] if has_confidence_column else [])
     frame = pd.DataFrame(frame_rows, columns=columns)
@@ -711,7 +751,7 @@ def main(argv: list[str] | None = None) -> int:
         "--scam-assessments",
         type=Path,
         required=True,
-        help="JSON scam assessments: {'default': ..., 'overrides': {...}}.",
+        help="Version 2 JSON with separate per-record reviewer_a, reviewer_b and adjudicated outcomes.",
     )
     parser.add_argument(
         "--owner-exception",

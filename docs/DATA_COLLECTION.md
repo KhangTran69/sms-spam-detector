@@ -316,3 +316,14 @@ labels are correct or consent is valid. The study owner must register and
 justify any annotation acceptance criterion before review, and report any
 unresolved disagreements and missing pairs. Keep these aggregate diagnostics
 private where small groups might be identifiable.
+
+
+### Independent review evidence and pooled coverage
+
+New imports require independent scam, confidence and category outcomes.
+Retain earlier coordinator-default imports, but reconcile actual independent
+review sheets before model use. Pooled coverage preserves raw counts and
+reports legitimate OTP, bank-alert and delivery support separately. Duplicate
+rows, missing message checks and unrecognized labels block a minimums-met
+status. This is not a replacement for consent, chronology, leakage,
+uncertainty, representativeness or release checks.
