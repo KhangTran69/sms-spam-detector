@@ -462,3 +462,14 @@ their already-scheduled dates (2027-01-15 → 2027-03-31, see the progress log).
   plots and artifact verification; test malformed Redis reply recovery.
 - Add the native assistive-technology evidence worksheet. It remains unfilled
   until actual qualified review; no accessibility acceptance is asserted.
+
+### 2026-11-29 — Coverage ratchet reaches the D6 target
+
+On commit `720496bf90f4bb0cb0c24cfd4c6caa2b096bae0f`, CI run
+[46170305718](https://github.com/KhangTran69/sms-spam-detector/actions/runs/46170305718)
+reported identical results on Python 3.11, 3.12 and 3.13: 825 passed,
+4 skipped, 87.03% coverage. The UCI diagnostic quality gate passed at
+F1 0.9425. Raise the enforced per-PR coverage floor from 82% to the ratified
+85% in pyproject and its hygiene regression together. This is an engineering
+coverage milestone only, not a field accuracy or model acceptance result.
+Retain the unchanged OTP, bank-alert, delivery and calibration release gates.
