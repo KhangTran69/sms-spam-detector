@@ -18,6 +18,7 @@ import json
 import logging
 import os
 import re
+import sys
 import tempfile
 import time
 from collections.abc import Callable, Iterable, Iterator
@@ -151,14 +152,16 @@ def _captured_logs() -> Iterator[list[str]]:
 
 @contextmanager
 def _patched_donation_state(*, enabled: bool, contact: str, database: Path) -> Iterator[None]:
-    """Point the in-process app at a disposable synthetic database and config."""
+    """Point the in-process app at a disposable synthetic database and config.
+
+    ``DONATION_NOTICE_VERSION`` is intentionally untouched: the run only reads it.
+    """
     original = {
         "enabled": api_main.DONATIONS_ENABLED,
         "contact": api_main.DONATIONS_OPERATOR_CONTACT,
         "database": api_main.DONATION_DB_PATH,
         "limit": api_main.DONATION_RATE_LIMIT_PER_MINUTE,
         "environment": api_main.SMSD_ENV,
-        "notice": api_main.DONATION_NOTICE_VERSION,
     }
     api_main.DONATIONS_ENABLED = bool(enabled)
     api_main.DONATIONS_OPERATOR_CONTACT = contact
@@ -173,7 +176,6 @@ def _patched_donation_state(*, enabled: bool, contact: str, database: Path) -> I
         api_main.DONATION_DB_PATH = original["database"]
         api_main.DONATION_RATE_LIMIT_PER_MINUTE = original["limit"]
         api_main.SMSD_ENV = original["environment"]
-        api_main.DONATION_NOTICE_VERSION = original["notice"]
         api_main._reset_rate_limits()
 
 
@@ -414,6 +416,10 @@ def main(argv: list[str] | None = None) -> int:
         destination = write_report(report, args.output)
     except (OSError, RuntimeError, ValueError) as exc:
         parser.error(str(exc))
+    except Exception as exc:
+        # Keep unexpected failures content-free: only the exception type name.
+        print(f"Pilot preflight aborted with an unexpected error ({type(exc).__name__}).", file=sys.stderr)
+        return 2
     print(json.dumps(report, indent=2, sort_keys=True, allow_nan=False))
     print(f"Report written to {destination}")
     return 0 if report["status"] == "passed" else 1

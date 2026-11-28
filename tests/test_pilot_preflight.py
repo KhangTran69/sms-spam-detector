@@ -151,6 +151,22 @@ def test_preflight_main_rejects_repository_output_with_usage_error(tmp_path, cap
     assert "outside the repository" in capsys.readouterr().err
 
 
+def test_preflight_main_reduces_unexpected_errors_to_the_type_name(tmp_path, monkeypatch, capsys):
+    def explode(**_kwargs):
+        raise TypeError("private fixture detail")
+
+    monkeypatch.setattr("scripts.pilot_preflight.run_preflight", explode)
+
+    exit_code = main(["--output", str(tmp_path / "pilot-preflight.json")])
+
+    captured = capsys.readouterr()
+    assert exit_code == 2
+    assert "TypeError" in captured.err
+    assert "Traceback" not in captured.err
+    assert "private fixture detail" not in captured.err
+    assert not (tmp_path / "pilot-preflight.json").exists()
+
+
 def test_write_report_refuses_message_like_payloads(tmp_path):
     leaked = {
         "status": "failed",
