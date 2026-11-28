@@ -417,3 +417,24 @@ their already-scheduled dates (2027-01-15 → 2027-03-31, see the progress log).
   - **2027-03-31:** review this roadmap (evidence-state changes, the
     owner-decision register, sequencing; this is also the D6 checkpoint for
     the 85% coverage-floor target).
+
+### 2026-11-29 — Roadmap continuation: privacy, audit tooling and pilot review
+
+- T2.3: aggregate-only cross-corpus overlap command in `src/corpus_audit.py`
+  with bounded comparison work, source fingerprints and synthetic regression
+  tests. Approved local snapshots still need a real execution; no new
+  cross-corpus measurements are claimed.
+- T2.2: fixed-threshold class-prior sensitivity calculated from the existing
+  public aggregate report, [public-prior-shift-diagnostic-20261129.md](benchmarks/public-prior-shift-diagnostic-20261129.md).
+  Separate class-weighted training study requires approved development inputs.
+- T4/T5: donation loopback Host and browser Origin validation, PII correction
+  focus and ARIA relationships, and expanded browser checks. The bilingual
+  facilitator draft avoids coaching before the recorded comprehension probes.
+  Human review, native-speaker review and the signed pilot prerequisites remain
+  outstanding.
+- T5: doctor supports operator metrics authentication with bounded JSON,
+  redirect refusal and HTTPS/loopback transport; distinguishes denied metrics
+  requests from connection failure. The prior pilot status hardening and docs
+  index link regression checks remain in PR #60.
+- No consented collection, sealed-test interaction, model release, or public
+  deployment occurred. D5 remains local-only; coverage target remains 85%.
