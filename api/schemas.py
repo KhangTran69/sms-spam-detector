@@ -187,7 +187,9 @@ class DonationResponse(BaseModel):
 
 _ERROR_RESPONSES: dict[int | str, dict[str, Any]] = {
     422: {"model": ErrorResponse, "description": "Request validation failed"},
+    408: {"model": ErrorResponse, "description": "Request body upload timed out"},
     413: {"model": ErrorResponse, "description": "Request body too large"},
+    429: {"model": ErrorResponse, "description": "Request rate exceeded"},
     500: {"model": ErrorResponse, "description": "Internal server error"},
-    503: {"model": ErrorResponse, "description": "Model unavailable or incompatible"},
+    503: {"model": ErrorResponse, "description": "Model, request protection, or service capacity unavailable"},
 }

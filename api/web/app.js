@@ -268,7 +268,7 @@ function describeError(failure) {
   if (!failure) return t("error.generic");
   if (failure.staleShell) return t("update.staleShellError");
   let message = failure.message || t("error.generic");
-  const modelUnavailable = failure.status === 503 || failure.code === "model_unavailable";
+  const modelUnavailable = failure.code === "model_unavailable";
   if (modelUnavailable && !message.includes("src.train")) message += t("error.trainHint");
   return message;
 }

@@ -61,6 +61,10 @@ export function createApiClient({
 
   function errorMessageFromResponse(data, response) {
     const error = data && typeof data.error === "object" && data.error ? data.error : null;
+    if (error && error.code === "rate_limiter_unavailable") return translate("error.protection503");
+    if (error && error.code === "service_busy") return translate("error.busy503");
+    if (response.status === 429) return translate("error.rate429");
+    if (response.status === 408) return translate("error.upload408");
     if (error && typeof error.message === "string" && error.message.trim()) return error.message.trim();
     const detail = data ? data.detail : null;
     if (typeof detail === "string" && detail.trim()) return detail.trim();
@@ -70,7 +74,7 @@ export function createApiClient({
         .filter(Boolean);
       if (messages.length) return messages.join("; ");
     }
-    if (response.status === 503) return translate("error.model503");
+    if (response.status === 503) return translate("error.service503");
     return translate("error.http", { status: response.status });
   }
 
@@ -113,7 +117,7 @@ export function createApiClient({
     }, timeoutMs);
     let response;
     try {
-      response = await fetch(path, { ...options, signal: controller.signal });
+      response = await fetch(path, { ...options, cache: "no-store", signal: controller.signal });
     } catch (throwable) {
       clearTimeout(timeoutId);
       if (externalSignal) externalSignal.removeEventListener("abort", abortFromCaller);
@@ -154,10 +158,10 @@ export function createApiClient({
         if (setApiAvailability("timeout", sequence)) setModelReadiness("unknown", sequence);
         throw timeoutFailure;
       }
-      if (failure && failure.code === "rate_limiter_unavailable") {
-        setModelReadiness("unknown", sequence);
-      } else if (failure && (failure.status === 503 || failure.code === "model_unavailable")) {
+      if (failure && failure.code === "model_unavailable") {
         setModelReadiness(false, sequence);
+      } else if (failure && failure.status === 503) {
+        setModelReadiness("unknown", sequence);
       }
       throw failure;
     } finally {

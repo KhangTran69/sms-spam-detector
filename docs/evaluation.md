@@ -242,3 +242,17 @@ performance result. The local 1,664-row public one-person inbox has an internal
 group-split diagnostic, but it is not consented, is not representative, and is
 not an independent-corpus holdout. No public or synthetic score establishes
 real-world Philippine accuracy.
+
+The current consented evaluation plan uses schema version 2. It also requires a
+performance rationale, minimum valid bootstrap fraction, and registered
+minimum lower bounds for precision/recall/F1 and maximum upper bounds for
+FPR/FNR. Undefined bootstrap ratios are excluded. An insufficient fraction of
+valid replicates blocks reporting; adequate intervals produce an explicit
+overall statistical acceptance result. Meeting those bounds is not approval
+for field deployment. Do not edit a consumed plan to repeat a sealed attempt.
+
+Complete the blank subgroup error gate entries in the schema 2 template before
+registration. Each entry specifies a language or category, FPR or FNR, minimum
+class-eligible campaign groups, upper confidence bound and interval width.
+The evaluator checks support before scoring and reports subgroup acceptance
+separately from overall acceptance. Both must be reviewed before a release.

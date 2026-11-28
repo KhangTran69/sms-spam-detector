@@ -34,3 +34,21 @@ def test_concurrent_updates_and_reset():
     monitor.clear()
     assert monitor.snapshot()["request_count"] == 0
     assert monitor.snapshot()["latency_p95_ms"] is None
+
+
+def test_admission_gauges_and_fixed_outcomes_are_content_free():
+    monitor = OperationsMonitor()
+    monitor.write_started()
+    monitor.write_started()
+    monitor.record("POST", "/predict", 503, 0, "service_busy")
+    monitor.record("POST", "/predict", 503, 1, "private-fixture")
+    monitor.write_finished()
+    report = monitor.snapshot()
+    assert report["active_writes"] == 1
+    assert report["peak_active_writes"] == 2
+    assert report["outcomes"] == {"service_busy": 1, "other": 1}
+    monitor.clear()
+    assert monitor.snapshot()["active_writes"] == 1
+    assert monitor.snapshot()["peak_active_writes"] == 1
+    monitor.write_finished()
+    assert monitor.snapshot()["active_writes"] == 0

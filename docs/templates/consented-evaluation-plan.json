@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "registered_at": null,
   "intended_use": "",
   "dataset_sha256": "",
@@ -20,10 +20,52 @@
     "category": {"otp": 150, "bank_alert": 150, "delivery": 150, "spam_top3": 300}
   },
   "maximum_cluster_interval_width": {
-    "precision": 0.10,
+    "precision": 0.1,
     "recall": 0.15,
     "f1": 0.12,
-    "false_positive_rate": 0.10,
+    "false_positive_rate": 0.1,
     "false_negative_rate": 0.15
-  }
+  },
+  "performance_rationale": "",
+  "minimum_valid_cluster_fraction": null,
+  "minimum_cluster_lower_bound": {
+    "precision": null,
+    "recall": null,
+    "f1": null
+  },
+  "maximum_cluster_upper_bound": {
+    "false_positive_rate": null,
+    "false_negative_rate": null
+  },
+  "subgroup_error_gates": [
+    {
+      "dimension": "language",
+      "code": "",
+      "metric": "false_negative_rate",
+      "minimum_groups": null,
+      "maximum_upper_bound": null,
+      "maximum_interval_width": null
+    },
+    {
+      "dimension": "category",
+      "code": "",
+      "metric": "false_positive_rate",
+      "minimum_groups": null,
+      "maximum_upper_bound": null,
+      "maximum_interval_width": null
+    }
+  ],
+  "annotation_quality_gates": {
+    "spam_label": {
+      "minimum_pairs": null,
+      "minimum_agreement": null,
+      "minimum_kappa": null,
+      "rationale": ""
+    },
+    "scam_assessment": {
+      "minimum_pairs": null,
+      "minimum_agreement": null,
+      "minimum_kappa": null,
+      "rationale": ""
+    }  }
 }

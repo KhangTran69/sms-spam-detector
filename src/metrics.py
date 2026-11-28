@@ -367,10 +367,17 @@ def campaign_bootstrap_intervals(
         chosen = rng.integers(0, len(row_indices), size=len(row_indices))
         indices = np.concatenate([row_indices[index] for index in chosen])
         values = binary_metrics(labels[indices].tolist(), probs[indices], threshold)
-        for name in ("precision", "recall", "f1", "false_positive_rate"):
-            samples[name].append(float(values[name]))
+        # Exclude undefined ratios rather than turning missing denominators
+        # into artificial zeroes that can distort a confidence bound.
+        if values["tp"] + values["fp"]:
+            samples["precision"].append(float(values["precision"]))
         if values["support_spam"]:
+            samples["recall"].append(float(values["recall"]))
             samples["false_negative_rate"].append(float(values["fn"] / values["support_spam"]))
+        if 2 * values["tp"] + values["fp"] + values["fn"]:
+            samples["f1"].append(float(values["f1"]))
+        if values["support_ham"]:
+            samples["false_positive_rate"].append(float(values["false_positive_rate"]))
     intervals = {
         name: None if not values else [float(np.quantile(values, 0.025)), float(np.quantile(values, 0.975))]
         for name, values in samples.items()

@@ -20,7 +20,8 @@ from typing import Any, Protocol
 
 logger = logging.getLogger("api.rate_limiter")
 
-_SLIDING_WINDOW_SCRIPT = """
+# Redis 7 script flags reject execution before any mutation when over maxmemory.
+_SLIDING_WINDOW_SCRIPT = """#!lua
 local current_time = redis.call('TIME')
 local now_ms = tonumber(current_time[1]) * 1000 + math.floor(tonumber(current_time[2]) / 1000)
 local window_ms = tonumber(ARGV[1])
@@ -95,7 +96,7 @@ class InMemoryRateLimiter:
         if limit <= 0:
             return True, 0
 
-        current_time = time.time() if now is None else now
+        current_time = time.monotonic() if now is None else now
         window = max(1, int(window_seconds))
         cutoff = current_time - window
         key = (endpoint, identity)
@@ -171,9 +172,18 @@ class RedisRateLimiter:
                 int(limit),
                 member,
             )
-            allowed = bool(int(result[0]))
-            retry_after = max(0, int(result[1]))
-            return allowed, retry_after
+            if not isinstance(result, (list, tuple)) or len(result) != 2:
+                raise ValueError("Invalid Redis limiter response")
+            allowed, retry_after = result
+            if (
+                type(allowed) is not int
+                or type(retry_after) is not int
+                or allowed not in (0, 1)
+                or (allowed == 1 and retry_after != 0)
+                or (allowed == 0 and not 1 <= retry_after <= max(1, int(window_seconds)))
+            ):
+                raise ValueError("Invalid Redis limiter response")
+            return bool(allowed), retry_after
         except Exception as exc:
             with self._failure_lock:
                 self.failure_count += 1
@@ -192,7 +202,7 @@ class RedisRateLimiter:
             return True, 0
 
     def ensure_available(self) -> None:
-        """A strict shared backend must answer the readiness probe."""
+        """Require a working shared admission script, not just a reachable server."""
         if not self._fail_closed:
             return
         try:
@@ -200,6 +210,9 @@ class RedisRateLimiter:
                 raise RuntimeError("Redis readiness probe failed")
         except Exception:
             raise RateLimiterUnavailable("Rate limiting backend unavailable") from None
+        # A reserved, short-lived counter exercises the same write path and
+        # permissions as real admissions. A denial also proves script execution.
+        self.check("readiness", "internal-probe", 1, 1)
 
     def reset(self) -> None:
         """Redis counters expire naturally; never flush shared application keys."""
@@ -232,16 +245,25 @@ def create_rate_limiter(
         raise ValueError("SMSD_RATE_LIMIT_FAILURE_MODE must be 'open' or 'closed'")
     fail_closed = mode == "closed"
     factory = client_factory or _create_redis_client
+    client = None
     try:
         client = factory(resolved_url)
         if not client.ping():
             raise RuntimeError("Redis startup probe failed")
     except Exception as exc:
-        fallback = "unavailable" if fail_closed else "memory"
+        if fail_closed:
+            fallback = "redis_retry" if client is not None else "unavailable"
+        else:
+            fallback = "memory"
         logger.warning(
             '{"event":"rate_limiter_startup_fallback","backend":"redis","fallback":"%s","error_type":"%s"}',
             fallback,
             type(exc).__name__,
         )
-        return UnavailableRateLimiter() if fail_closed else InMemoryRateLimiter()
+        if not fail_closed:
+            return InMemoryRateLimiter()
+        if client is None:
+            return UnavailableRateLimiter()
+        # Retain the shared client after a failed connectivity probe. Subsequent
+        # checks remain fail-closed and can reconnect without a process restart.
     return RedisRateLimiter(client, fail_closed=fail_closed)
