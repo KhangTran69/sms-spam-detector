@@ -102,9 +102,10 @@ from src.consented_data import (
     _is_safe_id,
     _is_true,
     _norm_label,
+    _read_intake_csv,
     _valid_iso_date,
     normalize_intake_columns,
-    validate_csv,
+    validate_batch,
 )
 from src.dataset_schema import _normalized_message_key
 from src.privacy.storage import ensure_private_directory
@@ -260,20 +261,35 @@ def _validate_output_path(output: str | os.PathLike[str]) -> Path:
     return destination
 
 
+def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("Duplicate sidecar key.")
+        result[key] = value
+    return result
+
+
 def _read_json_sidecar(path: Path | None, role: str) -> Any:
     if path is None:
         return None
     try:
-        return json.loads(Path(path).read_text(encoding="utf-8"))
-    except (OSError, UnicodeError, json.JSONDecodeError):
+        with Path(path).open("rb") as handle:
+            content = handle.read(10 * 1024 * 1024 + 1)
+        if len(content) > 10 * 1024 * 1024:
+            raise ValueError("Sidecar exceeds byte budget.")
+        return json.loads(content, object_pairs_hook=_unique_json_object)
+    except (OSError, ValueError, RecursionError):
         raise LabelImportError("sidecar_unreadable", [{"sidecar": role}]) from None
 
 
 def load_worksheet(path: str | Path) -> pd.DataFrame:
     """Load the master worksheet; the column set must match the template."""
     try:
-        frame = pd.read_csv(path, dtype=str, keep_default_na=False, encoding="utf-8-sig")
-    except (OSError, UnicodeError, pd.errors.ParserError, pd.errors.EmptyDataError):
+        _, frame = _read_intake_csv(path)
+    except ValueError as exc:
+        if "duplicate columns" in str(exc):
+            raise LabelImportError("worksheet_duplicate_columns") from None
         raise LabelImportError("worksheet_unreadable") from None
     try:
         frame = normalize_intake_columns(frame)
@@ -281,7 +297,7 @@ def load_worksheet(path: str | Path) -> pd.DataFrame:
         raise LabelImportError("worksheet_duplicate_columns") from None
     names = set(frame.columns)
     allowed = set(WORKSHEET_COLUMNS)
-    if names != allowed and names != allowed | {WORKSHEET_GROUP_COLUMN}:
+    if not allowed <= names or names - allowed - {WORKSHEET_GROUP_COLUMN, "received_at"}:
         raise LabelImportError("worksheet_columns_do_not_match_template")
     return frame
 
@@ -473,6 +489,7 @@ def build_intake_frame(
     reviewer_b_id = reviewer_map["labeler_2"]
     has_group_column = WORKSHEET_GROUP_COLUMN in worksheet.columns
     has_confidence_column = "labeling_confidence" in worksheet.columns
+    has_received_at = "received_at" in worksheet.columns
     exclusions: list[Exclusion] = []
     frame_rows: list[dict[str, str]] = []
     worksheet_rows: list[int] = []
@@ -494,6 +511,8 @@ def build_intake_frame(
             codes.append(BLANK_MESSAGE)
 
         group = str(values[WORKSHEET_GROUP_COLUMN]).strip() if has_group_column else ""
+        if has_received_at and not group:
+            codes.append("explicit_campaign_group_required_for_chronology")
         group = group or derive_group(record_id)
         if not _is_safe_id(group):
             codes.append(INVALID_GROUP)
@@ -601,6 +620,8 @@ def build_intake_frame(
             }
             if has_confidence_column:
                 row["labeling_confidence"] = str(values["labeling_confidence"])
+            if has_received_at:
+                row["received_at"] = str(values["received_at"]).strip()
             frame_rows.append(row)
             worksheet_rows.append(row_number)
             used_record_ids.add(record_id)
@@ -609,6 +630,8 @@ def build_intake_frame(
             confidence_counts[final.confidence] = confidence_counts.get(final.confidence, 0) + 1
 
     columns = list(REQUIRED_COLUMNS) + (["labeling_confidence"] if has_confidence_column else [])
+    if has_received_at:
+        columns.append("received_at")
     frame = pd.DataFrame(frame_rows, columns=columns)
     return IntakeBuild(
         frame=frame,
@@ -683,19 +706,12 @@ def run_import(args: argparse.Namespace) -> dict[str, Any]:
     if build.frame.empty:
         raise LabelImportError("no_importable_rows", exclusions)
 
+    # Validate the in-memory snapshot before publishing any private CSV.
     try:
-        write_intake_csv(build.frame, destination)
-    except FileExistsError:
-        raise LabelImportError("output_file_already_exists") from None
-    except OSError as exc:
-        raise LabelImportError("could_not_write_output", [{"os_error": type(exc).__name__}]) from None
-    try:
-        report = validate_csv(destination, today=today, purpose=PURPOSE)
+        report = validate_batch(build.frame, today=today, purpose=PURPOSE)
     except ValueError:
         raise LabelImportError("output_validation_unreadable") from None
     if not report.valid:
-        with contextlib.suppress(OSError):
-            destination.unlink()
         raise LabelImportError("validation_failed", _translate_findings(report, build.worksheet_rows))
 
     summary = {
@@ -711,6 +727,12 @@ def run_import(args: argparse.Namespace) -> dict[str, Any]:
         "policy_notes": list(POLICY_NOTES),
     }
     _assert_report_message_free(summary, worksheet)
+    try:
+        write_intake_csv(build.frame, destination)
+    except FileExistsError:
+        raise LabelImportError("output_file_already_exists") from None
+    except OSError as exc:
+        raise LabelImportError("could_not_write_output", [{"os_error": type(exc).__name__}]) from None
     return summary
 
 

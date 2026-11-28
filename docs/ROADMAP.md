@@ -489,3 +489,7 @@ Require actual separate review outcomes and independent disagreement resolution.
 ### Local retention and recovery follow-up
 
 Separate committed erasure from optional compaction, publish private exports exclusively, reject shared database files, and add explicit existing-store retention maintenance plus a disposable stale-backup withdrawal reconciliation rehearsal. No actual operator backup or participant store is accessed.
+
+### Consented intake integrity follow-up
+
+Bound private CSV/JSON reads, reject ambiguous headers and duplicate sidecar keys, constrain import destinations, enforce ratified-notice retention and chronology, and refuse category-hidden template leakage or campaign aliases. Preserve explicit worksheet chronology for later independently sealed evaluation.

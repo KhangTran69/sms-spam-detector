@@ -219,3 +219,16 @@ def test_training_loader_rejects_consent_without_review_metadata(tmp_path) -> No
         load_dataset(path, require_both_classes=False, min_class_count=0)
 
     assert "Fictional safe message" not in str(raised.value)
+
+
+def test_importer_refuses_tracked_output_directory(tmp_path, monkeypatch):
+    import src.import_consented as importer
+
+    source, _ = _fixture(tmp_path, _valid_rows())
+    root = tmp_path / "repository"
+    root.mkdir()
+    monkeypatch.setattr(importer, "ROOT", root)
+    monkeypatch.setattr(importer, "CONSENTED_DIR", root / "data" / "raw" / "consented")
+    with pytest.raises(DatasetError, match="dedicated ignored private storage"):
+        import_consented(source, output_dir=root / "docs", today=date(2026, 10, 21))
+    assert not (root / "docs").exists()

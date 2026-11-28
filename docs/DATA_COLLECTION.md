@@ -327,3 +327,14 @@ reports legitimate OTP, bank-alert and delivery support separately. Duplicate
 rows, missing message checks and unrecognized labels block a minimums-met
 status. This is not a replacement for consent, chronology, leakage,
 uncertainty, representativeness or release checks.
+
+
+Private CSV ingestion now bounds input size and rows, rejects ambiguous
+headers and malformed row widths before parsing, and refuses tracked
+repository import destinations. Category disagreement cannot conceal a
+shared masked template; inconsistent campaign identifier spellings are
+rejected. For the ratified v4 notice, retention dates cannot extend beyond
+90 days from consent. Older notice versions are not retroactively changed;
+the custodian must still verify the actual notice and current register.
+The worksheet importer can preserve verified reception chronology with
+explicit campaign groups and validates before publishing the output.

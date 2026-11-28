@@ -9,12 +9,13 @@ operator must still verify the separate consent register and human review.
 from __future__ import annotations
 
 import argparse
+import csv
 import io
 import json
 import re
 import sys
 from dataclasses import asdict, dataclass
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -58,6 +59,11 @@ REQUIRED_COLUMNS = (
 )
 CONSENT_SCOPES = {"training", "evaluation", "training_and_evaluation", "model_research"}
 OPTIONAL_COLUMNS = {"received_at", "labeling_confidence"}
+MAX_INTAKE_BYTES = 50 * 1024 * 1024
+MAX_INTAKE_ROWS = 20_000
+MAX_INTAKE_MESSAGE_LENGTH = 10_000
+RATIFIED_NOTICE = "2026-11-01-v4"
+RATIFIED_RETENTION_DAYS = 90
 SCAM_ASSESSMENTS = {"suspected", "not_suspected", "unclear"}
 REVIEW_CONFIDENCE = {"low", "medium", "high"}
 SAFE_ID = re.compile(r"^[a-z0-9][a-z0-9._-]{2,63}$", re.IGNORECASE)
@@ -210,7 +216,8 @@ def validate_batch(
     category_counts: dict[str, int] = {}
     group_ids: set[str] = set()
     consent_ids: set[str] = set()
-    message_keys: set[str] = set()
+    message_keys: dict[str, str | None] = {}
+    group_spellings: dict[str, set[str]] = {}
     template_groups: dict[str, list[tuple[int, str]]] = {}
     label_pairs: list[tuple[str, str]] = []
     scam_pairs: list[tuple[str, str]] = []
@@ -227,13 +234,20 @@ def validate_batch(
             findings.append(Finding(row_number, "data_kind_must_be_consented"))
         if not values["message"]:
             findings.append(Finding(row_number, "blank_message"))
+        elif len(values["message"]) > MAX_INTAKE_MESSAGE_LENGTH:
+            findings.append(Finding(row_number, "message_exceeds_intake_limit"))
         else:
             findings.extend(_content_findings(values["message"], row_number))
             message_key = _normalized_message_key(values["message"])
             if message_key in message_keys:
                 findings.append(Finding(row_number, "duplicate_message_before_split"))
-            message_keys.add(message_key)
-            template_key = make_group_key(values["message"], category=values["category"])
+                if message_keys[message_key] != label:
+                    findings.append(Finding(row_number, "conflicting_normalized_message_labels"))
+            else:
+                message_keys[message_key] = label
+            # Category is itself a human annotation and must not conceal a
+            # shared template when reviewers assign different categories.
+            template_key = make_group_key(values["message"])
             template_groups.setdefault(template_key, []).append((row_number, values["group"].casefold()))
 
         for field in ("source", "group", "consent_record_id", "reviewer_a_id", "reviewer_b_id"):
@@ -242,6 +256,7 @@ def validate_batch(
         if values["adjudicator_id"] and not _is_safe_id(values["adjudicator_id"]):
             findings.append(Finding(row_number, "invalid_or_non_pseudonymous_adjudicator_id"))
         group_ids.add(values["group"])
+        group_spellings.setdefault(values["group"].casefold(), set()).add(values["group"])
         consent_id = values["consent_record_id"].casefold()
         if consent_id in consent_ids:
             findings.append(Finding(row_number, "duplicate_consent_record_id"))
@@ -281,16 +296,28 @@ def validate_batch(
         if consent_date is None or consent_date > today:
             findings.append(Finding(row_number, "consent_date_invalid"))
         retention_until = _valid_iso_date(values["retention_until"])
-        if retention_until is None or retention_until < today:
+        if retention_until is None or retention_until < today or (
+            consent_date is not None and retention_until < consent_date
+        ):
             findings.append(Finding(row_number, "retention_expired_or_invalid"))
+        if (
+            values["consent_version"] == RATIFIED_NOTICE
+            and consent_date is not None
+            and retention_until is not None
+            and retention_until - consent_date > timedelta(days=RATIFIED_RETENTION_DAYS)
+        ):
+            findings.append(Finding(row_number, "retention_exceeds_ratified_notice"))
         if purpose == "evaluation" and not values.get("received_at", ""):
             findings.append(Finding(row_number, "received_at_required_for_evaluation"))
         elif (
             "received_at" in values
             and values["received_at"]
-            and pd.isna(pd.to_datetime(values["received_at"], errors="coerce", utc=True))
         ):
-            findings.append(Finding(row_number, "received_at_invalid"))
+            received = pd.to_datetime(values["received_at"], errors="coerce", utc=True)
+            if pd.isna(received) or received.date() > today:
+                findings.append(Finding(row_number, "received_at_invalid"))
+            elif consent_date is not None and received.date() > consent_date:
+                findings.append(Finding(row_number, "received_at_after_consent"))
         if "labeling_confidence" in values and values["labeling_confidence"]:
             try:
                 confidence = float(values["labeling_confidence"])
@@ -372,6 +399,9 @@ def validate_batch(
                 Finding(row_number, "near_duplicate_template_spans_campaign_groups") for row_number, _ in template_rows
             )
 
+    if any(len(spellings) > 1 for spellings in group_spellings.values()):
+        findings.append(Finding(0, "inconsistent_campaign_group_spelling"))
+
     # Deduplicate identical row/rule reports without including offending values.
     unique_findings = tuple(sorted(set(findings), key=lambda item: (item.row, item.rule)))
     if purpose == "evaluation" and set(label_counts) != {"ham", "spam"}:
@@ -408,10 +438,30 @@ def validate_csv(
 def _read_intake_csv(path: str | Path) -> tuple[bytes, pd.DataFrame]:
     """Read one stable byte snapshot for validation, hashing, and import."""
     try:
-        content = Path(path).read_bytes()
-        frame = pd.read_csv(io.BytesIO(content), dtype=str, keep_default_na=False, encoding="utf-8-sig")
-        return content, frame
-    except (OSError, UnicodeError, pd.errors.ParserError, pd.errors.EmptyDataError) as exc:
+        with Path(path).open("rb") as handle:
+            content = handle.read(MAX_INTAKE_BYTES + 1)
+        if len(content) > MAX_INTAKE_BYTES:
+            raise ValueError("Intake CSV exceeds the byte budget.")
+        reader = csv.reader(io.StringIO(content.decode("utf-8-sig"), newline=""), strict=True)
+        headers = next(reader, [])
+        if not headers:
+            raise ValueError("Intake CSV has no header.")
+        names = [name.strip().lower().replace(" ", "_") for name in headers]
+        if len(names) != len(set(names)):
+            raise ValueError("The intake CSV has duplicate columns after normalization.")
+        if len(headers) > 64:
+            raise ValueError("Intake CSV exceeds the column budget.")
+        rows = []
+        for row in reader:
+            if not row:
+                continue
+            if len(row) != len(headers):
+                raise ValueError("Intake CSV has a malformed row.")
+            rows.append(row)
+            if len(rows) > MAX_INTAKE_ROWS:
+                raise ValueError("Intake CSV exceeds the row budget.")
+        return content, pd.DataFrame(rows, columns=headers, dtype=str)
+    except (OSError, UnicodeError, csv.Error) as exc:
         raise ValueError(f"Could not read intake CSV ({type(exc).__name__}).") from None
 
 

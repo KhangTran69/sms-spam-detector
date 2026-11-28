@@ -624,3 +624,35 @@ def test_invalid_independent_outcome_never_writes_intake(tmp_path, capsys):
     assert main(_write_sidecars(tmp_path, rows, scam=evidence)) == 1
     assert "scam_assessment_value_invalid" in capsys.readouterr().err
     assert not (tmp_path / "intake.csv").exists()
+
+
+def test_duplicate_sidecar_keys_are_refused_before_output(tmp_path, capsys):
+    argv = _write_sidecars(tmp_path, [_row(RECORD_A, MSG_A)])
+    path = tmp_path / "reviewers.json"
+    path.write_text(
+        '{"labeler_1":"reviewer_01","labeler_1":"reviewer_03","labeler_2":"reviewer_02"}',
+        encoding="utf-8",
+    )
+    assert main(argv) == 1
+    assert json.loads(capsys.readouterr().err)["code"] == "sidecar_unreadable"
+    assert not (tmp_path / "intake.csv").exists()
+
+
+def test_chronological_worksheet_preserves_explicit_groups_and_dates(tmp_path, capsys):
+    rows = [_row(RECORD_A, MSG_A, group="campaign_alpha"), _row(RECORD_B, MSG_B, group="campaign_beta")]
+    for row in rows:
+        row["received_at"] = "2026-10-30T12:00:00Z"
+    argv = _write_sidecars(tmp_path, rows)
+    assert main(argv) == 0
+    capsys.readouterr()
+    output = _read_csv(tmp_path / "intake.csv")
+    assert list(output["received_at"]) == ["2026-10-30T12:00:00Z"] * 2
+    assert list(output["group"]) == ["campaign_alpha", "campaign_beta"]
+
+
+def test_chronological_worksheet_refuses_derived_campaign_groups(tmp_path, capsys):
+    rows = [_row(RECORD_A, MSG_A)]
+    rows[0]["received_at"] = "2026-10-30T12:00:00Z"
+    assert main(_write_sidecars(tmp_path, rows)) == 1
+    assert "explicit_campaign_group_required_for_chronology" in capsys.readouterr().err
+    assert not (tmp_path / "intake.csv").exists()
