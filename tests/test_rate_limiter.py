@@ -4,6 +4,8 @@ import hashlib
 import json
 import logging
 
+import pytest
+
 from api.rate_limiter import InMemoryRateLimiter, RedisRateLimiter, create_rate_limiter
 
 
