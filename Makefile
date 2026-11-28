@@ -34,10 +34,7 @@ BENCHMARK_DIR ?= data/processed/benchmark-run
 OPERATING_FPR ?= 0.05
 DATASET ?= ph-spam-marketing-sms
 
-<<<<<<< HEAD
 .PHONY: help install dev-install package-install redis-install test lint format typecheck doctor check-headlines train evaluate datasets eval split-consented rehearse-consented export-donations benchmark benchmark-perf demo serve macos-install macos-status macos-stop macos-restart macos-uninstall docker-build docker-run clean feedback-summary triage-feedback
-=======
->>>>>>> e095c06 (feat: expose feedback triage workflows)
 
 help:
 	@sed -n '1,27p' Makefile

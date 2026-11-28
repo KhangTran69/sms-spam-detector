@@ -77,6 +77,10 @@ jobs:
             --monitor-baseline-source synthetic_diagnostic
           # The isolated non-root container needs read access to this synthetic fixture.
           chmod 644 models/ci-smoke-baseline.json
+      - name: Benchmark inference latency against a budget
+        run: |
+          python scripts/benchmark_performance.py --model models/ci-smoke.pkl --output-dir benchmarks-ci --iterations 50
+          python scripts/check_performance_budget.py "$(ls -1 benchmarks-ci/performance_*.json | tail -n 1)"
       - name: Build runtime image
         run: docker build --tag smsd-ci-smoke .
       - name: Verify liveness and readiness contracts
