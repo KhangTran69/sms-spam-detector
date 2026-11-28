@@ -57,3 +57,14 @@ def test_gateway_attestation_and_worker_count_are_required():
         "gateway_attestation_required",
         "invalid_worker_count",
     ]
+
+
+@pytest.mark.parametrize("value", [
+    "redis://cache.example.test/0?socket_timeout=0",
+    "rediss://cache.example.test/0?ssl_cert_reqs=none",
+    "redis://cache.example.test/0#fragment",
+])
+def test_redis_connection_overrides_are_refused(value):
+    assert review({**VALID, "SMSD_REDIS_URL": value}, workers=2, gateway_confirmed=True) == [
+        "shared_rate_limiter_required"
+    ]

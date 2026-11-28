@@ -15,6 +15,7 @@ import re
 import threading
 import time
 import uuid
+from urllib.parse import urlsplit
 from collections.abc import Callable
 from typing import Any, Protocol
 
@@ -218,6 +219,24 @@ class RedisRateLimiter:
         """Redis counters expire naturally; never flush shared application keys."""
 
 
+def validate_redis_url(redis_url: str) -> None:
+    """Keep client timeouts and TLS verification under application control."""
+    try:
+        parsed = urlsplit(redis_url)
+        if (
+            parsed.scheme not in {"redis", "rediss"}
+            or not parsed.hostname
+            or parsed.port == 0
+            or "?" in redis_url
+            or "#" in redis_url
+            or any(char.isspace() or ord(char) < 32 for char in redis_url)
+            or not re.fullmatch(r"(?:/\d+)?/?", parsed.path)
+        ):
+            raise ValueError
+    except ValueError:
+        raise ValueError("Unsupported Redis connection URL.") from None
+
+
 def _create_redis_client(redis_url: str) -> Any:
     """Import redis-py lazily and bound connection failures during startup."""
     import redis
@@ -247,6 +266,7 @@ def create_rate_limiter(
     factory = client_factory or _create_redis_client
     client = None
     try:
+        validate_redis_url(resolved_url)
         client = factory(resolved_url)
         if not client.ping():
             raise RuntimeError("Redis startup probe failed")

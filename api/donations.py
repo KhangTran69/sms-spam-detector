@@ -97,7 +97,7 @@ def _create_private_database_file(path: Path) -> None:
     except FileExistsError:
         info = path.stat()
         if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
-            raise ValueError("Donation storage must be a regular, unshared file.")
+            raise ValueError("Donation storage must be a regular, unshared file.") from None
         os.chmod(path, 0o600)
     else:
         os.close(descriptor)

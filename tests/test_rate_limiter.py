@@ -263,3 +263,22 @@ def test_malformed_redis_replies_fail_closed_and_recover():
         assert limiter.failure_count == 1
         client.result = (1, 0)
         assert limiter.check("prediction", "fixture", 2, 60) == (True, 0)
+
+
+@pytest.mark.parametrize("url", [
+    "redis://cache.example.test/0?socket_timeout=0",
+    "rediss://cache.example.test/0?ssl_cert_reqs=none",
+    "redis://cache.example.test/0?retry_on_timeout=true",
+    "redis://cache.example.test:0/0",
+    "redis://cache.example.test/invalid",
+])
+def test_invalid_redis_url_never_constructs_backend(url, monkeypatch):
+    from api.rate_limiter import UnavailableRateLimiter
+
+    monkeypatch.setenv("SMSD_ENV", "production")
+    monkeypatch.setenv("SMSD_RATE_LIMIT_FAILURE_MODE", "closed")
+
+    def unexpected(_url):
+        pytest.fail("Unsafe Redis configuration reached client factory")
+
+    assert isinstance(create_rate_limiter(url, client_factory=unexpected), UnavailableRateLimiter)

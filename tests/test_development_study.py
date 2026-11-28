@@ -96,3 +96,47 @@ def test_cross_fold_overlap_prevents_fit(tmp_path, monkeypatch):
     )
     with pytest.raises(ValueError, match="near-duplicate"):
         study(corpus, digest, folds=2)
+
+
+def test_declared_campaign_and_template_components_are_transitive():
+    from src.development_study import development_groups
+
+    corpus = Corpus(
+        "synthetic_training",
+        (
+            "Fictional routine appointment notice for tomorrow morning only.",
+            "Fictional separate delivery information for the parcel.",
+            "Fictional routine appointment notice for tomorrow morning only!",
+            "Unrelated fictional promotion for a prize.",
+        ),
+        ("ham", "ham", "ham", "spam"),
+        ("fixture",),
+        ("campaign-alpha", "campaign-alpha", "campaign-beta", "campaign-gamma"),
+    )
+    groups = development_groups(corpus)
+    assert groups[0] == groups[1] == groups[2]
+    assert groups[3] != groups[0]
+
+
+def test_paired_error_transitions_are_class_specific():
+    from src.development_study import error_transitions
+
+    assert error_transitions(
+        ["ham", "ham", "spam", "spam"],
+        [0.1, 0.9, 0.9, 0.1],
+        [0.9, 0.1, 0.1, 0.9],
+    ) == {
+        "new_false_positives": 1,
+        "corrected_false_positives": 1,
+        "new_false_negatives": 1,
+        "corrected_false_negatives": 1,
+    }
+
+
+def test_development_input_preserves_declared_campaigns(tmp_path):
+    path = tmp_path / "development.csv"
+    path.write_text(
+        "message,label,data_kind,group\nFictional notice,ham,synthetic,Campaign_A\n",
+        encoding="utf-8",
+    )
+    assert load_corpus("synthetic_training", [path]).groups == ("campaign_a",)

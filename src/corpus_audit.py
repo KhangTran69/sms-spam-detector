@@ -46,6 +46,7 @@ class Corpus:
     messages: tuple[str, ...]
     labels: tuple[str, ...]
     source_hashes: tuple[str, ...]
+    groups: tuple[str, ...] = ()
 
 
 def load_corpus(role: str, paths: list[Path]) -> Corpus:
@@ -57,6 +58,7 @@ def load_corpus(role: str, paths: list[Path]) -> Corpus:
     messages: list[str] = []
     labels: list[str] = []
     hashes: list[str] = []
+    groups: list[str] = []
     total_bytes = 0
     for path in paths:
         with path.open("rb") as handle:
@@ -83,11 +85,13 @@ def load_corpus(role: str, paths: list[Path]) -> Corpus:
                 raise ValueError("Invalid message length or label in corpus.")
             messages.append(message)
             labels.append(label)
+            group = (row.get("group") or "").strip().casefold()
+            groups.append("" if group == "unknown" else group)
             if len(messages) > MAX_ROWS:
                 raise ValueError("Corpus exceeds the local audit row budget.")
     if not messages:
         raise ValueError("Corpus is empty.")
-    return Corpus(role, tuple(messages), tuple(labels), tuple(hashes))
+    return Corpus(role, tuple(messages), tuple(labels), tuple(hashes), tuple(groups))
 
 
 def _overlap(left: list[str], right: list[str]) -> dict[str, int]:

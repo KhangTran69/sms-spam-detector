@@ -15,6 +15,8 @@ import re
 from collections.abc import Mapping
 from urllib.parse import urlsplit
 
+from api.rate_limiter import validate_redis_url
+
 
 def review(env: Mapping[str, str], *, workers: int, gateway_confirmed: bool) -> list[str]:
     findings = []
@@ -35,9 +37,7 @@ def review(env: Mapping[str, str], *, workers: int, gateway_confirmed: bool) -> 
     if workers < 1:
         findings.append("invalid_worker_count")
     try:
-        redis = urlsplit(env.get("SMSD_REDIS_URL", ""))
-        if redis.scheme not in {"redis", "rediss"} or not redis.hostname or redis.port == 0 or redis.fragment:
-            findings.append("shared_rate_limiter_required")
+        validate_redis_url(env.get("SMSD_REDIS_URL", "").strip())
     except ValueError:
         findings.append("shared_rate_limiter_required")
     if env.get("SMSD_RATE_LIMIT_FAILURE_MODE", "closed").strip().lower() != "closed":

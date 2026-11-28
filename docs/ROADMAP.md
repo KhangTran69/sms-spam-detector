@@ -493,3 +493,7 @@ Separate committed erasure from optional compaction, publish private exports exc
 ### Consented intake integrity follow-up
 
 Bound private CSV/JSON reads, reject ambiguous headers and duplicate sidecar keys, constrain import destinations, enforce ratified-notice retention and chronology, and refuse category-hidden template leakage or campaign aliases. Preserve explicit worksheet chronology for later independently sealed evaluation.
+
+### Development experiment and Redis configuration follow-up
+
+Union declared campaign groups with template families before development cross-validation; enforce complete disjoint membership and report paired class-specific error transitions. Reject Redis URL options that can override bounded connection settings or TLS verification, consistently in runtime and offline preflight. No deployed model or real-data acceptance criteria changed.

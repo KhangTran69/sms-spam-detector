@@ -56,6 +56,7 @@ def _subset(corpus: Corpus, indices: list[int], role: str) -> Corpus:
         tuple(corpus.messages[index] for index in indices),
         tuple(corpus.labels[index] for index in indices),
         corpus.source_hashes,
+        tuple(corpus.groups[index] for index in indices) if corpus.groups else (),
     )
 
 
@@ -63,6 +64,49 @@ def _score(pipeline: Any, messages: list[str], *, canonical: bool) -> list[float
     values = [canonical_message(message) for message in messages] if canonical else messages
     probabilities = pipeline.predict_proba(messages_to_frame(values))
     return [float(row[list(pipeline.classes_).index("spam")]) for row in probabilities]
+
+
+def error_transitions(
+    labels: list[str], before: list[float], after: list[float]
+) -> dict[str, int]:
+    """Paired error transitions, without individual probabilities or messages."""
+    if not len(labels) == len(before) == len(after):
+        raise ValueError("Paired score vectors must align.")
+    counts = {"new_false_positives": 0, "corrected_false_positives": 0,
+              "new_false_negatives": 0, "corrected_false_negatives": 0}
+    for label, original, changed in zip(labels, before, after, strict=True):
+        first, second = original >= THRESHOLD, changed >= THRESHOLD
+        if first == second:
+            continue
+        if label == "ham":
+            counts["new_false_positives" if second else "corrected_false_positives"] += 1
+        else:
+            counts["corrected_false_negatives" if second else "new_false_negatives"] += 1
+    return counts
+
+
+def development_groups(corpus: Corpus) -> list[int]:
+    """Union declared campaign and text-template families transitively."""
+    size = len(corpus.messages)
+    if corpus.groups and len(corpus.groups) != size:
+        raise ValueError("Campaign group metadata is not aligned.")
+    parents = list(range(size))
+    seen: dict[tuple[str, str], int] = {}
+
+    def root(index: int) -> int:
+        while parents[index] != index:
+            parents[index] = parents[parents[index]]
+            index = parents[index]
+        return index
+
+    for index, message in enumerate(corpus.messages):
+        keys = [("template", make_group_key(message))]
+        if corpus.groups and corpus.groups[index]:
+            keys.append(("campaign", corpus.groups[index].casefold()))
+        for key in keys:
+            other = seen.setdefault(key, index)
+            parents[root(index)] = root(other)
+    return [root(index) for index in range(size)]
 
 
 def study(corpus: Corpus, expected_sha256: str, *, folds: int = 3) -> dict[str, Any]:
@@ -82,13 +126,23 @@ def study(corpus: Corpus, expected_sha256: str, *, folds: int = 3) -> dict[str, 
     # Refuse rather than silently remove observations or resolve disagreements.
     if len(set(keys)) != len(keys):
         raise ValueError("Resolve normalized duplicates and label conflicts before the study.")
-    groups = [make_group_key(message) for message in corpus.messages]
+    groups = development_groups(corpus)
     splits = cv_splits(corpus.labels, groups, n_splits=folds, seed=SEED, require_group_isolation=True)
     if len(splits) != folds:
         raise ValueError("Requested fold count unavailable.")
     memberships = []
     prepared = []
+    validation_membership: list[int] = []
     for train_idx, validation_idx in splits:
+        train_set = set(train_idx.tolist())
+        validation_set = set(validation_idx.tolist())
+        if (
+            train_set & validation_set
+            or train_set | validation_set != set(range(len(groups)))
+            or {groups[index] for index in train_set} & {groups[index] for index in validation_set}
+        ):
+            raise ValueError("Development fold membership is not disjoint and complete.")
+        validation_membership.extend(validation_idx.tolist())
         train = _subset(corpus, train_idx.tolist(), "development_train")
         validation = _subset(corpus, validation_idx.tolist(), "development_validation")
         overlap = compare_corpora(train, validation)
@@ -110,7 +164,10 @@ def study(corpus: Corpus, expected_sha256: str, *, folds: int = 3) -> dict[str, 
             }
         )
         prepared.append((train, validation))
+    if sorted(validation_membership) != list(range(len(groups))):
+        raise ValueError("Out-of-fold validation must score every row exactly once.")
     recipes = []
+    reference_scores: list[float] = []
     for weight in (None, "balanced"):
         for canonical in (False, True):
             labels: list[str] = []
@@ -132,6 +189,9 @@ def study(corpus: Corpus, expected_sha256: str, *, folds: int = 3) -> dict[str, 
                         _score(pipeline, [transform(message) for message in validation.messages], canonical=canonical)
                     )
             metrics = binary_metrics(labels, original_scores, THRESHOLD)
+            if not reference_scores:
+                reference_scores = original_scores.copy()
+            paired = error_transitions(labels, reference_scores, original_scores)
             variants = {}
             for name, scores in altered_scores.items():
                 altered = binary_metrics(labels, scores, THRESHOLD)
@@ -141,23 +201,28 @@ def study(corpus: Corpus, expected_sha256: str, *, folds: int = 3) -> dict[str, 
                     ),
                     "fp": altered["fp"],
                     "fn": altered["fn"],
+                    **error_transitions(labels, original_scores, scores),
                 }
             recipes.append(
                 {
                     "class_weight": weight or "none",
                     "canonical_input": canonical,
                     "metrics": metrics,
+                    "versus_unweighted_original": paired,
                     "calibration": calibration_metrics(labels, original_scores),
                     "formatting": variants,
                 }
             )
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "purpose": "development_comparison_only",
         "role": corpus.role,
         "source_sha256": expected_sha256,
         "seed": SEED,
         "threshold": THRESHOLD,
+        "class_counts": {label: corpus.labels.count(label) for label in ("ham", "spam")},
+        "group_components": len(set(groups)),
+        "declared_campaign_rows": sum(bool(group) for group in corpus.groups),
         "folds": memberships,
         "versions": {
             "python": platform.python_version(),
