@@ -188,7 +188,7 @@ def pool_intake(paths: Sequence[str | Path]) -> PooledIntake:
         complete_message_check = complete_message_check and bool(
             MESSAGE_COLUMN in frame.columns and frame[MESSAGE_COLUMN].astype(str).str.strip().ne("").all()
         )
-        frames.append(frame.reindex(columns=[*STATUS_COLUMNS, MESSAGE_COLUMN]))
+        frames.append(frame.reindex(columns=[*STATUS_COLUMNS, MESSAGE_COLUMN], fill_value=""))
     pooled = pd.concat(frames, ignore_index=True).fillna("")
 
     consent_values = pooled["consent_record_id"].astype(str).str.strip().str.casefold()

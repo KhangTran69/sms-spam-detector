@@ -121,6 +121,8 @@ def _review_outcome(scam="not_suspected", confidence="high", category="unknown")
 def _review_evidence(rows):
     records = {}
     for row in rows:
+        if not row["record_id"]:
+            continue
         confidence = label_import_module.map_confidence(row.get("labeling_confidence", "")) or "medium"
         records[row["record_id"]] = {
             role: _review_outcome(confidence=confidence) for role in ("reviewer_a", "reviewer_b", "adjudicated")
