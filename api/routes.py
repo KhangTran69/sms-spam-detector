@@ -356,9 +356,7 @@ def _reject_json_constant(_value: str) -> None:
 
 async def _donation_json(request: Request) -> Any:
     # Do not allow ambiguous consent/withdrawal objects or nonstandard JSON.
-    return json.loads(
-        await request.body(), object_pairs_hook=_unique_json_object, parse_constant=_reject_json_constant
-    )
+    return json.loads(await request.body(), object_pairs_hook=_unique_json_object, parse_constant=_reject_json_constant)
 
 
 def _render_notice_contact(response: Response, *, fallback: str) -> Response:

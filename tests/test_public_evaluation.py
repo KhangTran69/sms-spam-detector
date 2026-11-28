@@ -850,8 +850,14 @@ def test_annotation_gate_rejects_unavailable_or_insufficient_agreement():
         ({"test_split_sealed": False}, "evaluation_plan_test_set_not_sealed"),
         ({"minimum_campaign_groups": True}, "evaluation_plan_campaign_group_minimum_invalid"),
         ({"minimum_coverage": []}, "evaluation_plan_coverage_requirements_invalid"),
-        ({"minimum_coverage": {"language": {}, "category": {"otp": 1}}}, "evaluation_plan_coverage_requirements_invalid"),
-        ({"minimum_coverage": {"language": {"fil": True}, "category": {"otp": 1}}}, "evaluation_plan_coverage_requirements_invalid"),
+        (
+            {"minimum_coverage": {"language": {}, "category": {"otp": 1}}},
+            "evaluation_plan_coverage_requirements_invalid",
+        ),
+        (
+            {"minimum_coverage": {"language": {"fil": True}, "category": {"otp": 1}}},
+            "evaluation_plan_coverage_requirements_invalid",
+        ),
         ({"maximum_cluster_interval_width": {}}, "evaluation_plan_uncertainty_requirements_invalid"),
         ({"minimum_valid_cluster_fraction": 0}, "evaluation_plan_valid_replicate_fraction_invalid"),
         ({"minimum_cluster_lower_bound": {}}, "evaluation_plan_performance_bounds_invalid"),

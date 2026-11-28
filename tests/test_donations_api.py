@@ -298,7 +298,9 @@ def test_consent_requires_actual_json_booleans(tmp_path, field, value):
 
 
 @pytest.mark.parametrize("method", ["POST", "DELETE"])
-@pytest.mark.parametrize("body", ['{"consent":true,"consent":false}', '{"record_id":NaN}', '{"nested":{"x":1,"x":2}}', "{"])
+@pytest.mark.parametrize(
+    "body", ['{"consent":true,"consent":false}', '{"record_id":NaN}', '{"nested":{"x":1,"x":2}}', "{"]
+)
 def test_ambiguous_or_invalid_json_is_refused_without_storage(tmp_path, method, body):
     with donation_client(tmp_path) as client:
         response = client.request(method, "/donate", content=body, headers={"content-type": "application/json"})

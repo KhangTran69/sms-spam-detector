@@ -107,12 +107,8 @@ def _within_corpus(corpus: Corpus) -> dict[str, int]:
     labeled = Counter(zip(normalized, corpus.labels))
     return {
         "normalized_duplicate_rows": len(normalized) - len(counts),
-        "normalized_conflicting_keys": sum(
-            bool(labeled[(key, "ham")] and labeled[(key, "spam")]) for key in counts
-        ),
-        "normalized_conflicting_label_pairs": sum(
-            labeled[(key, "ham")] * labeled[(key, "spam")] for key in counts
-        ),
+        "normalized_conflicting_keys": sum(bool(labeled[(key, "ham")] and labeled[(key, "spam")]) for key in counts),
+        "normalized_conflicting_label_pairs": sum(labeled[(key, "ham")] * labeled[(key, "spam")] for key in counts),
     }
 
 

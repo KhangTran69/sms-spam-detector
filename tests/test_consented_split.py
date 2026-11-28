@@ -209,11 +209,19 @@ def test_split_cli_rejects_missing_input_without_creating_outputs(tmp_path, caps
 
     development = tmp_path / "development"
     evaluation = tmp_path / "evaluation"
-    assert main([
-        "--input", str(tmp_path / "missing.csv"),
-        "--development-output-dir", str(development),
-        "--evaluation-output-dir", str(evaluation),
-    ]) == 2
+    assert (
+        main(
+            [
+                "--input",
+                str(tmp_path / "missing.csv"),
+                "--development-output-dir",
+                str(development),
+                "--evaluation-output-dir",
+                str(evaluation),
+            ]
+        )
+        == 2
+    )
     assert "blocked" in capsys.readouterr().err
     assert not list(development.glob("*.csv"))
     assert not list(evaluation.glob("*.csv"))
