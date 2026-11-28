@@ -75,9 +75,7 @@ def load_corpus(role: str, paths: list[Path]) -> Corpus:
             if None in row or any(value is None for value in row.values()):
                 raise ValueError("Malformed CSV row.")
             expected_kind = "public" if role in PUBLIC_IDS else "synthetic"
-            if row["data_kind"] != expected_kind or (
-                role in PUBLIC_IDS and row["dataset_id"] != PUBLIC_IDS[role]
-            ):
+            if row["data_kind"] != expected_kind or (role in PUBLIC_IDS and row["dataset_id"] != PUBLIC_IDS[role]):
                 raise ValueError("Corpus provenance does not match its approved role.")
             message, label = row["message"], row["label"]
             if not message.strip() or len(message) > MAX_MESSAGE_LENGTH or label not in {"ham", "spam"}:
@@ -109,8 +107,7 @@ def compare_corpora(left: Corpus, right: Corpus) -> dict[str, Any]:
     counts_a = Counter(zip(a, left.labels))
     counts_b = Counter(zip(b, right.labels))
     conflicts = sum(
-        count * counts_b.get((key, "spam" if label == "ham" else "ham"), 0)
-        for (key, label), count in counts_a.items()
+        count * counts_b.get((key, "spam" if label == "ham" else "ham"), 0) for (key, label), count in counts_a.items()
     )
     # Fit on this pair only. Blocks bound the dense similarity allocation.
     vectors = TfidfVectorizer(analyzer="char_wb", ngram_range=(3, 5), dtype=float).fit_transform(a + b)
@@ -182,11 +179,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--include-synthetic", action="store_true", help="Audit tracked training and holdout fixtures.")
     args = parser.parse_args(argv)
     try:
-        corpora = [
-            load_corpus(role, [getattr(args, role)])
-            for role in PUBLIC_IDS
-            if getattr(args, role) is not None
-        ]
+        corpora = [load_corpus(role, [getattr(args, role)]) for role in PUBLIC_IDS if getattr(args, role) is not None]
         if args.include_synthetic:
             corpora.extend(
                 [
