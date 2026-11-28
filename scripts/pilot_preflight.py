@@ -188,7 +188,7 @@ def _donation_client(host: str, *, enabled: bool, contact: str) -> Iterator[Any]
     api_main.DONATIONS_OPERATOR_CONTACT = contact
     api_main._reset_rate_limits()
     try:
-        with TestClient(api_main.app, client=(host, 12345)) as client:
+        with TestClient(api_main.app, base_url="http://127.0.0.1:8000", client=(host, 12345)) as client:
             yield client
     finally:
         api_main.DONATIONS_ENABLED = original_enabled

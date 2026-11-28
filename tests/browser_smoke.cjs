@@ -7,6 +7,35 @@ const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
 
+async function assertDomAccessibility(page, mainId) {
+  const audit = await page.evaluate((expectedMain) => {
+    const ids = [...document.querySelectorAll('[id]')].map((node) => node.id);
+    const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
+    const fields = [...document.querySelectorAll('input, textarea, select')]
+      .filter((node) => node.type !== 'hidden' && node.getClientRects().length)
+      .filter((node) => !(node.labels && node.labels.length)
+        && !node.getAttribute('aria-label') && !node.getAttribute('aria-labelledby'))
+      .map((node) => node.id || node.tagName);
+    const invalidReferences = [];
+    for (const attribute of ['aria-labelledby', 'aria-describedby', 'aria-controls']) {
+      for (const node of document.querySelectorAll('[' + attribute + ']')) {
+        for (const id of node.getAttribute(attribute).trim().split(/\s+/).filter(Boolean)) {
+          if (!document.getElementById(id)) invalidReferences.push(attribute + ':' + id);
+        }
+      }
+    }
+    const main = document.getElementById(expectedMain);
+    const skip = document.querySelector('a.skip-link[href="#' + expectedMain + '"]');
+    return { duplicates, fields, invalidReferences,
+      validSkip: Boolean(skip && main && main.tagName === 'MAIN'),
+      mainCount: document.querySelectorAll('main').length };
+  }, mainId);
+  if (audit.duplicates.length || audit.fields.length || audit.invalidReferences.length
+    || !audit.validSkip || audit.mainCount !== 1) {
+    throw new Error('Accessibility DOM audit failed: ' + JSON.stringify(audit));
+  }
+}
+
 async function freePort() {
   const server = net.createServer();
   await new Promise((resolve, reject) => server.listen(0, '127.0.0.1', resolve).once('error', reject));
@@ -242,23 +271,8 @@ async function main() {
     const themeResponse = await page.request.get(base + '/static/theme-init.js');
     if (!themeResponse.ok()) throw new Error('external prepaint theme initializer failed to load');
 
-    // Playwright-powered DOM accessibility checks are not manual screen-reader tests.
-    const a11yAudit = await page.evaluate(() => {
-      const ids = [...document.querySelectorAll('[id]')].map((node) => node.id);
-      const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
-      const fields = [...document.querySelectorAll('input, textarea, select')]
-        .filter((node) => node.type !== 'hidden' && node.getClientRects().length)
-        .filter((node) => !(node.labels && node.labels.length)
-          && !node.getAttribute('aria-label') && !node.getAttribute('aria-labelledby'))
-        .map((node) => node.id || node.outerHTML.slice(0, 100));
-      const skip = document.querySelector('a.skip-link[href="#main-content"]');
-      return { duplicates, fields, validSkip: Boolean(skip && document.getElementById('main-content')),
-        mainCount: document.querySelectorAll('main').length };
-    });
-    if (a11yAudit.duplicates.length || a11yAudit.fields.length
-      || !a11yAudit.validSkip || a11yAudit.mainCount !== 1) {
-      throw new Error('Accessibility DOM audit failed: ' + JSON.stringify(a11yAudit));
-    }
+    // DOM regressions supplement, but do not replace, screen-reader review.
+    await assertDomAccessibility(page, 'main-content');
     const modelDetails = page.locator('#model-details');
     if (await modelDetails.evaluate((element) => element.open)) {
       throw new Error('model metadata should be collapsed until requested');
@@ -815,6 +829,7 @@ async function main() {
     if (await donationPage.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)) {
       throw new Error('donation form overflows a 360px mobile viewport');
     }
+    await assertDomAccessibility(donationPage, 'donation-main');
     const donationMessage = donationPage.locator('#donation-message');
     const donationConsent = donationPage.locator('#donation-consent');
     const donationAuthorization = donationPage.locator('#donation-authorized');
@@ -841,7 +856,17 @@ async function main() {
     if (donationRequests.filter((request) => request.method() === 'POST').length !== 1) {
       throw new Error('PII rejection caused more than one explicit donation request');
     }
+    if (await donationMessage.getAttribute('aria-invalid') !== 'true'
+      || !(await donationMessage.getAttribute('aria-describedby')).includes('donation-pii-findings')
+      || !(await donationMessage.evaluate((item) => document.activeElement === item))) {
+      throw new Error('PII rejection did not associate correction guidance with the focused input');
+    }
+    await assertDomAccessibility(donationPage, 'donation-main');
     await donationMessage.fill('Fictional fixture: a message I received that has been reviewed and redacted.');
+    if (await donationMessage.getAttribute('aria-invalid') !== null
+      || await donationPage.locator('#donation-pii-findings').isVisible()) {
+      throw new Error('editing the donation did not clear stale PII correction state');
+    }
     let abortOneSubmission = true;
     await donationPage.route('**/donate', async (route) => {
       if (route.request().method() === 'POST' && abortOneSubmission) {

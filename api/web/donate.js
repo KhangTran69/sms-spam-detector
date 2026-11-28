@@ -95,9 +95,17 @@ export function createDonationForm({
     status.textContent = text;
   }
 
+  function clearPiiFindings() {
+    renderPiiFindings(findings, [], documentRef);
+    message.removeAttribute("aria-invalid");
+    message.setAttribute("aria-describedby", "donation-message-help");
+  }
+
+  message.addEventListener("input", clearPiiFindings);
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    renderPiiFindings(findings, [], documentRef);
+    if (submitButton.disabled || withdrawalButton.disabled) return;
+    clearPiiFindings();
     if (!form.reportValidity()) return;
 
     let payload;
@@ -129,6 +137,9 @@ export function createDonationForm({
       if (!response.ok) {
         if (error?.code === "pii_detected" && Array.isArray(error.details)) {
           renderPiiFindings(findings, error.details, documentRef);
+          message.setAttribute("aria-invalid", "true");
+          message.setAttribute("aria-describedby", "donation-message-help donation-pii-findings");
+          message.focus();
         }
         setStatus(error?.message || "Could not submit. Review the form and choose Submit again to retry manually.");
         return;
@@ -157,6 +168,7 @@ export function createDonationForm({
 
   withdrawalForm.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (submitButton.disabled || withdrawalButton.disabled) return;
     if (!withdrawalForm.reportValidity()) return;
     const recordId = withdrawalId.value.trim();
     withdrawalButton.disabled = true;

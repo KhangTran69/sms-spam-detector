@@ -44,8 +44,9 @@ aggregate drift do not establish a change in real-world accuracy.
 
 **Automated:** CI's browser behavior smoke test checks responsive layout,
 keyboard tabs, focus visibility, touch target sizes and overflow; it now also
-checks unique DOM IDs, visible field labels, a valid skip target and inline
-script CSP. These are useful regressions, **not** complete WCAG conformance
+checks unique DOM IDs, visible field labels, valid ARIA ID references and
+skip targets on the detector and donation form, inline script CSP, and
+keyboard focus plus error-description association on donation PII rejection. These are useful regressions, **not** complete WCAG conformance
 or a manual screen-reader test.
 
 **Manual review still required:** On a supported Mac run VoiceOver with Safari,

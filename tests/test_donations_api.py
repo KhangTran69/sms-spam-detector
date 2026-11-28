@@ -48,7 +48,7 @@ def donation_client(
     api_main.SMSD_ENV = environment
     api_main._reset_rate_limits()
     try:
-        with TestClient(api_main.app, client=(client_host, 12345)) as client:
+        with TestClient(api_main.app, base_url="http://127.0.0.1:8000", client=(client_host, 12345)) as client:
             yield client
     finally:
         api_main.DONATIONS_ENABLED = state["enabled"]
@@ -245,3 +245,40 @@ def test_model_research_consent_is_a_separate_optional_choice(tmp_path):
             1,
             1,
         )
+
+
+@pytest.mark.parametrize(
+    "headers",
+    [
+        {"Host": "external.example.test"},
+        {"Origin": "https://external.example.test"},
+        {"Origin": "null"},
+        {"Origin": "http://127.0.0.1:9999"},
+        {"Origin": "http://localhost:8000"},
+        {"Sec-Fetch-Site": "cross-site"},
+    ],
+)
+def test_local_peer_cannot_bypass_donation_authority_boundary(tmp_path, headers):
+    with donation_client(tmp_path) as client:
+        accepted = client.post("/donate", json=VALID_PAYLOAD, headers=headers)
+        withdrawal = client.request("DELETE", "/donate", json={"record_id": "a" * 32}, headers=headers)
+        assert accepted.status_code == 404
+        assert withdrawal.status_code == 404
+    assert not (tmp_path / "donations.sqlite3").exists()
+
+
+def test_same_origin_local_browser_can_donate_and_withdraw(tmp_path):
+    with donation_client(tmp_path) as client:
+        headers = {"Origin": "http://127.0.0.1:8000", "Sec-Fetch-Site": "same-origin"}
+        accepted = client.post("/v1/donate", json=VALID_PAYLOAD, headers=headers)
+        assert accepted.status_code == 201
+        withdrawal = client.request("DELETE", "/v1/donate", json={"record_id": accepted.json()["record_id"]}, headers=headers)
+        assert withdrawal.status_code == 200
+
+
+def test_local_donation_form_refuses_non_loopback_host(tmp_path):
+    with donation_client(tmp_path) as client:
+        for method in ("GET", "HEAD"):
+            assert client.request(method, "/donate", headers={"Host": "external.example.test"}).status_code == 404
+        assert client.get("/donate", headers={"Host": "localhost:8000"}).status_code == 200
+        assert client.get("/donate", headers={"Host": "[::1]:8000"}).status_code == 200

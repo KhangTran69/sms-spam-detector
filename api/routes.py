@@ -18,6 +18,7 @@ import uuid
 from datetime import UTC, datetime
 from types import ModuleType
 from typing import Any
+from urllib.parse import urlsplit
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse, Response
@@ -280,12 +281,9 @@ def _donations_enabled() -> bool:
     return bool(_state().DONATIONS_ENABLED and _state().DONATIONS_OPERATOR_CONTACT.strip())
 
 
-def _donation_request_is_local(request: Request) -> bool:
-    """Restrict the optional unauthenticated intake to a local development host."""
-    if _state().SMSD_ENV == "production" or request.client is None:
-        return False
+def _loopback_ip(value: str) -> bool:
     try:
-        address = ipaddress.ip_address(request.client.host.split("%", maxsplit=1)[0])
+        address = ipaddress.ip_address(value.split("%", maxsplit=1)[0])
     except ValueError:
         return False
     return address.is_loopback or (
@@ -293,6 +291,47 @@ def _donation_request_is_local(request: Request) -> bool:
         and address.ipv4_mapped is not None
         and address.ipv4_mapped.is_loopback
     )
+
+
+def _local_origin(value: str) -> tuple[str, str, int] | None:
+    """Accept only a literal loopback origin; never resolve an arbitrary hostname."""
+    try:
+        parsed = urlsplit(value)
+        hostname = parsed.hostname
+        port = parsed.port
+    except ValueError:
+        return None
+    if (
+        parsed.scheme not in {"http", "https"}
+        or hostname is None
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.path
+        or parsed.query
+        or parsed.fragment
+        or (hostname != "localhost" and not _loopback_ip(hostname))
+    ):
+        return None
+    return parsed.scheme, hostname, port if port is not None else (443 if parsed.scheme == "https" else 80)
+
+
+def _donation_request_is_local(request: Request) -> bool:
+    """Require a local peer, loopback authority, and matching browser origin."""
+    if _state().SMSD_ENV == "production" or request.client is None:
+        return False
+    if not _loopback_ip(request.client.host):
+        return False
+    hosts = request.headers.getlist("host")
+    if len(hosts) != 1 or not hosts[0] or any(char.isspace() for char in hosts[0]):
+        return False
+    authority = _local_origin(f"{request.scope['scheme']}://{hosts[0]}")
+    if authority is None:
+        return False
+    origins = request.headers.getlist("origin")
+    if origins and (len(origins) != 1 or _local_origin(origins[0]) != authority):
+        return False
+    # A local CLI has no Origin; browser cross-site writes are never needed.
+    return request.headers.get("sec-fetch-site") != "cross-site" or request.method in {"GET", "HEAD"}
 
 
 def _render_notice_contact(response: Response, *, fallback: str) -> Response:

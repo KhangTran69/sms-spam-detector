@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="/static/tokens.css?v=ui22-editorial-polish-20261128" />
   <link rel="stylesheet" href="/static/styles.css?v=ui22-editorial-polish-20261128" />
   <link rel="stylesheet" href="/static/donate.css?v=donate-v6" />
-  <script type="module" src="/static/donate.js?v=donate-v5"></script>
+  <script type="module" src="/static/donate.js?v=donate-v7"></script>
 </head>
 <body>
   <a class="skip-link" href="#donation-main">Skip to donation form</a>
@@ -31,12 +31,12 @@
         <p id="donation-message-help" class="hint">Up to 10,000 characters. If a detail is flagged, edit it here and submit again yourself.</p>
 
         <label for="donation-label-hint">Optional label hint</label>
-        <select id="donation-label-hint">
+        <select id="donation-label-hint" aria-describedby="donation-label-hint-help">
           <option value="">No hint</option>
           <option value="spam">Spam signal</option>
           <option value="ham">Legitimate / ham</option>
         </select>
-        <p class="hint">This is only your suggestion. It is not a verified label.</p>
+        <p id="donation-label-hint-help" class="hint">This is only your suggestion. It is not a verified label.</p>
 
         <label for="donation-language">Optional language</label>
         <select id="donation-language">

@@ -31,8 +31,9 @@ contact is shown on both the form and notice. The optional settings are:
 | `SMSD_DONATION_RATE_LIMIT_PER_MINUTE` | `5` | In-process per-client donation request limit |
 
 The app has no authentication. CORS does not provide access control. Donation
-routes accept only loopback clients, and the intake is unavailable when
-`SMSD_ENV=production`. Keep it on localhost without a public reverse proxy;
+routes accept only loopback clients and literal loopback Host authorities.
+Browser requests with an Origin must match that authority and scheme; cross-site
+writes are refused. The intake is unavailable when `SMSD_ENV=production`. Keep it on localhost without a public reverse proxy;
 do not expose or deploy the intake publicly. Run the service with
 `python -m api.cli` / `smsd-serve`. Withdrawal IDs are sent in a JSON body,
 not a URL path; the CLI disables Uvicorn access logs for a single sanitized
@@ -56,7 +57,9 @@ recorded; they are never silently relabeled as version 4.
 Message text is length-bounded and screened with the strict PII scanner before
 SQLite storage. The storage layer repeats that check, and review export screens
 again. If likely PII appears, the API rejects the submission and returns only
-the flagged spans needed for manual redaction. URLs are flagged; the scanner can
+the flagged spans needed for manual redaction. The form returns keyboard
+focus to the message field, associates it with the error list, and clears the
+stale finding state when the donor edits. URLs are flagged; the scanner can
 miss information, so donors must review and redact messages themselves.
 
 The form collects only message text, an optional `spam`/`ham` hint, an optional
