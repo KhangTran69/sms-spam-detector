@@ -346,7 +346,8 @@ def test_submission_key_serializes_concurrent_retries_and_preserves_expiry(tmp_p
     assert create_donation(database, **kwargs) == receipts[0]
     with closing(sqlite3.connect(database)) as connection, connection:
         assert (
-            connection.execute("SELECT consented_at, expires_at, submission_key_hash FROM donations").fetchone() == original
+            connection.execute("SELECT consented_at, expires_at, submission_key_hash FROM donations").fetchone()
+            == original
         )
     with pytest.raises(DonationConflict):
         create_donation(database, **{**kwargs, "model_research_consent": True})

@@ -474,7 +474,9 @@ async def donate(request: Request) -> Response:
         )
     except DonationConflict:
         return _donation_error(
-            409, "submission_conflict", "This submission key was already used. Contact the operator before trying again."
+            409,
+            "submission_conflict",
+            "This submission key was already used. Contact the operator before trying again.",
         )
     except (OSError, RuntimeError, ValueError) as exc:
         _state().logger.error("Could not save local donation (%s)", type(exc).__name__)
