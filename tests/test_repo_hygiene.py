@@ -507,7 +507,14 @@ def test_public_kaggle_evaluation_is_attributed_and_explicitly_limited() -> None
     model_card = _doc("docs/MODEL_CARD.md").lower()
     assert "kaggle" in model_card
     assert "group-isolated internal split diagnostic" in model_card
-    assert "tagalog-sms has not been fetched or evaluated" in model_card
+    # The Tagalog-SMS corpus was fetched and diagnosed on 2026-11-28; the model
+    # card must state that outcome and the bwandowando stop, never a stale
+    # "not fetched" claim.
+    assert "tagalog-sms was fetched and diagnosed on 2026-11-28" in model_card
+    assert "bwandowando philippine spam/scam corpus is **blocked**" in model_card
+    assert "real personal data beyond sms text" in model_card
+    assert "no version bump and no release were made" in model_card
+    assert "uncalibrated model score" in model_card
     assert "onzero0/tagalog-sms" in model_card
     assert "cc0" in model_card
     assert "raw local downloads must still be treated as sensitive" in model_card
