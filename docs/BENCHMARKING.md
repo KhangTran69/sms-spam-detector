@@ -288,7 +288,8 @@ are deliberately separate from the near-duplicate counts; row-pair counts
 include repeats to expose duplication rather than remove it.
 
 The pair-local similarity screen follows the historical 0.90 cosine and 0.90
-sequence thresholds. It is a heuristic diagnostic, not evidence of confirmed
+sequence thresholds. Row, byte and sequence-work budgets refuse oversized
+runs instead of reporting partial overlap counts. It is a heuristic diagnostic, not evidence of confirmed
 duplicates or population independence. Review candidate overlap privately
 before any future development split; do not automatically relabel or delete
 rows. Keep the blocked merged and bwandowando corpora out of the audit. No

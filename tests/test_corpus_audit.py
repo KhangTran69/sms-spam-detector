@@ -13,7 +13,7 @@ from src.corpus_audit import PUBLIC_IDS, Corpus, audit, load_corpus, main
 
 PRIVATE_MARKER = "Synthetic fixture for overlap detection only"
 SECOND = "This fictional long notice confirms the scheduled delivery window for the parcel tomorrow."
-VARIANT = "This fictional long notice confirms the scheduled delivery window for the parcel today."
+VARIANT = "This fictional long notice confirms the scheduled delivery window for the parcel tomorrow!"
 
 
 def _write(path: Path, role: str, rows: list[tuple[str, str]], *, kind: str = "public") -> Path:
@@ -101,3 +101,11 @@ def test_tracked_synthetic_audit_runs_without_private_inputs(capsys):
     assert len(report["comparisons"]) == 1
     assert [corpus["role"] for corpus in report["corpora"]] == ["synthetic_training", "synthetic_holdout"]
     assert all(corpus["rows"] > 0 for corpus in report["corpora"])
+
+
+def test_sequence_work_limit_refuses_instead_of_emitting_partial_counts(monkeypatch):
+    left = Corpus("uci", (SECOND,), ("ham",), ("left",))
+    right = Corpus("tagalog", (SECOND, VARIANT), ("ham", "spam"), ("right",))
+    monkeypatch.setattr("src.corpus_audit.MAX_SEQUENCE_WORK", 1)
+    with pytest.raises(ValueError, match="sequence comparison work budget"):
+        audit([left, right])

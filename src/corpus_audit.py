@@ -37,6 +37,7 @@ MAX_MESSAGE_LENGTH = 10_000
 COSINE_THRESHOLD = 0.90
 SEQUENCE_THRESHOLD = 0.90
 BLOCK_SIZE = 64
+MAX_SEQUENCE_WORK = 100_000_000
 
 
 @dataclass(frozen=True)
@@ -110,10 +111,11 @@ def compare_corpora(left: Corpus, right: Corpus) -> dict[str, Any]:
         count * counts_b.get((key, "spam" if label == "ham" else "ham"), 0) for (key, label), count in counts_a.items()
     )
     # Fit on this pair only. Blocks bound the dense similarity allocation.
-    vectors = TfidfVectorizer(analyzer="char_wb", ngram_range=(3, 5), dtype=float).fit_transform(a + b)
+    vectors = TfidfVectorizer(analyzer="char_wb", ngram_range=(3, 5)).fit_transform(a + b)
     right_vectors = vectors[len(a) :]
     candidates = 0
     near_conflicts = 0
+    sequence_work = 0
     for start in range(0, len(a), BLOCK_SIZE):
         scores = cosine_similarity(vectors[start : min(start + BLOCK_SIZE, len(a))], right_vectors)
         for offset, j in zip(*(scores >= COSINE_THRESHOLD).nonzero()):
@@ -121,7 +123,11 @@ def compare_corpora(left: Corpus, right: Corpus) -> dict[str, Any]:
             j = int(j)
             if a[i] == b[j]:
                 continue
-            if SequenceMatcher(None, a[i], b[j], autojunk=False).ratio() >= SEQUENCE_THRESHOLD:
+            sequence_work += len(a[i]) * len(b[j])
+            if sequence_work > MAX_SEQUENCE_WORK:
+                raise ValueError("Corpus pair exceeds the sequence comparison work budget.")
+            matcher = SequenceMatcher(None, a[i], b[j], autojunk=False)
+            if matcher.quick_ratio() >= SEQUENCE_THRESHOLD and matcher.ratio() >= SEQUENCE_THRESHOLD:
                 candidates += 1
                 near_conflicts += int(left.labels[i] != right.labels[j])
     return {
@@ -188,7 +194,7 @@ def main(argv: list[str] | None = None) -> int:
                 ]
             )
         report = audit(corpora)
-    except (OSError, ValueError, csv.Error, UnicodeError):
+    except (OSError, ValueError, csv.Error):
         print("Corpus audit refused: check normalized inputs, provenance, and local resource limits.", file=sys.stderr)
         return 2
     print(json.dumps(report, indent=2, sort_keys=True, allow_nan=False))
