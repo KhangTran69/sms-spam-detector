@@ -9,7 +9,7 @@
     },
     "new": {
       "path": "models/spam_detector_v2_1_candidate.pkl",
-      "sha256": "3d23c802cae7ee542180081d15f0b8533a7415dfa5bb9dcb6cf2d2a2b094dc6b",
+      "sha256": "732cad3898b3d4bb255ef7ae47f46bff3edff220d58de8a24d3265cc1c55bca7",
       "decision_threshold": 0.5
     }
   },

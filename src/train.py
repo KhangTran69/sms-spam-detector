@@ -393,8 +393,13 @@ def train(
             else False
         ),
         "training_data_kind_counts": train_set.frame["data_kind"].value_counts().to_dict(),
-        # Sigmoid calibration is fitted on training folds only; test/holdout ECE is reported.
-        "probability_calibrated": True,
+        # Sigmoid calibration is fitted on training folds only; test/holdout ECE is
+        # reported. Per the ratified calibration-verification rule (ROADMAP), the UI
+        # copy stays "uncalibrated model score" until a held-out REAL-data
+        # verification meets the registered bar (ECE <= 0.05 and >= 30 samples per
+        # populated bin) — see docs/benchmarks/v2-1-0-calibration-experiment-20261128.md.
+        # Flip this to True only with that evidence; ensemble routing keys off it.
+        "probability_calibrated": False,
         "data_note": (
             "Training data may include synthetic examples and messages with unverified provenance. "
             "Synthetic examples are engineering checks, not proof of real-world accuracy. "

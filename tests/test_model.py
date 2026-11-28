@@ -107,7 +107,9 @@ def test_artifact_contains_required_metadata(trained_artifact):
     assert artifact["training_config"]["random_state"] == 7
     assert artifact["text_feature_mode"] == "combined"
     assert artifact["training_config"]["text_features"] == "combined"
-    assert artifact["probability_calibrated"] is True
+    # Uncalibrated until held-out real-data verification meets the registered bar
+    # (ROADMAP calibration-verification rule; 2026-11-28 recalibration record).
+    assert artifact["probability_calibrated"] is False
     assert artifact["model_selection"]["selected"] in {
         row["candidate"] for row in artifact["model_selection"]["candidates"]
     }
@@ -211,7 +213,7 @@ def test_analyze_message_contract_and_threshold_consistency(trained_artifact):
     assert result["model_path"] == "linear"
     assert result["decision_threshold"] == pytest.approx(bundle.threshold)
     assert result["suspicious_threshold"] == pytest.approx(bundle.suspicious_threshold)
-    assert result["probability_calibrated"] is True
+    assert result["probability_calibrated"] is False
     assert result["prediction"] == ("spam" if result["spam_probability"] >= bundle.threshold else "ham")
     assert result["margin"] == pytest.approx(abs(result["spam_probability"] - bundle.threshold))
     assert result["confidence"] in {"low", "medium", "high"}
