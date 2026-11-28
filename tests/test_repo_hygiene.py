@@ -618,3 +618,14 @@ def test_tagalog_sms_attempt_is_recorded() -> None:
     assert "Kaggle credentials are required" in record or "normalized" in record.lower()
     inventory = (ROOT / "docs" / "DATASET_INVENTORY.md").read_text(encoding="utf-8")
     assert "download attempt recorded 2026-11-28" in inventory
+
+
+def test_human_task_kits_exist_and_are_ready_to_run() -> None:
+    script = (ROOT / "docs" / "templates" / "comprehension-session-script.md").read_text(encoding="utf-8")
+    assert script.count("| ") >= 12, "fixture table with 12 rows"
+    assert "low score" in script and "guarantee" in script, "guarantee probe required"
+    worksheet = (ROOT / "docs" / "templates" / "labeling-worksheet.md").read_text(encoding="utf-8")
+    for column in ("record_id", "labeler_1_label", "labeler_2_label", "adjudicated_label", "adjudicator"):
+        assert column in worksheet
+    draft = (ROOT / "docs" / "templates" / "pilot-recruitment-draft.md").read_text(encoding="utf-8")
+    assert "2026-11-01-v4" in draft and "withdraw" in draft
