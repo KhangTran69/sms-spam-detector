@@ -18,9 +18,9 @@ record_id | message | label_hint | language | labeling_confidence | labeler_1_la
 |---|---|---|
 | `record_id` | Export | The randomized record ID from the donation export. No donor identity anywhere in the sheet. |
 | `message` | Export | The de-identified message text exactly as exported (already PII-screened). Do not add sender details or notes here. |
-| `label_hint` | Export | The donor's optional hint (`ham`/`spam`). It is **not ground truth**. Mask or remove this column on the sheets given to labeler 1 and labeler 2: HUMAN_REVIEW requires reviewers to work without the donor hint, and the reviewer-facing export omits it. |
+| `label_hint` | Coordinator (from export) | The donor's optional hint (`ham`/`spam`). It is **not ground truth**. Mask or remove this column on the sheets given to labeler 1 and labeler 2: HUMAN_REVIEW requires reviewers to work without the donor hint, and the reviewer-facing export omits it. |
 | `language` | Export | Short code from the export (`en`, `fil`, `tl-en`, `unknown`). |
-| `labeling_confidence` | Export | Optional donor-side labeling confidence as a number between 0.0 and 1.0 (optional column in `src/consented_data.py`). Leave blank when absent. This is not a reviewer confidence. |
+| `labeling_confidence` | Coordinator (from export when present) | Optional donor-side labeling confidence as a number between 0.0 and 1.0 (optional column in `src/consented_data.py`). Leave blank when absent. This is not a reviewer confidence. |
 | `labeler_1_label` | Labeler 1 | First-pass spam/ham target: `spam` or `ham`. |
 | `labeler_2_label` | Labeler 2 | First-pass spam/ham target: `spam` or `ham`, recorded before any discussion. |
 | `adjudicated_label` | Adjudicator | Final spam/ham target after adjudication. Later becomes the row's `label` on intake. |

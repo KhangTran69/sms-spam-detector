@@ -74,7 +74,7 @@ ambiguous or low-confidence data as unresolved and disclose exclusions.
    holdout. Do not tune on test results, rename an internal split as an
    external holdout or substitute UCI/synthetic performance for field evidence.
 
-## Acceptance gates: owner must preregister numerical thresholds
+## Acceptance gates: owner-preregistered numerical thresholds (ratified 2026-11-28)
 
 The following fields are **mandatory decisions, not preapproved values**.
 The owner and qualified reviewer must specify the exact numerical criterion,

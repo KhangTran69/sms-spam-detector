@@ -607,7 +607,12 @@ def test_evaluation_plan_template_prefills_registration_fields() -> None:
     }
     assert template["minimum_campaign_groups"] == 12
     assert template["minimum_coverage"]["language"] == {"en": 100, "tl": 100, "tl-en": 100}
-    assert template["minimum_coverage"]["category"]["otp"] == 150
+    assert template["minimum_coverage"]["category"] == {
+        "otp": 150,
+        "bank_alert": 150,
+        "delivery": 150,
+        "spam_top3": 300,
+    }
     assert template["registered_at"] is None, "registration happens at sealed-test setup, not before"
 
 

@@ -20,7 +20,7 @@
   </div>
 
   <div id="update-banner" class="update-banner hidden" role="status" aria-live="polite"
-    aria-label="Application update available">
+    data-i18n-aria-label="update.aria" aria-label="Application update available">
     <span data-i18n="update.banner">The detector was updated in the background. Reload to switch to the new version —
       your saved history stays in this browser.</span>
     <button type="button" id="btn-apply-update" class="btn small" data-i18n="update.reloadButton">Reload now</button>
@@ -59,8 +59,7 @@
           aria-describedby="message-help char-count"
           data-i18n-placeholder="check.placeholder"
           placeholder="e.g. Bank notice: Your account review is due. Visit bank-help.example to read more."></textarea>
-        <p id="message-help" class="hint" data-i18n="check.help">At most 10,000 characters. Ordinary checks are analysed in memory and are
-          not stored on the server. Optional donation is separate and requires consent.</p>
+        <p id="message-help" class="hint" data-i18n="check.help">Up to 10,000 characters. Analysed in memory; never stored on the server. Donation is separate and needs consent.</p>
         <div class="privacy-actions">
           <button type="button" id="btn-privacy-review" class="btn secondary" data-i18n="privacy.review">Review sensitive details</button>
           <span class="hint" data-i18n="privacy.optional">Optional: review and mask details before analysis.</span>
@@ -80,7 +79,7 @@
         <span class="examples-label" data-i18n="examples.label">Try an example:</span>
         <button type="button" class="example-chip scam" data-example="scam"><span data-i18n="examples.scam">Spam example</span></button>
         <button type="button" class="example-chip safe" data-example="safe"><span data-i18n="examples.safe">Legitimate example</span></button>
-        <span id="example-status" class="example-status" role="status" aria-live="polite" data-i18n="examples.note">Examples come from synthetic PH training fixtures—not real inbox messages or proof of accuracy. Click again to cycle through more.</span>
+        <span id="example-status" class="example-status" role="status" aria-live="polite" data-i18n="examples.note">Synthetic training fixtures only—not proof of accuracy. Click again for more.</span>
       </div>
 
       <div id="result" class="result hidden" role="status" aria-live="polite" aria-label="Analysis result" data-i18n-aria-label="result.aria">

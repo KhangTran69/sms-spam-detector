@@ -513,7 +513,9 @@ git-ignored. Do not add TLS keys, registry tokens, or API keys to the image,
 compose file, or CI. CI uses the default `GITHUB_TOKEN` with `contents: read`
 only and does not deploy.
 
-**Rollback to a previous artifact.** Because the artifact is mounted, rollback
+**Rollback to a previous artifact.** The v2.0.0 immutable copies live in
+   `models/releases/v2.0.0/` on the operator disk (drill baseline: 2026-11-28).
+ Because the artifact is mounted, rollback
 does not require rebuilding the image:
 
 1. Keep previous bundles (and their `.metadata.json` sidecars) under versioned

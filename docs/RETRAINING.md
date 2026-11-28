@@ -163,6 +163,13 @@ Drift evaluation:
 
 ## 7. Rollback procedure
 
+> **Immutable release copies (since v2.0.0):** the attested artifact and its
+> sidecar are copied to `models/releases/v2.0.0/` on the operator disk
+> (git-ignored via `models/releases/**`). Treat these copies as immutable
+> rollback baselines; never retrain over them. Drill record:
+> [release-drill-20261128.md](benchmarks/release-drill-20261128.md).
+
+
 1. Identify the issue and current version from `GET /model-info`; record time,
    symptom, and impact.
 2. Re-point `SMSD_MODEL_PATH` to the previous known-good immutable bundle (or

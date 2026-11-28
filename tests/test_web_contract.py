@@ -786,11 +786,13 @@ def _token_free_styles() -> str:
     """Strip the token blocks so 'tokens only' can be checked on the rest.
 
     Tokens live in tokens.css (shared with the donation page); styles.css
-    must carry none of its own."""
+    must carry none of its own. donate.css is token-only by the same rule."""
     body = re.sub(r":root[^{]*\{.*?\n\}", "", _styles(), flags=re.DOTALL)
     tokens = (ROOT / "api" / "web" / "tokens.css").read_text(encoding="utf-8")
     tokens_free = re.sub(r":root[^{]*\{.*?\n\}", "", tokens, flags=re.DOTALL)
-    return body + "\n" + tokens_free
+    donate = (ROOT / "api" / "web" / "donate.css").read_text(encoding="utf-8")
+    donate_free = re.sub(r":root[^{]*\{.*?\n\}", "", donate, flags=re.DOTALL)
+    return body + "\n" + tokens_free + "\n" + donate_free
 
 
 def test_floor_no_eyebrow_labels(css):

@@ -144,6 +144,10 @@ a:focus-visible {
   background: var(--surface);
   border-bottom: var(--rule-heavy) solid var(--ink);
 }
+/* When the offline banner is also visible, stack below it instead of overlapping. */
+:has(.offline-banner:not(.hidden)) .update-banner {
+  top: 45px;
+}
 
 /* ---------- Header ---------- */
 .site-header {
@@ -163,7 +167,6 @@ a:focus-visible {
   line-height: 1;
   color: var(--ink);
 }
-.brand-icon { display: none; }
 
 .header-controls { display: flex; gap: 6px; margin-left: auto; }
 .header-btn {
@@ -376,7 +379,6 @@ textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 
 /* ---------- Verdict ---------- */
 .verdict { display: flex; align-items: flex-start; gap: 16px; border-left: var(--rule-heavy) solid var(--muted); padding: 4px 0 4px 16px; flex-wrap: wrap; }
-.verdict-icon { display: none; }
 .verdict-text { flex: 1; min-width: 220px; }
 .verdict-title { font-family: var(--font-display); font-weight: 800; font-stretch: 78%; font-size: 30px; line-height: 1.05; color: var(--ink); }
 .verdict-sub { color: var(--muted); font-size: 14.5px; font-family: var(--font-display); margin-top: 4px; font-variant-numeric: tabular-nums; }
