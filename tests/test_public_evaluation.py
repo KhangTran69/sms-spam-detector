@@ -908,3 +908,43 @@ def test_public_cli_reports_blocked_without_metrics(monkeypatch, capsys):
         "blockers": ["evaluation_plan_missing"],
         "metrics_generated": False,
     }
+
+
+def test_coverage_uses_legitimate_critical_classes_and_actual_top_three_spam_categories():
+    frame = pd.DataFrame(
+        {
+            "label": ["spam", "ham", "spam", "spam", "spam"],
+            "category": ["otp", "bank_alert", "prize", "promo", "investment"],
+            "language": ["en"] * 5,
+            "group": ["a", "b", "c", "d", "e"],
+        }
+    )
+    dataset = SimpleNamespace(frame=frame, groups=frame["group"].tolist())
+    plan = {
+        "minimum_coverage": {"language": {"en": 1}, "category": {"otp": 1, "spam_top3": 3}},
+        "subgroup_error_gates": [],
+        "minimum_campaign_groups": 1,
+    }
+    diagnostic, blockers = public_evaluation._consented_coverage_diagnostics(dataset, plan)
+    assert diagnostic["coverage_counts"]["category"]["otp"] == 1
+    assert diagnostic["legitimate_category_counts"]["otp"] == 0
+    assert diagnostic["spam_top3_count"] == 3
+    assert blockers == ["category_coverage_below_plan"]
+    plan["minimum_coverage"]["category"] = {"bank_alert": 1, "spam_top3": 3}
+    assert public_evaluation._consented_coverage_diagnostics(dataset, plan)[1] == []
+
+
+def test_model_provenance_refuses_unregistered_additional_training_input():
+    digest = "a" * 64
+    bundle = SimpleNamespace(
+        threshold=0.5,
+        metadata={
+            "training_config": {"split_by": "time", "threshold_policy": "validation"},
+            "threshold_selection": {"decision": {"policy": "validation", "threshold": 0.5}},
+            "split": {"method": "chronological_group_holdout", "group_leakage": 0},
+            "data_sources": [{"sha256": digest}, {"sha256": "b" * 64}],
+        },
+    )
+    assert public_evaluation._model_provenance_blockers(bundle, digest) == ["model_unregistered_training_sources"]
+    bundle.metadata["data_sources"].pop()
+    assert public_evaluation._model_provenance_blockers(bundle, digest) == []

@@ -111,9 +111,8 @@ def test_reservation_serializes_withdrawal_and_refuses_locked_store(tmp_path):
     export_donations(database, export)
     with current_review_rows(database, export) as rows:
         assert receipt in rows
-        with closing(sqlite3.connect(database, timeout=0.05)) as competing:
-            with pytest.raises(sqlite3.OperationalError):
-                competing.execute("BEGIN IMMEDIATE")
+        with closing(sqlite3.connect(database, timeout=0.05)) as competing, pytest.raises(sqlite3.OperationalError):
+            competing.execute("BEGIN IMMEDIATE")
     assert delete_donation(database, receipt)
     with pytest.raises(ValueError, match="no longer eligible"), current_review_rows(database, export):
         pytest.fail("Withdrawn rows must not be yielded")

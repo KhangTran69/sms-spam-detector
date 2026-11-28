@@ -855,8 +855,8 @@ def _consented_development_diagnostics(
     if set(evaluation.labels) != {"ham", "spam"}:
         blockers.append("evaluation_split_requires_both_labels")
 
-    dev_groups = set(development.groups)
-    eval_groups = set(evaluation.groups)
+    dev_groups = {str(group).strip().casefold() for group in development.groups}
+    eval_groups = {str(group).strip().casefold() for group in evaluation.groups}
     group_overlap = len(dev_groups & eval_groups)
     if group_overlap:
         blockers.append("campaign_group_overlap_across_splits")
@@ -867,14 +867,8 @@ def _consented_development_diagnostics(
         leakage = {"exact_or_normalized_message_overlap": True}
         blockers.append("duplicate_message_across_splits")
 
-    development_templates = {
-        make_group_key(message, category=str(category))
-        for message, category in zip(development.messages, development.frame["category"], strict=True)
-    }
-    evaluation_templates = {
-        make_group_key(message, category=str(category))
-        for message, category in zip(evaluation.messages, evaluation.frame["category"], strict=True)
-    }
+    development_templates = {make_group_key(message) for message in development.messages}
+    evaluation_templates = {make_group_key(message) for message in evaluation.messages}
     template_overlap = len(development_templates & evaluation_templates)
     if template_overlap:
         blockers.append("template_family_overlap_across_splits")
@@ -970,6 +964,8 @@ def _model_provenance_blockers(bundle: Any, development_sha256: str) -> list[str
     )
     if development_sha256 not in source_hashes:
         blockers.append("model_development_dataset_hash_mismatch")
+    if source_hashes - {development_sha256}:
+        blockers.append("model_unregistered_training_sources")
     return sorted(set(blockers))
 
 
@@ -981,8 +977,20 @@ def _consented_coverage_diagnostics(dataset: Dataset, plan: dict[str, Any]) -> t
         coverage_counts[dimension] = {str(key): int(value) for key, value in counts.items()}
         minimums = plan["minimum_coverage"][dimension]
         for code, minimum in minimums.items():
-            if coverage_counts[dimension].get(code, 0) < minimum:
+            support = coverage_counts[dimension].get(code, 0)
+            if dimension == "category":
+                if code in {"otp", "bank_alert", "delivery"}:
+                    support = int(((dataset.frame["category"] == code) & (dataset.frame["label"] == "ham")).sum())
+                elif code == "spam_top3":
+                    spam_counts = dataset.frame.loc[dataset.frame["label"] == "spam", "category"].value_counts()
+                    support = int(spam_counts.head(3).sum())
+            if support < minimum:
                 blockers.append(f"{dimension}_coverage_below_plan")
+    legitimate_category_counts = {
+        code: int(((dataset.frame["category"] == code) & (dataset.frame["label"] == "ham")).sum())
+        for code in ("otp", "bank_alert", "delivery")
+    }
+    top_spam = dataset.frame.loc[dataset.frame["label"] == "spam", "category"].value_counts().head(3)
     subgroup_counts = []
     for gate in plan["subgroup_error_gates"]:
         subset = dataset.frame.loc[_subgroup_mask(dataset.frame, gate)]
@@ -1005,6 +1013,8 @@ def _consented_coverage_diagnostics(dataset: Dataset, plan: dict[str, Any]) -> t
         "campaign_group_count": group_count,
         "required_campaign_group_count": plan["minimum_campaign_groups"],
         "coverage_counts": coverage_counts,
+        "legitimate_category_counts": legitimate_category_counts,
+        "spam_top3_count": int(top_spam.sum()),
         "subgroup_support": subgroup_counts,
     }, sorted(set(blockers))
 

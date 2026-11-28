@@ -513,3 +513,7 @@ Bind ratified-notice worksheet import to the current authoritative store and ori
 ### Reservation contention and supported test transport
 
 Exercise competing SQLite writers and release of reservations after failed publication. Add the supported current Starlette TestClient transport to dev dependencies and constrained security auditing, retaining old-client compatibility without adding it to production runtime requirements.
+
+### Consistent evaluator coverage and source isolation
+
+Align actual sealed-evaluation preflight with the existing pilot coverage interpretation, computing top-three spam support and critical legitimate-category support separately. Reject unregistered additional training sources, campaign case aliases and category-hidden cross-split template overlap. No real evaluation executed.

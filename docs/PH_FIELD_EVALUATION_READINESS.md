@@ -174,3 +174,7 @@ blocks scoring before consuming the sealed attempt. Aggregate diagnostics are
 bound to the exact validated input snapshot and kept out of public manifests.
 Do not use these checks to substitute for independent reviewer training,
 qualification, source authorization or adjudicator review.
+
+### Consistent registered coverage and provenance gates
+
+The sealed-evaluation preflight now interprets the existing critical-category minimums as legitimate-message support and computes `spam_top3` from the three most frequent actual spam categories, not a literal category named spam_top3. Raw category counts remain visible. It also refuses additional model-training source fingerprints not present in the registered single development snapshot, and compares campaign identifiers case-insensitively and templates without category annotation. No registered minimum or error threshold was relaxed. Tests use fictional fixtures; no sealed evaluation was opened.
