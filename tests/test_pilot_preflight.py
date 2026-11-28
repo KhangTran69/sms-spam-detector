@@ -197,3 +197,18 @@ def test_preflight_api_state_is_restored_after_runs(monkeypatch):
         "notice": api_main.DONATION_NOTICE_VERSION,
     }
     assert original == restored
+
+
+def test_preflight_transport_log_levels_are_restored():
+    from scripts.pilot_preflight import _captured_logs
+
+    names = ("httpx", "httpcore", "httpx2", "httpcore2")
+    levels = {name: logging.getLogger(name).level for name in names}
+    with _captured_logs() as lines:
+        for name in names:
+            assert logging.getLogger(name).level == logging.WARNING
+            logging.getLogger(name).info("Fictional transport URL")
+        logging.getLogger("api.main").info("fictional application diagnostic")
+        assert "fictional application diagnostic" in lines
+        assert "Fictional transport URL" not in lines
+    assert {name: logging.getLogger(name).level for name in names} == levels

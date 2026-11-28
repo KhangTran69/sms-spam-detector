@@ -778,3 +778,5 @@ Donation routes reject common forwarding headers even when a peer is loopback an
 ### TestClient maintenance
 
 Starlette's current TestClient documentation (https://starlette.dev/testclient/) recommends httpx2 instead of its deprecated httpx backend. The dev group and legacy dev requirements include httpx2, with CI constraints pinning the 2.16.2 client/transport and truststore 0.10.5. Retain httpx for older supported FastAPI/Starlette environments and direct legacy test uses. The security workflow audits the added test client and its dependencies; production requirements and model versions are unchanged. These are manually updated constraint entries, not a claim that an entire lockfile was regenerated.
+
+The disposable pilot preflight quiets both legacy and current HTTP client transport logger families only during its in-process fixture run, restores their prior levels afterward, and continues scanning application diagnostics. The transport migration exposed this compatibility issue in CI; the fix does not disable the message-free application-log gate.

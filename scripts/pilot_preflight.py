@@ -134,7 +134,7 @@ def _captured_logs() -> Iterator[list[str]]:
     api_logger = logging.getLogger("api.main")
     previous_root_level = root.level
     previous_api_level = api_logger.level
-    transport_loggers = [(name, logging.getLogger(name).level) for name in ("httpx", "httpcore")]
+    transport_loggers = [(name, logging.getLogger(name).level) for name in ("httpx", "httpcore", "httpx2", "httpcore2")]
     root.addHandler(collector)
     root.setLevel(logging.DEBUG)
     api_logger.setLevel(logging.DEBUG)
