@@ -28,7 +28,9 @@ safety check in ``scripts/label_import.py``). The validator in
 ``src/consented_data.py`` is never run here; the tool only reuses its public
 header canonicalization helper so intake headers are interpreted identically.
 
-The data is expected to be already intake-ready (validator-clean); this tool
+Category and language values must match the intake code format; file paths
+are omitted from reports and routine diagnostics. The data is expected to be
+already intake-ready (validator-clean); this tool
 does not re-check consent, retention, or de-identification, and it never
 prints row values -- only counts, code names, and id-shape statistics.
 
@@ -52,7 +54,7 @@ from typing import Any
 
 import pandas as pd
 
-from src.consented_data import normalize_intake_columns
+from src.consented_data import SAFE_CODE, normalize_intake_columns
 from src.dataset_schema import LABEL_ALIASES
 from src.privacy.storage import ensure_private_directory
 
@@ -131,16 +133,19 @@ def _read_intake_csv(path: str | Path) -> pd.DataFrame:
     try:
         frame = pd.read_csv(path, dtype=str, keep_default_na=False, encoding="utf-8-sig")
     except (OSError, UnicodeError, pd.errors.ParserError, pd.errors.EmptyDataError) as exc:
-        raise ValueError(f"Could not read intake CSV {Path(path)} ({type(exc).__name__}).") from None
+        raise ValueError(f"Could not read intake CSV ({type(exc).__name__}).") from None
     try:
         return normalize_intake_columns(frame)
     except ValueError:
-        raise ValueError(f"Intake CSV {Path(path)} has duplicate columns after normalization.") from None
+        raise ValueError("Intake CSV has duplicate columns after normalization.") from None
 
 
 def _normalized_codes(series: pd.Series) -> pd.Series:
     """Casefold categorical codes; blank values count under the shared unknown code."""
-    return series.astype(str).str.strip().str.casefold().replace("", UNKNOWN_CODE)
+    codes = series.astype(str).str.strip().str.casefold().replace("", UNKNOWN_CODE)
+    if not codes.map(lambda code: bool(SAFE_CODE.fullmatch(code))).all():
+        raise ValueError("Intake CSV contains non-categorical metadata.")
+    return codes
 
 
 def _value_counts(series: pd.Series) -> dict[str, int]:
@@ -176,7 +181,7 @@ def pool_intake(paths: Sequence[str | Path]) -> PooledIntake:
         frame = _read_intake_csv(path)
         missing = [column for column in STATUS_COLUMNS if column not in frame.columns]
         if missing:
-            raise ValueError(f"Intake CSV {Path(path)} is missing required status columns: {', '.join(missing)}.")
+            raise ValueError(f"Intake CSV is missing required status columns: {', '.join(missing)}.")
         has_message = has_message or MESSAGE_COLUMN in frame.columns
         frames.append(frame.reindex(columns=[*STATUS_COLUMNS, MESSAGE_COLUMN]))
     pooled = pd.concat(frames, ignore_index=True).fillna("")
@@ -231,8 +236,10 @@ def _minimum_dict(coverage: dict[str, Any], key: str) -> dict[str, int]:
         return {}
     if not isinstance(raw, dict):
         raise ValueError(f"The coverage plan's minimum_coverage.{key} must be an object.")
+    if any(not SAFE_CODE.fullmatch(code) for code in raw):
+        raise ValueError("Coverage plan contains non-categorical metadata keys.")
     return {
-        str(code): _positive_int(minimum, f"minimum_coverage.{key}.{code}")
+        str(code): _positive_int(minimum, f"minimum_coverage.{key}")
         for code, minimum in raw.items()
         if minimum is not None
     }
@@ -243,7 +250,7 @@ def load_minimums(path: str | Path = DEFAULT_PLAN) -> CoverageMinimums:
     try:
         payload = json.loads(Path(path).read_text(encoding="utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
-        raise ValueError(f"Could not read the coverage minimums plan {Path(path)} ({type(exc).__name__}).") from None
+        raise ValueError(f"Could not read the coverage minimums plan ({type(exc).__name__}).") from None
     if not isinstance(payload, dict):
         raise ValueError("The coverage minimums plan must be a JSON object.")
     coverage = payload.get("minimum_coverage")
@@ -416,7 +423,8 @@ def format_summary(report: dict[str, Any]) -> str:
 
 def _assert_report_message_free(text: str, forbidden: tuple[str, ...]) -> None:
     """Refuse any report that carries message text, consent ids, or group values."""
-    if any(value in text for value in forbidden):
+    folded_text = text.casefold()
+    if any(value.casefold() in folded_text for value in forbidden):
         raise ValueError(
             "Refusing to emit a pilot status report containing message text, consent ids, or group values."
         )
@@ -474,14 +482,17 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         if args.output is not None:
-            _validate_output_path(args.output)  # fail fast, before reading private files
+            output = _validate_output_path(args.output)  # fail fast, before reading private files
+            for source in [*args.csv, args.plan]:
+                if output == source.resolve() or (output.exists() and source.exists() and output.samefile(source)):
+                    raise ValueError("Status report must not overwrite an intake CSV or coverage plan.")
         pooled = pool_intake(args.csv)
         minimums = load_minimums(args.plan)
         report = build_report(pooled, minimums)
         summary = format_summary(report)
         _assert_report_message_free(summary, pooled.forbidden)
         destination = write_report(report, args.output, pooled.forbidden) if args.output else None
-    except (ValueError, OSError) as exc:
+    except ValueError as exc:
         payload = {"status": STATUS_ERROR, "detail": str(exc)}
         print(json.dumps(payload, indent=2, sort_keys=True), file=sys.stderr)
         return 2
@@ -494,7 +505,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     print(summary)
     if destination is not None:
-        print(f"Report written to {destination}")
+        print("Report written to private output file.")
     return 0 if report["status"] == STATUS_MET else 1
 
 
