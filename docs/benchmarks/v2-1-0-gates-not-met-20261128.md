@@ -21,6 +21,11 @@ was reproduced exactly and turned into a candidate artifact:
   is **0.50**. `model_version` `spam_detector_v1-2026-11-28-v2.1.0-candidate`.
   Split fingerprint matches the benchmark (`group_leakage 0`), so the held-out
   evaluation below never touches the candidate's training rows.
+  Provenance note: the candidate was retrained once after the
+  `probability_calibrated` flag change below (same recipe, seed, and
+  supplements; every metric identical) — the bundle hash in the JSON record
+  (732cad38…, replacing 3d23c802…) reflects that retrain, and the flag in its
+  sidecar is False.
 - **Incumbent**: the attested v2.0.0 release artifact
   (`spam_detector_v1-2026-11-28`, sha256 `daa8a7c1…`, threshold 0.50).
 
@@ -35,6 +40,12 @@ diagnostic was first reproduced bit-identically
 Gate (from PH_FIELD_EVALUATION_READINESS, applied here per the gap-closure
 brief): each critical legitimate category on **held-out real data** must show
 false-positive rate ≤ 5% **and** Wilson 95% upper bound ≤ 8%.
+
+In the machine-readable record, every critical category with zero real-data
+support now carries an explicit `insufficient_evidence` verdict
+(`insufficient_evidence/{bank_alert, bank_phishing, delivery}`), and
+`gates_all_met` requires full real-data coverage of the declared critical
+set — a missing category can never silently read as a pass.
 
 | Gate (new artifact, real data) | Support | FP | FPR | Wilson 95% | Verdict |
 |---|---:|---:|---:|---|---|

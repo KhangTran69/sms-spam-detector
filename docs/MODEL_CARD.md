@@ -43,15 +43,16 @@ The classifier target is **spam versus ham**. A spam label can include unwanted 
 | `data/raw/spam.csv` | Operator-supplied English-style base file; its source/license are unknown until verified | Merged into training when present | No (git-ignored) |
 | Verified UCI SMS Spam Collection | Public historical English SMS corpus, 5,574 rows, CC BY 4.0; importer does not download it | Supported import; not added by this change | No |
 | PH Spam + Marketing SMS (w/ timestamps) | Public Philippine SMS inbox; publisher identifies CC BY 4.0. One contributor's inbox, with some categories redacted | Fetched locally on 2026-11-01; sender column omitted by normalization; a local, group-isolated internal split diagnostic is recorded below | No |
-| [Tagalog-SMS](https://www.kaggle.com/datasets/onzero0/tagalog-sms) | Kaggle metadata reports CC0; one contributor's inbox includes sender metadata, which normalized output omits; raw local download remains sensitive | Approved local-only downloader and evaluation path; **not yet downloaded or evaluated** | No |
+| [Tagalog-SMS](https://www.kaggle.com/datasets/onzero0/tagalog-sms) | Kaggle metadata reports CC0; one contributor's inbox includes sender metadata, which normalized output omits; raw local download remains sensitive | Approved local-only downloader and evaluation path; **fetched and diagnosed 2026-11-28** (diagnostic below and in the [dataset inventory](DATASET_INVENTORY.md)) | No |
 | `data/raw/ph_supplement.csv`, `_2.csv`, `_3.csv`, `_4.csv`, `_5.csv` | **Synthetic**, developer-authored Philippine scam and legitimate examples. `_2` was deduped and capped at 2 rows per template family (311 → 141). `_5` adds 129 generated rows from 20 families (`scripts/generate_synthetic_ph.py`) | 513 rows merged into training: ham 237, spam 276 | Yes (synthetic text only) |
 | `data/raw/ph_holdout.csv` | **Synthetic** holdout: 264 rows (ham 124, spam 140), 23 generated families plus 46 earlier hand-written rows | Evaluation only, never training. Current exact/normalized message and group overlap checks report zero; style overlap remains possible | Yes |
 | Consented Philippine messages | **none collected or used yet.** An optional local donation flow is disabled by default; intake submissions remain pending review and are never automatically used by the model | — | — |
 
-> **All tracked Philippine data in this repository is still synthetic.** A
-> one-person PH Spam + Marketing SMS inbox snapshot (CC BY 4.0) is now stored
-> locally outside Git; Tagalog-SMS (CC0 per Kaggle metadata) has a local
-> download/evaluation path but has not been fetched. The PH snapshot has a
+> **All tracked (Git-committed) Philippine data in this repository is still
+> synthetic.** A one-person PH Spam + Marketing SMS inbox snapshot (CC BY 4.0)
+> is stored locally outside Git, and Tagalog-SMS (CC0 per Kaggle metadata) was
+> fetched locally and diagnosed message-free on 2026-11-28 — see the
+> real-corpus diagnostic below. The PH snapshot has a
 > hash-bound internal split diagnostic, but a declared license does not
 > settle privacy rights in message content or sender metadata. Rebalancing,
 > deduplication, and a larger holdout make the pipeline checks less fragile.
@@ -152,7 +153,9 @@ A fresh canonical retrain (`make train` over the operator-supplied base file
 plus the tracked synthetic supplements) wrote `models/spam_detector_v1.pkl`
 with sidecar `models/spam_detector_v1.metadata.json` (`model_version`
 `spam_detector_v1-2026-11-28`, trained 2026-11-28T08:09:43+00:00, decision
-threshold 0.50, feature version 2.2.0, artifact schema 2, sigmoid-calibrated).
+threshold 0.50, feature version 2.2.0, artifact schema 2, sigmoid calibration
+layer fitted on training folds — its sidecar predates the 2026-11-28 flag
+change and still records `probability_calibrated: true`).
 Both files are git-ignored local artifacts; the exact bundle bytes are
 published as the `v2.0.0` release asset pinned by the sidecar's
 `artifact_sha256` (`daa8a7c192bf9e02a068f5c60b15bec1cba0db6522b4bf68d69b5b9633815daf`).
@@ -228,8 +231,13 @@ representative estimate of real Philippine traffic.
 
 ### Optional transformer ensemble research spike
 
-The production/default inference path remains the calibrated linear TF-IDF
-model. A local transformer ensemble is an opt-in engineering spike and is off
+The production/default inference path remains the linear TF-IDF model with a
+sigmoid calibration layer fitted on training folds; note that the artifact
+flag `probability_calibrated` is False since 2026-11-28 (real-data
+calibration verification has not met the registered bar — see the
+recalibration section above), so the UI copy reads "uncalibrated model
+score" and the optional ensemble routing below, which keys off that flag,
+stays off. A local transformer ensemble is an opt-in engineering spike and is off
 unless the operator configures `SMSD_TRANSFORMER_MODEL_PATH` and the linear
 bundle marks its spam score as calibrated. The current
 loader accepts local XLM-RoBERTa sequence-classification artifacts only; it

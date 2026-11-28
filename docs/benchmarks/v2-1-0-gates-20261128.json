@@ -1260,6 +1260,21 @@
       ],
       "gate_fpr_le_5pct": false,
       "gate_wilson_upper_le_8pct": false
+    },
+    "insufficient_evidence/bank_alert": {
+      "n_ham": 0,
+      "verdict": "insufficient_evidence",
+      "detail": "zero real-data support in every real frozen set; no synthetic number may substitute"
+    },
+    "insufficient_evidence/bank_phishing": {
+      "n_ham": 0,
+      "verdict": "insufficient_evidence",
+      "detail": "zero real-data support in every real frozen set; no synthetic number may substitute"
+    },
+    "insufficient_evidence/delivery": {
+      "n_ham": 0,
+      "verdict": "insufficient_evidence",
+      "detail": "zero real-data support in every real frozen set; no synthetic number may substitute"
     }
   },
   "gates_all_met": false

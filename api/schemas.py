@@ -80,7 +80,7 @@ class PredictResponse(BaseModel):
         description="Score for the returned prediction label; use probability_calibrated to interpret it."
     )
     probability_calibrated: bool = Field(
-        description="Whether the spam-versus-ham score is calibrated against the artifact's training labels; UI copy keeps the uncalibrated wording until real-data calibration verification passes (see docs/ROADMAP.md)."
+        description="Whether the score is calibrated against the artifact's training labels AND real-data calibration verification has met the registered bar (held-out ECE <= 0.05 with >= 30 samples per populated bin; see docs/ROADMAP.md) — artifacts trained before 2026-11-28 may report true on the first clause alone."
     )
     flags: list[str]
     decision_threshold: float
@@ -104,7 +104,7 @@ class AnalyzeResponse(BaseModel):
         description="Model score for the spam label; it does not estimate probability of fraud."
     )
     probability_calibrated: bool = Field(
-        description="Whether the spam-versus-ham score is calibrated against the artifact's training labels; UI copy keeps the uncalibrated wording until real-data calibration verification passes (see docs/ROADMAP.md)."
+        description="Whether the score is calibrated against the artifact's training labels AND real-data calibration verification has met the registered bar (held-out ECE <= 0.05 with >= 30 samples per populated bin; see docs/ROADMAP.md) — artifacts trained before 2026-11-28 may report true on the first clause alone."
     )
     probability: float = Field(description="Score for the returned prediction label; retained for compatibility.")
     decision_threshold: float

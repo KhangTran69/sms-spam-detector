@@ -78,11 +78,7 @@ def sha256(path: Path) -> str:
 
 def calibration_summary(labels: np.ndarray, probabilities: np.ndarray) -> dict:
     label_strings = ["spam" if value else "ham" for value in labels]
-    metrics = (
-        calibration_metrics(label_strings, probabilities)["calibration"]
-        if False
-        else calibration_metrics(label_strings, probabilities)
-    )
+    metrics = calibration_metrics(label_strings, probabilities)
     bins = metrics["bins"]
     populated = [b["count"] for b in bins if b["count"]]
     return {

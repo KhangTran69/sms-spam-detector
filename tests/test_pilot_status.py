@@ -272,7 +272,15 @@ def test_missing_message_column_skips_duplicate_detection(tmp_path):
     _exit_code, report, _file_text, _output = _run_with_output(tmp_path, [str(csv_path)])
 
     assert report["inputs"] == {"file_count": 1, "duplicate_detection_applied": False}
-    assert report["warnings"] == {"duplicate_messages": 0, "unrecognized_label_rows": 0}
+    assert report["warnings"] == {
+        "duplicate_messages": 0,
+        "unrecognized_label_rows": 0,
+        "languages_outside_plan": {
+            "codes": [],
+            "plan_keys": ["en", "tl", "tl-en"],
+            "note": "vocabulary re-ratification is an owner decision",
+        },
+    }
     assert report["totals"] == {"messages": 3, "donors": 2, "campaign_groups": 2}
 
 
@@ -409,3 +417,51 @@ def test_repository_tree_output_is_a_clean_error(tmp_path, capsys):
     assert '"status": "error"' in captured.err
     assert "outside the repository" in captured.err
     assert not (ROOT / "pilot-status-report.json").exists()
+
+
+def test_languages_outside_the_plan_are_warned_not_canonicalized(tmp_path, capsys):
+    # The intake flow can emit "fil" while the ratified plan keys on "tl";
+    # the tool must surface the seam as a warning, never fill the tl gap.
+    rows = [
+        _row(label="spam", message=MSG_A, language="fil", category="otp", group=GROUP_ONE, consent=CONSENT_A),
+        _row(label="ham", message=MSG_B, language="en", category="otp", group=GROUP_ONE, consent=CONSENT_A),
+    ]
+    csv_path = _write_csv(tmp_path / "vocab" / "intake.csv", rows)
+
+    exit_code, report, file_text, _output = _run_with_output(tmp_path, [str(csv_path)])
+    stdout = capsys.readouterr().out
+
+    assert exit_code == 1, "a vocabulary seam warns; it does not change the coverage gap logic"
+    assert report["warnings"]["languages_outside_plan"] == {
+        "codes": ["fil"],
+        "plan_keys": ["en", "tl", "tl-en"],
+        "note": "vocabulary re-ratification is an owner decision",
+    }
+    assert report["counts"]["languages"] == {"en": 1, "fil": 1}
+    assert "fil" not in report["coverage"]["language"], "no silent canonicalization into plan keys"
+    assert report["coverage"]["language"]["tl"]["count"] == 0
+    assert report["coverage"]["language"]["tl"]["needed"] == 100
+    assert "fil (plan keys: en, tl, tl-en) — vocabulary re-ratification is an owner decision" in stdout
+    assert "languages_outside_plan 1" in stdout
+    _assert_message_free(stdout, file_text)
+
+
+def test_unexpected_exceptions_reduce_to_the_type_name(tmp_path, capsys, monkeypatch):
+    csv_path = _write_csv(tmp_path / "below" / "intake.csv", BELOW_ROWS)
+    marker = "INTERNAL-DETAIL-MUST-NOT-PRINT"
+
+    def explode(*_args, **_kwargs):
+        raise RuntimeError(f"boom {marker}")
+
+    monkeypatch.setattr("scripts.pilot_status.build_report", explode)
+
+    exit_code = main([str(csv_path)])
+
+    assert exit_code == 2
+    captured = capsys.readouterr()
+    assert '"status": "error"' in captured.err
+    assert "unexpected_RuntimeError" in captured.err
+    assert marker not in captured.err
+    assert "Traceback" not in captured.err
+    assert captured.out == ""
+    _assert_message_free(captured.err)

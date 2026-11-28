@@ -258,8 +258,11 @@ def main() -> int:
         report["frozen_sets"][name] = entry
 
     # Critical-category gates on the NEW artifact, real held-out sets only.
+    # A critical category with zero real ham rows is recorded explicitly as
+    # insufficient_evidence and blocks gates_all_met — silence would overstate.
     critical = [c.strip() for c in args.critical_categories.split(",")]
     verdicts = {}
+    covered: set[str] = set()
     for set_name, entry in report["frozen_sets"].items():
         if set_name == "synthetic_holdout":
             continue
@@ -267,6 +270,7 @@ def main() -> int:
             stats = entry["new_model"]["by_category"].get(cat)
             if not stats or not stats.get("ham"):
                 continue
+            covered.add(cat)
             lo, hi = stats.get("fpr_wilson95", (float("nan"), float("nan")))
             verdicts[f"{set_name}/{cat}"] = {
                 "n_ham": stats["ham"],
@@ -276,9 +280,22 @@ def main() -> int:
                 "gate_fpr_le_5pct": bool(stats.get("fpr") is not None and stats["fpr"] <= 0.05),
                 "gate_wilson_upper_le_8pct": bool(hi == hi and hi <= 0.08),
             }
+    for cat in critical:
+        if cat not in covered:
+            verdicts[f"insufficient_evidence/{cat}"] = {
+                "n_ham": 0,
+                "verdict": "insufficient_evidence",
+                "detail": "zero real-data support in every real frozen set; no synthetic number may substitute",
+            }
     report["critical_category_gates"] = verdicts
-    report["gates_all_met"] = bool(verdicts) and all(
-        v["gate_fpr_le_5pct"] and v["gate_wilson_upper_le_8pct"] for v in verdicts.values()
+    report["gates_all_met"] = (
+        bool(verdicts)
+        and covered == set(critical)
+        and all(
+            v.get("gate_fpr_le_5pct") and v.get("gate_wilson_upper_le_8pct")
+            for v in verdicts.values()
+            if "verdict" not in v
+        )
     )
 
     out = ROOT / args.output

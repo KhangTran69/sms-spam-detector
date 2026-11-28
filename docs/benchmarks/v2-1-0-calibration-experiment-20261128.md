@@ -83,7 +83,15 @@ Candidate, raw scores, 372 held-out rows:
    (0.082) with no calibrator at all.
 3. Neither artifact meets the registered bar for presenting percentages as
    calibrated probabilities (candidate fails the ≥30/bin support clause).
-   The user-facing wording stays "uncalibrated model score" everywhere.
+   The wording rule is enforced at the source for future artifacts
+   (`src/train.py` writes `probability_calibrated=False`; see ROADMAP T3 and
+   the next section). **Artifacts built before that change — including the
+   attested v2.0.0 release artifact, whose immutable sidecar records
+   `probability_calibrated: true` — still report the flag True at serve time,
+   and their UI copy reads "calibrated spam score" until they are superseded
+   by a retrained, re-attested artifact.** The rule's application to the
+   deployed slot therefore lands with the next promoted artifact, not
+   retroactively.
 4. If a future artifact ever meets both clauses on held-out rows, the wording
    change must go through the claims-sweep tests and the UI contract tests —
    not a copy edit.
