@@ -62,6 +62,8 @@ class FileRecord:
     category_counts: dict[str, int] = field(default_factory=dict)
     language_counts: dict[str, int] = field(default_factory=dict)
     data_kind_counts: dict[str, int] = field(default_factory=dict)
+    # Kept in memory; not included in public training manifests.
+    review_quality: dict[str, Any] = field(default_factory=dict)
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -195,6 +197,7 @@ def _load_one(
     if not working["data_kind"].isin(["synthetic", "public", "consented", "real", "unknown"]).all():
         raise DatasetError(f"{source_label}: data_kind must be synthetic, public, consented, real, or unknown.")
     consented_mask = working["data_kind"].eq("consented")
+    review_quality: dict[str, Any] = {}
     if consented_mask.any():
         from src.consented_data import validate_batch
 
@@ -209,6 +212,7 @@ def _load_one(
             raise DatasetError(
                 f"{source_label}: consented rows must use the approved consented intake schema."
             ) from None
+        review_quality = consent_report.review_quality
         if not consent_report.valid:
             rules = sorted({finding.rule for finding in consent_report.findings})
             raise DatasetError(
@@ -307,6 +311,7 @@ def _load_one(
         category_counts={str(key): int(value) for key, value in frame["category"].value_counts().items()},
         language_counts={str(key): int(value) for key, value in frame["language"].value_counts().items()},
         data_kind_counts={str(key): int(value) for key, value in frame["data_kind"].value_counts().items()},
+        review_quality=review_quality,
     )
     return Dataset(frame=frame, records=[record], warnings=warnings)
 

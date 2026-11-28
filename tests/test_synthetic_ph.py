@@ -118,6 +118,7 @@ def test_consented_import_writes_consented_rows(tmp_path):
             _consented_row(
                 label="ham",
                 message="See you after class.",
+                consent_record_id="consent_002",
                 reviewer_a_label="ham",
                 reviewer_b_label="ham",
                 adjudicated_label="ham",

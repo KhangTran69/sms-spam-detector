@@ -131,3 +131,44 @@ file, example, or synthetic rehearsal provides authorization for a field study.
 **Current go/no-go:** no authorized independent consented Philippine corpus and
 no signed numerical acceptance criteria exist; therefore a representative
 Philippine field-performance release remains blocked.
+
+### Executable overall statistical acceptance (plan schema 2)
+
+The template requires an owner-justified minimum fraction of defined campaign
+bootstrap replicates, maximum interval widths, lower confidence bounds for
+precision/recall/F1, and upper bounds for FPR/FNR. Missing class denominators
+are excluded from resamples rather than interpreted as zero error. Too few
+valid replicates or overly wide intervals block the evaluation report. When
+intervals are adequate, the private report records whether all registered
+overall performance bounds were met. A failed performance gate is a completed
+statistical evaluation with an unmet criterion, never a reason to retune or
+retry the sealed set. Subgroup-specific criteria, annotation quality, coverage,
+privacy and deployment gates remain independently required. Schema 1 plans
+must be updated and registered **before** opening any sealed set; no migration
+or re-registration is permitted to evade an already consumed attempt.
+
+### Registered subgroup error gates
+
+Complete `subgroup_error_gates` before opening the sealed set. Register each
+critical legitimate category's false-positive bound and each supported spam
+language's false-negative bound, with minimum eligible campaign groups and
+maximum interval width. At least one language and one category gate are
+required; the evaluator checks class-specific campaign support before scoring.
+It records met, not_met or insufficient_evidence independently of the overall
+statistical gate. Neither gate alone establishes representativeness or release
+approval. Percentile bootstrap intervals can be degenerate for all-correct or
+all-incorrect campaigns; the reviewer must consider limited independent support,
+Wilson marginal intervals and preregistered coverage rather than interpret a
+zero-width interval as certainty. No numerical study values are approved here.
+
+### First-pass annotation acceptance before scoring
+
+Register minimum complete reviewer pairs, observed agreement and Cohen's
+kappa for spam labels and scam assessments in the private plan. A spam-label
+kappa is mandatory. A scam-assessment kappa may be omitted only with a
+registered rationale; the resulting agreement alone is not chance-corrected
+evidence. An undefined required kappa, missing pairs or inadequate agreement
+blocks scoring before consuming the sealed attempt. Aggregate diagnostics are
+bound to the exact validated input snapshot and kept out of public manifests.
+Do not use these checks to substitute for independent reviewer training,
+qualification, source authorization or adjudicator review.

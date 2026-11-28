@@ -172,7 +172,7 @@ def test_production_rejects_legacy_artifact_unless_explicitly_allowed(monkeypatc
         response = test_client.get("/ready")
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "model_unavailable"
-    assert "versioned model bundle" in response.json()["error"]["message"]
+    assert "temporarily unavailable" in response.json()["error"]["message"]
 
 
 def test_explicit_legacy_override_allows_production_readiness(monkeypatch):
@@ -1062,11 +1062,17 @@ def test_readiness_rejects_unavailable_shared_limiter(client, monkeypatch):
 def test_strict_redis_readiness_detects_runtime_failure_and_recovery(client, monkeypatch):
     class ProbeStub:
         available = True
+        writable = True
 
         def ping(self):
             if not self.available:
                 raise OSError("private backend details")
             return True
+
+        def eval(self, *args):
+            if not self.writable:
+                raise OSError("private write-path details")
+            return (1, 0)
 
     backend = ProbeStub()
     monkeypatch.setattr(api_main, "RATE_LIMITER", RedisRateLimiter(backend, fail_closed=True))
@@ -1079,6 +1085,10 @@ def test_strict_redis_readiness_detects_runtime_failure_and_recovery(client, mon
     assert failed.headers["retry-after"] == "30"
     assert "private backend details" not in failed.text
     backend.available = True
+    assert client.get("/ready").status_code == 200
+    backend.writable = False
+    assert client.get("/ready").json()["error"]["code"] == "rate_limiter_unavailable"
+    backend.writable = True
     assert client.get("/ready").status_code == 200
 
 
@@ -1262,3 +1272,190 @@ def test_lazy_model_load_initializes_version_bound_monitor(tmp_path, monkeypatch
     monitor.record(0.1, "ham")
     assert api_main.get_model() is bundle
     assert monitor.get_metrics()["samples_in_window"] == 1
+
+
+def test_production_errors_and_request_ids_do_not_expose_private_details(monkeypatch, caplog):
+    import logging
+
+    monkeypatch.setattr(api_main, "SMSD_ENV", "production")
+    private = "fictional-private-path-or-token"
+
+    def missing():
+        raise FileNotFoundError(private)
+
+    with caplog.at_level(logging.INFO, logger="api.main"), patched_client(missing) as test_client:
+        response = test_client.get("/ready", headers={"X-Request-ID": private})
+    assert_error_schema(response, 503, "model_unavailable")
+    assert response.headers["cache-control"] == "no-store"
+    assert response.headers["x-request-id"] != private
+    assert response.headers["x-request-id"] in caplog.text
+    assert private not in response.text
+    assert private not in caplog.text
+
+    def explode():
+        raise RuntimeError(private)
+
+    with patched_client(explode) as test_client:
+        failure = test_client.get("/model-info")
+    assert_error_schema(failure, 500, "internal_error")
+    assert failure.headers["x-request-id"]
+    assert private not in failure.text
+
+
+def test_analysis_and_rejected_writes_are_not_cacheable(client):
+    response = client.post("/analyze", json={"message": "fictional test message"})
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+    assert client.post("/analyze", json={}).headers["cache-control"] == "no-store"
+
+
+def test_unknown_feedback_field_name_is_not_echoed(client, monkeypatch):
+    monkeypatch.setattr(api_main, "FEEDBACK_ENABLED", True)
+    response = client.post("/feedback", json={"private-fixture-field-name": "fictional"})
+    assert response.status_code == 422
+    assert "private-fixture-field-name" not in response.text
+
+
+def test_write_admission_rejects_concurrent_work_and_recovers(monkeypatch):
+    import asyncio
+    import threading
+
+    monkeypatch.setattr(api_main, "REQUEST_ADMISSION", threading.BoundedSemaphore(1))
+
+    async def exercise():
+        entered = asyncio.Event()
+        release = asyncio.Event()
+        calls = []
+
+        async def downstream(scope, receive, send):
+            calls.append(scope["method"])
+            if scope["method"] == "POST":
+                entered.set()
+                await release.wait()
+            await send({"type": "http.response.start", "status": 200, "headers": []})
+
+        middleware = api_main.WriteAdmissionMiddleware(downstream)
+
+        async def request(method):
+            messages = []
+
+            async def receive():
+                pytest.fail("admission must not consume request bodies")
+
+            async def send(message):
+                messages.append(message)
+
+            await middleware({"type": "http", "method": method, "path": "/predict"}, receive, send)
+            return messages
+
+        first = asyncio.create_task(request("POST"))
+        await asyncio.wait_for(entered.wait(), timeout=1)
+        try:
+            for _ in range(20):
+                rejected = await request("POST")
+                assert rejected[0]["status"] == 503
+                headers = dict(rejected[0]["headers"])
+                assert headers[b"retry-after"] == b"5"
+                assert headers[b"cache-control"] == b"no-store"
+                assert json.loads(rejected[1]["body"])["error"]["code"] == "service_busy"
+            assert (await request("GET"))[0]["status"] == 200
+            assert calls == ["POST", "GET"]
+        finally:
+            release.set()
+            await first
+        assert (await request("POST"))[0]["status"] == 200
+
+    asyncio.run(exercise())
+
+
+def test_body_deadline_and_invalid_length_fail_without_dispatch(monkeypatch):
+    import asyncio
+
+    monkeypatch.setattr(api_main, "REQUEST_BODY_TIMEOUT_SECONDS", 0.01)
+    monkeypatch.setattr(api_main, "RATE_LIMIT", 0)
+
+    async def exercise(headers, *, slow):
+        sent = []
+
+        async def downstream(scope, receive, send):
+            pytest.fail("invalid or timed-out body must never reach inference")
+
+        async def receive():
+            if slow:
+                await asyncio.Event().wait()
+            pytest.fail("invalid framing must be rejected before reading")
+
+        async def send(message):
+            sent.append(message)
+
+        await api_main.RequestBodyLimitMiddleware(downstream)(
+            {"type": "http", "method": "POST", "path": "/predict", "headers": headers}, receive, send
+        )
+        return sent
+
+    expired = asyncio.run(exercise([], slow=True))
+    assert expired[0]["status"] == 408
+    assert json.loads(expired[1]["body"])["error"]["code"] == "request_timeout"
+    for headers in (
+        [(b"content-length", b"-1")],
+        [(b"content-length", b"bad")],
+        [(b"content-length", b"1"), (b"content-length", b"2")],
+        [(b"content-length", b"1"), (b"transfer-encoding", b"chunked")],
+    ):
+        invalid = asyncio.run(exercise(headers, slow=False))
+        assert invalid[0]["status"] == 400
+
+
+def test_default_admission_capacity_under_repeated_concurrent_waves(monkeypatch):
+    import asyncio
+    import threading
+
+    from api.ops_metrics import OperationsMonitor
+
+    capacity = 16
+    monitor = OperationsMonitor()
+    monkeypatch.setattr(api_main, "REQUEST_ADMISSION", threading.BoundedSemaphore(capacity))
+    monkeypatch.setattr(api_main, "operations_monitor", monitor)
+
+    async def wave():
+        release = asyncio.Event()
+        full = asyncio.Event()
+        admitted = 0
+
+        async def downstream(scope, receive, send):
+            nonlocal admitted
+            admitted += 1
+            if admitted == capacity:
+                full.set()
+            await release.wait()
+            await send({"type": "http.response.start", "status": 200, "headers": []})
+
+        middleware = api_main.WriteAdmissionMiddleware(downstream)
+
+        async def request():
+            sent = []
+
+            async def send(message):
+                sent.append(message)
+
+            await middleware({"type": "http", "method": "POST", "path": "/predict"}, None, send)
+            return sent[0]["status"]
+
+        active = [asyncio.create_task(request()) for _ in range(capacity)]
+        try:
+            await asyncio.wait_for(full.wait(), timeout=2)
+            assert await asyncio.gather(*(request() for _ in range(8))) == [503] * 8
+            assert monitor.snapshot()["active_writes"] == capacity
+        finally:
+            release.set()
+            assert await asyncio.gather(*active) == [200] * capacity
+        assert monitor.snapshot()["active_writes"] == 0
+
+    async def exercise():
+        for _ in range(3):
+            await wave()
+
+    asyncio.run(exercise())
+    snapshot = monitor.snapshot()
+    assert snapshot["peak_active_writes"] == capacity
+    assert snapshot["outcomes"]["service_busy"] == 24

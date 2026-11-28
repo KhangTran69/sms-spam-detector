@@ -244,6 +244,16 @@ async function main() {
     assert.deepEqual(outageStatuses, [['api', true], ['model', 'unknown']],
       'request protection outage is neither browser offline nor a proven model failure');
     outageStatuses.length = 0;
+    nextResponse = new Response(JSON.stringify({ error: { code: 'service_busy', message: 'Busy' } }),
+      { status: 503, headers: { 'Content-Type': 'application/json' } });
+    await assert.rejects(api.postJson('/analyze', { message: 'fictional' }),
+      (error) => error.code === 'service_busy' && error.message === 'error.busy503');
+    assert.deepEqual(outageStatuses, [['api', true], ['model', 'unknown']]);
+    outageStatuses.length = 0;
+    nextResponse = new Response('Gateway unavailable', { status: 503 });
+    await assert.rejects(api.requestJson('/ready'), (error) => error.message === 'error.service503');
+    assert.deepEqual(outageStatuses, [['api', true], ['model', 'unknown']]);
+    outageStatuses.length = 0;
     nextResponse = new Response(JSON.stringify({ error: { code: 'model_unavailable', message: 'No model' } }),
       { status: 503, headers: { 'Content-Type': 'application/json' } });
     await assert.rejects(api.requestJson('/ready'), (error) => error.code === 'model_unavailable');

@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "registered_at": null,
   "intended_use": "",
   "dataset_sha256": "",
@@ -25,5 +25,48 @@
     "f1": null,
     "false_positive_rate": null,
     "false_negative_rate": null
+  },
+  "performance_rationale": "",
+  "minimum_valid_cluster_fraction": null,
+  "minimum_cluster_lower_bound": {
+    "precision": null,
+    "recall": null,
+    "f1": null
+  },
+  "maximum_cluster_upper_bound": {
+    "false_positive_rate": null,
+    "false_negative_rate": null
+  },
+  "subgroup_error_gates": [
+    {
+      "dimension": "language",
+      "code": "",
+      "metric": "false_negative_rate",
+      "minimum_groups": null,
+      "maximum_upper_bound": null,
+      "maximum_interval_width": null
+    },
+    {
+      "dimension": "category",
+      "code": "",
+      "metric": "false_positive_rate",
+      "minimum_groups": null,
+      "maximum_upper_bound": null,
+      "maximum_interval_width": null
+    }
+  ],
+  "annotation_quality_gates": {
+    "spam_label": {
+      "minimum_pairs": null,
+      "minimum_agreement": null,
+      "minimum_kappa": null,
+      "rationale": ""
+    },
+    "scam_assessment": {
+      "minimum_pairs": null,
+      "minimum_agreement": null,
+      "minimum_kappa": null,
+      "rationale": ""
+    }
   }
 }

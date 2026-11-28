@@ -269,6 +269,31 @@ def _markdown(report: dict[str, Any]) -> str:
         "Verify suspicious requests through trusted official channels. Do not use a low spam score as proof that a message is safe.",
         "",
     ]
+    acceptance = report.get("performance_acceptance")
+    if acceptance is not None:
+        lines.extend(
+            [
+                "## Registered overall performance gates",
+                "",
+                f"Status: **{acceptance['status']}**. {acceptance['interpretation']}",
+                "",
+            ]
+        )
+        for metric, result in acceptance["metrics"].items():
+            lines.append(
+                f"- {metric}: observed {result['observed_bound']:.4f}; "
+                f"{result['direction']} {result['limit']:.4f}; met: {result['met']}"
+            )
+        lines.append("")
+    subgroup = report.get("subgroup_acceptance")
+    if subgroup is not None:
+        lines.extend(["## Registered subgroup error gates", "", f"Status: **{subgroup['status']}**.", ""])
+        for gate in subgroup["gates"]:
+            lines.append(
+                f"- {gate['dimension']} / {gate['code']} / {gate['metric']}: {gate['status']}; "
+                f"eligible rows: {gate['eligible_rows']}; campaign groups: {gate['campaign_groups']}."
+            )
+        lines.append("")
     return "\n".join(lines)
 
 
@@ -500,13 +525,13 @@ def _validate_consent_evaluation_plan(
         plan = json.loads(plan_bytes.decode("utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError):
         return None, ["evaluation_plan_unavailable"]
-    if not isinstance(plan, dict) or plan.get("schema_version") != 1:
+    if not isinstance(plan, dict) or plan.get("schema_version") != 2:
         return None, ["evaluation_plan_invalid"]
 
     blockers: list[str] = []
     if not isinstance(plan.get("intended_use"), str) or not plan["intended_use"].strip():
         blockers.append("evaluation_plan_intended_use_missing")
-    for field in ("coverage_rationale", "uncertainty_rationale"):
+    for field in ("coverage_rationale", "uncertainty_rationale", "performance_rationale"):
         value = plan.get(field)
         if not isinstance(value, str) or len(value.strip()) < 20:
             blockers.append("evaluation_plan_acceptance_rationale_missing")
@@ -580,12 +605,44 @@ def _validate_consent_evaluation_plan(
         )
     ):
         blockers.append("evaluation_plan_uncertainty_requirements_invalid")
+    minimum_valid_fraction = plan.get("minimum_valid_cluster_fraction")
+    if (
+        isinstance(minimum_valid_fraction, bool)
+        or not isinstance(minimum_valid_fraction, (int, float))
+        or not 0.0 < float(minimum_valid_fraction) <= 1.0
+    ):
+        blockers.append("evaluation_plan_valid_replicate_fraction_invalid")
+    lower_bounds = plan.get("minimum_cluster_lower_bound")
+    upper_bounds = plan.get("maximum_cluster_upper_bound")
+
+    def valid_bounds(bounds: Any, names: set[str]) -> bool:
+        return (
+            isinstance(bounds, dict)
+            and set(bounds) == names
+            and all(
+                isinstance(value, (int, float)) and not isinstance(value, bool) and 0.0 <= float(value) <= 1.0
+                for value in bounds.values()
+            )
+        )
+
+    if not valid_bounds(lower_bounds, {"precision", "recall", "f1"}) or not valid_bounds(
+        upper_bounds, {"false_positive_rate", "false_negative_rate"}
+    ):
+        blockers.append("evaluation_plan_performance_bounds_invalid")
+    annotation_gates = plan.get("annotation_quality_gates")
+    if not _valid_annotation_gates(annotation_gates):
+        blockers.append("evaluation_plan_annotation_gates_invalid")
+    subgroup_gates = plan.get("subgroup_error_gates")
+    if not _valid_subgroup_gates(subgroup_gates):
+        blockers.append("evaluation_plan_subgroup_gates_invalid")
     if blockers:
         return None, sorted(set(blockers))
     if registered_at is None:  # Defensive for type checkers and malformed plans.
         return None, ["evaluation_plan_registration_time_invalid"]
     if not isinstance(widths, dict):  # Defensive: the blocker above should already cover this.
         return None, ["evaluation_plan_uncertainty_requirements_invalid"]
+    if not isinstance(annotation_gates, dict):
+        return None, ["evaluation_plan_annotation_gates_invalid"]
 
     safe_plan = {
         "sha256": hashlib.sha256(plan_bytes).hexdigest(),
@@ -597,11 +654,185 @@ def _validate_consent_evaluation_plan(
         "minimum_campaign_groups": minimum_groups,
         "minimum_coverage": coverage,
         "maximum_cluster_interval_width": {name: float(widths[name]) for name in sorted(required_metrics)},
+        "minimum_valid_cluster_fraction": minimum_valid_fraction,
+        "minimum_cluster_lower_bound": lower_bounds,
+        "maximum_cluster_upper_bound": upper_bounds,
+        "subgroup_error_gates": subgroup_gates,
+        "annotation_quality_gates": {
+            name: {key: value for key, value in gate.items() if key != "rationale"}
+            for name, gate in annotation_gates.items()
+        },
         "split_method": "chronological_campaign_holdout",
         "campaign_overlap_checked": True,
         "test_split_sealed": True,
     }
     return safe_plan, []
+
+
+def _valid_annotation_gates(gates: Any) -> bool:
+    if not isinstance(gates, dict) or set(gates) != {"spam_label", "scam_assessment"}:
+        return False
+    for name, gate in gates.items():
+        if not isinstance(gate, dict) or set(gate) != {
+            "minimum_pairs",
+            "minimum_agreement",
+            "minimum_kappa",
+            "rationale",
+        }:
+            return False
+        pairs = gate["minimum_pairs"]
+        agreement = gate["minimum_agreement"]
+        kappa = gate["minimum_kappa"]
+        rationale = gate["rationale"]
+        if not isinstance(pairs, int) or isinstance(pairs, bool) or pairs < 2:
+            return False
+        if type(agreement) not in (int, float) or not 0 <= agreement <= 1:
+            return False
+        if kappa is None:
+            if name == "spam_label":
+                return False
+        elif type(kappa) not in (int, float) or not 0 <= kappa <= 1:
+            return False
+        if not isinstance(rationale, str) or len(rationale.strip()) < 20:
+            return False
+    return True
+
+
+def _annotation_gate_diagnostics(dataset: Dataset, plan: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+    """Check first-pass labels on the validated snapshot before model scoring."""
+    quality = dataset.records[0].review_quality if len(dataset.records) == 1 else {}
+    diagnostics: dict[str, Any] = {}
+    blockers: list[str] = []
+    for name, gate in plan["annotation_quality_gates"].items():
+        observed = quality.get(name, {})
+        paired = observed.get("paired_rows", 0)
+        agreement = observed.get("agreement")
+        kappa = observed.get("cohen_kappa")
+        met = (
+            paired == len(dataset)
+            and paired >= gate["minimum_pairs"]
+            and agreement is not None
+            and agreement >= gate["minimum_agreement"]
+        )
+        if gate["minimum_kappa"] is not None:
+            met = met and kappa is not None and kappa >= gate["minimum_kappa"]
+        diagnostics[name] = {
+            "paired_rows": paired,
+            "agreement": agreement,
+            "cohen_kappa": kappa,
+            "kappa_required": gate["minimum_kappa"] is not None,
+            "met": met,
+        }
+        if not met:
+            blockers.append("annotation_quality_below_plan")
+    return diagnostics, sorted(set(blockers))
+
+
+def _valid_subgroup_gates(gates: Any) -> bool:
+    if not isinstance(gates, list) or not 2 <= len(gates) <= 50:
+        return False
+    seen: set[tuple[str, str, str]] = set()
+    for gate in gates:
+        if not isinstance(gate, dict) or set(gate) != {
+            "dimension",
+            "code",
+            "metric",
+            "minimum_groups",
+            "maximum_upper_bound",
+            "maximum_interval_width",
+        }:
+            return False
+        dimension, code, metric = (gate[key] for key in ("dimension", "code", "metric"))
+        if (
+            dimension not in ("language", "category")
+            or not isinstance(code, str)
+            or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,31}", code)
+            or code.lower() == "unknown"
+            or metric not in ("false_positive_rate", "false_negative_rate")
+        ):
+            return False
+        minimum = gate["minimum_groups"]
+        if not isinstance(minimum, int) or isinstance(minimum, bool) or minimum < 2:
+            return False
+        for key in ("maximum_upper_bound", "maximum_interval_width"):
+            value = gate[key]
+            if not isinstance(value, (int, float)) or isinstance(value, bool) or not 0 <= value <= 1:
+                return False
+        if gate["maximum_interval_width"] == 0:
+            return False
+        identity = (dimension, code, metric)
+        if identity in seen:
+            return False
+        seen.add(identity)
+    return {identity[0] for identity in seen} == {"language", "category"}
+
+
+def _subgroup_mask(frame: pd.DataFrame, gate: dict[str, Any]) -> Any:
+    label = "ham" if gate["metric"] == "false_positive_rate" else "spam"
+    return (frame[gate["dimension"]].astype(str) == gate["code"]) & (frame["label"] == label)
+
+
+def _subgroup_gate_results(
+    frame: pd.DataFrame, probabilities: list[float], threshold: float, plan: dict[str, Any]
+) -> dict[str, Any]:
+    """Compute only preregistered, class-eligible, campaign-cluster error gates."""
+    results = []
+    scores = np.asarray(probabilities)
+    for gate in plan["subgroup_error_gates"]:
+        mask = _subgroup_mask(frame, gate)
+        subset = frame.loc[mask]
+        result = campaign_bootstrap_intervals(
+            subset,
+            scores[mask.to_numpy()],
+            threshold,
+            replicates=1000,
+            seed=BOOTSTRAP_SEED,
+            minimum_groups=gate["minimum_groups"],
+        )
+        metric = gate["metric"]
+        interval = result.get("intervals", {}).get(metric)
+        valid_fraction = result.get("valid_replicates", {}).get(metric, 0) / 1000
+        status = "insufficient_evidence"
+        if (
+            interval is not None
+            and valid_fraction >= plan["minimum_valid_cluster_fraction"]
+            and interval[1] - interval[0] <= gate["maximum_interval_width"]
+        ):
+            status = "met" if interval[1] <= gate["maximum_upper_bound"] else "not_met"
+        results.append(
+            {
+                **gate,
+                "status": status,
+                "eligible_rows": len(subset),
+                "campaign_groups": int(subset["group"].nunique()),
+                "interval": interval,
+                "valid_replicate_fraction": valid_fraction,
+            }
+        )
+    statuses = {item["status"] for item in results}
+    if "insufficient_evidence" in statuses:
+        status = "insufficient_evidence"
+    else:
+        status = "not_met" if "not_met" in statuses else "met"
+    return {"status": status, "gates": results}
+
+
+def _performance_gate_results(plan: dict[str, Any], intervals: dict[str, Any]) -> dict[str, Any]:
+    """Compare frozen campaign bounds; do not retune or promote a model."""
+    results: dict[str, dict[str, Any]] = {}
+    for field, index, direction in (
+        ("minimum_cluster_lower_bound", 0, "minimum"),
+        ("maximum_cluster_upper_bound", 1, "maximum"),
+    ):
+        for metric, limit in plan[field].items():
+            observed = intervals[metric][index]
+            met = observed >= limit if direction == "minimum" else observed <= limit
+            results[metric] = {"direction": direction, "limit": limit, "observed_bound": observed, "met": met}
+    return {
+        "status": "met" if all(item["met"] for item in results.values()) else "not_met",
+        "metrics": results,
+        "interpretation": "Overall statistical gates only; no deployment or field-study approval is implied.",
+    }
 
 
 def _consented_development_diagnostics(
@@ -752,6 +983,21 @@ def _consented_coverage_diagnostics(dataset: Dataset, plan: dict[str, Any]) -> t
         for code, minimum in minimums.items():
             if coverage_counts[dimension].get(code, 0) < minimum:
                 blockers.append(f"{dimension}_coverage_below_plan")
+    subgroup_counts = []
+    for gate in plan["subgroup_error_gates"]:
+        subset = dataset.frame.loc[_subgroup_mask(dataset.frame, gate)]
+        eligible_groups = int(subset["group"].nunique())
+        subgroup_counts.append(
+            {
+                "dimension": gate["dimension"],
+                "code": gate["code"],
+                "metric": gate["metric"],
+                "eligible_rows": len(subset),
+                "campaign_groups": eligible_groups,
+            }
+        )
+        if eligible_groups < gate["minimum_groups"]:
+            blockers.append("subgroup_campaign_support_below_plan")
     group_count = len(set(dataset.groups))
     if group_count < plan["minimum_campaign_groups"]:
         blockers.append("campaign_group_count_below_plan")
@@ -759,6 +1005,7 @@ def _consented_coverage_diagnostics(dataset: Dataset, plan: dict[str, Any]) -> t
         "campaign_group_count": group_count,
         "required_campaign_group_count": plan["minimum_campaign_groups"],
         "coverage_counts": coverage_counts,
+        "subgroup_support": subgroup_counts,
     }, sorted(set(blockers))
 
 
@@ -920,6 +1167,9 @@ def evaluate_public_dataset(
             _write_reports(readiness, output_dir)
             return readiness
         coverage_diagnostics, coverage_blockers = _consented_coverage_diagnostics(dataset, evaluation_plan)
+        annotation_diagnostics, annotation_blockers = _annotation_gate_diagnostics(dataset, evaluation_plan)
+        split_diagnostics = {**split_diagnostics, "annotation_quality": annotation_diagnostics}
+        coverage_blockers.extend(annotation_blockers)
         if coverage_blockers:
             readiness = _evaluation_readiness_report(
                 dataset,
@@ -995,7 +1245,13 @@ def evaluate_public_dataset(
         interval_widths: dict[str, float | None] = {}
         planned_widths = evaluation_plan["maximum_cluster_interval_width"]
         intervals = campaign_intervals.get("intervals", {})
+        valid_replicates = campaign_intervals.get("valid_replicates", {})
+        valid_fractions: dict[str, float] = {}
         for metric_name, maximum_width in planned_widths.items():
+            fraction = valid_replicates.get(metric_name, 0) / 1000
+            valid_fractions[metric_name] = fraction
+            if fraction < evaluation_plan["minimum_valid_cluster_fraction"]:
+                uncertainty_blockers.append("campaign_uncertainty_valid_replicates_below_plan")
             interval = intervals.get(metric_name) if campaign_intervals.get("available") else None
             if not isinstance(interval, list) or len(interval) != 2:
                 interval_widths[metric_name] = None
@@ -1016,6 +1272,7 @@ def evaluate_public_dataset(
                     **split_diagnostics,
                     "campaign_bootstrap_95": campaign_intervals,
                     "campaign_interval_widths": interval_widths,
+                    "campaign_valid_replicate_fractions": valid_fractions,
                 },
                 model_status="verified",
                 evaluation_plan_sha256=evaluation_plan["sha256"],
@@ -1024,6 +1281,11 @@ def evaluate_public_dataset(
             )
             _write_reports(readiness, output_dir)
             return readiness
+    subgroup_acceptance = (
+        _subgroup_gate_results(dataset.frame, probabilities, float(bundle.threshold), evaluation_plan)
+        if requires_consent_gate and evaluation_plan is not None
+        else None
+    )
     calibration = calibration_metrics(labels, probabilities, n_bins=CALIBRATION_BINS)
     report: dict[str, Any] = {
         "schema_version": 1,
@@ -1104,6 +1366,12 @@ def evaluate_public_dataset(
             else _operating_threshold(labels, probabilities, operating_fpr)
         ),
         "evaluation_plan": evaluation_plan,
+        "subgroup_acceptance": subgroup_acceptance,
+        "performance_acceptance": (
+            _performance_gate_results(evaluation_plan, campaign_intervals["intervals"])
+            if requires_consent_gate and evaluation_plan is not None
+            else None
+        ),
         "split_inputs": split_diagnostics if requires_consent_gate else None,
         "privacy": {"pii_redaction": pii_redaction},
         "breakdowns": _breakdowns(dataset, probabilities, bundle.threshold),

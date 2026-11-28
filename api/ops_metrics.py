@@ -37,14 +37,29 @@ class OperationsMonitor:
         self._status: Counter[str] = Counter()
         self._groups: Counter[str] = Counter()
         self._total = 0
+        self._outcomes: Counter[str] = Counter()
+        self._active_writes = 0
+        self._peak_writes = 0
 
-    def record(self, method: str, path: str, status: int, latency_ms: float) -> None:
+    def write_started(self) -> None:
+        with self._lock:
+            self._active_writes += 1
+            self._peak_writes = max(self._peak_writes, self._active_writes)
+
+    def write_finished(self) -> None:
+        with self._lock:
+            self._active_writes -= 1
+
+    def record(self, method: str, path: str, status: int, latency_ms: float, outcome: str = "") -> None:
         del method
         category = f"{status // 100}xx" if 100 <= status < 600 else "other"
         duration = float(latency_ms)
         if not math.isfinite(duration) or duration < 0:
             duration = 0.0
+        if outcome not in {"service_busy", "rate_limiter_unavailable", "rate_limited", "request_timeout"}:
+            outcome = "other"
         with self._lock:
+            self._outcomes[outcome] += 1
             self._total += 1
             self._status[category] += 1
             self._groups[_route_group(path)] += 1
@@ -56,6 +71,9 @@ class OperationsMonitor:
             total = self._total
             statuses = dict(self._status)
             groups = dict(self._groups)
+            outcomes = dict(self._outcomes)
+            active_writes = self._active_writes
+            peak_writes = self._peak_writes
 
         def percentile(p: float) -> float | None:
             if not values:
@@ -70,6 +88,9 @@ class OperationsMonitor:
             "request_count": total,
             "status_classes": statuses,
             "route_groups": groups,
+            "outcomes": outcomes,
+            "active_writes": active_writes,
+            "peak_active_writes": peak_writes,
             "latency_window_samples": len(values),
             "latency_p50_ms": percentile(0.5),
             "latency_p95_ms": percentile(0.95),
@@ -81,6 +102,8 @@ class OperationsMonitor:
             self._status.clear()
             self._groups.clear()
             self._latencies.clear()
+            self._outcomes.clear()
+            self._peak_writes = self._active_writes
 
 
 operations_monitor = OperationsMonitor()

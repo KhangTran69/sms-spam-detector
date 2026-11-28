@@ -296,3 +296,16 @@ automatically removes learned influence from an existing model.
       recorded before the final test is opened.
 - [ ] Reports remain private, content-free, separated by evidence source, and
       carry source/model hashes and limitations.
+
+### Annotation quality before model evaluation
+
+The local preflight now reports paired first-pass agreement and Cohen's kappa
+separately for spam/ham and suspected-scam assessments. It reports only counts
+and aggregate ratios; undefined kappa (including a single shared label) is
+null. Invalid labels do not enter the paired count and continue to block
+preflight. Review agreement alongside class coverage, ambiguous exclusions,
+labeler training and adjudication; a high agreement score does not prove that
+labels are correct or consent is valid. The study owner must register and
+justify any annotation acceptance criterion before review, and report any
+unresolved disagreements and missing pairs. Keep these aggregate diagnostics
+private where small groups might be identifiable.

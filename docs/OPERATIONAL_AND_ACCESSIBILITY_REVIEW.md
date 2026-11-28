@@ -22,7 +22,7 @@ Review the following in an approved non-public environment:
 | Repeated client request over configured limit | 429 and positive Retry-After; no content in logs |
 | Missing, invalid and malformed JSON | 422/4xx safe schema with no SMS echo |
 | Oversized declared or streamed input | 413; no unbounded buffering or text logging |
-| Redis unavailable at production startup | /health liveness 200, /ready 503, prediction 503 |
+| Redis unavailable at production startup | /health liveness 200, /ready 503, prediction 503 while unavailable; after connectivity is restored, readiness and protected requests recover without restart if the client was constructed |
 | Redis outage after successful initialization | Safe prediction and strict readiness 503 rate_limiter_unavailable; no backend secrets exposed; recovery probe succeeds after repair |
 | Local limiter identity capacity exhausted | New identities receive 429; existing active counters remain enforced and expired keys free capacity |
 | Redis disabled and multiple workers | Gateway handles shared per-client limits; no false shared-counter claim |
@@ -80,3 +80,29 @@ and model artifact together, check /health, /ready and /model-info, and record
 the incident. Never switch to a synthetic or unapproved model as an outage
 fallback. Stop if any SMS content leaks into logs/telemetry or if critical
 legitimate categories suffer unreviewed regressions.
+
+## Additional capacity and privacy checks
+
+On the named staging hardware, exercise sustained ordinary requests and
+short bursts against the configured process admission budget. Verify 503
+`service_busy` and Retry-After when saturated, continued liveness, and recovery
+once active writes finish. Verify slow uploads time out with 408, invalid
+framing is rejected by the gateway or app, and analysis responses have
+Cache-Control: no-store. Check that production access logs omit the original
+request ID, query strings and bodies. Confirm that Redis no-eviction memory
+pressure fails safely and does not silently reset active counters. Record
+hardware, limits, latency, rates, error categories and recovery time without
+message content. The automated unit tests are not a capacity benchmark.
+
+During the accessible Chromium rehearsal, simulated capacity failures must
+appear in the existing alert region, preserve the editable message, and avoid
+training instructions or automatic resubmission. Verify announcement behavior
+with assistive technology separately. CI also exercises bounded admission
+waves and disposable Redis failure/recovery; no public load target is used.
+
+The two-process container rehearsal uses a synthetic artifact and actual HTTP
+connections to test default write admission, body timeout, shared counters,
+forwarding-header trust and a disposable persistent Redis restart. The
+normal ephemeral profile needs an independent ingress limit during complete
+counter-store restart; do not infer persistence from the pause test. Record
+CI timings separately from target-hardware capacity and recovery objectives.

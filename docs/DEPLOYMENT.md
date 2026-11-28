@@ -149,7 +149,7 @@ pickle; verification does not neutralize pickle code execution.
 ## 3. Serve locally
 
 ```bash
-uvicorn api.main:app --host 127.0.0.1 --port 8000
+uvicorn api.main:app --host 127.0.0.1 --port 8000 --no-access-log --no-proxy-headers
 # UI:      http://127.0.0.1:8000/
 # Docs:    http://127.0.0.1:8000/docs
 # Health:  http://127.0.0.1:8000/health
@@ -254,7 +254,7 @@ lsof -a -p 12345 -d cwd
 Only if that PID is the detector's Uvicorn process and its working directory is
 this checkout, stop that specific process with `kill -TERM 12345`, replacing
 `12345` with the verified PID. Then start the server in a terminal from the repository root with
-`.venv/bin/python -m uvicorn api.main:app --host 127.0.0.1 --port 8000` and
+`.venv/bin/python -m uvicorn api.main:app --host 127.0.0.1 --port 8000 --no-access-log --no-proxy-headers` and
 repeat the route checks. If the listener belongs to another project or the
 identity is unclear, leave it running and use a free port such as 8001. Do not
 use a broad `pkill uvicorn` command. The detector does not log SMS contents;
@@ -363,12 +363,14 @@ The profile's Redis service has no published host port and disables disk
 persistence; it stores only expiring rate-limit counters. For a non-container
 install, add the optional client with `python -m pip install -e ".[redis]"` and
 set `SMSD_REDIS_URL` to a reachable Redis URL. Keep any URL credentials in a
-secret store or local environment, never in Git. If Redis is unavailable at
-startup, the API logs a content-free fallback event and uses its process-local
-limiter until the API process restarts. If Redis fails during a request, that
-request fails open and the limiter logs a content-free warning counter; it
-tries Redis again on the next request. During either failure mode, limits are
-not shared between workers. Redis keys contain a SHA-256 digest of the direct
+secret store or local environment, never in Git. The default production
+policy fails closed; if a Redis client can be constructed but the startup
+probe fails, readiness and protected requests fail safely until Redis
+recovers. If client construction fails, repair configuration or dependencies
+and restart. Development defaults to fail-open: a failed startup probe falls
+back to a process-local limiter until restart; a runtime Redis failure permits
+the request and retries Redis on the next request. Fail-open limits are not
+shared during outages. Redis keys contain a SHA-256 digest of the direct
 client address and short-lived counters only; SMS content is never sent to
 Redis.
 
@@ -403,13 +405,15 @@ commit them.
 | `SMSD_RATE_LIMIT` | `0` | Optional additional per-address limit shared by the request-body middleware for prediction and feedback routes. Zero disables this legacy limit. |
 | `SMSD_RATE_LIMIT_WINDOW` | `60` | Window in seconds for the optional `SMSD_RATE_LIMIT` limit. |
 | `SMSD_REDIS_URL` | unset | Optional Redis connection URL to share rate limits across workers. Keep credentials in a secret store. If unset, limits remain process-local and a trusted gateway limit is required for public replicas. |
+| `SMSD_MAX_IN_FLIGHT_WRITES` | `16` | Maximum simultaneous non-GET/HEAD/OPTIONS requests per API process. Excess writes receive a no-store 503 `service_busy` with Retry-After 5. Size for target hardware; not a shared cluster budget. |
+| `SMSD_BODY_TIMEOUT_SECONDS` | `10` | Total ASGI body upload deadline in seconds, independent of chunk count; expiration returns 408. Also configure ingress connection and body deadlines. |
 | `SMSD_RATE_LIMIT_FAILURE_MODE` | `closed` in production, `open` in development | Redis failure policy when Redis is configured: `closed` returns a safe 503 and blocks readiness after failed startup; `open` permits traffic during a Redis outage. Only choose `open` behind an independently enforced gateway limit. |
 | `SMSD_METRICS_TOKEN` | unset | High-entropy operator secret required to access `/metrics/distribution` and `/metrics/operations` in production (including `/v1` aliases). Without a token, those routes return 404. |
 | `SMSD_MONITOR_BASELINE_PATH` | unset | Optional private JSON score baseline, matched to the exact artifact hash, model version and calibrated linear spam-score semantics. Invalid or incompatible baselines disable drift comparison, not inference. |
 
 - There is **no** `PORT`, log-level, or prediction decision-threshold environment variable. Pass
   host/port/log level to uvicorn on the command line
-  (`uvicorn api.main:app --host 0.0.0.0 --port 8000 --log-level info`). Prediction
+  (`uvicorn api.main:app --host 0.0.0.0 --port 8000 --log-level info --no-access-log --no-proxy-headers`). Prediction
   thresholds come from the linear artifact (`GET /model-info`); the separate
   transformer routing band is optional and does not change that decision threshold.
 - Request limits are constants: max message length 10,000 chars, batch 1–50
@@ -545,7 +549,7 @@ only selected labels and model metadata to the local queue. See
 The web form appears only when the operator opts in:
 
 ```bash
-SMSD_FEEDBACK_ENABLED=true uvicorn api.main:app --host 127.0.0.1 --port 8000
+SMSD_FEEDBACK_ENABLED=true uvicorn api.main:app --host 127.0.0.1 --port 8000 --no-access-log --no-proxy-headers
 ```
 
 A submitted report stores the chosen correction, broad category, timestamp, and model version in `data/feedback/reports.jsonl`. It never sends or stores the SMS text, sender details, or IP address. Reports are unverified review signals; they are never automatically added to training. The queue is local, ignored by Git, and capped at 10 MiB. For Docker Compose, set `SMSD_FEEDBACK_ENABLED=true`; reports persist in the named `smsd_feedback` Docker volume. Do not expose this anonymous endpoint publicly without authentication or deployment-level abuse controls and a retention policy.
@@ -572,7 +576,9 @@ Runtime Redis errors return 503 with `rate_limiter_unavailable` and
 `Retry-After: 30`. Strict Redis readiness also checks connectivity at runtime
 and recovers on a successful probe. A successful PING is not proof that the
 server permits the rate-limit script; verify prediction behavior separately.
-Restart after repairing an unavailable startup backend. With Redis **unset**,
+If the Redis client was constructed, a startup connectivity failure can recover
+without restarting the API. Restart after repairing a client-construction
+failure (for example, invalid configuration). With Redis **unset**,
 the single-process memory limiter tracks at most 10,000 active endpoint/client
 keys; it does not evict active counters to admit more identities. New identities
 can receive 429 with a short retry interval while capacity is exhausted. This is
@@ -662,3 +668,75 @@ CI exercises the generated synthetic reference and checks a container's
 recovery after a deliberate artifact-integrity mismatch. This is an isolated
 configuration/artifact recovery rehearsal, not a real production rollback
 or proof of acceptable accuracy.
+
+### Capacity and privacy controls
+
+The bundled CLI and container disable Uvicorn access logs and proxy-header
+rewriting. The app generates production request IDs rather than trusting
+client IDs; configure the gateway to omit query strings, headers and bodies
+from its own logs. The Redis Compose profile caps counter memory at 64 MiB
+with no eviction; a full store rejects new writes instead of silently dropping
+active counters. Size and monitor Redis separately for the intended deployment.
+Hashed IP keys are pseudonymous, not anonymous; restrict Redis access and
+retain counters only for the configured expiry window.
+
+The write admission budget covers rate-limit calls, body buffering and model
+execution; GET health remains available during write saturation. It does not
+bound all HTTP connections or read-only work. Apply independent ingress
+connection, read-only endpoint, body size, timeout and per-client controls.
+Do not automatically resend SMS after 408, 429 or 503; the browser displays a
+retry message. Use fictional fixtures for capacity and recovery exercises.
+
+### Isolated capacity and recovery evidence
+
+The operator metrics include active and peak admitted writes plus fixed outcome
+counters for saturation, rate denial, protection outage and body timeout.
+They are process-local; restart resets the counters, and multiple workers need
+an external collector. Cancellation of a prediction/Redis call keeps write
+admission occupied until its synchronous work completes; it cannot forcibly
+interrupt an already running model thread. Read-only routes do not accept
+request bodies. The default body deadline still needs ingress enforcement.
+
+CI rehearses three admission waves at the default 16-write budget and 320
+Redis checks across four fictional identities. Its disposable service test
+uses the 64 MiB no-eviction policy, simulates exhausted memory by temporarily
+lowering that service's limit, and pauses/unpauses only the CI service to
+exercise real startup and runtime outages. These are functional workload
+checks, not a host sizing benchmark or a full Redis restart recovery SLA.
+A successful Redis PING alone does not guarantee writes will succeed during
+memory pressure. Monitor prediction outcome counters alongside readiness.
+
+The Redis backend requires Redis 7 or later. Its Lua script uses the Redis 7
+script declaration to reject execution while the server is over maxmemory,
+before mutating an admission counter. See the Redis scripting documentation:
+https://redis.io/docs/latest/develop/interact/programmability/eval-intro/.
+Older servers are not supported; confirm the server version and an actual
+protected prediction during deployment readiness checks.
+
+Strict Redis readiness now executes the real admission script on a reserved
+one-second internal counter after PING. This distinguishes a reachable but
+write-blocked store from a functioning protection backend. The probe is
+content-free and never consumes a user's allowance. Restrict access to
+readiness at the gateway to avoid unnecessary dependency traffic. Unrecognized
+SMSD_ENV values fail startup rather than quietly disabling production controls.
+
+### Two-process HTTP and persistent restart rehearsal
+
+The container CI job builds the existing synthetic model once and starts two
+separate API containers on a private network with Redis 7. It exercises the
+default 16 simultaneous writes, eight excess requests, liveness, drainage,
+the default 10-second upload deadline, one shared 60-request budget and
+forged forwarded headers. It then stops and starts that disposable Redis
+container with AOF and appendfsync always configured, checking fail-closed
+responses and persistence of active counters. The test is loopback-only.
+
+The normal Compose Redis profile remains deliberately ephemeral: counters
+can be lost after a complete Redis restart. Unlike a pause, a restart of an
+ephemeral store resets the budget. Require an independent gateway admission
+budget covering the complete window during outages/restarts, or provision a
+separately reviewed durable Redis service with restricted storage, AOF rewrite
+and deletion policies. Hashed client keys remain pseudonymous; persistent
+journals can outlive key expiry. The CI AOF exercise uses fictional identifiers
+and deletes its disposable storage. It does not authorize persisting actual
+client identities. Compose also accepts the independent SMSD_MODEL_SHA256
+pin and per-minute rate setting. Confirm both on target infrastructure.

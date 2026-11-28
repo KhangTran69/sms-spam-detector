@@ -124,7 +124,7 @@ def write_evaluation_plan(
     **overrides,
 ) -> Path:
     plan = {
-        "schema_version": 1,
+        "schema_version": 2,
         "registered_at": datetime.now(UTC).isoformat(),
         "intended_use": "Synthetic test fixture only",
         "dataset_sha256": hashlib.sha256(dataset_path.read_bytes()).hexdigest(),
@@ -144,6 +144,43 @@ def write_evaluation_plan(
             "language": {"en": 1, "fil": 1},
             "category": {"otp_legit": 1, "phishing": 1},
         },
+        # Permissive fixture-only bounds exercise the evaluator, not release criteria.
+        "performance_rationale": "Fictional fixtures only; no real study acceptance values are implied.",
+        "subgroup_error_gates": [
+            {
+                "dimension": "language",
+                "code": "en",
+                "metric": "false_negative_rate",
+                "minimum_groups": 2,
+                "maximum_upper_bound": 1.0,
+                "maximum_interval_width": 1.0,
+            },
+            {
+                "dimension": "category",
+                "code": "otp_legit",
+                "metric": "false_positive_rate",
+                "minimum_groups": 2,
+                "maximum_upper_bound": 1.0,
+                "maximum_interval_width": 1.0,
+            },
+        ],
+        "annotation_quality_gates": {
+            "spam_label": {
+                "minimum_pairs": 2,
+                "minimum_agreement": 0.0,
+                "minimum_kappa": 0.0,
+                "rationale": "Fictional rehearsal threshold, not a study criterion.",
+            },
+            "scam_assessment": {
+                "minimum_pairs": 2,
+                "minimum_agreement": 0.0,
+                "minimum_kappa": None,
+                "rationale": "Fictional rehearsal permits undefined kappa for a single assessment class.",
+            },
+        },
+        "minimum_valid_cluster_fraction": 0.5,
+        "minimum_cluster_lower_bound": {"precision": 0.0, "recall": 0.0, "f1": 0.0},
+        "maximum_cluster_upper_bound": {"false_positive_rate": 1.0, "false_negative_rate": 1.0},
         "maximum_cluster_interval_width": {
             "precision": 0.99,
             "recall": 0.99,
@@ -414,6 +451,9 @@ def test_consent_evaluation_requires_plan_and_skips_threshold_search(monkeypatch
 
     assert report["status"] == "evaluated"
     assert report["evaluation_plan"]["sha256"] == hashlib.sha256(plan_path.read_bytes()).hexdigest()
+    assert report["performance_acceptance"]["status"] == "met"
+    assert report["subgroup_acceptance"]["status"] == "met"
+    assert report["split_inputs"]["annotation_quality"]["spam_label"]["met"] is True
     assert report["operating_threshold"]["status"] == "not_run_sealed_consent_evaluation"
     assert report["metrics"]["campaign_bootstrap_95"]["available"] is True
     assert "false_negative_rate" in report["metrics"]["campaign_bootstrap_95"]["intervals"]
@@ -705,3 +745,86 @@ def test_excessive_cluster_uncertainty_returns_content_free_readiness(monkeypatc
     serialized = "".join(path.read_text(encoding="utf-8") for path in output_dir.iterdir())
     assert secret_fixture not in serialized
     assert "Synthetic " not in serialized
+
+
+def test_registered_performance_bounds_report_failure_without_retuning():
+    plan = {
+        "minimum_cluster_lower_bound": {"precision": 0.9, "recall": 0.8, "f1": 0.85},
+        "maximum_cluster_upper_bound": {"false_positive_rate": 0.02, "false_negative_rate": 0.2},
+    }
+    intervals = {
+        "precision": [0.91, 0.99],
+        "recall": [0.75, 0.95],
+        "f1": [0.85, 0.97],
+        "false_positive_rate": [0.0, 0.03],
+        "false_negative_rate": [0.05, 0.2],
+    }
+    result = public_evaluation._performance_gate_results(plan, intervals)
+    assert result["status"] == "not_met"
+    assert result["metrics"]["precision"]["met"]
+    assert not result["metrics"]["recall"]["met"]
+    assert not result["metrics"]["false_positive_rate"]["met"]
+    assert result["metrics"]["false_negative_rate"]["met"]
+
+
+def test_subgroup_gates_use_class_eligible_groups_and_report_unmet_bound():
+    frame = pd.DataFrame(
+        {
+            "language": ["en"] * 4,
+            "category": ["otp_legit", "otp_legit", "phishing", "phishing"],
+            "label": ["ham", "ham", "spam", "spam"],
+            "group": ["a", "b", "c", "d"],
+        }
+    )
+    gate = {
+        "dimension": "category",
+        "code": "otp_legit",
+        "metric": "false_positive_rate",
+        "minimum_groups": 2,
+        "maximum_upper_bound": 0.1,
+        "maximum_interval_width": 1.0,
+    }
+    language_gate = {**gate, "dimension": "language", "code": "en", "metric": "false_negative_rate"}
+    gates = [gate, language_gate]
+    assert public_evaluation._valid_subgroup_gates(gates)
+    assert not public_evaluation._valid_subgroup_gates([gate, gate])
+    plan = {"subgroup_error_gates": gates, "minimum_valid_cluster_fraction": 0.5}
+    result = public_evaluation._subgroup_gate_results(frame, [0.9, 0.9, 0.9, 0.9], 0.5, plan)
+    assert result["status"] == "not_met"
+    assert result["gates"][0]["eligible_rows"] == 2
+    assert result["gates"][0]["interval"] == [1.0, 1.0]
+    assert result["gates"][1]["status"] == "met"
+    gate["minimum_groups"] = 3
+    result = public_evaluation._subgroup_gate_results(frame, [0.9] * 4, 0.5, plan)
+    assert result["status"] == "insufficient_evidence"
+
+
+def test_annotation_gate_rejects_unavailable_or_insufficient_agreement():
+    from src.dataset_loading import Dataset, FileRecord
+
+    frame = pd.DataFrame({"label": ["ham", "spam"]})
+    record = FileRecord(
+        path="fixture",
+        role="holdout",
+        sha256="fixture",
+        rows_in=2,
+        rows_loaded=2,
+        duplicates_removed=0,
+        review_quality={
+            "spam_label": {"paired_rows": 2, "agreement": 0.5, "cohen_kappa": 0.0},
+            "scam_assessment": {"paired_rows": 2, "agreement": 1.0, "cohen_kappa": None},
+        },
+    )
+    gate = {
+        "minimum_pairs": 2,
+        "minimum_agreement": 0.8,
+        "minimum_kappa": 0.5,
+        "rationale": "Fictional gate to exercise the failure path.",
+    }
+    plan = {"annotation_quality_gates": {"spam_label": gate, "scam_assessment": gate.copy()}}
+    assert public_evaluation._valid_annotation_gates(plan["annotation_quality_gates"])
+    diagnostics, blockers = public_evaluation._annotation_gate_diagnostics(Dataset(frame, [record]), plan)
+    assert blockers == ["annotation_quality_below_plan"]
+    assert diagnostics["spam_label"]["met"] is False
+    assert diagnostics["scam_assessment"]["met"] is False
+    assert "review_quality" not in record.as_dict()

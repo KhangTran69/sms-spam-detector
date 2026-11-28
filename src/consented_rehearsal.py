@@ -324,7 +324,7 @@ def _evaluation_plan(
     threshold: float,
 ) -> dict[str, Any]:
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "registered_at": datetime.now(UTC).isoformat(),
         "intended_use": "Synthetic workflow rehearsal only; no participant or performance claim.",
         "dataset_sha256": sealed_test["sha256"],
@@ -350,6 +350,43 @@ def _evaluation_plan(
             "language": {"en": 1, "fil": 1, "tl-en": 1},
             "category": {"bank_alert": 1, "promotion": 1},
         },
+        # Permissive fixture-only bounds exercise the evaluator, not release criteria.
+        "performance_rationale": "Fictional fixtures only; no real study acceptance values are implied.",
+        "subgroup_error_gates": [
+            {
+                "dimension": "language",
+                "code": "en",
+                "metric": "false_negative_rate",
+                "minimum_groups": 2,
+                "maximum_upper_bound": 1.0,
+                "maximum_interval_width": 1.0,
+            },
+            {
+                "dimension": "category",
+                "code": "bank_alert",
+                "metric": "false_positive_rate",
+                "minimum_groups": 2,
+                "maximum_upper_bound": 1.0,
+                "maximum_interval_width": 1.0,
+            },
+        ],
+        "annotation_quality_gates": {
+            "spam_label": {
+                "minimum_pairs": 2,
+                "minimum_agreement": 0.0,
+                "minimum_kappa": 0.0,
+                "rationale": "Fictional rehearsal threshold, not a study criterion.",
+            },
+            "scam_assessment": {
+                "minimum_pairs": 2,
+                "minimum_agreement": 0.0,
+                "minimum_kappa": None,
+                "rationale": "Fictional rehearsal permits undefined kappa for a single assessment class.",
+            },
+        },
+        "minimum_valid_cluster_fraction": 0.5,
+        "minimum_cluster_lower_bound": {"precision": 0.0, "recall": 0.0, "f1": 0.0},
+        "maximum_cluster_upper_bound": {"false_positive_rate": 1.0, "false_negative_rate": 1.0},
         "maximum_cluster_interval_width": {
             "precision": 0.99,
             "recall": 0.99,

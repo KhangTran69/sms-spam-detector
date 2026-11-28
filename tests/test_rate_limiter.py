@@ -76,6 +76,7 @@ def test_redis_limiter_calls_atomic_script_with_namespaced_hashed_key() -> None:
     assert key_count == 1
     assert key == f"smsd:rl:prediction:{expected_digest}"
     assert window_ms == 60_000 and limit == 60
+    assert script.startswith("#!lua\n")
     assert "ZREMRANGEBYSCORE" in script and "ZADD" in script and "TIME" in script
 
 
@@ -194,3 +195,55 @@ def test_closed_redis_readiness_detects_failed_ping_and_recovers() -> None:
     RedisRateLimiter(client).ensure_available()
     client.available = True
     limiter.ensure_available()
+    client.error = RuntimeError("private write-path failure")
+    with pytest.raises(RateLimiterUnavailable):
+        limiter.ensure_available()
+    client.error = None
+    limiter.ensure_available()
+
+
+def test_strict_redis_recovers_from_startup_probe_failure(monkeypatch, caplog) -> None:
+    import pytest
+
+    from api.rate_limiter import RateLimiterUnavailable
+
+    class RecoveringRedis(RedisStub):
+        available = False
+
+        def ping(self) -> bool:
+            return self.available
+
+        def eval(self, script, key_count, key, window_ms, limit, member):
+            if not self.available:
+                raise OSError("private connection details")
+            return super().eval(script, key_count, key, window_ms, limit, member)
+
+    monkeypatch.setenv("SMSD_ENV", "production")
+    monkeypatch.delenv("SMSD_RATE_LIMIT_FAILURE_MODE", raising=False)
+    client = RecoveringRedis()
+    limiter = create_rate_limiter("redis://cache.example.test/0", client_factory=lambda _url: client)
+    assert isinstance(limiter, RedisRateLimiter)
+    assert "redis_retry" in caplog.text
+    with pytest.raises(RateLimiterUnavailable):
+        limiter.ensure_available()
+    with pytest.raises(RateLimiterUnavailable):
+        limiter.check("prediction", "fixture-client", 2, 60)
+    assert "private connection details" not in caplog.text
+
+    client.available = True
+    limiter.ensure_available()
+    assert limiter.check("prediction", "fixture-client", 2, 60) == (True, 0)
+    client.result = (0, 42)
+    assert limiter.check("prediction", "fixture-client", 2, 60) == (False, 42)
+
+
+def test_strict_redis_rejects_invalid_backend_reply():
+    import pytest
+
+    from api.rate_limiter import RateLimiterUnavailable
+
+    for invalid in ((2, 0), (0, 0), (1, 1), (0, 61), ("1", 0)):
+        client = RedisStub()
+        client.result = invalid
+        with pytest.raises(RateLimiterUnavailable):
+            RedisRateLimiter(client, fail_closed=True).check("prediction", "fixture", 1, 60)
