@@ -64,6 +64,7 @@ MAKEFILE_TARGETS = [
     "docker-build",
     "docker-run",
     "clean",
+    "pilot-preflight",
 ]
 
 SECRET_PATTERNS = {
@@ -379,6 +380,20 @@ def test_makefile_phony_and_targets() -> None:
     assert set(MAKEFILE_TARGETS) <= phony, f"missing .PHONY targets: {sorted(set(MAKEFILE_TARGETS) - phony)}"
     for target in MAKEFILE_TARGETS:
         assert re.search(rf"(?m)^{re.escape(target)}:", makefile), f"Makefile target missing: {target}"
+
+
+def test_pilot_preflight_target_is_documented_in_makefile_header() -> None:
+    makefile = _text("Makefile")
+    lines = makefile.splitlines()
+    header_end = next(index for index, line in enumerate(lines) if line.strip() and not line.startswith("#"))
+    assert any(line.startswith("#   make pilot-preflight ") for line in lines[:header_end]), (
+        "Makefile header must document pilot-preflight"
+    )
+    printed = [re.search(r"sed -n '(\d+),(\d+)p'", line) for line in lines if "sed -n" in line]
+    assert printed and all(printed), "help must print the header block with a fixed sed range"
+    assert all(int(match.group(2)) > header_end for match in printed), (
+        "help must keep printing the complete documented header block"
+    )
 
 
 def test_gitignore_keeps_docs_tests_tracked_and_artifacts_ignored() -> None:
